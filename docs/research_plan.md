@@ -17,12 +17,48 @@ parent path + component name + operation context -> namespace decision
 The initial decisions are:
 
 - `PASS`: continue normal VFS resolution.
-- `HIDE`: behave as if the entry does not exist.
-- `DENY`: reject the access.
-- `REDIRECT`: resolve the component against a registered backing path.
+- `REDIRECT`: replace the current component with a policy-selected component
+  while keeping lookup, permission checks, and file operations in the kernel.
 
 This places `namei_ext` between fixed kernel mechanisms such as bind mounts and
 OverlayFS, and fully general user-space filesystems such as FUSE.
+
+## OSDI-Style Framing
+
+现代系统越来越频繁地为每个 workload 构造不同的文件系统视图。构建系统为
+每个 action 创建 sandbox，容器和 serverless runtime 组装 root filesystem，
+包管理器和开发环境把共享 store 映射成项目私有目录，兼容层把 legacy path
+重定向到新的存储布局。这些场景的共同点不是需要一个新文件系统，而是需要在
+已有文件之上提供一个动态、隔离、可组合的 namespace view。
+
+现有机制落在两个极端。Bind mount、OverlayFS 等内核机制性能好，并保留
+原生 VFS 行为，但策略固定、粒度粗、动态重配置成本高。FUSE 提供了足够灵活
+的 namespace 语义，但把大量路径决策移到用户态，引入额外上下文切换，并经常
+重复实现 VFS 和 lower filesystem 已经提供的功能。LSM、Landlock、fanotify
+和 BPF LSM 可以限制或观察访问，却不能自然表达“这个 workload 看到的路径树
+应该长什么样”。
+
+`namei_ext` 的核心观察是：许多真实 workload 需要的是可编程 namespace
+policy，而不是可编程 filesystem implementation。因此，`namei_ext` 在 VFS
+name resolution 路径中加入一个窄 eBPF 决策点。每次路径解析或目录枚举时，
+内核向 BPF 提供 parent path、component name 和事件上下文；BPF 返回受限
+动作：`PASS` 或 `REDIRECT`。在 Phase 1 中，`REDIRECT` 把当前 component
+重定向到同一父目录下的 backing component，并让 readdir 把 backing entry
+以 alias 名字返回。BPF 不创建 dentry，不分配 inode，不实现 file operations，
+也不执行递归路径解析。
+
+这种设计保留了内核对文件系统语义的所有权，同时让 namespace view 变成
+per-workload 可编程策略。目标是在 build sandbox、container root view、
+package environment 等真实场景中，获得接近内核机制的 data-path 行为，
+同时避免 FUSE 式全文件系统实现的复杂性和开销。
+
+一句话论文 claim：
+
+```text
+namei_ext shows that many filesystem-namespace customization workloads can be
+expressed as a narrow in-kernel BPF policy over VFS name resolution, without
+turning BPF into a filesystem implementation.
+```
 
 ## Motivation
 
@@ -46,6 +82,35 @@ Existing choices are awkward:
 
 `namei_ext` focuses on the common middle ground: programmable filesystem
 namespace policy with native lower-filesystem data I/O.
+
+## Design Goals
+
+1. Namespace policy, not filesystem implementation. BPF only decides how a path
+   component is treated; VFS and the lower filesystem continue to own filesystem
+   semantics.
+2. One narrow BPF decision function. Lookup and directory enumeration call the
+   same eBPF policy function and use `ctx->event` to distinguish event type.
+3. Preserve VFS safety properties. BPF cannot create or hold VFS objects,
+   perform recursive path walks, bypass permission checks, or implement file
+   operations.
+4. Redirect components, not permissions. Phase 1 uses same-parent component
+   redirection: BPF writes a bounded redirect component into the context, and
+   the kernel performs the resulting lookup through normal VFS machinery.
+5. Keep lookup and directory views coherent. `open("/view/foo")` and
+   `getdents64("/view")` must be interpreted by the same policy semantics.
+6. Scope policy per workload. Phase 1 uses cgroup-scoped attachment because it
+   maps directly to build actions, containers, and serverless workers.
+   The first ABI admits one `namei_ext` policy at a cgroup decision point;
+   multi-policy composition is future work, not an implicit cgroup-BPF side
+   effect.
+7. Minimize disabled overhead. When no policy is attached, the VFS fast path is
+   protected by a static branch and the residual cost must be measured.
+8. Stay upstream-shaped. Kernel changes should be small, local, and reviewable:
+   new `namei_ext` code where possible, minimal guarded call-site changes in
+   existing VFS files.
+9. Be artifact-grade. Phase 1 must build the kernel, package the runtime, boot
+   KVM, load policy programs, run functional tests and microbenchmarks, and
+   emit reproducible results from Makefile-only infrastructure.
 
 ## Design Position
 
@@ -107,59 +172,63 @@ therefore has one policy abstraction invoked at two VFS boundaries:
 
 ## Proposed Interface
 
-The first prototype should expose one BPF program type or attachment class:
+The first prototype exposes one cgroup-attached BPF program type with one
+policy function. Lookup and directory enumeration are separate VFS call sites,
+but they call the same BPF decision function with a different event type:
 
 ```c
-SEC("namei_ext/resolve")
-int BPF_PROG(resolve, struct namei_ext_ctx *ctx);
+SEC("cgroup/namei_ext")
+int policy(struct bpf_namei_ext_ctx *ctx);
 ```
 
-The context should include:
+The Phase 1 context is fixed-size. Input fields are read-only, while redirect
+output fields are BPF-writable:
 
 ```c
-struct namei_ext_ctx {
-    struct path *parent;
-    const char *name;
-    u32 name_len;
-    u32 op;
-    u32 lookup_flags;
-    u64 cgroup_id;
-    u64 mntns_id;
-};
-```
+#define BPF_NAMEI_EXT_NAME_MAX 64
 
-The result should be constrained:
-
-```c
-enum namei_ext_action {
-    NAMEI_EXT_PASS,
-    NAMEI_EXT_HIDE,
-    NAMEI_EXT_DENY,
-    NAMEI_EXT_REDIRECT,
+enum bpf_namei_ext_event {
+    BPF_NAMEI_EXT_LOOKUP,
+    BPF_NAMEI_EXT_READDIR,
 };
 
-struct namei_ext_result {
-    u32 action;
-    u32 target_id;
+struct bpf_namei_ext_ctx {
+    u32 event;
     u32 flags;
+    u32 name_len;
+    u32 name_hash;
+    u64 cgroup_id;
+    u8 name[BPF_NAMEI_EXT_NAME_MAX];
+    u32 redirect_name_len;
+    u32 reserved;
+    u8 redirect_name[BPF_NAMEI_EXT_NAME_MAX];
 };
 ```
 
-For `REDIRECT`, BPF should select a `target_id` from a kernel-managed registry
-of backing paths. User space registers those backing paths through a control
-plane, and the kernel holds references to the underlying `struct path` objects.
+The return value is constrained:
 
-This avoids letting BPF return arbitrary strings, perform recursive path walks,
-or create cycles that the verifier cannot reason about.
+```c
+enum bpf_namei_ext_action {
+    BPF_NAMEI_EXT_PASS,
+    BPF_NAMEI_EXT_REDIRECT,
+};
+```
+
+For `LOOKUP`, `REDIRECT` means lookup `redirect_name` in the same parent
+directory instead of the requested component. For `READDIR`, `REDIRECT` means
+emit the current lower entry using `redirect_name` as the user-visible alias.
+
+This avoids full path-string rewrites, recursive path walks, and graph cycles
+in Phase 1 while still proving the core programmable namespace-view mechanism.
 
 ## Safety Contract
 
 The core paper claim depends on a narrow, enforceable contract:
 
 - BPF can choose namespace policy but cannot own VFS objects.
-- Redirect targets are pre-registered and reference-counted by the kernel.
-- Redirect graphs must be acyclic or bounded by kernel-enforced depth.
-- Policies must not grant access that the lower filesystem would deny.
+- Redirect output names are validated as single components by the kernel.
+- Phase 1 redirects are non-recursive and same-parent only.
+- Policies must not bypass permissions the lower filesystem would not permit.
 - Permission checks remain in the normal VFS/lower-filesystem path.
 - On BPF failure, verifier rejection, runtime error, or policy timeout, the
   kernel fails closed or falls back to normal VFS behavior according to the
@@ -170,21 +239,30 @@ evaluate writable operations such as create, unlink, and rename.
 
 ## Initial Scope
 
-Phase 1 should support:
+The current Phase 1 semantic slice supports:
 
-- Attach policy by mount namespace or cgroup.
-- `PASS`, `HIDE`, `DENY`, and registered-path `REDIRECT`.
+- cgroup-scoped policy attachment.
+- `PASS` and same-parent component `REDIRECT`.
 - `openat`, `statx`, `access`, and `execve` path resolution.
-- Directory enumeration for synthetic or redirected entries.
+- Directory enumeration that rewrites backing entries into alias entries.
 - Read and write data path delegation to the lower filesystem.
 
 Phase 1 should avoid:
 
 - Arbitrary BPF path-string construction.
 - BPF-created dentries or inodes.
+- Cross-directory or registered-path redirect until the target registry is
+  designed.
 - Network or remote filesystem semantics.
 - Full POSIX writable union semantics.
 - Cross-filesystem rename semantics beyond normal VFS behavior.
+
+The detailed Phase 1 engineering design is
+[phase1_design.md](phase1_design.md). In short, Phase 1 is not complete until a
+clean checkout can build the modified kernel, package the BPF/userspace runtime,
+boot the modified kernel in KVM, load a minimal policy, run correctness tests,
+run a realistic microbenchmark suite, and emit reproducible results from one
+top-level Make target.
 
 ## Use Cases
 
@@ -229,7 +307,7 @@ Key metrics:
 ### Compatibility and Policy Views
 
 Legacy applications may expect fixed paths. A platform can redirect those paths
-to new locations while hiding unrelated files, with policy scoped per workload.
+to new backing components, with policy scoped per workload.
 
 Key metrics:
 
@@ -274,6 +352,26 @@ Correctness tests:
 - Rename, unlink, and create behavior if enabled.
 - Inotify/fanotify behavior if the prototype exposes directory views.
 
+Phase 1 must turn the evaluation plan into a runnable artifact. The first
+benchmark suite should contain realistic metadata-path microbenchmarks:
+
+1. Cache-hot visible lookup over native lower files.
+2. Redirected alias lookup where the alias path reaches a backing component.
+3. Redirected alias `access` path walks.
+4. Redirected alias `open` and failing `execve` path walks over a real backing
+   file.
+5. Directory-view coherence where `getdents64` lists the alias name and not
+   the backing component name.
+6. Build/package-style metadata walks over deterministic directories whose
+   requested component is redirected to a backing component.
+
+All Phase 1 measurements should run inside KVM on the modified kernel. The
+current artifact emits raw JSONL, a Markdown summary, kernel config evidence,
+dmesg logs, ABI layout evidence, kernel image hash, Docker image tar hash,
+repo and kernel-submodule provenance, config hashes, and a Docker runtime smoke
+result. Paper-grade hardening should add more repetitions, randomized order,
+tail distributions, system metrics, and stronger baseline systems.
+
 ## Related Work Boundary
 
 The related work story should be explicit:
@@ -307,12 +405,27 @@ The related work story should be explicit:
 
 ## Milestones
 
-1. Build a minimal kernel patch that invokes a BPF policy during namei lookup.
-2. Add a backing-path registry and `REDIRECT(target_id)` support.
-3. Implement cgroup or mount-namespace scoped attachment.
-4. Add directory enumeration support.
-5. Run lookup and readdir microbenchmarks.
-6. Port one build-sandbox or package-environment workload.
-7. Evaluate against native, OverlayFS, bind mounts, symlink forests, and FUSE.
-8. Decide whether writable operations are in-scope for the first paper.
-
+1. Add infrastructure-as-code configs for kernel, KVM, BPF policy programs,
+   and benchmark matrices.
+2. Document the kernel code survey for VFS lookup, readdir, locking/RCU,
+   dcache, and permission-ordering constraints.
+3. Document the one-function BPF ABI rationale, same-parent redirect design,
+   functional test plan, and benchmark plan.
+4. Add a top-level Makefile and Docker runtime image so `make phase1` builds,
+   boots KVM, runs tests, runs benchmarks, and writes results.
+5. Build a minimal kernel patch that invokes a BPF policy during namei lookup.
+6. Implement cgroup-scoped attachment for Phase 1 isolation.
+7. Add directory enumeration support that is coherent with lookup.
+8. Run the Phase 1 functional suite inside KVM.
+9. Run the Phase 1 microbenchmark suite against native-before-attach and
+   attached-policy variants.
+10. Add ABI layout/header-sync gates and Docker runtime smoke to the default
+   Phase 1 artifact path.
+11. Add a referenced backing-path registry and cross-directory redirect support
+    if same-parent redirect is not enough for the paper workload set.
+12. Add OverlayFS, bind mount, symlink forest, and FUSE baselines for paper
+   evaluation.
+13. Push the kernel submodule commit and main repository commit as a
+   reproducible Phase 1 artifact.
+14. Decide whether writable namespace operations are in scope for the first
+    paper after the read-mostly PoC is measured.
