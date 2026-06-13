@@ -94,16 +94,17 @@ coalesced adjacent `redirect_name[]` byte stores into an 8-byte context store.
 The verifier access rule was then tightened to allow bounded 1, 2, 4, and
 8-byte writes within `redirect_name[]` while keeping input fields read-only.
 
-The final validation command was:
+The final clean validation command was:
 
 ```text
 make phase1
 ```
 
-It completed successfully with result directory:
+It completed successfully after committing the implementation and report-gate
+fixes, with result directory:
 
 ```text
-results/phase1/20260613T190520Z-f0ac9710/
+results/phase1/20260613T191523Z-28aebdb8/
 ```
 
 Report gates:
@@ -125,6 +126,11 @@ The benchmark suite emitted baseline and policy rows for
 `open_tool_redirect`, `exec_tool_redirect`, `readdir_alias_view`, and
 `build_tree_stat_walk`; every `bench` row had `fail == 0`.
 
+The clean run recorded:
+
+- main repo HEAD `006b05e3e05e3cc9f530652cf6de64594a864215`, dirty `false`;
+- kernel repo HEAD `31a33d22c2122f0db82553fc5325cfc273fe22e0`, dirty `false`.
+
 The latest kernel image hash was:
 
 ```text
@@ -134,7 +140,7 @@ The latest kernel image hash was:
 The latest Docker image id was:
 
 ```text
-sha256:ecea29aede0e7458d9e19b4f57d739e9a5bed606ba5b233c12640fbf89731d5c
+sha256:394e3297d157fc220808b50aa4b6a95f47f5f5de8da0270855e3bfc42d6510fd
 ```
 
 The ABI checker now verifies:

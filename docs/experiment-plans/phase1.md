@@ -21,10 +21,10 @@ normal kernel control.
 
 | ID | Claim | Scope | Minimum convincing evidence | Status |
 |----|-------|-------|-----------------------------|--------|
-| C1 | A single BPF decision function can drive both lookup and readdir namespace policy. | PASS/REDIRECT, cgroup-scoped single-policy Phase 1 ABI, same-parent component aliases. | KVM functional tests for `stat`, `open`, `access`, `read`, `execve`, `readdir`, attach-type enforcement, and multi/link attach rejection with one `SEC("cgroup/namei_ext")` program. | supported by clean run `20260613T190520Z-f0ac9710` |
+| C1 | A single BPF decision function can drive both lookup and readdir namespace policy. | PASS/REDIRECT, cgroup-scoped single-policy Phase 1 ABI, same-parent component aliases. | KVM functional tests for `stat`, `open`, `access`, `read`, `execve`, `readdir`, attach-type enforcement, and multi/link attach rejection with one `SEC("cgroup/namei_ext")` program. | supported by clean run `20260613T191523Z-28aebdb8` |
 | C2 | The kernel patch stays narrow and upstream-shaped. | VFS call sites plus cgroup BPF plumbing. | Existing VFS files only add guarded calls; policy execution lives in `fs/namei_ext.c` and cgroup BPF runner. | implemented |
-| C3 | The artifact can build, boot, load policy, test, benchmark, package Docker, and report from Make. | Developer smoke scale. | `make phase1` exits 0 and writes raw JSONL plus `summary.md`, provenance, config hashes, and image identity. | supported by clean run `20260613T190520Z-f0ac9710` |
-| C4 | The first microbenchmarks exercise real VFS namespace operations. | Metadata operations, not synthetic BPF loops. | Seven workloads: native lookup, redirected lookup/access/open/exec, redirected directory view, redirected build-tree stat walk. | supported by clean run `20260613T190520Z-f0ac9710` |
+| C3 | The artifact can build, boot, load policy, test, benchmark, package Docker, and report from Make. | Developer smoke scale. | `make phase1` exits 0 and writes raw JSONL plus `summary.md`, provenance, config hashes, and image identity. | supported by clean run `20260613T191523Z-28aebdb8` |
+| C4 | The first microbenchmarks exercise real VFS namespace operations. | Metadata operations, not synthetic BPF loops. | Seven workloads: native lookup, redirected lookup/access/open/exec, redirected directory view, redirected build-tree stat walk. | supported by clean run `20260613T191523Z-28aebdb8` |
 
 ## System-Under-Test Model
 
@@ -85,7 +85,7 @@ normal kernel control.
 - Failure interpretation: infrastructure-as-code contract is incomplete.
 - Reproducibility artifacts: result directory under `results/phase1/<run-id>/`.
   Latest smoke evidence after the redirect rewrite:
-  `results/phase1/20260613T190520Z-f0ac9710/`.
+  `results/phase1/20260613T191523Z-28aebdb8/`.
 
 ### B3. Microbenchmark Smoke Suite
 
@@ -147,7 +147,7 @@ normal kernel control.
 
 | Claim | Evidence file(s) | Verdict | Claim wording to use |
 |-------|------------------|---------|----------------------|
-| C1 | `functional.jsonl`, `summary.md` from `20260613T190520Z-f0ac9710` | supported for PASS/REDIRECT aliases | one cgroup-attached BPF function can keep lookup, access, read, execve, and readdir coherent for same-parent redirect aliases under a single-policy attach ABI |
+| C1 | `functional.jsonl`, `summary.md` from `20260613T191523Z-28aebdb8` | supported for PASS/REDIRECT aliases | one cgroup-attached BPF function can keep lookup, access, read, execve, and readdir coherent for same-parent redirect aliases under a single-policy attach ABI |
 | C2 | kernel diff, `make kernel` | partial | kernel changes are narrow but still need upstream-style review |
-| C3 | `summary.md`, `metadata.json`, provenance sidecars, `abi.jsonl`, `docker.jsonl`, and dmesg logs from `20260613T190520Z-f0ac9710` | supported at smoke scale | Phase 1 has a one-command KVM smoke artifact with ABI, Docker, provenance, config-hash, image-identity, and dmesg gates |
-| C4 | `bench.jsonl`, `summary.md` from `20260613T190520Z-f0ac9710` | supported at smoke scale | VFS metadata redirect workloads run under baseline and attached policy with zero semantic failures |
+| C3 | `summary.md`, `metadata.json`, provenance sidecars, `abi.jsonl`, `docker.jsonl`, and dmesg logs from `20260613T191523Z-28aebdb8` | supported at smoke scale | Phase 1 has a one-command KVM smoke artifact with ABI, Docker, provenance, config-hash, image-identity, and dmesg gates |
+| C4 | `bench.jsonl`, `summary.md` from `20260613T191523Z-28aebdb8` | supported at smoke scale | VFS metadata redirect workloads run under baseline and attached policy with zero semantic failures |

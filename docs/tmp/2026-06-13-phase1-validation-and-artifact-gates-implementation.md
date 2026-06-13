@@ -166,3 +166,33 @@ The latest result directory includes `metadata.json`, repo head/status files,
 kernel and Docker image identity, config hashes, `kernel-cmdline.txt`, KVM
 dmesg logs, ABI JSONL, functional JSONL, benchmark JSONL, Docker JSONL, and
 `summary.md`.
+
+## Later Clean-Provenance Report Fix
+
+After committing and pushing the PASS/REDIRECT implementation, a clean-tree
+`make phase1` exposed an artifact bug: a clean repository writes empty
+`main-repo-status.txt` and `kernel-repo-status.txt` sidecars, but the report
+target incorrectly required the kernel status sidecar to be non-empty with
+`test -s`. The gate was changed to require status sidecar existence with
+`test -f`, while continuing to require non-empty content for raw result files,
+hashes, metadata, and command-line evidence.
+
+The clean validation run after this fix was:
+
+```text
+results/phase1/20260613T191523Z-28aebdb8/
+```
+
+Clean-provenance metadata:
+
+- main repo HEAD `006b05e3e05e3cc9f530652cf6de64594a864215`, dirty `false`;
+- kernel repo HEAD `31a33d22c2122f0db82553fc5325cfc273fe22e0`, dirty `false`.
+
+Clean-provenance report gates:
+
+- Guest smoke events: 2
+- ABI failing cases: 0
+- Functional failing cases: 0
+- Benchmark failing operations: 0
+- Docker failing cases: 0
+- Dmesg warning/oops/panic lines: 0
