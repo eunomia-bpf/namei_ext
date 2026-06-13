@@ -1,0 +1,4 @@
+[submodule "kernel"]
+	path = kernel
+	url = https://github.com/eunomia-bpf/kernel_nameiext.git
+	branch = master
