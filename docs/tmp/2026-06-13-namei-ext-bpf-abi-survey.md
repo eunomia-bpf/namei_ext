@@ -98,7 +98,7 @@ policy interfaces.
 ## Why Cgroup Scope
 
 The realistic workloads named in the research plan are build actions,
-container-like roots, package environments, and tenant-specific namespace
+container-like roots, package environments, and tenant-specific path-resolution
 views. Those are naturally scoped to a process subtree, not to a global kernel
 switch. Existing cgroup BPF infrastructure already provides:
 
@@ -185,9 +185,9 @@ coherence testable.
 
 ### LSM Hook Only
 
-LSM BPF can restrict operations, but it is not a good fit for namespace
+LSM BPF can restrict operations, but it is not a good fit for path-resolution
 transformation semantics such as hiding from readdir or redirecting names. The
-goal is not another permission hook; it is a VFS namespace decision point that
+goal is not another permission hook; it is a VFS path-resolution decision point that
 can later express controlled transformations.
 
 ### FUSE/Filesystem Implementation
@@ -195,13 +195,13 @@ can later express controlled transformations.
 A FUSE or pseudo-filesystem implementation would own dentries/inodes and would
 move the project away from the intended narrow VFS extension point. Phase 1
 should prove that the kernel can keep normal filesystem ownership while BPF
-supplies only the namespace decision.
+supplies only the path-resolution decision.
 
 ### Global Attachment
 
 A global policy is simpler to prototype but does not match build sandbox,
 container, and package environment workloads. It also makes tests less
-realistic because all processes would share the same namespace policy.
+realistic because all processes would share the same path-resolution policy.
 
 ## Risks And Follow-up
 

@@ -112,7 +112,7 @@ not count as Phase 1 validation.
 
 Each benchmark claim should map to a research question. Functional correctness
 must be separated from performance and should gate performance interpretation.
-Microbenchmarks should exercise real namespace/VFS operations rather than
+Microbenchmarks should exercise real VFS path-resolution operations rather than
 standalone loops that do not drive `namei_ext`.
 
 Declared workloads and policy actions should not be silently filtered or

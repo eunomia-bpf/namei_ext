@@ -262,7 +262,7 @@ Reasons:
 - It can force RCU fallback before policy execution.
 - Final redirected paths still flow into `do_open()` and `may_open()`.
 
-Phase 1 should avoid special writable namespace semantics. If a policy redirects
+Phase 1 should avoid special writable path semantics. If a policy redirects
 an `O_CREAT` final component, the safe initial behavior is to fail closed or
 require the target to already exist. Full create-through-redirect semantics are
 out of scope.

@@ -3,8 +3,8 @@
 ## Project Invariants
 
 - `namei_ext` is not a BPF filesystem. It is a narrow VFS name-resolution
-  extension point where an eBPF policy decides namespace actions and the kernel
-  keeps ownership of VFS objects and lower-filesystem semantics.
+  extension point where an eBPF policy decides path-resolution actions and the
+  kernel keeps ownership of VFS objects and lower-filesystem semantics.
 - A policy is an eBPF program under `bpf/policies/*.bpf.c`, not a YAML/JSON
   policy file or custom configuration language.
 - The kernel-facing BPF ABI exposes one decision function. Lookup and directory
@@ -132,7 +132,7 @@ separate correctness from performance. Correctness checks gate the run first;
 runtime, latency, overhead, and code-size numbers are interpreted only after
 functional behavior is correct.
 
-Microbenchmarks must represent realistic namespace operations for this project:
+Microbenchmarks must represent realistic VFS path-resolution operations for this project:
 component lookup, open/stat/access/exec path walks, directory enumeration,
 same-parent redirect, cache-hot and cache-cold behavior, and common
 build/container filesystem access patterns. Avoid synthetic loops that do not

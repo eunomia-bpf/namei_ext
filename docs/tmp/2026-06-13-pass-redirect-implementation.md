@@ -5,7 +5,7 @@ Date: 2026-06-13
 ## Motivation
 
 The Phase 1 implementation was changed from visibility and access-control
-actions to a namespace-view redirect primitive. The new implementation makes
+actions to a path-resolution redirect primitive. The new implementation makes
 `REDIRECT` the only non-pass action and validates same-parent alias behavior
 through lookup and directory enumeration.
 
@@ -72,7 +72,7 @@ The functional and benchmark suites now create a real backing component
 ## Alternatives Rejected
 
 - Keeping compatibility actions in the ABI was rejected because Phase 1 should
-  demonstrate namespace redirection rather than permission mediation.
+  demonstrate path-resolution redirection rather than permission mediation.
 - Full path rewrites were rejected for Phase 1 because they require recursive
   path parsing and cycle handling.
 - A target registry was rejected for this step because same-parent component

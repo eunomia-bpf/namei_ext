@@ -2,10 +2,10 @@
 
 ## Thesis
 
-`namei_ext` can express useful per-workload namespace redirect policies with
-a narrow cgroup-attached BPF decision point in VFS name resolution, while
-keeping lookup, directory enumeration, and lower-filesystem data I/O under
-normal kernel control.
+`namei_ext` can express useful per-workload programmable path resolution with a
+narrow cgroup-attached BPF decision point in VFS name resolution, while keeping
+lookup, directory enumeration, and lower-filesystem data I/O under normal
+kernel control.
 
 ## Paper Type
 
@@ -21,10 +21,10 @@ normal kernel control.
 
 | ID | Claim | Scope | Minimum convincing evidence | Status |
 |----|-------|-------|-----------------------------|--------|
-| C1 | A single BPF decision function can drive both lookup and readdir namespace policy. | PASS/REDIRECT, cgroup-scoped single-policy Phase 1 ABI, same-parent component aliases. | KVM functional tests for `stat`, `open`, `access`, `read`, `execve`, `readdir`, attach-type enforcement, and multi/link attach rejection with one `SEC("cgroup/namei_ext")` program. | supported by clean run `20260613T191523Z-28aebdb8` |
+| C1 | A single BPF decision function can drive both lookup and readdir path-resolution decisions. | PASS/REDIRECT, cgroup-scoped single-policy Phase 1 ABI, same-parent component aliases. | KVM functional tests for `stat`, `open`, `access`, `read`, `execve`, `readdir`, attach-type enforcement, and multi/link attach rejection with one `SEC("cgroup/namei_ext")` program. | supported by clean run `20260613T191523Z-28aebdb8` |
 | C2 | The kernel patch stays narrow and upstream-shaped. | VFS call sites plus cgroup BPF plumbing. | Existing VFS files only add guarded calls; policy execution lives in `fs/namei_ext.c` and cgroup BPF runner. | implemented |
 | C3 | The artifact can build, boot, load policy, test, benchmark, package Docker, and report from Make. | Developer smoke scale. | `make phase1` exits 0 and writes raw JSONL plus `summary.md`, provenance, config hashes, and image identity. | supported by clean run `20260613T191523Z-28aebdb8` |
-| C4 | The first microbenchmarks exercise real VFS namespace operations. | Metadata operations, not synthetic BPF loops. | Seven workloads: native lookup, redirected lookup/access/open/exec, redirected directory view, redirected build-tree stat walk. | supported by clean run `20260613T191523Z-28aebdb8` |
+| C4 | The first microbenchmarks exercise real VFS path-resolution operations. | Metadata operations, not synthetic BPF loops. | Seven workloads: native lookup, redirected lookup/access/open/exec, redirected directory view, redirected build-tree stat walk. | supported by clean run `20260613T191523Z-28aebdb8` |
 
 ## System-Under-Test Model
 
@@ -46,13 +46,13 @@ normal kernel control.
 
 | Block | Claim | Experiment | Baselines/variants | Metric(s) | Oracle | Figure/table | Priority |
 |-------|-------|------------|--------------------|-----------|--------|--------------|----------|
-| B1 | C1 | Functional namespace behavior | baseline setup plus attached BPF policy | pass/fail, errno, listed entries, file content | exact alias/backing behavior and listing set | Table: functional cases | must |
+| B1 | C1 | Functional path-resolution behavior | baseline setup plus attached BPF policy | pass/fail, errno, listed entries, file content | exact alias/backing behavior and listing set | Table: functional cases | must |
 | B2 | C3 | Artifact flow | one-command `make phase1` | exit status, result files | Make exits 0 and report gates show zero failures for ABI, functional, benchmark, Docker, and dmesg checks | Artifact checklist | must |
 | B3 | C4 | Microbenchmark suite | native baseline vs attached policy in same guest | ops, elapsed ns, ns/op, failures | fail count is zero and workloads match expected semantics | Table: microbenchmarks | must |
 
 ## Experiment Blocks
 
-### B1. Functional Namespace Semantics
+### B1. Functional Path-Resolution Semantics
 
 - Claim tested: C1.
 - Hypothesis: one BPF policy can redirect a requested `tool` component to
@@ -141,7 +141,7 @@ normal kernel control.
 - Disabled static-branch overhead is not yet isolated by a dedicated benchmark.
 - Paper-grade runs need more samples, randomized order, tail distributions,
   system metrics, and stronger baselines.
-- Writable namespace mutation is intentionally outside the current claim.
+- Writable path-resolution mutation is intentionally outside the current claim.
 
 ## Claim Gate After Results
 

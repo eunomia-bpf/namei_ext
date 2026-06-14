@@ -65,7 +65,7 @@ The initial kernel config enables:
 - `CONFIG_BPF_SYSCALL=y`
 - `CONFIG_BPF_JIT=y`
 - `CONFIG_CGROUP_BPF=y`
-- namespace and overlay/9p/virtio support needed by KVM and future tests
+- mount namespace and overlay/9p/virtio support needed by KVM and future tests
 - `CONFIG_DEBUG_INFO_BTF=y`
 
 The first full kernel build failed when `CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y`

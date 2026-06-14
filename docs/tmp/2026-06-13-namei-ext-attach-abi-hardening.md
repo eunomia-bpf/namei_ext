@@ -14,7 +14,7 @@ two ABI risks:
 
 Those were correctness and reviewability risks. Phase 1 should expose one BPF
 decision function and one policy at a cgroup decision point. Ordering multiple
-namespace policies by generic cgroup attach order would make hide/deny
+path-resolution policies by generic cgroup attach order would make hide/deny
 semantics hard to explain and hard to test.
 
 ## Code Paths Inspected
@@ -207,7 +207,7 @@ sha256:62c7cf026cb5f0ab03e7a89c5a8e9b595187cde6d57042c8d950db5b731479e5
 ## Remaining Risks
 
 - The single-policy ABI is intentionally conservative. If Phase 2 needs
-  multiple namespace policies, it must define explicit composition rules and
+  multiple path-resolution policies, it must define explicit composition rules and
   tests before enabling multi attach.
 - `BPF_LINK_CREATE` rejection is acceptable for the PoC but may need a cleaner
   upstream story if the community prefers fd-owned link lifetimes for all new

@@ -2,16 +2,16 @@
 
 ## Summary
 
-`namei_ext` explores a `sched_ext`-style extension point for the Linux VFS.
-The goal is not to implement a new filesystem. Instead, the kernel keeps
-ownership of path walking, dentries, inodes, permission checks, mount traversal,
-and lower-filesystem operations, while BPF programs provide a narrow namespace
-policy for path resolution and directory views.
+`namei_ext` explores a `sched_ext`-style extension point for programmable VFS
+path resolution. The goal is not to implement a new filesystem. Instead, the
+kernel keeps ownership of path walking, dentries, inodes, permission checks,
+mount traversal, and lower-filesystem operations, while BPF programs decide a
+narrow path-resolution policy for lookup and directory enumeration.
 
 The target abstraction is:
 
 ```text
-parent path + component name + operation context -> namespace decision
+parent path + component name + operation context -> path-resolution decision
 ```
 
 The initial decisions are:
@@ -25,39 +25,40 @@ OverlayFS, and fully general user-space filesystems such as FUSE.
 
 ## OSDI-Style Framing
 
-现代系统越来越频繁地为每个 workload 构造不同的文件系统视图。构建系统为
+现代系统越来越频繁地需要让同一个路径在不同 workload、依赖图、版本 epoch 和
+执行上下文下解析到不同 backing object。构建系统为
 每个 action 创建 sandbox，容器和 serverless runtime 组装 root filesystem，
 包管理器和开发环境把共享 store 映射成项目私有目录，兼容层把 legacy path
 重定向到新的存储布局。这些场景的共同点不是需要一个新文件系统，而是需要在
-已有文件之上提供一个动态、隔离、可组合的 namespace view。
+已有文件之上提供一个动态、可组合、每工作负载可编程的路径解析机制。
 
 现有机制落在两个极端。Bind mount、OverlayFS 等内核机制性能好，并保留
 原生 VFS 行为，但策略固定、粒度粗、动态重配置成本高。FUSE 提供了足够灵活
-的 namespace 语义，但把大量路径决策移到用户态，引入额外上下文切换，并经常
+的路径解析语义，但把大量路径决策移到用户态，引入额外上下文切换，并经常
 重复实现 VFS 和 lower filesystem 已经提供的功能。LSM、Landlock、fanotify
 和 BPF LSM 可以限制或观察访问，却不能自然表达“这个 workload 看到的路径树
 应该长什么样”。
 
-`namei_ext` 的核心观察是：许多真实 workload 需要的是可编程 namespace
-policy，而不是可编程 filesystem implementation。因此，`namei_ext` 在 VFS
-name resolution 路径中加入一个窄 eBPF 决策点。每次路径解析或目录枚举时，
+`namei_ext` 的核心观察是：许多真实 workload 需要的是可编程路径解析，而不是
+可编程 filesystem implementation。因此，`namei_ext` 在 VFS name resolution
+路径中加入一个窄 eBPF 决策点。每次路径解析或目录枚举时，
 内核向 BPF 提供 parent path、component name 和事件上下文；BPF 返回受限
 动作：`PASS` 或 `REDIRECT`。在 Phase 1 中，`REDIRECT` 把当前 component
 重定向到同一父目录下的 backing component，并让 readdir 把 backing entry
 以 alias 名字返回。BPF 不创建 dentry，不分配 inode，不实现 file operations，
 也不执行递归路径解析。
 
-这种设计保留了内核对文件系统语义的所有权，同时让 namespace view 变成
-per-workload 可编程策略。目标是在 build sandbox、container root view、
-package environment 等真实场景中，获得接近内核机制的 data-path 行为，
+这种设计保留了内核对文件系统语义的所有权，同时让路径解析变成 per-workload
+可编程策略。目标是在 build sandbox、container root view、package environment
+等真实场景中，获得接近内核机制的 data-path 行为，
 同时避免 FUSE 式全文件系统实现的复杂性和开销。
 
 一句话论文 claim：
 
 ```text
-namei_ext shows that many filesystem-namespace customization workloads can be
-expressed as a narrow in-kernel BPF policy over VFS name resolution, without
-turning BPF into a filesystem implementation.
+namei_ext shows that production path-resolution customization can be expressed
+as a narrow in-kernel BPF policy over VFS name resolution, without turning BPF
+into a filesystem implementation.
 ```
 
 ## Motivation
@@ -78,14 +79,14 @@ Existing choices are awkward:
 - FUSE is flexible, but incurs user/kernel crossings and often duplicates logic
   already handled by the lower filesystem.
 - LSM, Landlock, and fanotify can restrict or observe access, but they do not
-  expose a programmable namespace transformation layer.
+  expose a programmable path-resolution layer.
 
 `namei_ext` focuses on the common middle ground: programmable filesystem
-namespace policy with native lower-filesystem data I/O.
+path-resolution policy with native lower-filesystem data I/O.
 
 ## Design Goals
 
-1. Namespace policy, not filesystem implementation. BPF only decides how a path
+1. Path-resolution policy, not filesystem implementation. BPF only decides how a path
    component is treated; VFS and the lower filesystem continue to own filesystem
    semantics.
 2. One narrow BPF decision function. Lookup and directory enumeration call the
@@ -123,7 +124,7 @@ sched_ext:
 
 namei_ext:
     kernel owns VFS machinery
-    BPF chooses namespace resolution policy
+    BPF chooses path-resolution policy
 ```
 
 This is intentionally different from a BPF filesystem:
@@ -219,13 +220,13 @@ directory instead of the requested component. For `READDIR`, `REDIRECT` means
 emit the current lower entry using `redirect_name` as the user-visible alias.
 
 This avoids full path-string rewrites, recursive path walks, and graph cycles
-in Phase 1 while still proving the core programmable namespace-view mechanism.
+in Phase 1 while still proving the core programmable path-resolution mechanism.
 
 ## Safety Contract
 
 The core paper claim depends on a narrow, enforceable contract:
 
-- BPF can choose namespace policy but cannot own VFS objects.
+- BPF can choose path-resolution policy but cannot own VFS objects.
 - Redirect output names are validated as single components by the kernel.
 - Phase 1 redirects are non-recursive and same-parent only.
 - Policies must not bypass permissions the lower filesystem would not permit.
@@ -234,7 +235,7 @@ The core paper claim depends on a narrow, enforceable contract:
   kernel fails closed or falls back to normal VFS behavior according to the
   attachment mode.
 
-The prototype should start with read-mostly namespace views and only later
+The prototype should start with read-mostly path-resolution cases and only later
 evaluate writable operations such as create, unlink, and rename.
 
 ## Initial Scope
@@ -270,7 +271,7 @@ top-level Make target.
 
 Build systems often construct a per-action filesystem view. `namei_ext` can
 replace symlink forests, copied trees, or FUSE sandboxes with a cgroup-scoped
-namespace policy that maps action-visible paths to host files.
+path-resolution policy that maps action-visible paths to host files.
 
 Key metrics:
 
@@ -372,20 +373,25 @@ repo and kernel-submodule provenance, config hashes, and a Docker runtime smoke
 result. Paper-grade hardening should add more repetitions, randomized order,
 tail distributions, system metrics, and stronger baseline systems.
 
+面向论文的多使用场景评估设计见
+[experiment-plans/osdi-evaluation.md](experiment-plans/osdi-evaluation.md)。
+该计划是 Phase 1 之后 OSDI/SOSP 级主张、基线、真实工作负载、消融、压力测试和
+主张门禁的依据。
+
 ## Related Work Boundary
 
 The related work story should be explicit:
 
 - FUSE provides full user-space filesystem semantics. `namei_ext` targets a
-  narrower namespace-policy class and keeps lower-filesystem data I/O native.
+  narrower path-resolution policy class and keeps lower-filesystem data I/O native.
 - FUSE passthrough reduces data-path overhead for backing files. `namei_ext`
-  aims to avoid full FUSE semantics for namespace-only transformations.
+  aims to avoid full FUSE semantics for path-resolution-only transformations.
 - EXTFUSE accelerates FUSE with eBPF. `namei_ext` is not a faster FUSE request
-  path; it is a VFS-level namespace extension point.
-- OverlayFS and bind mounts provide fixed kernel namespace composition.
+  path; it is a VFS-level path-resolution extension point.
+- OverlayFS and bind mounts provide fixed kernel filesystem-tree composition.
   `namei_ext` makes the policy programmable and dynamically scoped.
 - Landlock, BPF LSM, and fanotify provide access control or observation.
-  `namei_ext` additionally changes what namespace is visible.
+  `namei_ext` additionally changes what path-resolution result is visible.
 - Bento and other safe filesystem frameworks help implement filesystems.
   `namei_ext` deliberately avoids exposing a full filesystem implementation
   interface.
@@ -394,7 +400,7 @@ The related work story should be explicit:
 
 1. How narrow can the VFS extension interface be while still covering real
    build, container, and package-management workloads?
-2. Can a BPF-defined namespace policy preserve VFS safety properties without
+2. Can a BPF-defined path-resolution policy preserve VFS safety properties without
    exposing inode or dentry ownership to BPF?
 3. How much metadata-path overhead remains compared with native VFS, OverlayFS,
    and FUSE passthrough?
@@ -427,5 +433,5 @@ The related work story should be explicit:
    evaluation.
 13. Push the kernel submodule commit and main repository commit as a
    reproducible Phase 1 artifact.
-14. Decide whether writable namespace operations are in scope for the first
+14. Decide whether writable path operations are in scope for the first
     paper after the read-mostly PoC is measured.

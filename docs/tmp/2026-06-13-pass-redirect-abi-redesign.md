@@ -10,7 +10,7 @@ control, and `HIDE` is a special negative-lookup/filtering action. Neither is
 the central reason to add a VFS name-resolution extension point.
 
 The Phase 1 semantic surface should therefore be reduced to the mechanism that
-distinguishes `namei_ext`: programmable namespace redirection. A policy should
+distinguishes `namei_ext`: programmable path resolution. A policy should
 either leave VFS behavior unchanged or redirect a component/view to a different
 kernel-owned component.
 
@@ -90,7 +90,7 @@ composition.
   because it would add path parsing, lifetime, and privilege questions before
   proving the core redirect hook.
 - Using a kernel fd/path registry in Phase 1 was rejected because the current
-  phase can prove the namespace-view substrate with less code by redirecting
+  phase can prove the path-resolution substrate with less code by redirecting
   same-parent components.
 - Silently treating invalid redirect output as `PASS` was rejected. Invalid
   policy output should fail the operation so tests catch verifier or policy

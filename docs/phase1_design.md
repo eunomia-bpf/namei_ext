@@ -3,18 +3,18 @@
 ## Goal
 
 Phase 1 proves that `namei_ext` is a narrow VFS name-resolution extension point
-for programmable namespace views. It is not a BPF filesystem and not a
-permission mediation framework. The kernel keeps ownership of dentries, inodes,
-mount traversal, lower-filesystem semantics, and permission checks. A
-cgroup-attached eBPF policy only chooses whether a component is used unchanged
-or redirected to a backing component.
+for programmable path resolution. It is not a BPF filesystem, not a mount
+namespace replacement, and not a permission mediation framework. The kernel
+keeps ownership of dentries, inodes, mount traversal, lower-filesystem
+semantics, and permission checks. A cgroup-attached eBPF policy only chooses
+whether a path component is used unchanged or redirected to a backing component.
 
 The Phase 1 claim is:
 
 ```text
 One cgroup-attached eBPF decision function can keep lookup and readdir coherent
-for same-parent namespace aliases while the modified kernel boots and validates
-inside KVM through one Makefile-owned artifact flow.
+for same-parent path-resolution aliases while the modified kernel boots and
+validates inside KVM through one Makefile-owned artifact flow.
 ```
 
 ## Non-Goals
@@ -129,8 +129,9 @@ READDIR "tool.real" -> "tool"
 
 There is no policy configuration file. The policy source is the policy.
 
-This use case models package, build, and container views where a workload keeps
-using a stable path while the platform selects a versioned backing component.
+This use case models package, build, and container path-resolution behavior
+where a workload keeps using a stable path while the platform selects a
+versioned backing component.
 For example, a build action can access `tool`, while the lower filesystem stores
 the selected implementation as `tool.real`.
 
@@ -237,5 +238,5 @@ Phase 1 is complete when all of these are true:
    and readdir.
 5. Functional and benchmark suites run inside KVM on the modified kernel.
 6. `make phase1` exits 0 and emits raw reproducibility artifacts.
-7. The design and research plans describe redirect-based namespace views as the
-   Phase 1 semantic surface.
+7. The design and research plans describe redirect-based programmable path
+   resolution as the Phase 1 semantic surface.
