@@ -1,0 +1,60 @@
+\documentclass[10pt]{article}
+
+\usepackage[UTF8]{ctex}
+\usepackage[margin=1in]{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{xspace}
+\setlength{\emergencystretch}{3em}
+\AtBeginDocument{\sloppy}
+
+\newcommand{\namei}{\textsc{namei\_ext}\xspace}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\file}[1]{\path{#1}}
+
+\title{\namei：面向可编程路径解析的窄 VFS eBPF 扩展点}
+\author{匿名作者}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+现代系统越来越依赖动态路径视图：构建系统需要把 action 限制在声明输入和生成输出中，
+测试环境需要把生产配置和 secret 替换为 fixture，checkpoint/restore 需要把快照路径
+映射到新的运行时环境，构建缓存需要根据内容状态选择本地缓存或 canonical backing。
+现有内核机制通常性能好但策略固定，FUSE 类机制灵活但把路径解析推到用户态。
+\namei 探索一个窄 VFS name-resolution 扩展点：内核继续拥有 dentry、inode、权限检查、
+mount traversal 和 lower filesystem data path，eBPF policy 只在 lookup 和目录枚举时
+返回受限的 \code{PASS} 或 \code{REDIRECT}。
+
+本文给出 \namei 的窄 ABI、四类 POC eBPF policy family，以及一个由修改后 kernel 的
+KVM 执行路径支撑的 claim-first 评估。当前闭合的性能/成本正向结果有两个：W2 nginx
+fixture 是唯一通过 storage 和 threshold gate 的 setup/materialization slice；
+tool-redirect lookup/access/open/exec 是唯一同时通过 native/FUSE p99 阈值的
+metadata-latency slice；另有一个 C1 functional-slice 结果证明同一窄 ABI 已在 KVM
+中承载四类 POC policy family。
+真实 workload artifact 方面，Redis 与 nginx 的 W1 build-graph source build 和
+file-operation trace 已经固定、复现；W1/W2/W3/W4 已有 KVM path oracle，W1 另有
+release-binary replay 和 branch probes，W2 nginx 另有真实 endpoint health 与 fixture
+content probes oracle，W3 另有 Redis checkpoint replay witness，W4 另有 cache content、
+真实 ccache trace/compile、bulk FUSE compile-through baseline、parent-scoped compile 和
+table-only comparator。W1、W3 和 W4 的负结果，以及 C5 residual-overhead 和 C8
+table-only counterfactual 的负结果，作为范围边界保留，而不写成当前主结论。
+\end{abstract}
+
+\input{sections/01-introduction}
+\input{sections/02-motivation}
+\input{sections/03-design}
+\input{sections/04-implementation}
+\input{sections/05-evaluation}
+\input{sections/06-related-work}
+\input{sections/07-limitations}
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

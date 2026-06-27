@@ -7,7 +7,7 @@
 #include <linux/bpf.h>
 #define ABI_HEADER "uapi"
 #elif defined(NAMEI_EXT_ABI_BPF)
-#include "namei_ext.h"
+#include "namei_ext_policy.h"
 #define ABI_HEADER "bpf"
 #else
 #error "define NAMEI_EXT_ABI_UAPI or NAMEI_EXT_ABI_BPF"
@@ -49,18 +49,59 @@ _Static_assert(offsetof(struct bpf_namei_ext_ctx, reserved) == 92,
 	       "reserved offset changed");
 _Static_assert(offsetof(struct bpf_namei_ext_ctx, redirect_name) == 96,
 	       "redirect_name offset changed");
-_Static_assert(sizeof(struct bpf_namei_ext_ctx) == 160,
+_Static_assert(offsetof(struct bpf_namei_ext_ctx, parent_dev) == 160,
+	       "parent_dev offset changed");
+_Static_assert(offsetof(struct bpf_namei_ext_ctx, parent_ino) == 168,
+	       "parent_ino offset changed");
+_Static_assert(offsetof(struct bpf_namei_ext_ctx, parent_generation) == 176,
+	       "parent_generation offset changed");
+_Static_assert(offsetof(struct bpf_namei_ext_ctx, parent_flags) == 180,
+	       "parent_flags offset changed");
+_Static_assert(sizeof(struct bpf_namei_ext_ctx) == 184,
 	       "bpf_namei_ext_ctx size changed");
+
+#if defined(NAMEI_EXT_ABI_BPF)
+_Static_assert(offsetof(struct namei_ext_component_key, event) == 0,
+	       "component key event offset changed");
+_Static_assert(offsetof(struct namei_ext_component_key, name_len) == 4,
+	       "component key name_len offset changed");
+_Static_assert(offsetof(struct namei_ext_component_key, cgroup_id) == 8,
+	       "component key cgroup_id offset changed");
+_Static_assert(offsetof(struct namei_ext_component_key, parent_dev) == 16,
+	       "component key parent_dev offset changed");
+_Static_assert(offsetof(struct namei_ext_component_key, parent_ino) == 24,
+	       "component key parent_ino offset changed");
+_Static_assert(offsetof(struct namei_ext_component_key, name) == 32,
+	       "component key name offset changed");
+_Static_assert(sizeof(struct namei_ext_component_key) == 96,
+	       "component key size changed");
+
+_Static_assert(offsetof(struct namei_ext_redirect_rule, action) == 0,
+	       "redirect rule action offset changed");
+_Static_assert(offsetof(struct namei_ext_redirect_rule, target_len) == 4,
+	       "redirect rule target_len offset changed");
+_Static_assert(offsetof(struct namei_ext_redirect_rule, branch) == 8,
+	       "redirect rule branch offset changed");
+_Static_assert(offsetof(struct namei_ext_redirect_rule, flags) == 12,
+	       "redirect rule flags offset changed");
+_Static_assert(offsetof(struct namei_ext_redirect_rule, target) == 16,
+	       "redirect rule target offset changed");
+_Static_assert(sizeof(struct namei_ext_redirect_rule) == 80,
+	       "redirect rule size changed");
+#endif
 
 int main(void)
 {
 	printf("{\"event\":\"abi\",\"name\":\"%s_layout\","
 	       "\"pass\":true,\"ctx_size\":%zu,\"name_offset\":%zu,"
 	       "\"redirect_name_offset\":%zu,\"name_max\":%u,"
+	       "\"parent_dev_offset\":%zu,\"parent_ino_offset\":%zu,"
 	       "\"detail\":\"PASS/REDIRECT enum values and ctx layout match Phase 1 ABI\"}\n",
 	       ABI_HEADER, sizeof(struct bpf_namei_ext_ctx),
 	       offsetof(struct bpf_namei_ext_ctx, name),
 	       offsetof(struct bpf_namei_ext_ctx, redirect_name),
-	       (unsigned int)BPF_NAMEI_EXT_NAME_MAX);
+	       (unsigned int)BPF_NAMEI_EXT_NAME_MAX,
+	       offsetof(struct bpf_namei_ext_ctx, parent_dev),
+	       offsetof(struct bpf_namei_ext_ctx, parent_ino));
 	return 0;
 }

@@ -5,6 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bpftool \
     ca-certificates \
+    ccache \
     clang \
     coreutils \
     findutils \
@@ -12,10 +13,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     libc6-dev \
     libelf-dev \
+    libfuse-dev \
     llvm \
     make \
     procps \
     python3 \
+    strace \
+    fuse3 \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 

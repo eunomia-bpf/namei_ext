@@ -1,0 +1,55 @@
+\section{动机和真实场景}
+
+本文选择 workload 的标准不是“容易写一个 alias demo”，而是三点。第一，场景必须由真实系统
+文档或真实应用源码给出，而不是项目自造程序。第二，场景必须放大 path-resolution 机制：
+大量 metadata lookup、频繁 setup/teardown、多 path class、cache state 变化或 restore
+session 切换。第三，场景必须有明确 oracle，可以把功能正确性、性能开销和 table-only
+反事实分开判定。按这个标准，W1--W4 分别代表 build graph、fixture substitution、
+checkpoint/restore 和 cache locality 四类不同的 policy family；其中 W4 的发布级目标是
+content-verified cache locality，当前 parent-scoped ccache 结果只是 suffix PoC。
+
+\subsection{构建依赖图视图}
+
+构建系统希望 action 只访问声明输入、生成输出、工具链和显式依赖。Bazel 的 sandboxing
+文档把 sandbox 描述为限制进程文件系统访问的策略，并强调 action 工作目录只包含 known
+inputs~\cite{bazel_sandboxing}。Bazel dependency 和 toolchain 文档进一步把 actual
+dependency、declared dependency 与 platform-specific toolchain 选择分开描述
+~\cite{bazel_dependencies,bazel_toolchains}。这类场景需要的路径逻辑不是单个 alias，
+而是有优先级的解析：generated output 应优先于 source fallback，工具链选择与 action
+相关，未声明依赖应进入 poison 或失败路径。W1 使用 Redis 与 nginx 的真实源码构建作为代表，
+因为二者都包含真实 Makefile/configure 流程、生成文件和大量头文件访问。
+
+\subsection{受控测试沙箱}
+
+测试和 staging 环境常把生产配置、secret、证书和 endpoint 替换为 fixture。Kubernetes
+projected volumes 可以把 secret、ConfigMap、service account token 等多个来源投影到同一
+目录~\cite{kubernetes_projected_volumes}，Secrets 文档也把 password、token 和 key 作为
+文件化敏感数据来源~\cite{kubernetes_secrets}。Docker Compose 也把 config 和 secret
+作为授予 service 的文件对象暴露给容器~\cite{docker_compose_configs,docker_compose_secrets}。
+这类场景要求 policy 根据 path class 把 production config 解析到 test fixture，把 secret
+解析到 fake secret，把危险路径解析到 poison sentinel。它不是 hide/deny，也不等价于安全隔离。
+
+\subsection{Checkpoint/restore 路径视图}
+
+Podman checkpoint 会把运行中容器的进程状态写到磁盘，restore 后容器从 checkpoint 点继续
+运行~\cite{podman_checkpoint}。CRIU 则提供 Linux 进程和容器的 checkpoint/restore 能力，
+可用于 snapshot、迁移和调试~\cite{criu_main}；CRIU 对 external bind mount 的处理也说明，
+restore 时常需要把 checkpoint image 中记录的 mount 映射到当前机器上的路径
+~\cite{criu_external_bind_mounts}。DMTCP 的 path virtualization 也把路径重绑定作为透明
+checkpoint/restore 的系统问题之一~\cite{dmtcp_path_virtualization}。恢复后的 workload
+常需要把 checkpointed state、config 和 cache 连接到新运行环境中的 socket、pid、log 或
+临时路径。因此 checkpoint/restore policy 必须检查 restore session 和 epoch consistency，
+避免把不同 epoch 的 state/config/cache 混在同一 view 中。
+
+\subsection{Content-verified cache locality}
+
+构建缓存希望把命中的本地对象快速解析到 local backing，同时在 miss、stale 或 corrupt 时
+回退到 canonical backing。BuildKit 的 cache mount 文档说明，持久 package cache 能在层
+重建时保留下载内容并加速构建步骤~\cite{docker_buildkit_cache}。ccache 文档把 compiler
+cache 组织为本地和可选远端存储，并围绕 hit/miss 行为优化重复编译~\cite{ccache_manual}。
+Bazel remote cache 和 remote execution API、Nix binary cache 与 content-addressed store
+则说明真实构建系统已经把 cache key、content digest 和 fallback 作为 correctness 边界
+~\cite{bazel_remote_cache,bazel_remote_execution_api,nix_binary_cache_substituter,nix_content_addressed_store}。
+这类 workload 暴露出可能需要 content hash、cache state 和 workload profile 参与路径选择的
+场景。本文只有在 release-level table-only counterfactual 失败、超预算或违反 stale/update
+门槛后，才会把它写成必须使用 eBPF programmable logic，而不是静态 redirect table。

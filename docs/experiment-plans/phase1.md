@@ -1,4 +1,11 @@
-# Experiment Plan: namei_ext Phase 1
+# 历史文档：Experiment Plan: namei_ext Phase 1
+
+> 状态：历史实验计划，已经过期，不作为当前 Phase 1 或 OSDI evaluation 规范使用。
+> 当前规范以 [../research_plan.md](/home/yunwei37/workspace/namei_ext/docs/research_plan.md)
+> 和 [osdi-evaluation.md](/home/yunwei37/workspace/namei_ext/docs/experiment-plans/osdi-evaluation.md)
+> 为准。该文件保留 2026-06-13 早期 smoke-scale PASS/REDIRECT artifact 计划；
+> 它没有覆盖 parent-aware ABI、真实 workload provenance、四类 policy family、
+> W1/W2/W3/W4 KVM gates、table-budget accounting 或当前 C1/C8 降级规则。
 
 ## Thesis
 

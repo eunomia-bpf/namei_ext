@@ -1,0 +1,66 @@
+\section{限制和下一步}
+
+当前最重要的限制是 claim scope。最新 C2 ledgers 已经关闭多个 baseline input 缺口：
+W1 有 copy/symlink/bind/projected-volume/FUSE baseline，W3 有 materialized checkpoint-view
+和 FUSE checkpoint-view baseline，W4 bulk 有 materialized/FUSE cache-view baseline、
+complete compile-through-FUSE baseline、native ccache hot-compile baseline 和
+proposed-system setup/update release input。关闭这些缺口后，只有 W2 nginx fixture
+slice 通过 C2 storage/threshold gate。W1 中最快 baseline 的 setup、update 和最小
+setup bytes 分别优于 proposed-system 的 \code{65.26 ms}、\code{52.11 ms} 和
+\code{457356} bytes。W3 中 best external setup/update 为 \code{6.52 ms}/\code{5.15 s}，
+优于 policy 的 \code{22.96 ms}/\code{5.16 s}。W4 bulk policy setup 优于 best external
+setup，但 update 为 \code{4.99 ms}，慢于 best external \code{2.28 ms}。因此本文若不
+新增能改变 verdict 的 workload evidence，就必须把性能和 materialization 主张收窄到
+W2 slice，并把 W1/W3/W4 作为范围边界和负结果报告。
+
+另一个重要限制是 evidence level，这也是投稿级 blocker。W1--W4 都已经有 KVM
+path oracle，但这些 oracle 只验证 provenance-bound witness entries 的 lookup/readdir
+path semantics；W2 nginx 额外有真实 \code{nginx -t}、worker start、endpoint HTTP health、
+worker quit 和 attach 期间 fixture content probes，并确认一次 redirected endpoint
+upstream 收到 nginx 请求，证明真实应用配置解析、服务启动和 endpoint 请求路径会观察到
+alias，也证明 config/endpoint/cert/secret/poison aliases 能影响普通 VFS open/read；
+后续 W2 real trace gate 又用 \code{strace -e trace=\%file} 覆盖
+\code{nginx -t}、worker start 和 worker quit，并 hard-check attach 期间
+production decoy path open 次数为 0。它仍不是完整 release-level endpoint matrix、
+startup trace corpus 或 table/update budget oracle。W4 额外有 cache content oracle，证明 manifest-derived entries 能沿
+\file{cache\_rules} map-backed state dispatch 影响普通 open/read/readdir，并覆盖
+verified-hit、stale-fallback、corrupt-reject 和 miss-canonical 分支；它还运行真实
+ccache cold/hot transition、真实 ccache cache-path trace、trace-derived policy bridge、
+bulk FUSE compile-through baseline、native ccache hot-compile baseline 和 sampled
+policy-attached ccache hot compile，并验证 Redis/nginx output object hash 与
+baseline hot object 一致；同时 sampled table-only ccache compile comparator 也通过同一
+output oracle，说明当前 W4 样本仍可由 exact redirect table 解释。新增 cache state
+transition counterfactual 证明 static exact table 会在 stale/corrupt current oracle 下
+产生 wrong-local hit，但 externally updated exact table 仍通过，且 update-write ratio
+为 1，所以它仍不是 C8 支持证据。W4 parent-scoped hardgate 进一步证明每个 ccache
+leaf parent 一条 wildcard lookup rule 可以驱动 sampled Redis/nginx hot compile，并
+hard-check 一个 \file{metadata.txt} sibling PASS 负例和一个无 \file{.local}
+backing、合法 ccache object 形状但不在 witness 集合中的 sibling PASS 负例；但这只是
+sampled parent suffix PoC，不是 content-verified cache decision，也不证明 metadata
+sidecar、临时/锁文件、多 sibling、witness object 缺 backing，或真实 stale/corrupt
+ccache update-window 安全。
+W4 仍没有 release-level operation-weighted policy cache hit
+rate、真实 stale/corrupt ccache transition、BuildKit/Prometheus Go cache workload 或
+table/update budget failure。这些结果不是完整 workload
+output oracle；它们可以作为 C1 functional slice 的证据，但不能计入 C1 release-level
+programmability 或 C8 的主结论。
+因此本文不能把当前证据扩大成 full-scope OSDI 结果。下一步若要扩大主张，必须把每个
+workload 升级为发布级 runner：真实服务启动或恢复、真实构建/cache 执行、
+usecase-specific oracle、lookup/readdir consistency checker、table-only counterfactual
+和 dmesg/verifier gate 都必须通过；其中 table-only counterfactual 必须在 release-level
+workload 和同等 budget 下失败、过度物化或违反 stale/update 门槛，而不是只在 sampled
+witness 上运行。
+
+第二个限制是 ABI 范围。Phase 1 只支持 same-parent component redirect，不支持完整 parent
+path、cross-directory target registry、recursive rewrite 或 write-through alias。若真实
+workload 需要这些能力，相关实现必须作为单独 Phase 1/Phase 2 文档记录，并在 KVM 中验证。
+
+第三个限制是 release readiness。当前证据不是投稿级 full-scope claim：C1
+functional slice、W2 C2 slice、tool-redirect C3 slice 和声明 W1--W4 Phase 1
+lookup/readdir matrix 是 supported，但 C4 仍只覆盖 Phase 1 oracle 条目，不能替代完整真实
+workload correctness 或 C8 table-only insufficiency。C5--C8 仍 scoped out。当前已有
+W2/tool-redirect paper release gate、独立 C4 matrix ledger 和 C7 artifact audit ledger
+支撑当前收窄主张的证据可复查性；但 C7 audit 仍记录 dirty worktrees，且
+clean-checkout reproduction 缺失。v11 audit 已能生成 sanitized evidence package 并从
+package-root 重放论文构建，且 package 中 host-specific absolute path 计数为 0。因此若要把论文
+扩大成 full-scope OSDI claim，还需要对应的 stress/reproducibility gate。

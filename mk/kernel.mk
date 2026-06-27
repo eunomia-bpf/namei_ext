@@ -38,6 +38,7 @@ kernel-config: $(KERNEL_BUILD_DIR)/include/config/auto.conf
 	grep '^CONFIG_BPF_SYSCALL=y' "$(KERNEL_BUILD_DIR)/.config"
 	grep '^CONFIG_BPF_JIT=y' "$(KERNEL_BUILD_DIR)/.config"
 	grep '^CONFIG_CGROUP_BPF=y' "$(KERNEL_BUILD_DIR)/.config"
+	grep '^CONFIG_FUSE_FS=y' "$(KERNEL_BUILD_DIR)/.config"
 	grep '^CONFIG_DEBUG_INFO_BTF=y' "$(KERNEL_BUILD_DIR)/.config"
 
 $(KERNEL_BUILD_DIR):
@@ -51,12 +52,12 @@ $(KERNEL_BUILD_DIR)/.config: $(KERNEL_CONFIG_FRAGMENT) | $(KERNEL_BUILD_DIR)
 $(KERNEL_BUILD_DIR)/include/config/auto.conf: $(KERNEL_BUILD_DIR)/.config
 	$(MAKE) -C "$(KERNEL_DIR)" O="$(KERNEL_BUILD_DIR)" olddefconfig
 
-kernel-objects: $(KERNEL_BUILD_DIR)/include/config/auto.conf
+kernel-objects: $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)/.config
 	$(MAKE) -C "$(KERNEL_DIR)" O="$(KERNEL_BUILD_DIR)" $(KERNEL_TOUCHED_OBJECTS) -j"$(JOBS)"
 
 kernel: $(KERNEL_IMAGE)
 
-$(KERNEL_IMAGE): $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_SOURCE_DEPS)
+$(KERNEL_IMAGE): $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)/.config $(KERNEL_SOURCE_DEPS)
 	$(MAKE) -C "$(KERNEL_DIR)" O="$(KERNEL_BUILD_DIR)" bzImage -j"$(JOBS)"
 
 kernel-clean:

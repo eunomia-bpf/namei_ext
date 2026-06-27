@@ -1,4 +1,11 @@
-# Phase 1 Design: KVM-Runnable PASS/REDIRECT `namei_ext` PoC
+# 历史文档：Phase 1 Design: KVM-Runnable PASS/REDIRECT `namei_ext` PoC
+
+> 状态：历史设计记录，已经过期，不作为当前 Phase 1 规范使用。
+> 当前规范以 [research_plan.md](/home/yunwei37/workspace/namei_ext/docs/research_plan.md)
+> 和 [osdi-evaluation.md](/home/yunwei37/workspace/namei_ext/docs/experiment-plans/osdi-evaluation.md)
+> 为准。该文件保留 2026-06-13 早期 same-parent `redirect_alias.bpf.c`
+> PoC 的设计背景；它没有覆盖 parent-aware ABI、四类 policy family、W1/W2/W3/W4
+> workload gates、W3 Redis checkpoint replay 或当前 C1/C8 降级规则。
 
 ## Goal
 

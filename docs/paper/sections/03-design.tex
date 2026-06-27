@@ -1,0 +1,108 @@
+\section{设计}
+
+\namei 的核心接口是一个单一 BPF decision function。kernel 在 lookup 或 readdir 事件上
+构造上下文，policy 返回 \code{PASS} 或 \code{REDIRECT}。lookup 和 directory enumeration
+使用同一个 policy 入口，通过事件类型区分行为。这个约束避免为每个操作暴露不同 ABI，也让
+lookup/readdir 一致性可以成为 checker 的显式 oracle。
+
+\subsection{边界}
+
+\namei 不创建 dentry，不分配 inode，不实现 file operations，也不绕过 lower filesystem
+权限。Phase 1 的 \code{REDIRECT} 只把当前 component 替换为同一父目录下的 backing
+component。完整 parent path、cross-directory target registry、write-through alias、
+recursive path rewrite 和用户态 policy interpreter 都不在当前已实现 ABI 中。论文中的
+任何强 claim 都必须受这个边界约束。
+
+\subsection{证据等级}
+
+表~\ref{tab:evidence-levels} 定义本文使用的证据等级。这个表也是论文写作约束：
+低等级 evidence 可以说明机制存在，但不能支撑发布级 performance 或 programmability claim。
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.28\textwidth}}
+\toprule
+等级 & 证明内容 & 不能支撑的主张 \\
+\midrule
+POC semantic gate & KVM guest 内 policy 可以 load/attach，并触发预设 lookup/readdir 分支。 &
+真实 workload 正确性、性能和 C8。 \\
+host trace-witness & 真实应用构建或运行 trace 中出现候选 alias/component。 &
+BPF policy execution、KVM workload oracle 和 redirected operation hit rate。 \\
+KVM workload oracle & 修改后 kernel guest 中运行真实 workload、attach policy，并通过 usecase-specific checker。 &
+若缺少 table-only counterfactual，仍不能支撑 C8。 \\
+release-level result & KVM workload oracle、raw artifacts、baseline、table-only budget、dmesg/verifier gate 全部通过。 &
+超出已实现 ABI 的 cross-directory、write-through 或安全隔离主张。 \\
+\bottomrule
+\end{tabularx}
+\caption{论文中的证据等级。只有 release-level result 可以进入主性能结论。}
+\label{tab:evidence-levels}
+\end{table}
+
+\subsection{场景到机制}
+
+表~\ref{tab:requirements} 把四类真实场景压缩成可检查的机制需求。若某个 workload
+没有触发对应 oracle，它只能作为功能或附录证据，不能计入最终表达力或可编程性主张。
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}}
+\toprule
+场景 & requirement/challenge & policy 机制 & 主 oracle \\
+\midrule
+Build graph & generated、source、toolchain、deps 需要优先级和 negative fallback。 &
+有界 precedence cascade。 & output hash、poison checker、readdir visible set。 \\
+Sandbox fixture & 配置、secret、证书、endpoint 需要按 path class 切到 fixture 或 poison。 &
+path-class dispatch。 & health、no-real-secret、endpoint checker。 \\
+Checkpoint/restore & restore session 必须避免 state/config/cache 混用不同 epoch。 &
+session/epoch consistency checks。 & restored health、0 mixed epoch、post-restore VFS trace。 \\
+Cache locality & cache hit/miss/stale/corrupt 要根据内容状态选择 backing。 &
+cache-state 和 hash witness checks。 & content hash、stale/corrupt reject、stale window。 \\
+\bottomrule
+\end{tabularx}
+\caption{四类 use case 的需求、机制和 oracle 映射。}
+\label{tab:requirements}
+\end{table}
+
+\subsection{Policy families}
+
+表~\ref{tab:policy-families} 总结当前四类主线 policy family。它们共享同一个 ABI，但
+决策结构不同。如果未来实现把它们全部退化为同一个 exact table lookup，最终
+programmability claim 必须判为 unsupported。
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}}
+\toprule
+Family & 语义 & 决策结构 & 当前状态 \\
+\midrule
+build graph & generated、source、toolchain、deps & 有界优先级 cascade & POC + W1 host trace + KVM path/replay/branch probes \\
+sandbox fixture & config/secret/endpoint fixture & path-class dispatch & POC + W2 KVM path + nginx health/direct probes \\
+checkpoint/restore & restore session/epoch view & session + path-class checks & POC + W3 KVM path + Redis replay witness \\
+cache locality & hit/miss/stale/corrupt cache & cache-state + hash witness & POC + W4 KVM path/content + ccache trace/compile/parent PoC \\
+\bottomrule
+\end{tabularx}
+\caption{四类 policy family 的设计意图。当前状态不等于发布级 evaluation 通过。}
+\label{tab:policy-families}
+\end{table}
+
+\subsection{为什么不是静态 redirect table}
+
+静态 table 可以表达 \code{(event, component) -> target}，因此它是必要 baseline。
+最终 programmability 主张需要证明多类 extension 在同一 ABI 上需要不同的
+verifier-safe policy logic。build graph 需要 precedence 和 poison 分支；fixture
+workload 需要 path-class campaign 和 no-real-secret oracle；checkpoint/restore 需要
+restore epoch consistency；cache locality 需要 content-state transition。当前版本只把
+未满足该条件的 cases 作为反事实边界。若 table-only 在同等 table/update budget 下
+通过全部主 oracle，论文必须降级为 kernel redirect-table artifact，而不能声称需要 eBPF
+programmable path resolution。

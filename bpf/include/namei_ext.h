@@ -25,6 +25,10 @@ struct bpf_namei_ext_ctx {
 	__u32 redirect_name_len;
 	__u32 reserved;
 	__u8 redirect_name[BPF_NAMEI_EXT_NAME_MAX];
+	__u64 parent_dev;
+	__u64 parent_ino;
+	__u32 parent_generation;
+	__u32 parent_flags;
 };
 
 #endif /* NAMEI_EXT_BPF_H */

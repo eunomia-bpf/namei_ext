@@ -1,0 +1,34 @@
+# Fixed real-workload source inputs for OSDI evaluation.
+#
+# This is Makefile syntax, not a policy DSL. These values pin upstream inputs
+# so workload acquisition is reproducible and auditable.
+
+REDIS_VERSION ?= 7.2.14
+REDIS_COMMIT ?= f2262eccb855eadd1afb0c457ea583ef9d5400b5
+REDIS_URL ?= https://github.com/redis/redis/archive/refs/tags/$(REDIS_VERSION).tar.gz
+REDIS_ARCHIVE_NAME ?= redis-$(REDIS_VERSION).tar.gz
+REDIS_ARCHIVE_SHA256 ?= 704bfac84ab1c0771ddc08c8bea72e2203e3ce64c1fc6750e76b8ce2c00f3145
+REDIS_SOURCE_DIR_NAME ?= redis-$(REDIS_VERSION)
+REDIS_LICENSE_PATH ?= COPYING
+
+NGINX_VERSION ?= 1.26.3
+NGINX_URL ?= https://nginx.org/download/nginx-$(NGINX_VERSION).tar.gz
+NGINX_ARCHIVE_NAME ?= nginx-$(NGINX_VERSION).tar.gz
+NGINX_ARCHIVE_SHA256 ?= 69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa
+NGINX_SOURCE_DIR_NAME ?= nginx-$(NGINX_VERSION)
+NGINX_LICENSE_PATH ?= LICENSE
+
+POSTGRES_VERSION ?= 16.6
+POSTGRES_URL ?= https://ftp.postgresql.org/pub/source/v$(POSTGRES_VERSION)/postgresql-$(POSTGRES_VERSION).tar.gz
+POSTGRES_ARCHIVE_NAME ?= postgresql-$(POSTGRES_VERSION).tar.gz
+POSTGRES_ARCHIVE_SHA256 ?= 520d173632e93507f26eb66713d953b687cfba5e72c467d3adbc8ec4dbb8148f
+POSTGRES_SOURCE_DIR_NAME ?= postgresql-$(POSTGRES_VERSION)
+POSTGRES_LICENSE_PATH ?= COPYRIGHT
+
+PROMETHEUS_VERSION ?= v2.55.1
+PROMETHEUS_COMMIT ?= 6d7569113f1ca814f1e149f74176656540043b8d
+PROMETHEUS_URL ?= https://github.com/prometheus/prometheus/archive/refs/tags/$(PROMETHEUS_VERSION).tar.gz
+PROMETHEUS_ARCHIVE_NAME ?= prometheus-$(PROMETHEUS_VERSION).tar.gz
+PROMETHEUS_ARCHIVE_SHA256 ?= f48251f5c89eea6d3b43814499d558bacc4829265419ee69be49c5af98f79573
+PROMETHEUS_SOURCE_DIR_NAME ?= prometheus-$(patsubst v%,%,$(PROMETHEUS_VERSION))
+PROMETHEUS_LICENSE_PATH ?= LICENSE

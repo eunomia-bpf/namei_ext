@@ -1,0 +1,429 @@
+\section{实现状态}
+
+当前实现保留一个 kernel-facing BPF ABI，并在 \code{bpf/policies/} 下实现 policy。policy
+不是 YAML、JSON 或 DSL。辅助 policy 包括 \file{pass_only.bpf.c}、
+\file{redirect_alias.bpf.c} 和 \file{table_redirect.bpf.c}。主线 policy family 包括
+\file{build_graph_view.bpf.c}、\file{sandbox_fixture_view.bpf.c}、
+\file{checkpoint_restore_view.bpf.c} 和 \file{cache_locality_view.bpf.c}。
+
+当前 ABI 已追加 parent-aware ctx 字段，包括 parent dev、parent ino、parent generation
+和 parent flags。这些字段位于 \code{redirect_name} 之后，保持旧字段 offset 不变；
+verifier 只允许 BPF 读取这些字段。map-backed policy key 当前使用 event、cgroup id、
+parent dev/ino 和 component name。我们暂不把 parent generation 放进 map key，因为
+userspace loader 需要用 guest 内 \code{stat()} 构造同一个 key，而普通 \code{stat()}
+没有可移植 inode generation 字段。
+
+当前 artifact evidence 分为 KVM gate 和 host-side witness/analysis gate：
+\begin{itemize}[leftmargin=*]
+\item policy load gate 逐个 load、attach 和 detach policy object。
+\item policy semantic gate 验证四类主线 family 的 POC lookup/readdir、
+negative pass-through 和 detach 行为。
+\item W1--W4 path oracle gate 在 guest 中分别运行 programmable policy 与
+table baseline，覆盖 build graph、sandbox fixture、checkpoint/restore 和
+cache locality witness entries。
+\item W2 nginx real gate 运行真实 nginx binary 的 config parser、worker start、
+redirected endpoint HTTP health、worker quit 和 attach 期间 fixture content probes。
+该 oracle 只声称 nginx 观察到 config/endpoint alias；cert、secret 和 poison alias
+由同一 attach window 内的 direct VFS \code{open/read} probes 覆盖。
+\item W3 Redis checkpoint replay gate 运行真实 \code{redis-server} RDB load path，
+通过 \file{checkpoint_restore_view.bpf.c} 把可见 \file{dump.rdb} 解析到 hidden
+checkpoint backing；W3 Redis macrobench gate 进一步记录 policy/materialized/FUSE
+setup/update release input，并明确记录它不是 Podman/CRIU restore。
+\item W4 cache content gate 读取 W4 oracle TSV，填充 \file{cache\_rules} map，并验证
+verified-hit、stale-fallback、corrupt-reject 和 miss-canonical 分支的内容选择。
+\item W4 real ccache gate 在 guest 中运行真实 \code{ccache} cold/hot 编译，记录
+Redis/nginx object hash 和 ccache miss/hit 统计，再把 hot object 作为
+backing 输入 cache-locality content oracle。
+\item W4 real ccache trace gate 在 guest 中用 \code{strace -f -e trace=\%file}
+采集真实 ccache hot compile 的 file operations，要求两个 trace 都实际触碰
+\code{CCACHE\_DIR}，并明确记录 \code{policy\_executed=false}。
+\item W4 trace-derived ccache policy bridge 从真实 ccache strace logs 中抽取成功读取的
+cache object component，生成 TSV，并在 guest 中 attach
+\file{cache\_locality\_view.bpf.c} 跑 verified-hit content oracle；它明确记录真实
+ccache compile 阶段 policy 未执行。
+\item W4 real ccache policy-attached compile gate 复制真实 \code{CCACHE\_DIR}，把
+trace-derived cache objects 改成 hidden backing，在 attach
+\file{cache\_locality\_view.bpf.c} 后运行 Redis/nginx 真实 \code{ccache gcc -c}
+hot compile，并验证 output object hash 与 baseline hot object 一致。
+\item W4 parent-scoped ccache compile gate 复用同一个 \file{cache\_rules} map，
+用 \code{name\_len=0} 的 parent wildcard key 表示一个 ccache leaf parent 下的
+verified-hit 对象集合；policy 只对 32 字节 ccache object-shape component 追加
+\file{.local}，并要求 component 名称匹配 trace-derived bounded witness。该 gate
+在同一 attach window 中验证 \file{metadata.txt} sibling 和一个合法 ccache object
+形状但不在 witness 集合中的 sibling 都仍为 PASS；该合法形状 sibling 的
+\file{.local} backing 在 attach 前被显式检查为不存在。
+\item W4 table-only ccache compile comparator 复用同一份真实 \code{CCACHE\_DIR}、
+同一组 Redis/nginx source file 和同一组 trace-derived cache objects，把 policy 换成
+\file{table\_redirect.bpf.c} exact redirects；该 comparator 通过当前 sampled witness，
+因此作为 C8 的负面证据保留。
+\item W4 release counterfactual accounting gate 在 KVM guest 中读取同一 RUN 的真实
+ccache trace、parent-scoped policy witness 和 table-only comparator，写出输入哈希与
+raw accounting row；当前 row 显示 eligible object-set coverage 为 1，但 sampled
+cache-path operation 覆盖率仅为 0.1，table-only 仍通过，因此继续标记 C8 不合格。
+\item W1 host build-output witness 校验 Redis/nginx 真实 host source build 的 binary
+hash，并明确记录 policy 未执行、KVM 未验证、C8 不合格。
+\item W1 KVM policy preprocessing replay witness 在 guest 中 attach
+\file{build\_graph\_view.bpf.c}，对真实 Redis/nginx source file 做 preprocessing
+replay，并与未 attach policy 的 baseline output 做 byte-for-byte 比较；该 witness
+只覆盖 preprocessing 等价性。
+\item W1 KVM policy release-binary replay witness 在 guest 中 attach
+\file{build\_graph\_view.bpf.c}，对真实 Redis/nginx source tree 运行完整 rebuild，
+保存并规范化 debug/build-id 元数据后的 release binary，再与未 attach policy 的
+baseline binary 做 byte-for-byte 比较；该 witness 仍显式标记 C8 不合格。
+\item table-budget gate 是 host-side analysis target；它只消费 KVM raw JSONL/TSV，
+生成 table-only budget accounting，并强制记录 \code{qualified_for_c8=false}。
+\end{itemize}
+具备 KVM attach 的 gates 证明 policy object 可以沿真实 attach path 影响 lookup、
+open/read 和 readdir；host witness、trace-only gate 和 host-side analysis gate 只提供
+provenance、candidate evidence 或 accounting。它们都还不是完整 workload output oracle。
+
+表~\ref{tab:artifact-evidence-infra} 和表~\ref{tab:artifact-evidence-workload}
+列出当前可审计 artifact evidence。这些表故意保留缺口列：
+如果后续 report 没有补齐 per-policy object hash、verifier 摘要和 workload oracle，
+相关行不能升级为 release-level result。
+
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}}
+\toprule
+Gate & Raw artifact & 当前通过内容 & 仍缺少 \\
+\midrule
+\code{make kvm-policy-load} &
+\file{results/phase1/20260614T-workloads-git-ceiling/policy-load.jsonl} &
+7 个 policy object load/attach/detach，0 failure。 &
+per-object hash 和 verifier 摘要。 \\
+\code{make kvm-policy-semantic} &
+\file{results/phase1/20260614T-workloads-git-ceiling/policy-semantic.jsonl} &
+4 个 family 的 lookup/readdir、negative 和 detach POC 分支，0 failure。 &
+真实 workload oracle 和 table-only counterfactual。 \\
+\code{make table-conformance} &
+\file{results/phase1/20260614T-workloads-git-ceiling/table-conformance.jsonl} &
+\file{table_redirect.bpf.c} source/object conformance，0 failure。 &
+真实 table-only workload counterfactual 和 per-workload budget result。 \\
+\code{make table-budget} &
+\file{results/phase1/20260614T-w2-nginx-probes-phase1/table-budget.jsonl} &
+W1/W2/W3/W4 当前 KVM path oracle 中 \file{table_redirect.bpf.c} 均通过；
+accounting 记录 entries、table entries、static-load accounted update writes、
+input hash、committed budget 和 \code{qualified_for_c8=false}。 &
+release-level workload oracle、table/update budget failure、stale/update window 和 latency evidence。 \\
+\code{make phase1}（historical Phase 1 POC full root） &
+\file{results/phase1/20260615T-full-phase1-gatefix/summary.md} &
+ABI/policy/table/workload gates 0 failure，W1/W2/W3/W4 KVM witnesses、W4
+parent-scoped compile、table-only comparator 和 release counterfactual accounting
+均进入同一 summary；table-budget C8-qualified rows 为 0。 &
+历史 infrastructure root；main repo dirty=true，不能作为当前 paper-release 主结果。 \\
+\code{make eval-osdi-claim-verdict-ledger} + scoped paper-release gate &
+\file{results/eval-osdi/paper/20260617T-eval-claim-verdict-ledger-v17/claim-verdict/claim-verdict.jsonl} &
+读取 W1 v7、W2 v11、W3 v7、W4 v15、performance v6、tool-redirect scope v7、
+W2 paper-release v6、C4 lookup/readdir matrix v4、C7 artifact audit v11 和 W4 counterfactuals；summary 记录 4 supported、0 partial、
+4 scoped-out、0 unsupported。 &
+当前 paper 采用 W2 C2 slice、tool-redirect C3 slice 和声明 W1--W4 Phase 1 lookup/readdir matrix；global release gate 仍为 false。 \\
+\bottomrule
+\end{tabularx}
+\caption{当前 infrastructure artifact evidence。所有行都是 Phase 1 POC gate，不是最终 workload 结果。}
+\label{tab:artifact-evidence-infra}
+\end{table}
+
+\begin{table}[t]
+\centering
+\tiny
+\renewcommand{\arraystretch}{0.86}
+\setlength{\tabcolsep}{2pt}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}}
+\toprule
+Gate & Raw artifact & 当前通过内容 & 仍缺少 \\
+\midrule
+\code{make kvm-w1-oracle} &
+\file{results/phase1/20260615T-parent-key-poc/w1-oracle.jsonl} &
+Redis/nginx 的 9 个 trace-derived entries 在 \file{build_graph_view.bpf.c} 和
+\file{table_redirect.bpf.c} 下以 per-entry synthetic 目录方式 lookup/readdir 均通过，0 failure。 &
+完整 trace-derived alias set、release-level poison/negative natural trace、table/update budget；当前
+\code{qualified_for_c8=false}。 \\
+\code{make kvm-w1-build-replay} &
+\file{results/phase1/20260615T-parent-key-poc/w1-build-replay.jsonl} &
+在 KVM guest 中复制真实 Redis/nginx source tree，attach \file{build_graph_view.bpf.c}，
+并验证 Redis \file{src/server.c} 与 nginx \file{src/core/nginx.c} 的 policy preprocessing
+output 与 baseline preprocessing output byte-for-byte 相同；Redis output hash 为
+\code{c4fc64...8422}，nginx output hash 为 \code{dbb253...8c5e}，0 failure。 &
+preprocessing-only witness；不运行完整 release binary build，不覆盖完整 alias set、
+release-level poison/negative natural trace 或 table/update budget；当前 \code{qualified_for_c8=false}。 \\
+\code{make kvm-w1-release-}\newline\code{build-replay} &
+\file{results/phase1/20260615T-parent-key-poc/w1-release-build-replay.jsonl} &
+在 KVM guest 中复制真实 Redis/nginx trace source 为 baseline/policy 两套树，
+attach \file{build_graph_view.bpf.c} 后运行完整 rebuild；规范化 debug section 和
+GNU build-id 后 Redis baseline/policy hash 均为 \code{65c8f5...e8b}，nginx
+baseline/policy hash 均为 \code{f9e214...544}，0 failure。 &
+仍缺完整 trace-derived alias set、release-level poison/negative natural trace、operation-weighted hit rate
+和 table/update budget；当前 \code{qualified_for_c8=false}。 \\
+\code{make workload-w1-}\newline\code{build-output-oracle} &
+\file{w1-build-output-oracle.jsonl} &
+Redis/nginx 两个真实 host source build 的 binary SHA256、trace binary SHA256、
+duration、trace file-op lines 和 source manifest hash 均通过校验；summary 0 failure。 &
+host-only output oracle；policy 未执行，KVM 未验证，C8 不合格。 \\
+\code{make kvm-w2-oracle} &
+\file{results/phase1/20260614T-workloads-git-ceiling/w2-oracle.jsonl} &
+nginx/PostgreSQL 的 6 个 fixture witness entries 在 \file{sandbox_fixture_view.bpf.c}
+和 \file{table_redirect.bpf.c} 下以 per-entry synthetic 目录方式 lookup/readdir 均通过，0 failure。 &
+真实服务 health/no-real-secret oracle、startup trace、table/update budget；当前
+\code{qualified_for_c8=false}。 \\
+\code{make kvm-w2-nginx-real} &
+\file{results/phase1/20260614T-w2-nginx-probes-phase1/w2-nginx-real.jsonl} &
+真实 nginx \code{1.26.3} binary 的 config parser、worker start、redirected endpoint
+HTTP health 和 worker quit 在 attach 后经 \file{sandbox_fixture_view.bpf.c} 重定向成功；
+attach 期间 \code{nginx.conf}、\code{upstream.sock}、\code{server.crt}、
+\code{db.password} 和 \code{prod.token} direct content probes 均解析到
+fixture/fake/poison backing，pre/post detach 负控失败，0 failure。 &
+W2 real trace gate 现已覆盖 no-production-open oracle；仍缺 release-level
+endpoint/startup matrix 和 table/update budget，当前 \code{qualified_for_c8=false}。 \\
+\code{make kvm-w3-oracle} &
+\file{results/phase1/20260614T-workloads-git-ceiling/w3-oracle.jsonl}；另见
+\file{results/phase1/20260615T-parent-key-poc/w3-redis-replay.jsonl} 和
+\file{results/phase1/20260616T-w3-redis-macrobench-release-v1/} &
+Redis/nginx 的 7 个 checkpoint witness entries 在 \file{checkpoint_restore_view.bpf.c}
+和 \file{table_redirect.bpf.c} 下 lookup/readdir 均通过；另有真实 Redis RDB load
+replay，attach 后经 \file{dump.rdb} 读取 hidden checkpoint backing，0 failure；W3 Redis
+macrobench 另记录 20-sample policy setup/update rows，以及 materialized/FUSE baseline rows。 &
+真实 Podman/CRIU restore、restore health、post-restore VFS trace、0 mixed epoch、
+table/update budget；当前 \code{podman_criu_restore_executed=false} 且 \code{qualified_for_c8=false}。 \\
+\bottomrule
+\end{tabularx}
+\caption{当前 workload-facing artifact evidence：W1--W3。所有行都是 Phase 1 POC gate，不是最终 workload 结果。}
+\label{tab:artifact-evidence-workload}
+\end{table}
+
+\begin{table}[t]
+\centering
+\tiny
+\renewcommand{\arraystretch}{0.86}
+\setlength{\tabcolsep}{2pt}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}}
+\toprule
+Gate & Raw artifact & 当前通过内容 & 仍缺少 \\
+\midrule
+\code{make kvm-w4-oracle} &
+\file{results/phase1/20260614T-workloads-git-ceiling/w4-oracle.jsonl} &
+ccache/BuildKit 的 4 个 cache witness entries 在 \file{cache_locality_view.bpf.c}
+和 \file{table_redirect.bpf.c} 下以 per-entry synthetic 目录方式 lookup/readdir 均通过，0 failure。 &
+该 gate 自身不覆盖真实 cache workload；仍缺 BuildKit cache-path trace、release-level output hash、cache transition trace、release-level stale/corrupt reject、
+table/update budget；当前 \code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-cache-content} &
+\file{results/phase1/20260614T-w2-nginx-probes-phase1/w4-cache-content.jsonl} &
+W4 TSV-derived entries 填充 \file{cache\_rules} map 后，cache-locality verified hit、
+stale fallback、corrupt reject 和 miss canonical 四个分支的 expected content match、
+forbidden content mismatch、readdir alias 和 detach gate 均通过，0 failure。 &
+该 gate 自身不覆盖真实 cache workload；仍缺 BuildKit cache-path trace、release-level compiler/go output hash、cache transition trace、update writes、
+stale window 和 table/update budget；当前 \code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-ccache-real} &
+\file{results/phase1/20260615T-full-phase1-gatefix/w4-ccache-real.jsonl} &
+在 KVM guest 中对 Redis \file{src/crc64.c} 和 nginx \file{src/core/ngx_string.c}
+运行真实 \code{ccache} cold/hot 编译，记录 \code{cache\_miss=2}、
+\code{direct\_cache\_hit=2}，并验证 cold/hot object hash 相等；随后对两个
+hot object 运行 cache-locality verified-hit content oracle，0 failure。 &
+该 gate 自身不覆盖 policy-attached compile；仍缺 operation-weighted policy cache hit rate、
+真实 stale/corrupt transition、update/stale window 和 table/update budget；当前
+\code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-ccache-trace} &
+\file{results/phase1/20260615T-full-phase1-gatefix/w4-ccache-trace.jsonl} &
+在 KVM guest 中对 Redis \file{src/crc64.c} 和 nginx \file{src/core/ngx\_string.c}
+运行真实 \code{ccache} hot compile 的 \code{strace -f -e trace=\%file}，记录 Redis
+134 条 file-op trace 中 20 条触碰 \code{CCACHE\_DIR}，nginx 602 条 file-op trace
+中 20 条触碰 \code{CCACHE\_DIR}，并保持 \code{cache\_miss=2} 和
+\code{direct\_cache\_hit=2}。 &
+不 attach \namei policy；仍缺 operation-weighted policy cache hit rate、真实
+stale/corrupt transition、update/stale window 和 table/update budget；当前
+\code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-ccache-policy-bridge} &
+\file{results/phase1/20260615T-full-phase1-gatefix/w4-ccache-policy-bridge.jsonl} &
+从 Redis/nginx raw strace logs 抽取 4 个真实成功读取的 ccache cache object paths，
+生成 trace-derived TSV，并在 KVM guest 中 attach \file{cache\_locality\_view.bpf.c}
+验证 4 个 verified-hit aliases；policy content oracle 0 failure。 &
+该 bridge 自身不覆盖 policy-attached ccache compile；仍缺 operation-weighted policy
+cache hit rate、真实 stale/corrupt transition、update/stale window 和 table/update budget；
+当前 \code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-ccache-policy-compile} &
+\file{results/phase1/20260615T-full-phase1-gatefix/w4-ccache-policy-compile.jsonl} &
+在 attach \file{cache\_locality\_view.bpf.c} 时运行 Redis/nginx 真实
+\code{ccache gcc -c} hot compile；4 个 trace-derived cache objects 被 policy redirect，
+output object hash 与 baseline hot object 一致，\code{direct\_cache\_hit=2}。 &
+仍缺 release-level operation-weighted policy cache hit rate、真实 stale/corrupt
+transition、update/stale window、BuildKit workload 和 table/update budget；当前
+\code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-ccache-}\newline\code{parent-compile} &
+\file{results/phase1/20260615T-full-phase1-gatefix/w4-ccache-parent-compile.jsonl} &
+在 attach \file{cache\_locality\_view.bpf.c} 时运行同一 sampled Redis/nginx 真实
+\code{ccache gcc -c} hot compile；4 个 ccache leaf parents 通过 parent wildcard
+lookup rule 命中 object-shape cache component，output hash 与 baseline hot object
+一致，并通过同 parent metadata sibling 与合法形状 non-witness sibling PASS hard-check；
+后者确认 \file{.local} backing 不存在，并在 raw event 中记录 exact-text 内容
+oracle 的长度和 FNV hash 匹配。 &
+只证明 sampled parent suffix PoC、明显非 object sibling 负例和一个合法形状
+non-witness 且无 \file{.local} backing 的负例；仍缺多 sibling safety、release-level operation-weighted hit rate、真实 stale/corrupt
+transition 和 table/update budget failure，当前 \code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-ccache-table-compile} &
+\file{results/phase1/20260615T-full-phase1-gatefix/w4-ccache-table-compile.jsonl} &
+在 attach \file{table\_redirect.bpf.c} 时重复同一 sampled Redis/nginx 真实
+\code{ccache gcc -c} hot compile；4 个 trace-derived cache objects 被 exact table
+redirect，output object hash 与 baseline hot object 一致，\code{direct\_cache\_hit=2}。 &
+table-only 在当前 sampled witness 上通过，是 C8 负面证据；仍缺 release-level
+operation-weighted hit rate、stale/corrupt transition、update/stale window 和
+table/update budget failure，当前 \code{qualified_for_c8=false}。 \\
+\code{make kvm-w4-ccache-}\newline\code{release-counterfactual} &
+\file{results/phase1/20260615T-full-phase1-gatefix/w4-ccache-release-counterfactual.jsonl} &
+把真实 ccache trace、parent-scoped policy compile 和 table-only comparator 放入同一
+KVM accounting row；记录 40 个 cache-path file ops、4 个 trace objects、parent/table
+规则 4/8、attached sampled ops/object ops 40/16，sampled hit rate 为 0.4。 &
+table-only 仍通过，且 sampled hit rate 不是 release-level operation-weighted metric；
+当前 \code{qualified_for_c8=false}。 \\
+\bottomrule
+\end{tabularx}
+\caption{当前 workload-facing artifact evidence：W4/cache locality。所有行都是 Phase 1 POC gate，不是最终 workload 结果。}
+\label{tab:artifact-evidence-workload-cache}
+\end{table}
+
+真实 workload 方面，当前 W1 有 host trace-witness、host build-output oracle、KVM path oracle、
+KVM policy preprocessing replay witness、KVM policy release-binary replay witness 和 KVM branch
+probes。Redis
+\code{7.2.14} 和 nginx \code{1.26.3} 的源码 tarball 已固定 SHA256，并由 Makefile
+下载、校验、构建和 strace。当前 run id 是
+\file{20260615T-parent-key-poc}，生成 source-build manifest、
+trace-witness manifest 和 \file{w1-build-output-oracle.jsonl}。Redis trace 有
+\code{1,224,839} 行 file-operation trace；nginx trace 有 \code{1,796,476} 行。
+trace-witness manifest 只记录手工 candidate 与真实 trace 命中，并用 release-gate
+字段和 host-only 执行依据防止后续 report 把它当成 KVM policy oracle。host
+build-output oracle 校验两次真实构建产出的 binary hash，但 policy 未执行且 KVM 未验证。
+新增 W1 KVM path oracle 只验证这些 candidate entries 在独立
+synthetic 目录中的 lookup/readdir path semantics，并把
+\file{w1-build-output-oracle.jsonl} 纳入 \file{w1-oracle-inputs.sha256}；所有 W1
+row 仍显式标记 \code{qualified_for_c8=false}。新增 W1 KVM policy preprocessing
+replay witness 在 guest 中 attach \file{build_graph_view.bpf.c}，对真实 Redis
+\file{src/server.c} 和 nginx \file{src/core/nginx.c} 做 preprocessing，并证明 policy
+路径产物与 baseline preprocessing 产物相同。2026-06-15 的 parent-aware ABI PoC
+进一步让该 replay 使用 guest runtime parent directory 的 \code{dev/ino} 填充 map key，
+不再退化为 component-only key。随后新增 W1 KVM policy release-binary replay witness
+在 guest 中对 Redis/nginx 真实 source tree 做完整 rebuild，并证明规范化后的 release
+binary hash 与 baseline 相同。新增 branch-probe gate 还在 KVM guest 中验证
+\code{private.h -> poison.dep} 和 \code{missing.h -> PASS/ENOENT} 两个 build-graph
+分支。完整 trace-derived alias set、release-level poison/negative natural workload hit、
+operation-weighted hit rate 和 table/update budget 仍未进入发布级结果。
+
+W2 现在有 host fixture-witness manifest、KVM path oracle 和真实 nginx endpoint health + fixture content probes oracle。nginx fixture row
+使用 workload fixture config，并由 Makefile 生成 fake certificate、local endpoint 和
+poison sentinel；PostgreSQL row 使用 upstream sample config 和 Makefile-owned fake
+password fixture。\code{make kvm-w2-oracle} 在 KVM guest 中为 6 个 entries 建立
+独立 synthetic 目录，分别运行 \file{sandbox_fixture_view.bpf.c} 和
+\file{table_redirect.bpf.c}。该 gate 仍是 path oracle：它不启动 nginx/PostgreSQL，
+不证明 no-real-secret health oracle，也不证明 table/update budget failure，因此
+\code{qualified_for_c8=false}。\code{make kvm-w2-nginx-real} 额外运行真实 nginx
+\code{nginx -t}、启动 worker、执行 redirected endpoint HTTP GET health check，并在 policy
+仍 attached 时通过 \code{nginx -s quit} 退出：attach 前和 detach 后 \code{conf/nginx.conf}
+缺失失败，attach 后同一路径被 \file{sandbox_fixture_view.bpf.c} 重定向到
+\code{nginx.test.conf} 并通过配置测试；fixture config 中的 \code{include upstream.sock}
+被重定向到 \code{upstream.local}，nginx 将请求代理到 runner 的
+\code{127.0.0.1:18080} local upstream，HTTP 响应包含 \code{200 OK} 和预期 body，
+raw evidence 记录 \code{attached_endpoint_upstream=true}。
+同一 attach window 内，runner 还用普通 VFS \code{open/read} 验证
+\code{nginx.conf}、\code{upstream.sock}、\code{server.crt}、\code{db.password}
+和 \code{prod.token} 分别解析到 fixture/fake/poison backing，并且不等于 production-like
+decoy。该 gate 证明真实应用 config parser 和 worker 启动路径会观察到 alias，也证明
+真实 endpoint 请求路径会观察到 include alias；cert/secret/poison 分支只由 direct VFS
+open/read probes 覆盖。后续 W2 real trace gate 已覆盖 attach 期间
+no-production-open 检查；它仍不是完整 release-level endpoint/startup matrix 或
+table/update budget oracle。
+
+W3 现在有 host checkpoint-witness manifest 和 KVM path oracle。Redis row 使用固定
+Redis provenance，并由 Makefile 生成 RDB、AOF、runtime socket 和 mixed-epoch poison
+witness；nginx row 使用 upstream sample config，并由 Makefile 生成 checkpoint cache
+和 runtime pid witness。\code{make kvm-w3-oracle} 在 KVM guest 中为 7 个 entries
+建立独立 synthetic 目录，分别运行 \file{checkpoint_restore_view.bpf.c} 和
+\file{table_redirect.bpf.c}。该 gate 不运行真实 Podman/CRIU restore，不证明
+restore health、post-restore VFS trace、state/config/cache hash 或 0 mixed epoch，
+因此 \code{qualified_for_c8=false}。
+
+\code{make kvm-w3-redis-replay} 进一步在 KVM guest 中启动真实 \code{redis-server}，
+生成包含 checkpoint value 的 hidden \file{dump.ckpt}，再在 attach
+\file{checkpoint_restore_view.bpf.c} 后让 Redis 通过可见 \file{dump.rdb} 加载该 hidden
+checkpoint。raw summary 记录 Redis 经 policy 加载 checkpoint、post-restore replay 为真，
+同时明确 Podman/CRIU restore 未执行且 C8 不合格。该 gate 证明真实 Redis RDB load
+path 会观察到 policy redirect，但仍不证明 Podman/CRIU restore、restore health 或
+0 mixed epoch。
+
+\code{make kvm-w3-redis-policy-macrobench} 和
+\code{make kvm-w3-redis-baseline-macrobench} 使用同一个 Redis RDB replay 生成 C2
+setup/update rows。policy target attach \file{checkpoint_restore_view.bpf.c} 后验证
+pre-attach \file{dump.rdb} 缺失、attach 后 Redis \code{GET} 成功、readdir alias
+隐藏 backing、post-update \code{GET} 成功和 detach 后缺失。baseline target 覆盖
+\code{materialized\_checkpoint\_view} 与 \code{fuse\_redirect}；FUSE baseline 使用
+FUSE alias view 暴露 \file{dump.rdb} 并隐藏 \file{dump.ckpt}。这些 targets 是
+Make-owned KVM release input；它们不改变 W3 的 Podman/CRIU 和 C8 边界。
+
+W4 现在有 host cache-witness manifest、KVM path oracle、KVM cache content oracle、
+KVM real ccache transition witness、KVM real ccache cache-path trace witness、
+trace-derived ccache policy bridge、real ccache policy-attached compile witness 和
+parent-scoped ccache compile witness，以及 table-only ccache compile comparator。ccache row 使用固定
+Redis/nginx source hash 派生 local-hit、stale-fallback 和 corrupt-reject witness；
+BuildKit row 使用固定 Prometheus \code{go.mod} 作为 canonical cache witness。
+\code{make kvm-w4-oracle} 在 KVM guest 中为 4 个 entries 建立独立 synthetic
+目录，分别运行 \file{cache_locality_view.bpf.c} 和 \file{table_redirect.bpf.c}。
+\code{make kvm-w4-cache-content} 进一步读取 W4 TSV，按 manifest materialize backing
+content，填充 \file{cache_rules} map，并验证四个 cache-state 分支的 expected content
+match、forbidden content mismatch、readdir alias 和 detach 行为。
+\code{make kvm-w4-ccache-real} 进一步在 KVM guest 中运行真实 \code{ccache}，对 Redis
+\file{src/crc64.c} 和 nginx \file{src/core/ngx_string.c} 分别执行 cold/hot 编译，
+验证 Redis 和 nginx 的 cold/hot object hash 相等，记录 \code{cache\_miss=2} 和
+\code{direct\_cache\_hit=2}，再把 hot object 输入 cache-locality content oracle。
+该 gate 不证明 ccache 自身 cache path 通过 \namei
+解析，也不证明 compiler/go 发布级 output oracle、operation-weighted policy cache hit
+rate、真实 stale/corrupt transition、update/stale window 或 table/update budget，因此
+\code{qualified_for_c8=false}。
+\code{make kvm-w4-ccache-trace} 则用 \code{strace -f -e trace=\%file} 采集两个
+真实 hot compile，证明 ccache 在 KVM guest 中实际访问 \code{CCACHE\_DIR}；该 target
+不 attach \namei policy，\code{policy\_executed=false}，因此仍不能替代
+operation-weighted policy cache hit rate。
+\code{make kvm-w4-ccache-policy-bridge} 进一步从上述 raw trace logs 中抽取 4 个真实
+cache object paths，生成 trace-derived TSV，并 attach
+\file{cache\_locality\_view.bpf.c} 验证 4 个 verified-hit aliases，policy content oracle
+0 failure。该 bridge 证明真实 trace object component 能被 W4 policy oracle 消费；
+但它本身仍没有在真实 ccache compile 阶段执行 \namei policy。
+\code{make kvm-w4-ccache-policy-compile} 随后把真实 ccache hot compile 放入
+\namei policy attach window，4 个 trace-derived cache objects 被 policy redirect，
+Redis/nginx policy output object hash 与 baseline hot object 一致，并记录
+\code{direct\_cache\_hit=2}。该 witness 仍不能替代 release-level operation-weighted
+policy cache hit rate，也没有真实 stale/corrupt transition 或 table/update budget
+counterfactual。
+\code{make kvm-w4-ccache-parent-compile} 又把同一类 hot compile 改成 parent-scoped
+lookup PoC：每个 ccache leaf parent 只写入一条 \code{name\_len=0} wildcard lookup
+rule，policy 对符合 ccache object-shape 且名称匹配 bounded witness 的 32 字节
+component 追加 \file{.local}，同时仍用 exact entries 约束 readdir aliases。
+Raw gate 记录 4 个 cache leaf parents、
+4 条 parent lookup updates、4 条 exact readdir updates、8 条 sampled table-equivalent
+updates、output hash match、\file{metadata.txt} PASS，以及一个合法 ccache 形状
+但非 witness sibling 的 backing-absent 和 PASS hard-check。
+当前 Makefile/report recipes 已纳入该 gate 的 hard-check，且
+\file{results/phase1/20260615T-full-phase1-gatefix/summary.md} 已引用同一 full-root
+raw artifact。它仍只是 sampled parent suffix
+PoC：它证明一个明显非 object sibling 和一个无 backing 的合法形状 non-witness
+sibling 不被 redirect，但不能证明多 sibling safety、witness object 缺 backing、
+stale/corrupt 或 release-scale update safety。
+\code{make kvm-w4-ccache-table-compile} 随后用同一份 sampled witness 运行
+\file{table_redirect.bpf.c} exact redirects，table baseline 也通过 output oracle 并记录
+\code{direct\_cache\_hit=2}；这说明当前 W4 sampled result 是 C8 负面证据，而不是
+table-only failure。
+\code{make kvm-w4-ccache-release-counterfactual} 进一步把该负证据变成 KVM raw
+accounting artifact：\file{w4-ccache-release-counterfactual.jsonl} 记录
+40 个 cache-path file ops、4 个 trace cache objects、4 条 parent lookup rule、
+8 条 table-equivalent rule、object-level hit rate 为 1、cache-path coverage 为 0.1，
+并且 parent policy attach window 的 ccache 子进程 strace 显示 40 个 cache-path
+file ops 中 16 个匹配 sampled policy cache objects，sampled hit rate 为 0.4。table
+baseline 仍通过；该 row 显式标记 C8 不合格，只能说明当前 sampled W4 witness 的边界，
+不能支撑 release-level programmable-necessity 结论。

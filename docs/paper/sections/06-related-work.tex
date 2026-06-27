@@ -1,0 +1,39 @@
+\section{相关工作}
+
+\subsection{用户态和可扩展文件系统}
+
+FUSE 允许用户态实现文件系统，并通过 kernel FUSE 模块接入 VFS~\cite{linux_fuse}。
+FUSE passthrough、ExtFUSE 和 Bento 都从不同方向降低用户态/内核文件系统扩展的成本：
+passthrough 让部分 I/O 绕过用户态 daemon~\cite{linux_fuse_passthrough}，ExtFUSE 把薄
+request handler 放到内核以优化用户态文件系统路径~\cite{extfuse}，Bento 用安全 Rust
+和框架化接口加速内核文件系统开发~\cite{bento}。\namei 的边界不同：它不实现新的文件系统，
+也不拥有 inode、dentry 或 file operations；它只在 VFS name-resolution 时让 eBPF policy
+返回受限 path-resolution action。
+
+\subsection{内核视图机制}
+
+OverlayFS、bind mount、symlink forest 和 copy tree 可以构造文件树视图。OverlayFS
+在内核中组合 lower/upper tree，并定义 lookup、readdir、whiteout 和 redirect-dir 等语义
+~\cite{linux_overlayfs}。这些机制适合作为 baseline，因为它们成熟且性能接近原生路径。
+它们的策略通常在 mount 或 materialization 时固定，因此本文把 action-specific build
+precedence、restore epoch consistency 和 cache state transition 当作必须由 baseline
+反驳的假设，而不是已经证明的不足。当前证据只支持 W2 slice；其他场景仍需要 table/update
+budget failure、stale/update-window failure 或明确范围收窄，才能说明这些 baseline
+不足以替代 programmable policy。
+
+\subsection{安全和事件接口}
+
+Landlock、BPF LSM 和 fanotify 都能观察或约束文件访问。Landlock 是非特权访问控制接口
+~\cite{linux_landlock}，BPF LSM 把 eBPF 程序挂到 LSM hook 上以实现 MAC/audit policy
+~\cite{linux_bpf_lsm}，fanotify 提供 filesystem event notification 和 interception
+~\cite{linux_fanotify}。这些接口回答的是“是否允许、审计或通知”这类问题。\namei 的问题
+不同：它在 lookup/readdir 阶段选择同一语义类路径的 backing component，并把后续权限、
+lookup 和 data path 留给 VFS 与 lower filesystem。
+
+\subsection{eBPF 内核策略接口}
+
+sched\_ext 说明 eBPF 可以作为受 verifier 约束的内核策略扩展点，用于把 scheduler policy
+移到可替换的 BPF programs 中~\cite{linux_sched_ext}。\namei 借鉴的是这种窄扩展点思路：
+内核保留对象所有权和安全边界，BPF 只做有界决策。但 \namei 面向 VFS path resolution，
+其 correctness oracle 是 lookup/readdir 一致性、lower filesystem permission preservation
+和 workload-specific path oracle，而不是 CPU scheduling fairness 或 throughput。

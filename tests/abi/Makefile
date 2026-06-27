@@ -28,8 +28,9 @@ $(OUTPUT)/namei_ext_abi_uapi: namei_ext_abi.c $(KERNEL_DIR)/tools/include/uapi/l
 		-I"$(KERNEL_DIR)/tools/include/uapi" \
 		-o "$@" "$<"
 
-$(OUTPUT)/namei_ext_abi_bpf: namei_ext_abi.c $(ROOT_DIR)/bpf/include/namei_ext.h | $(OUTPUT)
+$(OUTPUT)/namei_ext_abi_bpf: namei_ext_abi.c $(ROOT_DIR)/bpf/include/namei_ext.h $(ROOT_DIR)/bpf/include/namei_ext_policy.h | $(OUTPUT)
 	$(CC) -g -O2 -Wall -Wextra -DNAMEI_EXT_ABI_BPF \
+		-DNAMEI_EXT_POLICY_LAYOUT_ONLY \
 		-I"$(ROOT_DIR)/bpf/include" \
 		-o "$@" "$<"
 

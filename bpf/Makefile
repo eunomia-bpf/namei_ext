@@ -14,7 +14,7 @@ all: $(OUTPUT) $(BPF_OBJECTS)
 $(OUTPUT):
 	install -d "$@"
 
-$(OUTPUT)/%.bpf.o: policies/%.bpf.c include/namei_ext.h | $(OUTPUT)
+$(OUTPUT)/%.bpf.o: policies/%.bpf.c include/*.h | $(OUTPUT)
 	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) -Iinclude -c "$<" -o "$@"
 
 clean:

@@ -1,0 +1,1095 @@
+\section{评估结果和证据边界}
+
+本节采用 claim-first 结构。只有已经标明 result-level 且有 raw artifact 的 gate
+会被写成当前证据；其余性能和 correctness 数字只作为计划项或负结果边界，不进入主张。
+当前可用证据包括 W1 host witness/output oracle、W1 KVM policy preprocessing replay
+witness、W1 KVM policy release-binary replay witness、W1--W4 KVM path oracle、
+W2 nginx real gate、W3 Redis checkpoint replay witness、W3 Redis policy/materialized/FUSE
+macrobench release input、W4 cache content gate、W4 real ccache transition witness 和
+W4 real ccache cache-path trace witness、W1 FUSE alias/mount/hash baseline correctness
+test、W4 trace-derived ccache policy bridge、W4 bulk
+materialized baseline、W4 bulk FUSE cache-view baseline、W4 bulk FUSE compile-through
+baseline、W4 bulk native ccache hot-compile baseline、W4 bulk policy setup/update
+macrobench、W4 bulk policy-attached ccache compile witness、W4 real ccache
+policy-attached compile witness、W4 parent-scoped ccache compile witness、
+W4 cache-content table-only comparator、W4 table-only ccache compile comparator、W4
+cache state transition counterfactual、C4 W1--W4 lookup/readdir matrix，以及 W4 release counterfactual accounting 和
+table-only budget accounting。table-only
+budget accounting 不是 correctness 或 performance result；没有 raw result 的数字
+不能进入论文主张。
+
+当前总 verdict 是收窄且可复查的。新的 claim verdict ledger
+\file{results/eval-osdi/paper/20260617T-eval-claim-verdict-ledger-v17/claim-verdict/claim-verdict.jsonl}
+读取 W1/W2/W3/W4 workload ledger、performance comparison、tool-redirect scoped
+performance ledger、W2 paper-release gate、C4 lookup/readdir matrix、
+W4 cache transition counterfactual、W4 cache table-content comparator 和 C7 artifact
+audit，并记录
+\code{paper\_release\_gate\_pass=true} 和
+\code{global\_release\_gate\_pass=false}、
+\code{active\_main\_claims=4}、\code{scoped\_out\_claims=4}、
+\code{supported\_claims=4}、\code{partial\_claims=0} 和
+\code{unsupported\_claims=0}。C1 functional slice 是闭合的功能结果，C2/C3 是闭合的
+成本/性能 slice，C4 是声明 W1--W4 Phase 1 oracle 条目的 lookup/readdir matrix；C1 release-level programmability 和 C8 仍在当前主结论外。W1--W4
+都有 KVM-backed Phase 1 functional slice，W2 nginx fixture 是唯一通过 C2
+storage/threshold slice 的 workload；W1 build graph、W3 Redis checkpoint replay 和
+W4 ccache bulk comparison 均已有 proposed-system release input 和对应 external
+baseline input，但各自 ledger 仍为负。W3 的 materialized checkpoint-view 与 FUSE checkpoint-view baseline
+已经补齐，所以 W3 现在不是 baseline 缺口，而是 setup/update threshold 失败。W4 bulk
+也已有 materialized/FUSE cache-view baseline、complete compile-through-FUSE baseline、
+native ccache hot-compile baseline 和 policy setup/update release input，但
+setup/update/materialization ledger 仍为负。C3 现在只有 tool-redirect lookup/access/open/exec
+slice 通过 native/FUSE p99 阈值，full metadata suite 仍为负。C4 matrix ledger
+\file{results/eval-osdi/paper/20260617T-eval-c4-lookup-readdir-matrix-v4/c4-lookup-readdir/c4-lookup-readdir-matrix.jsonl}
+记录 \code{families=4}、\code{passing\_families=4}、\code{entries=26}、
+\code{lookup\_rows=26}、\code{readdir\_rows=26}、
+\code{lookup\_unique\_keys=26}、\code{readdir\_unique\_keys=26}、
+\code{duplicate\_lookup\_keys=0}、\code{duplicate\_readdir\_keys=0}、
+\code{c4\_supported=true} 和 \code{release\_gate\_pass=true}；它只覆盖
+\code{declared\_w1\_w4\_phase1\_lookup\_readdir\_matrix}，不替代 C8 或完整真实 workload correctness gate。
+C5--C8 被 scoped out：
+C5 residual-overhead gate 为负，C6 还不是 release-level stress evidence，C7 虽已有
+sanitized package/replay/anonymization gate，但 clean-checkout reproduction 仍未闭合；
+W4 cache state transition
+counterfactual 已证明 static exact table 在 stale/corrupt current oracle 下失败，但
+externally updated exact table 仍以相同 update-write ratio 通过，因此当前证据还没有
+table-only budget、stale-window 或 over-materialization failure。
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.27\textwidth}
+    >{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X}
+\toprule
+Gate & Verdict & 证据边界 \\
+\midrule
+W2 real nginx trace & pass & \code{nginx -t}、worker start/quit 和 attach traces 均通过，attach 期间 production decoy path open 次数为 0。 \\
+W2 C2 setup/materialization slice & pass & W2 nginx fixture 在 copy/symlink/bind/projected/FUSE baselines 下通过 storage、setup、update 和 materialization thresholds。 \\
+Tool-redirect C3 latency slice & pass & lookup/access/open/exec tool-redirect rows 通过 native p99 和 FUSE speedup thresholds。 \\
+Global C2 & fail & W1、W3 和 W4 都有 release input，但各自 threshold 或 comparison gate 为负。 \\
+Full-suite C3 & fail & lookup-native-hot、readdir alias view 和 build-tree stat walk 仍未通过全套 p99 threshold。 \\
+C4 lookup/readdir matrix & pass & 声明的 W1--W4 Phase 1 oracle matrix 中 4 个 policy family、26 个 entries、lookup/readdir identity keys 均匹配且无重复；不替代 C8 或完整真实 workload correctness gate。 \\
+C8 table-only insufficiency & scoped out & W3/W4 table-only comparator 仍能解释当前 sampled oracle，缺 table/update budget failure。 \\
+\bottomrule
+\end{tabularx}
+\caption{当前主稿可写的 scoped paper-release 结果。前三行是正向主结果，后四行定义不能外推的边界。}
+\label{tab:scoped-paper-release}
+\end{table}
+
+\subsection{评估问题}
+
+最终发布级评估将回答五个问题；当前本文主结论只保留证据支持的功能、W2
+materialization slice 和 tool-redirect latency slice。Make-owned artifact-discipline
+evidence 只说明当前证据可复查；C7 audit 已能生成 sanitized evidence package，但在
+clean-checkout reproduction 通过前仍不是 release-level
+reproducibility claim。没有达到 \code{qualified\_for\_c8}
+的 row 只能说明机制可运行，或者作为反事实负结果，不能进入主结论。
+\begin{enumerate}[leftmargin=*]
+\item 同一个 kernel ABI 是否能承载四类语义不同的 eBPF path-resolution policy family。
+\item lookup、open、access、exec 和 readdir 是否满足每个 use case 的 oracle。
+\item 相比 copy tree、symlink forest、bind fanout、FUSE 和 native tool baseline，\namei
+是否降低 setup/materialization 成本并保持可接受的 metadata tail latency。
+\item \code{table_redirect.bpf.c} 是否在同等 table/update budget 下无法同时满足语义
+oracle 和成本门槛。
+\item artifact 是否能在干净 checkout 中通过 Makefile-owned Docker/KVM workflow 复现。
+\end{enumerate}
+
+\subsection{Claim 和 Gate 速查}
+
+表~\ref{tab:claim-ledger-short} 给出本文使用的 claim ID。完整定义、成功门槛和降级规则
+由评估设计文档维护；这里给出 paper 中反复引用的
+最小可读定义，避免把计划级 ID 当成已完成结果。
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.08\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.28\textwidth}}
+\toprule
+ID & 主张 & 当前状态 \\
+\midrule
+C1 functional slice & 同一窄 VFS path-resolution ABI 在 Phase 1 KVM functional slices 中承载四类 POC policy family。 & Claim verdict 为 supported：Phase 1 在 KVM-backed functional slices 中覆盖四类 policy family；C1 release-level programmability 尚无满足所有 release gates 的 qualifying end-to-end family。 \\
+C2 & W2 nginx fixture slice 降低 setup/materialization 成本。 & Claim verdict 为 supported：当前支持 W2 nginx fixture C2 slice；W1/W3/W4 都是 release-input 但 threshold-negative evidence。 \\
+C3 & tool-redirect lookup/access/open/exec metadata p99 满足 native/FUSE 阈值。 & Claim verdict 为 supported：tool-redirect lookup/access/open/exec slice 通过 native/FUSE p99 阈值，max scoped policy/native p99 ratio 为 1.34x，min scoped policy/FUSE speedup 为 2.26x；full metadata suite 仍因 lookup-native-hot、readdir 和 build-tree walk 为负。 \\
+C4 & lookup 和 readdir 对声明的 policy 保持一致。 & Claim verdict 为 supported：声明的 W1--W4 Phase 1 lookup/readdir matrix 中 4 个 family 和 26 个 entries 均通过；边界是 Phase 1 oracle 条目，不是 C8 或完整真实 workload correctness。 \\
+C5 & VFS-level placement 和 lower-FS ownership 解释收益。 & Claim verdict 为 scoped out：tail10 和 no-hook/matched diagnostics 不能支持机制归因，residual overhead gate 仍为负，因此当前主稿不写机制归因 claim。 \\
+C6 & 规模边界和 fail-fast 行为可测。 & Claim verdict 为 scoped out：Phase 1 dmesg/verifier/syscall gate 是 artifact evidence，但发布级 stress/scale/robustness sweep 未完成。 \\
+C7 & artifact 可由 Makefile-owned KVM/Docker workflow 复现。 & Claim verdict 为 scoped out：Phase 1 workflow 可复查；独立 artifact audit 确认论文构建、证据路径、sanitized evidence package 和 package-root 论文重放存在，但投稿级 clean-checkout release reproduction 未完成。 \\
+C8 & table-only 在同等 table/update budget 下无法同时满足 oracle 和成本门槛。 & Claim verdict 为 scoped out：static exact table 在 stale/corrupt current oracle 下失败，但 externally updated exact table 仍通过且 update-write ratio 为 1；当前仍缺 table-only budget failure，因此 C8 只作为负结果和 future gate。 \\
+\bottomrule
+\end{tabularx}
+\caption{Claim ID 速查。当前状态列是证据等级，不是最终 verdict。}
+\label{tab:claim-ledger-short}
+\end{table}
+
+本文还引用三个 gate ID：B1 是路径解析正确性和 lookup/readdir 一致性矩阵，B10 是
+健壮性和失败语义，B12 是 policy-family programmability 与 table-only counterfactual。
+只有同时满足 B1、B10、B12、真实来源证据和 table/update budget 反事实的 row，才能标记为
+\code{qualified\_for\_c8} 并计入 C1 release-level programmability 或 C8；C1
+functional slice 只要求 KVM attach、path oracle 和 family coverage 证据。
+
+\subsection{执行角色}
+
+表~\ref{tab:evaluation-roles} 固定当前 evidence pipeline 中的角色，避免把 workload
+生成、policy attach、oracle checking 和 report analysis 混在一起。
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.28\textwidth}}
+\toprule
+角色 & 职责 & 当前实现边界 \\
+\midrule
+Make target & 声明依赖、构建 artifact、启动 KVM/Docker、收集 raw results。 & 唯一 project-owned control plane。 \\
+workload materializer & 从固定源码、fixture、checkpoint 或 cache manifest 生成 guest 输入。 & host-only materializer 只提供 provenance。 \\
+guest runner & 在修改后的 kernel guest 内 load/attach policy 并运行 workload 或 checker。 & 只有 attach window 内的结果能证明 policy execution。 \\
+oracle checker & 比较 content hash、health、output、readdir set、errno 和 detach 行为。 & checker failure 是 hard failure。 \\
+report checker & 校验 raw artifact、sha256、summary fields、dmesg 和 non-C8 fields。 & analysis/report 可以解释数字，不能补造 raw evidence。 \\
+table comparator & 运行 \file{table_redirect.bpf.c} exact lookup baseline 和 budget accounting。 & 当前 sampled/path oracle 通过，因此是 C8 负面证据。 \\
+\bottomrule
+\end{tabularx}
+\caption{评估执行角色。不同角色的证据等级不同，不能互相替代。}
+\label{tab:evaluation-roles}
+\end{table}
+
+\subsection{Use case 可表达性}
+
+表~\ref{tab:expressibility} 是所有 workload 进入主结果前的能力门槛。Phase 1 的
+same-parent component redirect 可以表达部分受控子集；凡是需要 cross-directory backing
+或 target registry 的 row，必须先实现对应 ABI 并重新通过 KVM gate。
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.26\textwidth}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}}
+\toprule
+场景 & 最小 ABI 能力 & Phase 1 状态 & 进入主结果条件 \\
+\midrule
+Build graph & same-parent redirect 可表达合成 action tree；真实 shared store 常需要 target registry。 &
+selected 子集可表达，真实 store mapping blocked。 & target-registry ABI 通过 B1/B10，或只声明同父目录子集。 \\
+Sandbox fixture & config/secret/socket aliases 到 fixture、fake secret 或 poison sentinel。 &
+selected fixture 子集可表达，不声称安全隔离。 & app 启动且 no-real-secret checker 通过。 \\
+Checkpoint/restore & checkpointed state/config/cache aliases；跨目录 checkpoint image 常需要 target registry。 &
+同父目录 fixture 子集可表达，完整 CRIU restore blocked。 & restore 后新 VFS trace、0 mixed epoch 和 target-registry gate。 \\
+Cache locality & cache hit/miss/stale aliases 到 local verified cache 或 canonical backing。 &
+本地 cache/canonical 子集可表达。 & content hash checker、stale/corrupt reject 和 transition coverage。 \\
+\bottomrule
+\end{tabularx}
+\caption{Use case 可表达性门槛。Blocked row 不能进入 C1 release-level programmability 或 C8 主结论。}
+\label{tab:expressibility}
+\end{table}
+
+\subsection{Workloads}
+
+表~\ref{tab:workloads} 给出 release-level workload 矩阵。主结论只允许使用状态为
+\code{qualified\_for\_c8} 且有 KVM raw result 的 row。当前 W1 已有 host trace-witness、
+host build-output oracle、KVM path oracle、KVM policy preprocessing replay witness、
+KVM policy release-binary replay witness、KVM poison/negative branch probes 和
+20-sample KVM setup/update release input，W2 已有 fixture-witness、KVM path oracle、真实 nginx health
+oracle 和 fixture content probes，W3 已有 checkpoint witness、KVM path oracle、Redis checkpoint replay witness
+以及 Redis checkpoint-view policy/materialized/FUSE release input，W4 已有
+provenance-bound witness manifest 和 KVM path oracle，W4 另有 cache content oracle、
+真实 ccache transition witness、真实 ccache cache-path trace witness 和 trace-derived
+policy bridge witness、bulk FUSE compile-through baseline、policy-attached compile witness、parent-scoped compile witness
+、table-only compile comparator、cache state transition counterfactual 和 release counterfactual accounting。
+其中 W2 nginx fixture 是当前唯一的 scoped paper-release positive workload；
+其他 rows 只能支撑 C1 functional slice 或负结果边界，不能计入 C1
+release-level programmability 或 C8。
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.22\textwidth}}
+\toprule
+ID & Family & 真实来源 & 当前状态 \\
+\midrule
+w1-redis-build & build graph & Redis source build~\cite{redis_repo,redis_config} & functional\_only KVM path oracle + policy preprocessing/release replay + branch probes + setup/update release input \\
+w1-nginx-build & build graph & nginx configure/build~\cite{nginx_docs} & functional\_only KVM path oracle + policy preprocessing/release replay + branch probes + setup/update release input \\
+w2-nginx-fixture & sandbox fixture & nginx workload fixture config + Make-owned fake cert/endpoint/poison fixture~\cite{nginx_docs} & scoped paper-release positive：W2 C2 storage/threshold slice + real nginx trace/health/probes；不计入 C1 release-level programmability 或 C8 \\
+w2-postgres-secret-fixture & sandbox fixture & PostgreSQL sample config + Make-owned fake password fixture~\cite{postgres_file_locations} & functional\_only KVM path oracle \\
+w3-redis-rdb-replay & checkpoint/restore & Redis source/provenance + Make-owned checkpoint state/runtime/mixed-epoch fixtures；当前 witness 是 Redis RDB load replay，Podman/CRIU 仍是未完成的发布级目标~\cite{redis_repo,podman_checkpoint,criu_checkpoint_restore} & functional\_only KVM path oracle + Redis RDB load replay witness + policy/materialized/FUSE setup/update release input，但 C2 ledger 为负 \\
+w3-nginx-checkpoint-fixture & checkpoint/restore & nginx upstream sample config + Make-owned checkpoint cache/runtime fixtures；Podman/CRIU 仍是未完成的发布级目标~\cite{nginx_official_image,nginx_docs,podman_checkpoint} & functional\_only KVM path oracle \\
+w4-ccache-redis-nginx & cache locality & Redis/nginx source hash + Make-owned cache hit/stale/corrupt fixtures；另有真实 ccache cold/hot transition、cache-path trace、trace-derived policy bridge、bulk FUSE compile-through baseline、policy-attached compile witness、parent-scoped compile witness、cache-content table-only comparator、table-only compile comparator 和 cache state transition counterfactual~\cite{ccache_manual,redis_repo,nginx_docs} & functional\_only KVM path + cache content + real ccache transition/trace/bridge/compile oracle + FUSE compile baseline + parent-scoped PoC + table-only negative evidence \\
+w4-buildkit-prometheus-go-cache & cache locality & Prometheus \code{go.mod} canonical cache witness；BuildKit run 是发布级目标~\cite{prometheus_repo,prometheus_go_mod,docker_buildkit_cache} & functional\_only KVM path + cache content oracle \\
+\bottomrule
+\end{tabularx}
+\caption{真实 workload 矩阵。状态不是 \code{qualified\_for\_c8} 的 row 不能支撑最终主张。}
+\label{tab:workloads}
+\end{table}
+
+表~\ref{tab:workload-source-signal} 进一步把 workload 来源、性能信号、当前证据和 release
+blocker 绑定在一起。该表是防止 overclaim 的 ledger：如果某一行仍然只有
+\code{functional\_only} 证据，它可以说明 Phase 1 机制能跑通并支撑 C1 functional
+slice，但不能支撑 C1 release-level programmability、C8 或性能结论。
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}}
+\toprule
+Family & 真实来源 & 主要性能信号 & 当前证据与 release blocker \\
+\midrule
+Build graph &
+Bazel sandbox/hermeticity 机制与 Redis/nginx 真实 source build~\cite{bazel_sandboxing,bazel_hermeticity,redis_repo,nginx_docs}。 &
+execroot/action view setup、copy/symlink/mount materialization 成本、metadata p99、generated/source/toolchain/deps precedence。 &
+已有 W1 host trace、host build-output oracle、KVM path oracle、KVM policy preprocessing replay witness、KVM policy release-binary replay witness、KVM poison/negative branch probes、20-sample KVM setup/update release input，copy/symlink/bind/projected-volume/FUSE 五类 baseline release input，以及 FUSE alias/mount/hash correctness test；但 W1 ledger 为负，storage/setup/update/materialization threshold 均未通过，仍缺完整 trace-derived alias set、release-level poison/negative natural workload hit、operation-weighted hit rate 和 table/update budget。 \\
+Sandbox fixture &
+Kubernetes projected volumes/Secrets、Docker secret/config 注入与 nginx/PostgreSQL 服务配置~\cite{kubernetes_projected_volumes,kubernetes_secrets,docker_compose_secrets,nginx_docs,postgres_file_locations}。 &
+fixture setup、path-class dispatch、config/endpoint/secret/cert/poison branch coverage、startup/reload metadata p99。 &
+已有 W2 KVM path oracle、nginx endpoint health + fixture content probes，以及 W2 real trace
+no-production-open gate；仍缺 PostgreSQL real oracle、release-level endpoint/startup
+matrix 和 table/update budget。 \\
+\bottomrule
+\end{tabularx}
+\caption{真实 workload 来源到性能信号的台账：build graph 和 sandbox fixture。每一行进入主结论前必须先消除 release blocker。}
+\label{tab:workload-source-signal}
+\end{table}
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}}
+\toprule
+Family & 真实来源 & 主要性能信号 & 当前证据与 release blocker \\
+\midrule
+Checkpoint/restore &
+Podman/CRIU checkpoint/restore 与 Redis/nginx 服务状态~\cite{podman_checkpoint,criu_checkpoint_restore,redis_repo,nginx_official_image}。 &
+restore session switch、post-restore fresh lookup/readdir、runtime-local socket/pid/log/temp remap、mixed-epoch reject。 &
+已有 W3 checkpoint witness KVM path oracle、Redis checkpoint replay witness，以及 Redis proposed-system/materialized/FUSE checkpoint-view release input；C2 ledger 为负，仍缺真实 Podman/CRIU restore、post-restore VFS trace、state/config/cache hash、0 mixed epoch 和 table/update budget。 \\
+Cache locality &
+ccache、Docker BuildKit cache mounts、Prometheus Go module graph 和 content-addressed cache 机制~\cite{ccache_manual,docker_buildkit_cache,prometheus_repo,prometheus_go_mod,bazel_remote_cache,nix_store}。 &
+cache view setup/update、verified-hit/stale-fallback/corrupt-reject/miss-canonical branch coverage、stale window、update writes、metadata p99。 &
+已有 W4 KVM path oracle、map-backed cache content oracle、cache-content table-only comparator、真实 ccache cold/hot transition witness、真实 ccache cache-path trace witness、trace-derived policy bridge、bulk materialized/FUSE cache-view baselines、bulk FUSE compile-through baseline、bulk policy setup/update macrobench、policy-attached compile witness、parent-scoped compile witness、table-only ccache compile comparator、cache state transition counterfactual 和 release counterfactual accounting；当前 cache-content table-only comparator 和 sampled output oracle table-only comparator 都通过，parent-scoped witness 已覆盖 object-shape、metadata sibling PASS 和一个合法形状 non-witness sibling PASS，cache state transition counterfactual 只证明 static exact table 会产生 stale/corrupt wrong-local hit，而 externally updated exact table 仍通过，release counterfactual accounting 也保持 \code{qualified\_for\_c8=false}，因此仍缺 release-level operation-weighted policy cache hit rate、真实 stale/corrupt ccache transition、BuildKit cache-path trace、真实 stale/update window 和 table/update budget failure。 \\
+\bottomrule
+\end{tabularx}
+\caption{真实 workload 来源到性能信号的台账：checkpoint/restore 和 cache locality。每一行进入主结论前必须先消除 release blocker。}
+\label{tab:workload-source-signal-state-cache}
+\end{table}
+
+早期 C2 release-sample inventory 使用的完整 Phase 1 root 是
+\file{results/phase1/20260615T-full-phase1-c2-release-sample-v1/}。它由顶层
+\code{make phase1} 生成，把 W1--W4 的 KVM witnesses、W4 parent/table/release
+counterfactual、W3/W4 same-workload table-only counterfactuals、functional、Docker、
+dmesg、microbenchmark variant gates，以及 \code{namei\_ext-setup}/
+\code{namei\_ext-update} raw rows 放入同一份 historical evidence root。本节中旧 run id
+只作为 provenance 出现。当前 claim closure 由 claim verdict v17 input manifest 固定：
+W1 v7、W2 v11、W3 v7、W4 v15、performance comparison v6、tool-redirect scope v7、
+W2 paper-release v6、C4 matrix v4、C7 artifact audit v11 和 W4 v2/v3 counterfactuals 必须全部通过各自
+input manifest 校验；C8-qualified row 仍为 0。
+
+此前基于 \file{results/phase1/20260615T-full-phase1-c2-setup-update-v1/} 的 B12
+release contract ledger 和 C2 macrobench ledger 只作为 historical inventory：它们证明
+KVM collector 能记录 \code{namei\_ext} setup/update release-sample rows，并把
+copy tree、symlink forest、bind mount、OverlayFS、FUSE redirect baseline rows 放入同一
+contract，但不能替代 workload-equivalent setup/storage/update comparison。当前
+workload verdict 以后续 per-workload ledgers 为准。W1 后续已有
+20-sample proposed-system setup/update release input 和 copy/symlink/bind/projected-volume/FUSE
+baseline release input，且 FUSE correctness test 已检查 alias 可见性、mount 数和
+materialized/post-update output hash；当前 W1 不再缺 projected/FUSE baseline，
+而是 storage/setup/update/materialization thresholds 均未通过，完整 ledger 仍为负。W3 后续已有
+Redis checkpoint proposed-system、materialized checkpoint-view 和 FUSE checkpoint-view
+release input，但完整 ledger 仍为负；当前 W3 不再缺同 workload FUSE baseline，
+而是 setup/update thresholds 均未通过。全局 C2 只剩 W2 slice 为正；W1/W3/W4
+必须作为负结果处理，或者需要 W4 更强同 shape 对照或范围收窄。
+随后新增的 W2 nginx KVM macrobench
+\file{results/phase1/20260615T-w2-nginx-c2-macrobench-release-sample-v1/w2-nginx-macrobench.jsonl}
+真正写出了同一 workload 的 setup/update/correctness raw rows：20 条
+\code{w2-nginx-macrobench-setup}、20 条 \code{w2-nginx-macrobench-update}、20 条
+\code{w2-nginx-macrobench-correctness} 和 1 条 summary，summary 为
+\code{pass=true}、\code{failures=0}、\code{policy\_executed=true}、
+\code{kvm\_validated=true}，但仍标记 \code{c2\_supported=false} 和
+\code{release\_gate\_pass=false}。该 run 证明 W2 raw-row path 已在修改内核 KVM 中
+跑通 20 个 samples；最新 guest target 还会在同一 KVM run 内对
+\code{w2-nginx-macrobench-inputs.sha256} 执行 \code{sha256sum -c}，并把对应
+dmesg log 中的 BUG/WARNING/Oops/panic/hung-task pattern 作为 hard failure。随后
+\file{results/phase1/20260616T-w2-nginx-baseline-macrobench-release-sample-v4/w2-nginx-baseline-macrobench.jsonl}
+补上同 workload 的 \code{copy\_tree}、\code{symlink\_forest} 和
+\code{bind\_mount}、\code{projected\_volume} 以及 \code{fuse\_redirect}
+materialization/bind/projected/FUSE baseline：
+每类 baseline 都有 20 条 setup rows、20 条 update rows 和 20 条 correctness rows，
+summary 为 \code{baseline\_count=5}、\code{setup\_rows=100}、
+\code{update\_rows=100}、\code{correctness\_rows=100}、
+\code{pass=true}、\code{failures=0}、\code{policy\_executed=false}、
+\code{kvm\_validated=true}；最新 guest target 同样 hard-gate baseline input hash
+和对应 dmesg log。W2 专用 ledger
+\file{results/eval-osdi/paper/20260617T-eval-w2-nginx-workload-macrobench-hardgate-v11/b3-macrobench/w2-nginx-workload-macrobench.jsonl}
+把 proposed-system rows 和 copy/symlink/bind/projected/FUSE baseline rows 合并，并记录
+\code{policy\_release\_input\_pass=true}、\code{baseline\_release\_input\_pass=true}、
+\code{copy\_symlink\_baselines\_pass=true}、\code{bind\_baseline\_pass=true} 和
+\code{projected\_volume\_baseline\_pass=true}、\code{fuse\_baseline\_pass=true}、
+\code{all\_feature\_baselines\_pass=true}、
+\code{full\_feature\_equivalent\_baseline\_pass=true}、
+\code{storage\_footprint\_pass=true}、\code{setup\_latency\_threshold\_pass=true}、
+\code{update\_latency\_threshold\_pass=true}、
+\code{update\_materialization\_threshold\_pass=true}、
+\code{threshold\_pass=true} 和 \code{w2\_c2\_slice\_supported=true}，但全局仍标记
+\code{c2\_supported=false} 和 \code{release\_gate\_pass=false}。因此 W2 现在有五类
+feature baseline input 和 storage/threshold-supported claim slice，但仍不能替代全局 C2
+release macrobenchmark。
+W2 paper-release gate
+\file{results/eval-osdi/paper/20260617T-eval-w2-tool-redirect-paper-release-v6/paper-release/w2-tool-redirect-paper-release-gate.jsonl}
+进一步递归校验 W2 real trace、W2 macrobench ledger 和 tool-redirect scoped C3
+ledger 的 input manifests，并记录
+\code{paper\_release\_gate\_pass=true}、
+\code{scope=w2\_nginx\_fixture\_plus\_tool\_redirect\_metadata}、
+\code{w2\_real\_trace\_gate\_pass=true}、
+\code{w2\_c2\_slice\_supported=true}、
+\code{tool\_redirect\_c3\_supported=true} 和
+\code{no\_real\_production\_open\_pass=true}。该 gate 是当前收窄主张的
+scoped paper-release evidence；它不升级 W1/W3/W4 C2、full-suite C3 或 C8。
+C4 由独立 lookup/readdir matrix ledger 承担，而不是由 W2 paper-release gate 承担。
+因此 \code{make eval-osdi-policy-family} 和 \code{make eval-osdi-paper}
+在当前 global evidence 上应失败；\code{make eval-osdi-macrobench} 和
+\code{make eval-osdi-workload-macrobench} 也应因为 C2 summary 没有
+\code{release\_gate\_pass=true} 和 \code{c2\_supported=true} 而失败。这些失败是本文
+C1/C2/C8 暂不升级为主结论的 hard gate，而不是实验运行失败。
+
+同一 eval pipeline 还生成 B2/B8 performance input ledger 和 comparison verdict，
+raw JSONL 文件名分别为 \file{performance.jsonl} 和
+\file{performance-comparison.jsonl}。旧 20-sample KVM microbench root 已包含
+tail latency、confidence interval、随机化顺序和 before/after system metrics，
+但其 raw latency batch size 只有 4，因此被降级为 diagnostic evidence。新的
+batch=64 KVM microbench root 与 batch=64 external baseline root 已满足 release
+input gate：\code{input\_gate\_pass=true}、
+\code{has\_internal\_latency\_batch=true}、
+\code{has\_external\_latency\_batch=true}，且 copy tree、symlink forest、bind
+mount、OverlayFS 和 FUSE redirect 都有 20-sample KVM release baseline rows。
+但是原始 batch=64 threshold verdict 仍为负：
+\code{kernel\_p99\_threshold\_pass=false}、
+\code{fuse\_speedup\_threshold\_pass=false} 和
+\code{pass\_only\_threshold\_pass=false}。max policy/native p99 ratio 为 1.77x，
+min policy/FUSE p99 speedup 为 1.33x，max pass-only/native p99 ratio 为 1.71x。
+global C2、full-suite C3 和 C5 因此仍不能进入主结论。
+之后测试的 RCU-pass fastpath 也不能改变该结论：一版让 PASS 在 RCU-walk 中继续，
+另一版对 REDIRECT 尝试 \code{try\_to\_unlazy(nd)} 复用 decision。两版都能在 KVM 中
+跑通 batch=64 release input，并把 max pass-only/native p99 ratio 降到 1.48x 或
+1.38x；但 max policy/native p99 ratio 同时恶化到 2.49x 或 2.43x，且
+\code{kernel\_p99\_threshold\_pass}、\code{fuse\_speedup\_threshold\_pass} 和
+\code{pass\_only\_threshold\_pass} 仍为 false。因此该优化不进入主线实现。
+之后测试的 ctx 初始化拆分 PoC 移除了整块 context \code{memset}，改为显式初始化字段并保留
+output buffer 清零语义。该 PoC 让 max pass-only/native p99 ratio 降到 1.095x，
+\code{pass\_only\_threshold\_pass=true}；但 max policy/native p99 ratio 仍为 1.81x，
+min policy/FUSE p99 speedup 仍只有 1.64x。因此它只说明 context construction 是
+residual overhead 的一部分，不能支撑 C3/C5。对应 hard gate 仍按预期失败。
+进一步的 tail sample-density diagnostic 把每组 latency rows 从 20 增到 200。
+该 run 中 \code{fuse\_speedup\_threshold\_pass=true}，min policy/FUSE p99 speedup 为
+2.26x；但 \code{kernel\_p99\_threshold\_pass=false}、
+\code{pass\_only\_threshold\_pass=false}，max policy/native p99 ratio 为 4.37x，
+max pass-only/native p99 ratio 为 2.62x。因此 FUSE 2x 不再是主要 blocker，
+真正需要解释的是 pass-only/readdir/tree-walk tail residual。对应 hard gate 仍按预期失败。
+为避免把这个负结果压缩成一个布尔值，新的 residual diagnostic ledger
+\file{results/eval-osdi/paper/20260617T-eval-c3-full-suite-residual-diagnostic-v3/b2-performance/c3-full-suite-residual-diagnostic.jsonl}
+把同一 comparison 与 internal/external tail rows 重新连接。该 ledger 保持
+\code{release\_gate\_pass=false}，但明确记录
+\code{fuse\_baseline\_threshold\_pass=true}、
+\code{full\_suite\_c3\_supported=false} 和
+\code{full\_suite\_c5\_supported=false}；所有 7 个 shared benches 的 FUSE speedup
+threshold 均通过，min policy/FUSE p99 speedup 为 2.2578x。剩余 C3 blocker 被分成三类：
+\code{lookup\_native\_hot} 是 near-threshold row，policy/native p99 为 1.526x；
+\code{readdir\_alias\_view} 是 p99 tail outlier，policy p99/p95 为 3.116x；
+\code{build\_tree\_stat\_walk} 是 common-hook residual dominated row，pass-only/native p99
+为 2.624x。该诊断只解释 full-suite 失败结构，不扩大主结论。
+新的 scoped ledger
+\file{results/eval-osdi/paper/20260617T-eval-performance-tool-redirect-scope-v7/b2-performance/performance-tool-redirect-scope.jsonl}
+把同一 comparison 中的 lookup/access/open/exec tool-redirect rows 单独作为 C3 子范围审计：
+\code{scoped\_c3\_supported=true}、
+\code{scoped\_kernel\_p99\_threshold\_pass=true} 和
+\code{scoped\_fuse\_speedup\_threshold\_pass=true}。该子范围的 max policy/native p99
+ratio 为 1.3378x，min policy/FUSE p99 speedup 为 2.2578x；失败的 full-suite rows
+仍是 \code{lookup\_native\_hot}、\code{readdir\_alias\_view} 和
+\code{build\_tree\_stat\_walk}。因此 C3 只能写成 tool-redirect metadata operations
+的 supported scoped tool-redirect result，而不是全局 metadata tail-latency claim。
+随后我们增加 per-row rusage 观测和 Make-owned no-hook selector，并用独立 C5 ablation
+ledger
+\file{results/eval-osdi/paper/20260617T-eval-c5-rusage-nohook-ablation-v2/b2-performance/c5-rusage-nohook-ablation.jsonl}
+连接 full rusage tail10、no-hook baseline-only tail10 和 baseline/pass-only matched
+tail10。该 ledger 记录 \code{c5\_supported=false} 和
+\code{release\_gate\_pass=false}，matched baseline/pass-only run 的
+max pass-only/native p99 ratio 为 1.3229x，失败 rows 是
+\code{access\_tool\_redirect}、\code{lookup\_native\_hot} 和
+\code{open\_tool\_redirect}；full-run max pass-only/native p99 ratio 为 1.7728x，
+以 no-hook baseline-only 为 denominator 的 max pass-only/no-hook p99 ratio 为 1.3064x。
+非 exec 失败行没有 major fault 或 context-switch 信号，主要体现为 self-CPU residual；
+\code{exec\_tool\_redirect} 的 context-switch 和 minor-fault 观测来自 fork/exec 行为，
+不作为 namei hot-path 归因。这个结果把 C5 blocker 缩小到
+common hook/dispatch CPU residual，但仍未达到 1.1x pass-only 阈值。
+最后，C7 artifact audit ledger v11
+\file{results/eval-osdi/paper/20260617T-eval-c7-artifact-audit-v11/artifact-audit/c7-artifact-reproducibility-audit.jsonl}
+把 claim verdict v11、C3 residual diagnostic、C5 ablation、当前论文 sections、生成的
+PDF/log、sanitized package root、package manifest、tar list、package tar、package-root
+paper replay log/PDF 和 anonymization checklist 纳入同一 input manifest。该 run 记录
+\code{paper\_build\_artifact\_pass=true}、\code{evidence\_paths\_pass=true}、
+\code{artifact\_package\_gate\_pass=true} 和
+\code{artifact\_package\_replay\_pass=true}，
+\code{anonymization\_checklist\_gate\_pass=true}，package 中 17 个声明文件全部进入
+tar，sanitized package 中 \code{/home/...} 绝对路径命中数为 0；从 package-root
+执行 \code{make -C docs/paper check} 和 \code{paper} 也生成了 replay PDF。同时该 run 记录
+\code{clean\_checkout\_gate\_pass=false}、\code{c7\_supported=false} 和
+\code{release\_gate\_pass=false}。因此 C7
+blocker 已经收窄为 clean-checkout reproduction。
+同一 root 已包含五个真实 KVM variant：native baseline、pass-only、empty-table、
+populated-table 和 redirect policy。report hard gate 要求 35 个 bench row、0 个
+failing op、4 次 policy attach 成功，并要求 populated-table variant 成功写入
+66 条 \code{exact\_redirects} map rule。因此 \code{make eval-osdi-performance}
+当前仍应失败；这个失败说明当前 prototype 尚未满足阈值 gate 和 C2 macrobench gate，并不否定这些
+KVM attach variant 的功能证据。
+
+\subsection{当前 W1 证据}
+
+表~\ref{tab:w1-current} 记录 canonical run \file{20260615T-parent-key-poc} 中当前已有的
+W1 host trace-witness、host build-output oracle、KVM preprocessing replay witness 和
+KVM release-binary replay witness。host 证据只证明真实源码构建、trace 采集、
+trace-witness manifest 生成路径和 binary hash 记录可复现；KVM preprocessing replay
+只证明 policy attach path 能影响真实源码 preprocessing 并保持 baseline 输出一致。candidate hit-rate 字段
+定义为 \code{candidate\_hits / trace\_lines}，只表示手工候选 alias 在 host trace 中出现，
+不是 redirected operation hit rate。
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrrl}
+\toprule
+Workload & Trace lines & Entries & Candidate hits & Rate & Host output \\
+\midrule
+w1-redis-build & 1,224,839 & 4 & 5,692 & 0.465\% & host\_output=true \\
+w1-nginx-build & 1,796,476 & 5 & 5,638 & 0.314\% & host\_output=true \\
+\bottomrule
+\end{tabular}
+\caption{W1 当前 host trace-witness、host build-output oracle、KVM preprocessing replay witness 和 KVM release-binary replay witness。数字来自 run 20260615T-parent-key-poc。该表不是性能结果，KVM path oracle 和 replay witness 由独立 JSONL gate 记录。}
+\label{tab:w1-current}
+\end{table}
+
+新增 W1 host output oracle target 生成
+\file{w1-build-output-oracle.jsonl}，
+校验 Redis/nginx 两个真实 host build 的 binary SHA256、trace build binary SHA256、
+duration、trace file-op lines 和 source manifest hash。该 artifact 的 summary 为 0 failure，
+但它明确记录 policy 未执行、KVM 未验证、C8 不合格；它不能替代 KVM policy build replay。
+
+新增 \code{make kvm-w1-build-replay} 在修改后的 kernel guest 中复制真实 Redis/nginx
+source tree，先在未 attach policy 时对 Redis \file{src/server.c} 和 nginx
+\file{src/core/nginx.c} 生成 baseline preprocessed output；随后 materialize
+trace-derived shadow aliases，load/attach \file{build_graph_view.bpf.c}，并通过同一路径生成
+policy preprocessed output。Raw result \file{w1-build-replay.jsonl} 的 summary 为
+0 failure，Redis baseline/policy output hash 都是
+\code{c4fc64fce52917575d2e4c7d0735a45685f54be29f68303a730f69bfeb588422}，nginx
+baseline/policy output hash 都是
+\code{dbb253e0d661fce0dabbd9b0ad2c42e349ed99277dc6f9168974a589e3048c5e}。该 witness
+的 raw rows 显示运行环境为 KVM、policy 已执行，并把 policy replay output hash
+oracle 标为 true；同时 release output hash oracle 和 C8 qualification 字段仍为 false。它只覆盖
+preprocessing 等价性，不覆盖完整 Redis/nginx release binary build。
+
+2026-06-15 的 W1 gap analysis 将该边界作为独立 gate，并识别出 component-only
+map key 是 release replay 的一个 blocker。同日的 parent-aware ABI PoC 已补上第一层
+rule identity：kernel ctx 以 append-only 方式暴露 \code{parent_dev}、
+\code{parent_ino}、\code{parent_generation} 和 \code{parent_flags}，map-backed policy
+key 使用 event、cgroup id、parent \code{dev/ino} 和 component name。\code{make report
+RUN_ID=20260615T-parent-key-poc} 已通过完整 Phase 1 gate，且 W1 preprocessing replay
+在 parent-aware key 下仍然通过。该 PoC 解除 component-only blocker，但当前论文仍只把
+\code{kvm-w1-build-replay} 作为 KVM preprocessing replay witness。
+随后新增的 \code{make kvm-w1-release-build-replay} 在同一 run id 下完成 Redis/nginx
+release rebuild witness：Redis baseline/policy 规范化二进制 hash 都是
+\code{65c8f515...f2de8b}，nginx baseline/policy 规范化二进制 hash 都是
+\code{f9e214c2...74544}；raw summary 为 0 failure，且记录
+\code{policy\_executed=true}、\code{kvm\_validated=true} 和
+\code{release\_binary\_hash\_match=true}。同一 run id 下的
+\code{make kvm-w1-branch-probes} 还在 Redis \file{src/} 和 nginx \file{src/core/}
+真实 source parent directory 副本中验证 \code{private.h -> poison.dep} 和
+\code{missing.h -> PASS/ENOENT}，summary 为 0 failure。该 artifact 记录 host trace
+candidate hit rate 为 \code{11330/3021315 = 0.00375}，即 \code{0.375\%}。它同时显式标记
+这不是 release-level operation-weighted metric，且 C8 不合格。W1 若要进入 C1 release-level
+programmability 或 C8 主结果，还需要完整
+trace-derived alias set、真实 release-level poison/negative workload hit、
+operation-weighted redirected hit rate，以及 table/update budget counterfactual。
+
+2026-06-16 新增的 W1 policy macrobench v2 把 build graph 的 proposed-system
+setup/update 提升到 20-sample KVM release input。Raw result
+\file{w1-build-macrobench.jsonl} 中有 20 条 setup rows、20 条 update rows 和
+20 条 correctness rows；summary 记录 pass、0 failure、policy executed、KVM
+validated，同时保持 C2 和 release gate 为 false。随后 W1 baseline macrobench v3
+在同一 workload 上补齐 copy tree、symlink forest、bind mount、projected volume 和
+FUSE redirect 五类 baseline release input；summary 记录 5 类 baseline、100 条
+setup rows、100 条 update rows、100 条 correctness rows、pass 和 0 failure，FUSE
+setup rows 记录 4 个 mounts。随后单独的 FUSE-only hardgate v4 把 FUSE correctness
+test 升级为 release input：20 个 correctness rows 均记录 8 个 visible aliases、4
+个 alias parent dirs 和 4 个 FUSE mounts，且 baseline preprocessing、materialized
+output hash 和 post-update output hash 都通过。
+
+新的 W1 workload ledger
+\code{20260617T-eval-w1-build-workload-macrobench-ledger-fuse-test-hardgate-v7}
+显示 policy release input、full baseline release input 和 FUSE-only test release
+input 均通过；FUSE correctness test 为 20/20 pass；projected-volume、FUSE 和
+full feature-equivalent baselines 均通过。但 storage footprint、setup latency、
+update latency、update materialization 和 W1 C2 slice 均未通过。该 ledger 还递归校验
+policy、full baseline 和 FUSE-only 三个 lower input manifests，因此旧 raw run stale
+时不能通过 paper ledger。更重要的是，最快 baseline setup 均值为
+\code{16.51 ms}，低于 proposed-system 的 \code{65.26 ms}；最快 baseline update
+均值为 \code{40.41 ms}，低于 proposed-system 的 \code{52.11 ms}；最小 baseline
+setup bytes 为 \code{69298}，也低于 proposed-system 的 \code{457356}。因此该结果是
+完整 feature baseline 下的 W1 release-level negative evidence，不是 W1 C2 支持证据。
+
+新增 \code{make kvm-w1-oracle} 在修改后的 kernel guest 中为 9 个
+Redis/nginx trace-derived entries 建立独立 synthetic 目录，并分别运行 build-graph
+policy 和 table baseline。
+Raw result \file{w1-oracle.jsonl} 显示两个 policy summary 均为 0 failure。oracle 覆盖
+attach 前 alias 不存在、attach 后 lookup 内容匹配、readdir alias/backing 一致性和
+detach 后 alias 不可达。输入哈希清单 \file{w1-oracle-inputs.sha256} 已包含
+\file{w1-build-output-oracle.jsonl}，但该结果仍标记
+\code{qualified\_for\_c8=false}，因为它只验证 per-entry path semantics；
+W1 已有 release binary replay、KVM poison/negative branch probes 和 setup/update
+release input，但仍没有完整 trace-derived alias set、release-level poison/negative
+natural workload hit、operation-weighted hit rate 和 table/update budget counterfactual。
+
+\subsection{当前 W2 证据}
+
+W2 当前证据来自 nginx/PostgreSQL 的 fixture witness manifest、KVM path oracle 和一个
+真实 nginx endpoint health + fixture content probes oracle。
+nginx row 使用固定 nginx \code{1.26.3} source provenance 和 workload-owned fixture
+config，并由 Makefile 生成 fake certificate、local endpoint 和 poison sentinel；PostgreSQL row 使用固定
+PostgreSQL \code{16.6} upstream sample config，并由 Makefile 生成 fake password
+fixture。对应输入为 W2 fixture oracle TSV。
+
+\code{make kvm-w2-oracle} 在修改后的 kernel guest 中为 6 个 fixture witness entries
+建立独立 synthetic 目录，并分别运行 sandbox-fixture policy 和 table baseline。
+Raw result \file{w2-oracle.jsonl} 显示两个 policy summary 均为 0 failure，输入哈希
+清单 \file{w2-oracle-inputs.sha256} 覆盖 TSV、两个 fixture manifest、policy source/object
+和共享 runner source/binary。该结果仍标记 \code{qualified\_for\_c8=false}，因为它没有
+启动真实 nginx/PostgreSQL 服务，没有 health/no-real-secret oracle，也没有 table/update
+budget counterfactual。
+
+\code{make kvm-w2-nginx-real} 在同一修改后的 kernel guest 中运行真实 nginx
+\code{1.26.3} binary 的 config parser、worker start、redirected endpoint HTTP health check 和 worker
+quit。runner 在 guest \code{/tmp} 中创建 nginx prefix，把 workload fixture config
+materialize 为测试配置文件，把 Makefile 生成的 endpoint fixture materialize 为
+\code{conf/upstream.local}，并保持 production 配置路径缺失。runner 运行 nginx
+config test，并用 \code{-g} 将 user directive 覆盖为 root。attach 前和 detach 后，
+nginx 因 production 配置路径缺失失败；attach 后，\file{sandbox_fixture_view.bpf.c}
+把 \code{nginx.conf} 重定向到 \code{nginx.test.conf}，同一条 \code{nginx -t}
+配置测试成功；fixture config 中的 \code{include upstream.sock} 被同一 policy
+重定向到 \code{upstream.local}，worker 启动后把 HTTP GET \code{/} 代理到 runner 的
+\code{127.0.0.1:18080} local upstream，返回 \code{200 OK} 和预期 body，并记录
+\code{attached_endpoint_upstream=true}，
+随后 \code{nginx -s quit} 在 policy 仍 attached 时成功退出。同一 attach window 内，
+runner 还执行 \code{attached\_config\_fixture\_probe}、
+\code{attached\_endpoint\_fixture\_probe}、\code{attached\_fake\_cert\_probe}、
+\code{attached\_fake\_secret\_probe} 和 \code{attached\_poison\_probe}，用普通 VFS
+\code{open/read} 检查 visible aliases 分别解析到 fixture/fake/poison backing，且不等于
+production-like decoys。Raw result
+\file{w2-nginx-real.jsonl} 的 summary 为 0 failure，输入哈希
+清单 \file{w2-nginx-real-inputs.sha256} 覆盖 nginx binary、workload fixture config、
+endpoint fixture、\file{mime.types}、fixture manifest、policy source/object 和 runner
+source/binary；最新 guest target 会在运行前回读校验该 hash manifest，并在运行后
+hard-gate 对应 dmesg log。
+该结果是 \code{kvm\_real\_app\_health\_oracle} + direct fixture content probes：它证明真实
+nginx 配置解析、worker 启动和一次 endpoint 请求路径会观察到 \namei 决策，也证明
+sandbox fixture 的 config/endpoint/cert/secret/poison aliases 能影响普通 VFS
+open/read。后续 W2 real trace gate 已检查 attach 期间 production decoy path open
+次数为 0；但它仍不是 release-level endpoint/startup matrix 或 table/update budget
+oracle，因此不能计入 C1 release-level programmability 或 C8。
+
+\code{make kvm-w2-nginx-macrobench} 进一步把同一个 nginx fixture 放入 C2
+setup/update PoC。guest target 对每个 sample materialize nginx prefix，记录
+setup object count 和 bytes，attach \file{sandbox_fixture_view.bpf.c}，运行
+\code{nginx -t} 与 fixture probes，然后更新 \code{upstream.local}、
+\code{server.fake.crt} 和 \code{db.fake.pass} 三个 backing files，并再次运行
+\code{nginx -t} 与 post-update endpoint/cert/secret probes。20-sample run 的
+summary 为 \code{pass=true}、\code{failures=0}；每个 setup sample 创建 5 个目录和
+12 个文件，每个 update sample 记录 3 个 source writes。该结果只证明 W2 KVM
+setup/update release repetition raw input，不是 release-level C2 comparison evidence。
+同一 workload 的 \code{copy\_tree}、\code{symlink\_forest}、\code{bind\_mount}、
+\code{projected\_volume} 和 \code{fuse\_redirect} baseline 也已在修改内核 KVM 中跑通
+20 samples，并由 W2 workload ledger 合并成 storage/threshold-supported W2 slice。该
+ledger 明确当时全局仍缺 W3 对等 macrobench、W4 更强同 shape 对照或范围收窄；W1 projected/FUSE
+baseline 与 FUSE correctness test 已在后续 fuse-test ledger 中补齐，但 W1 完整 slice
+仍是负结果。W3 Redis
+policy/materialized/FUSE release input 也已在后续 ledger 中补齐，但 W3 完整 slice
+仍是负结果，所以当前结果仍不能写成完整 C2 支持证据。
+
+\subsection{当前 W3 证据}
+
+W3 当前证据来自 Redis/nginx 的 checkpoint witness manifest 和 KVM path oracle。
+Redis row 使用固定 Redis \code{7.2.14} provenance，并由 Makefile 生成 RDB、AOF、
+runtime socket 和 mixed-epoch poison witness；nginx row 使用固定 nginx \code{1.26.3}
+upstream sample config，并由 Makefile 生成 checkpoint cache 和 runtime pid witness。
+对应输入是 run result root 下的 \file{w3-checkpoint-oracle-entries.tsv}。
+
+\code{make kvm-w3-oracle} 在修改后的 kernel guest 中为 7 个 checkpoint witness entries
+建立独立 synthetic 目录，并分别运行 checkpoint-restore policy 和 table baseline。
+Raw result \file{w3-oracle.jsonl} 显示两个 policy summary 均为 0 failure，输入哈希
+清单 \file{w3-oracle-inputs.sha256} 覆盖 TSV、两个 checkpoint manifest、policy
+source/object 和共享 runner source/binary。该结果仍标记
+\code{qualified\_for\_c8=false}，因为它没有运行真实 Podman/CRIU restore，没有
+restore health、post-restore VFS trace、state/config/cache hash 或 0 mixed epoch
+oracle，也没有 table/update budget counterfactual。
+
+\code{make kvm-w3-redis-replay} 在修改后的 kernel guest 中运行真实 Redis RDB load
+replay。runner 先启动 \code{redis-server} 生成 hidden checkpoint backing
+\file{dump.ckpt}，其中 key \code{namei_ext:w3:checkpoint} 的值为
+\code{checkpoint_restore_policy_loaded}；attach 前，同一目录中可见
+\file{dump.rdb} 不存在，Redis 启动后 \code{GET} 返回 nil。attach
+\file{checkpoint_restore_view.bpf.c} 后，Redis 仍按 \file{dump.rdb} 启动，但 VFS
+lookup 被 policy redirect 到 \file{dump.ckpt}，\code{GET} 返回 checkpoint value；
+同一 attach window 的 readdir 只显示 \file{dump.rdb} 并隐藏 \file{dump.ckpt}。detach
+后再次启动 Redis，\code{GET} 又返回 nil。Raw result
+\file{w3-redis-replay.jsonl} 的 summary 为 0 failure，记录
+\code{redis_checkpoint_loaded_via_policy=true}、
+\code{post_restore_vfs_replay=true}、\code{podman_criu_restore_executed=false} 和
+\code{qualified\_for\_c8=false}。该 gate 证明真实 Redis 文件加载路径能观察到
+checkpoint policy 决策；它仍不是真实 Podman/CRIU restore、restore health、0 mixed
+epoch 或 C8 证据。
+
+\code{make kvm-w3-redis-counterfactual} 随后把同一个 Redis RDB replay 换成
+\file{table_redirect.bpf.c} 运行，并生成 \file{w3-redis-counterfactual.jsonl}。
+table-only replay 只写两条 exact redirect rule：lookup
+\file{dump.rdb -> dump.ckpt} 和 readdir \file{dump.ckpt -> dump.rdb}，但仍通过
+相同 Redis \code{GET}、readdir 和 detach oracle。counterfactual row 记录
+\code{policy\_replay\_pass=true}、\code{table\_replay\_pass=true}、
+\code{table\_baseline\_current\_oracle\_pass=true}、
+\code{table\_rule\_writes=2}、\code{table\_budget\_failure=false} 和
+\code{qualified\_for\_c8=false}。因此 W3 当前是 C8 负证据：当前 Redis RDB replay
+oracle 太窄，尚不能证明 checkpoint/restore family 需要 programmable path-resolution。
+后续必须加入真实 Podman/CRIU restore、post-restore VFS trace、0 mixed epoch 或
+update/stale-window checker，才可能把该 family 升级为 C8-qualified。
+
+2026-06-16 新增的 \code{make kvm-w3-redis-policy-macrobench} 和
+\code{make kvm-w3-redis-baseline-macrobench} 把同一个 Redis checkpoint replay 放入
+C2 setup/update release input。run
+\file{results/phase1/20260616T-w3-redis-macrobench-release-v1/} 中的
+\file{w3-redis-policy-macrobench.jsonl} 记录 20 条 setup rows、20 条 update rows 和
+20 条 correctness rows，summary 为 \code{pass=true}、
+\code{failures=0}、\code{policy\_executed=true} 和
+\code{kvm\_validated=true}。\file{w3-redis-baseline-macrobench.jsonl} 覆盖
+\code{materialized\_checkpoint\_view} 和 \code{fuse\_redirect} 两个 external
+baseline，每个 baseline 都有 20 条 setup/update/correctness rows；FUSE setup rows
+记录 \code{fuse\_mounts=1}。W3 专用 ledger
+\file{results/eval-osdi/paper/20260617T-eval-w3-redis-workload-macrobench-ledger-v7/b3-macrobench/w3-redis-workload-macrobench.jsonl}
+把这些 rows 合并，并记录
+\code{policy\_release\_input\_pass=true}、
+\code{baseline\_release\_input\_pass=true}、
+\code{materialized\_baseline\_pass=true}、
+\code{fuse\_baseline\_pass=true} 和
+\code{storage\_footprint\_pass=true}。但是该 ledger 仍为负：
+\code{setup\_latency\_threshold\_pass=false}、
+\code{update\_latency\_threshold\_pass=false}、
+\code{threshold\_pass=false} 和
+\code{w3\_c2\_slice\_supported=false}。policy setup/update 均值为
+\code{22.96 ms}/\code{5.16 s}；best external setup/update 均值为
+\code{6.52 ms}/\code{5.15 s}。因此 W3 现在关闭了 materialized/FUSE baseline 和
+release repetition 输入缺口，但不能支持 checkpoint/restore setup/update improvement。
+
+\subsection{当前 W4 证据}
+
+W4 当前证据来自 ccache/BuildKit 场景的 cache witness manifest、KVM path oracle、
+一个 KVM cache content oracle、一个真实 ccache cold/hot transition witness、一个
+真实 ccache cache-path trace witness、一个 trace-derived ccache policy bridge、一个
+bulk ccache trace-derived policy bridge、一个 bulk materialized external baseline、一个
+bulk FUSE cache-view external baseline、一个 bulk policy-attached ccache compile witness、一个
+真实 ccache policy-attached compile witness、一个 parent-scoped ccache compile witness、
+一个 cache-content table-only comparator、一个 table-only ccache compile comparator、一个
+cache state transition counterfactual，以及一个 W4 release counterfactual accounting gate。
+ccache row 使用固定 Redis/nginx source hash 派生 Make-owned local-hit、stale-fallback
+和 corrupt-reject witness；BuildKit row 使用固定 Prometheus \code{go.mod} 作为
+canonical cache witness。对应输入是 run result root 下的
+\file{w4-cache-oracle-entries.tsv}。
+
+\code{make kvm-w4-oracle} 在修改后的 kernel guest 中为 4 个 cache witness entries
+建立独立 synthetic 目录，并分别运行 cache-locality policy 和 table baseline。
+Raw result \file{w4-oracle.jsonl} 显示两个 policy summary 均为 0 failure，输入哈希
+清单 \file{w4-oracle-inputs.sha256} 覆盖 TSV、两个 cache manifest、policy source/object
+和共享 runner source/binary。该结果仍标记 \code{qualified\_for\_c8=false}，因为它只是
+path oracle，不验证 compiler/go output hash、cache transition trace、
+stale/corrupt reject、update writes 或 stale window oracle，也没有 table/update
+budget counterfactual。
+
+\code{make kvm-w4-cache-content} 进一步在修改后的 kernel guest 中构造一个 cache
+content workdir，并 attach \file{cache\_locality\_view.bpf.c}。修订后的 gate 读取
+\file{w4-cache-oracle-entries.tsv}，按 manifest materialize backing content，填充
+\file{cache\_rules} map，并要求 raw result 中出现一次成功的 \code{map\_update}。
+Raw result \file{w4-cache-content.jsonl} 显示 verified hit、stale fallback、corrupt
+reject 和 miss canonical 四个分支均通过内容 oracle：\code{object.o} 匹配
+\code{object.local} 且不匹配 \code{object.bad}，\code{stale.o} 匹配
+\code{stale.canon} 且不匹配 \code{stale.local}，\code{corrupt.o} 匹配
+\code{corrupt.reject} 且不匹配 \code{corrupt.local}，\code{pkg.mod} 匹配
+\code{pkg.canon}。该 gate 还检查 readdir alias/backing 一致性和 detach 后 alias
+不可达。它证明 manifest-derived W4 entries 沿 \file{cache\_rules} map-backed state
+dispatch 影响普通 VFS open/read/readdir，但该 gate 本身仍不是发布级 ccache/BuildKit
+run，也没有 compiler/go output hash、cache transition trace 或 table/update budget
+counterfactual。最新 guest target 还会在运行前回读校验
+\code{w4-cache-content-inputs.sha256}，并在运行后把对应 dmesg log 中的
+BUG/WARNING/Oops/panic/hung-task pattern 作为 hard failure。
+
+\code{make kvm-w4-cache-table-content} 随后用同一 W4 cache-content oracle 运行
+\file{table_redirect.bpf.c}。该 target 复用同一 \file{w4-cache-oracle-entries.tsv}
+和同一内容检查，只把 policy object 换成 table-only exact redirect。Raw result
+\file{w4-cache-table-content.jsonl} 的 summary 记录 \code{branches=4}、
+\code{pass=true}、\code{failures=0}、
+\code{table\_baseline\_current\_oracle\_pass=true}、
+\code{content\_equivalent\_table\_oracle=true} 和
+\code{qualified\_for\_c8=false}；逐 case 有 4 个 expected match、3 个 forbidden
+mismatch 和 4 个 readdir alias。因此 W4 cache-content 当前也是 C8 负证据：
+verified-hit、stale-fallback、corrupt-reject 和 miss-canonical 的 manifest-derived
+content oracle 仍可被 exact table 表达。最新 guest target 同样 hard-gate
+\code{w4-cache-table-content-inputs.sha256} 和对应 dmesg log。
+
+\code{make kvm-w4-ccache-real} 在同一 run id 下补上真实 ccache transition witness。
+该 gate 在 KVM guest 中对 Redis \file{src/crc64.c} 和 nginx
+\file{src/core/ngx_string.c} 分别执行 cold/hot 两次 \code{ccache gcc -c}，
+记录 \code{cache\_miss=2}、\code{direct\_cache\_hit=2}，并验证 Redis 和 nginx 的
+cold/hot object hash 各自相同。随后它把两个 hot object 写成
+\file{w4-ccache-real-entries.tsv}，用 \file{cache\_locality\_view.bpf.c} 运行
+verified-hit content oracle，并得到 \code{policy\_content\_oracle\_failures=0}。
+该结果证明真实 ccache cold/hot 编译可以产生可审计 object，且这些 object 可被 W4
+policy content oracle 消费；它仍不证明 ccache 自身 cache path 通过 \namei 解析，
+也不提供 operation-weighted policy cache hit rate、真实 stale/corrupt transition、
+update/stale window 或 table/update budget 反事实，因此
+\code{qualified\_for\_c8=false}。
+
+\code{make kvm-w4-ccache-trace} 在同一 run id 下补上真实 ccache cache-path trace
+witness。该 gate 复用 Redis \file{src/crc64.c} 和 nginx
+\file{src/core/ngx\_string.c}，先用独立 \code{CCACHE\_DIR} 完成 cold compile 暖
+cache，再用 \code{strace -f -e trace=\%file} 采集两个 hot compile。当前 raw result
+\file{w4-ccache-trace.jsonl} 记录 Redis 134 条 file-op trace 中 20 条触碰
+\code{CCACHE\_DIR}，nginx 602 条 file-op trace 中 20 条触碰 \code{CCACHE\_DIR}，
+同时保持 \code{cache\_miss=2} 和 \code{direct\_cache\_hit=2}。该 gate 证明真实
+ccache hot path 在修改内核的 KVM guest 中触碰 cache directory；但它不 attach
+\namei policy，\code{policy\_executed=false}，因此不是 operation-weighted policy
+cache hit rate，也不能计入 C8。
+
+\code{make kvm-w4-ccache-policy-bridge} 随后把上述 raw trace 转为 policy oracle
+witness。该 gate 从 Redis/nginx \code{strace} logs 中抽取成功读取的真实 ccache cache
+object paths，生成 trace-object list 和 entries TSV，再在 KVM guest 中 attach
+\file{cache\_locality\_view.bpf.c} 跑 verified-hit content oracle。当前 raw result 记录
+4 个 trace-derived entries，其中 Redis 2 个、nginx 2 个；expected match、forbidden
+mismatch 和 readdir alias 都各有 4 次成功，policy content oracle failure 为 0。该
+bridge 证明真实 trace object component 能被 W4 policy oracle 消费；但 scope row 仍
+记录真实 ccache compile 阶段 policy 未执行，operation-weighted policy cache hit rate
+也不是 release metric，因此仍不能计入 C8。
+
+\code{make kvm-w4-ccache-bulk-policy-bridge} 随后把 W4 ccache trace shape 扩大到
+Redis/nginx 各 10 个真实 source。该 gate 在修改内核 KVM guest 中执行 bulk
+ccache cold/hot compile，并用 \code{strace} 采集 hot compile 的真实
+\code{CCACHE\_DIR} 访问。Raw result
+\file{w4-ccache-bulk-trace.jsonl} 记录 \code{source\_count=20}、
+\code{cache\_path\_file\_ops=400}、\code{cache\_miss=20} 和
+\code{direct\_cache\_hit=20}；bridge result
+\file{w4-ccache-bulk-policy-bridge.jsonl} 从 trace 中抽取 40 个 cache objects，
+其中 Redis/nginx 各 20 个，并在 \file{cache\_locality\_view.bpf.c} 下通过
+content/readdir oracle，\code{policy\_content\_oracle\_failures=0}。这个 bulk
+witness 解决了 two-file trace 过小的问题，但它仍不是 C8 或 C2 正证据：bulk trace
+阶段没有 attach policy，bridge 阶段只是 trace-derived content oracle；同 bulk
+shape 的 policy-attached compile 后续已有 smoke witness，materialized 和 FUSE
+cache-view 外部 baseline、complete compile-through-FUSE baseline、native ccache
+hot-compile baseline 也已有 20-sample input，并且 proposed-system setup/update
+release input 已由后续 bulk policy macrobench 补齐；但 v14 comparison 仍失败，
+并且仍缺 operation-weighted policy hit rate、真实
+stale/update window 或 table budget failure。后续段落分别记录外部 baseline 输入和
+proposed-system smoke witness。
+
+\code{make kvm-w4-ccache-bulk-materialized-baseline-macrobench} 随后在同一个
+20-source/40-object bulk shape 下运行外部 \code{materialized\_cache\_view}
+baseline。Release-style run
+\code{20260616T-w4-ccache-bulk-materialized-release-v1} 在修改内核 KVM 中通过，
+记录 20 条 setup rows、20 条 update rows 和 20 条 correctness rows；
+summary 为 \code{pass=true}、\code{failures=0}、
+\code{policy\_executed=false}、\code{feature\_equivalent\_baseline=true}。
+setup min/avg/max 为 425.40/484.83/573.99 ms，update min/avg/max 为
+2.83/3.12/3.77 ms；object shape 为 40 个 cache objects、36 个 leaf parents 和
+201335 bytes copied。该结果把 bulk W4 的外部 baseline 输入补齐了一类，但仍不是
+C2 或 C8 正证据：同 shape 的 policy-attached compile 由后续 smoke witness 覆盖，
+而该 row 本身仍是 \code{policy\_executed=false} 的 external baseline。W4 后续
+另有同 shape FUSE cache-view baseline、complete compile-through-FUSE baseline input
+和 native ccache hot-compile baseline input，
+但仍缺真实 stale/corrupt/update-window gate 或 table-only budget failure。
+
+\code{make kvm-w4-ccache-bulk-policy-compile} 随后在同一个 20-source/40-object
+bulk shape 下运行 proposed-system smoke witness。该 target 先复用 bulk trace 和
+policy bridge 输入，再复制真实 \code{CCACHE\_DIR}，attach
+\file{cache\_locality\_view.bpf.c}，并对 Redis/nginx 的 20 个真实 source 执行 hot
+\code{ccache gcc -c}。Raw result
+\file{w4-ccache-bulk-policy-compile.jsonl} 记录
+\code{source\_manifest\_count=20}、\code{attached\_compile\_jobs=20}、
+\code{attached\_compile\_output\_matches=20}、\code{policy\_executed=true}、
+\code{ccache\_compile\_policy\_executed=true}、\code{output\_hash\_match=true}、
+\code{policy\_redirected\_cache\_objects=40}、
+\code{attached\_cache\_path\_file\_ops=400} 和
+\code{attached\_policy\_cache\_object\_ops=160}，summary 为 0 failure。该
+witness 关闭了 bulk W4 policy-attached compile 的 smoke 输入缺口，但它仍是
+smoke 级证据，且显式记录
+\code{operation\_weighted\_policy\_cache\_hit\_rate=false} 和
+\code{qualified\_for\_c8=false}。因此它本身不能替代 setup/update release ledger、
+complete compile-through-FUSE release baseline、真实 stale/corrupt transition 或 table
+budget failure。
+
+\code{make kvm-w4-ccache-bulk-policy-macrobench} 随后把同一 bulk shape 的
+proposed-system setup/update 路径提升到 release input。Release-style run
+\code{20260616T-w4-ccache-bulk-policy-macrobench-release-v1} 在修改内核 KVM 中通过，
+记录 20 条 setup rows、20 条 update rows 和 20 条 correctness rows；summary 为
+\code{pass=true}、\code{failures=0}、\code{policy\_executed=true}、
+\code{kvm\_validated=true}、\code{source\_manifest\_count=20} 和
+\code{cache\_objects=40}。该 target 只度量 setup/update 和 attach 后
+lookup/readdir correctness；真实 hot compile 的 output-hash oracle 仍由前述
+bulk policy-attached compile smoke witness 覆盖。后续 v14 ledger 从 raw rows 计算出
+bulk policy setup/update 平均为 336.19 ms/4.99 ms。
+
+\code{make kvm-w4-ccache-bulk-fuse-baseline-macrobench} 又在同一个
+20-source/40-object bulk shape 下运行外部 FUSE cache-view baseline。Release-style
+run \code{20260616T-w4-ccache-bulk-fuse-baseline-release-v1} 在修改内核 KVM 中通过，
+记录 20 条 setup rows、20 条 update rows 和 20 条 correctness rows；summary 为
+\code{pass=true}、\code{failures=0}、
+\code{policy\_executed=false}、
+\code{feature\_equivalent\_baseline=true}、
+\code{c2\_supported=false} 和 \code{release\_gate\_pass=false}。setup rows 记录
+每个 sample 一个 FUSE mount；setup min/avg/max 为 636.59/794.16/1006.38 ms，
+update min/avg/max 为 1.61/2.28/3.23 ms。该结果补齐的是 read-oriented FUSE
+cache-view baseline raw input，不是完整 ccache compile-through-FUSE 对照，也不改变
+C2/C8 verdict。
+
+\code{make kvm-w4-ccache-bulk-fuse-compile} 随后补齐完整 ccache
+compile-through-FUSE baseline。Release-style run
+\code{20260616T-w4-ccache-bulk-fuse-compile-release-v1} 在修改内核 KVM 中通过，
+对 20 个样本重复运行 Redis/nginx 的 20 个真实 source hot compile。Raw summary 记录
+\code{compile\_rows=20}、\code{total\_compile\_jobs=400}、
+\code{total\_compile\_output\_matches=400}、\code{direct\_cache\_hit=400}、
+\code{fuse\_mounts=20}、\code{cache\_path\_file\_ops=6000} 和
+\code{cache\_object\_ops=3200}，并显式标记
+\code{complete\_ccache\_compile\_through\_fuse=true} 与
+\code{read\_oriented\_cache\_view\_only=false}。该 baseline 关闭了完整
+compile-through-FUSE 输入缺口，但它仍是 \code{policy\_executed=false} 的外部 baseline。
+
+\code{make kvm-w4-ccache-bulk-native-compile} 随后补齐 native ccache hot-compile
+baseline。Release-style run
+\code{20260616T-w4-ccache-bulk-native-compile-release-v1} 在修改内核 KVM 中通过，
+同样对 20 个样本重复运行 Redis/nginx 的 20 个真实 source hot compile。Raw
+summary 记录 \code{compile\_rows=20}、\code{total\_compile\_jobs=400}、
+\code{total\_compile\_output\_matches=400}、\code{direct\_cache\_hit=400}、
+\code{cache\_miss=0}、\code{cache\_path\_file\_ops=8000}、
+\code{cache\_object\_ops=3200} 和 \code{sampled\_operation\_hit\_rate=0.40}，
+并标记 \code{operation\_weighted\_native\_hit\_rate\_is\_release=true}。该
+baseline 是 \code{policy\_executed=false} 的外部 native-tool 对照；它关闭 native
+输入缺口，但不支持 C2 或 C8。
+
+新的 W4 workload ledger
+\code{20260617T-eval-w4-ccache-workload-macrobench-ledger-v15} 已把非 bulk
+parent-rule/table/materialized rows、bulk policy-attached compile smoke、
+bulk policy setup/update release input、bulk materialized baseline、bulk FUSE
+cache-view baseline、bulk FUSE compile-through baseline 和 bulk native ccache
+hot-compile baseline 合并到同一个 claim-level artifact。该 summary 记录 policy
+compile smoke、policy release input、materialized baseline、FUSE baseline、
+FUSE compile-through baseline、native compile baseline 和 external-baseline
+release input 均通过，但 bulk release comparison 和 release gate 均为 false。
+native compile baseline 平均为 5.06 s，direct-cache-hit 为 400。bulk policy setup
+平均 336.19 ms，优于 best external setup 484.83 ms；但 bulk policy update 平均
+4.99 ms，慢于 best external update 2.28 ms。因此 materialized/FUSE/native baselines
+和 bulk policy release 测试已进入 ledger，但 W4 comparison 仍为负，且仍缺
+release-level operation-weighted policy hit rate、真实 stale/corrupt ccache
+transition、BuildKit/Prometheus cache workload 和 table/update budget failure。
+
+2026-06-17 新增的 \code{make kvm-w4-cache-transition-counterfactual
+RUN\_ID=20260617T-w4-cache-transition-hardgate-release-v2
+W4\_CACHE\_TRANSITION\_SAMPLES=20} 在修改后的 kernel guest 中运行 W4
+stale/corrupt/update-window counterfactual。该 target 每个 sample 比较三个系统：
+\file{cache\_locality\_view.bpf.c} 的 stateful policy、固定到 local verified target
+的 static exact table，以及经过外部 map update 后匹配当前 target 的 exact table。
+Raw result \file{w4-cache-transition-counterfactual.jsonl} 记录 60 条 setup rows、
+240 条 correctness rows 和 160 条 update-window rows；summary 中
+\code{static\_wrong\_local\_hits=40}、
+\code{policy\_transition\_rows=80}、
+\code{table\_transition\_rows=80}、
+\code{state\_transition\_hit\_rate=1}、
+\code{policy\_update\_writes=160}、
+\code{table\_update\_writes=160} 和
+\code{table\_update\_write\_ratio=1}。该 run 的关键结论是
+\code{table\_static\_current\_oracle\_pass=false} 且
+\code{table\_updated\_current\_oracle\_pass=true}：static table 会在 stale/corrupt
+case 上产生 wrong-local hit，但 externally updated exact table 仍能通过当前 oracle。
+因此这个 target 是更强的 W4 负向 counterfactual，仍记录
+\code{table\_update\_budget\_failure=false}、
+\code{qualified\_for\_c8=false} 和 \code{release\_gate\_pass=false}。
+
+W4 policy-attached compile gate 进一步把真实 ccache hot compile 放入
+\file{cache\_locality\_view.bpf.c} attach window。该 gate 复制上一阶段真实
+\code{CCACHE\_DIR}，把 4 个 trace-derived cache objects 从 visible cache path 改成
+hidden \file{.local} backing，填充 \file{cache\_rules} map，然后对 Redis
+\file{src/crc64.c} 和 nginx \file{src/core/ngx\_string.c} 运行
+\code{ccache gcc -c} hot compile。Raw result
+\file{w4-ccache-policy-compile.jsonl} 记录 policy compile 确实执行、4 个 cache object
+经 policy redirect、Redis/nginx 各贡献 2 个 trace objects、output hash 匹配且 0
+failure；ccache stats 记录 0 miss、2 次 direct hit、2 次 local-storage hit 和 0 次
+local write。该 witness 证明 sampled Redis/nginx ccache hot compile 可以通过 \namei
+policy 解析真实 trace-derived cache objects，并保持 output object hash 与 baseline
+hot object 一致；但它仍不是 release-level operation-weighted policy cache hit rate，
+也没有真实 stale/corrupt transition、stale window、update writes 或 table/update
+budget 反事实，因此 \code{qualified\_for\_c8=false}。
+
+W4 table-only ccache compile comparator 用同一份真实 \code{CCACHE\_DIR}、同一组
+Redis/nginx source file 和同一组 4 个 trace-derived cache objects 重复上述 sampled
+hot compile，只把 policy 换成 \file{table\_redirect.bpf.c} 的 exact redirects。
+Raw result \file{w4-ccache-table-compile.jsonl} 记录
+table baseline 和 content-equivalent oracle 都通过，output hash 匹配，4 个 cache
+object 被 redirect，Redis/nginx 各 2 个 trace objects，0 failure；ccache stats
+同样记录 0 miss、2 次 direct hit、2 次 local-storage hit 和 0 次 local write。该
+comparator 是 C8 的负面证据：当前 sampled Redis/nginx ccache hot compile witness
+能被 table-only exact redirects 解释，因此它不会升级为 C8-qualified。
+
+W4 parent-scoped ccache compile gate 在后续 hardgate run 中把 sampled hot compile 的
+lookup rules 从 per-object exact entries 改为每个 ccache leaf parent 一条 wildcard
+rule。该 gate 仍使用 \file{cache\_locality\_view.bpf.c} 和真实 Redis/nginx
+\code{ccache gcc -c} hot compile；policy 对 32 字节 ccache object-shape component
+追加 \file{.local} 前还要求 component 名称匹配 trace-derived bounded witness，
+同时对 readdir 保留 exact aliases。Raw result
+\file{w4-ccache-parent-compile.jsonl} 记录真实 ccache run、policy-attached compile、
+output hash match、4 个 redirected cache objects、4 个 cache leaf parents、4 条
+parent lookup updates、4 条 exact readdir updates、8 条 sampled table-equivalent updates、
+2 次 direct cache hit、2 次 local-storage hit 和 0 failure。该 target 还 hard-check
+同一 parent 下 \file{metadata.txt} 的 sibling PASS，以及
+\file{0000000000000000000000000000000M} 这个合法 ccache object 形状但不在 witness
+集合中的 sibling 对应 \file{.local} backing 不存在且仍然 PASS。这个结果说明 parent-scoped suffix policy 能驱动
+真实 sampled ccache hot compile，并且不会抢走一个合法形状 non-witness sibling，
+但它不是 content-verified cache decision，也不覆盖 metadata sidecar、临时/锁文件、
+多 sibling、witness object 缺 backing、stale/corrupt 或 update-window。因此它仍标记
+\code{qualified\_for\_c8=false}，并且只能作为
+Phase 1 parent-rule PoC。table-equivalent update count 只估算这个 sampled object set
+若用 exact table 表达所需的 lookup entries 加 readdir aliases；它不是
+release-scale table-budget failure。
+
+完整 Phase 1 full-root 中的 W4 release counterfactual row 把真实 ccache trace、
+parent-scoped compile witness 和 table-only comparator 放在同一个 KVM gate 中。
+该 JSONL row 记录 40 个 cache-path file ops、4 个 trace objects、4 条 parent lookup
+rule、4 条 exact readdir rule、8 条 table-equivalent rule、attached sampled
+ops/object ops 为 40/16，sampled hit rate 为 16/40 = 0.4。它还记录 table pass、
+operation-weighted metric 未建立、C8 不合格。因此它只机械化当前负证据：sampled
+object set 可以被 parent policy 覆盖，但 table-only 同样通过，且 release-level
+operation-weighted hit rate 没有建立。
+
+\subsection{Table-only counterfactual}
+
+\code{table_redirect.bpf.c} 是强 baseline，不是故意削弱的 strawman。它可以使用 ABI
+暴露的离散上下文作为 key，例如 event、parent、component、view、epoch、profile、
+parent class 和 cgroup id；但它只能执行 exact map lookup 并返回 \code{PASS} 或
+\code{REDIRECT}。它不能实现 fallback chain、resolver、epoch state machine、branch
+coverage counter、用户态 rule interpreter 或隐藏 rule engine。
+
+表~\ref{tab:budget-config} 给出当前 committed budget。所有预算来自
+\file{configs/eval-osdi/policy-budgets.mk}；如果运行前要改变这些值，必须先修改该文件和
+evaluation tracker，而不是在结果后解释。
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.22\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.23\textwidth}}
+\toprule
+范围 & Committed budget & 用途 \\
+\midrule
+policy footprint &
+\file{OSDI_MAX_POLICY_INSTRUCTIONS}=10000；
+\file{OSDI_MAX_POLICY_MAPS}=8；
+\file{OSDI_MAX_POLICY_MAP_ENTRIES}=131072；
+\file{OSDI_MAX_POLICY_MAP_MEMORY_BYTES}=67108864。 &
+verifier/map footprint gate。 \\
+checkpoint/restore &
+\file{OSDI_CHECKPOINT_MAX_PATH_CLASSES}=8；
+\file{OSDI_CHECKPOINT_MAX_RESTORE_SESSIONS}=100；
+restore switch 和 post-restore VFS hit rate 下限均为 0.80。 &
+epoch/path-class boundedness。 \\
+cache locality &
+\file{OSDI_CACHE_MAX_HASH_WITNESSES}=4；
+state-transition hit rate 下限为 0.80。 &
+hash witness boundedness。 \\
+table-only &
+over-materialization ratio 上限 10；
+update-writes ratio 上限 10；
+stale-window 上限 100 ms；
+update-latency 上限 1000 ms。 &
+C8 counterfactual budget。 \\
+\bottomrule
+\end{tabularx}
+\caption{OSDI evaluation 的 committed policy budget。}
+\label{tab:budget-config}
+\end{table}
+
+这些 committed budget 是 artifact policy，不是测后调参。policy footprint 上限来自
+提交到仓库的 policy budget 配置文件和 verifier/map-footprint gate；
+checkpoint/cache 的 path-class 和 hash-witness 上限来自当前 eBPF bounded-loop 与 map
+schema 设计；0.80 hit-rate、100 ms stale-window 和 1000 ms update-latency 是发布级
+workload SLO 假设，必须在运行前写入配置，并在 sensitivity 或降级段落中报告不满足阈值的
+结果。
+
+每个 table-only run 必须在 manifest 中写入 budget 字段：
+\file{max_entries}、\file{max_memory_bytes}、\file{max_update_writes}、
+\file{max_update_latency_ms}、\file{max_stale_window_ms} 和
+\file{budget_basis}。默认 budget basis 是同一 workload 上对应 programmable policy
+的 observed footprint。若 table-only 为通过同一 oracle 需要超过 programmable policy
+10x 的 map entries、map memory 或 update writes，或超过 workload 声明的 update
+latency/stale-window 门槛，该 family 才能作为 C8 的支持证据之一。若 table-only 在同等
+预算内通过全部主 oracle，对应 family 必须降级为 functional 或 appendix。
+
+当前 Makefile-owned target \code{make table-conformance} 已检查
+\file{table_redirect.bpf.c} 的 source/object conformance：单个 \code{cgroup/namei_ext}
+入口、单个 hash map、单次 exact map lookup、无 forbidden helper、无 policy-body resolver
+logic，并保存到 \file{table-conformance.jsonl}。这个 gate 只证明 table-only baseline 的
+形态受限；它仍不证明任何 workload counterfactual，也不能单独支撑 C8。
+新增 \code{make table-budget} 会读取 W1/W2/W3/W4 KVM path oracle 的 raw JSONL/TSV，
+写出 \file{table-budget.jsonl}：当前四个 family 的 table baseline 都通过 path oracle，
+over-materialization ratio 为 1，static-load accounted update writes 等于 entry 数，
+并全部记录 \code{qualified\_for\_c8=false}。这个 artifact 固定了 C8 反事实需要的
+字段形态，但它仍只是 Phase 1 path-oracle accounting，不是 update workload measurement。
+W1/W2/W3/W4 KVM path oracle 还证明 \file{table_redirect.bpf.c} 在当前 witness entries
+上可以通过 lookup/readdir path oracle。W3 Redis table-only replay counterfactual 进一步
+证明 \file{table_redirect.bpf.c} 在当前 Redis RDB replay oracle 上只用两条 rule 也能
+通过真实 Redis load path；这是 C8 的负证据，不是支持证据。W4 cache-content table-only
+counterfactual 进一步证明 \file{table_redirect.bpf.c} 在当前 verified-hit/stale/corrupt/miss
+content oracle 上也能通过；这同样是 C8 负证据。W4 table-only ccache compile comparator 进一步
+证明 \file{table_redirect.bpf.c} 在当前 sampled ccache hot compile witness 上也能通过
+content-equivalent output oracle；这不是 C8 支持证据，而是 C8 的负面证据。W4 cache
+state transition counterfactual 补上 stale/corrupt/update-window 形状：static exact
+table 会失败，但 externally updated exact table 仍通过，且 update-write ratio 为 1。
+因此它也不是 C8 支持证据。后续必须
+证明 table-only 在完整 family oracle 或同等 table/update budget 下失败、过度物化或违反
+stale/update 门槛，才可以把某个 family 升级为 C8-qualified。W4 parent-scoped hardgate
+目前只给出 4 条 parent lookup rule 加 4 条 exact readdir rule 的 sampled footprint，
+以及一个合法形状 non-witness sibling PASS；
+由于没有 release-scale hit-rate、same-run table budget failure 或完整 sibling safety，
+它也不能单独作为 C8 反事实。
+
+\subsection{Baselines 和 gates}
+
+所有 baseline 必须通过 feature-equivalence gate。主 baseline 包括
+\code{native-direct}、\code{copy-tree-cp}、\code{symlink-forest-ln}、
+\code{bind-fanout-mount}、\code{overlayfs-kernel}、\code{fuse-redirectfs}、
+workload-specific native tools，以及 \code{table_redirect.bpf.c}。unsupported baseline
+operation 是 hard failure，不能静默跳过。
+
+发布级 run 必须在 KVM guest 中产生。每个 row 必须保存 kernel image hash、kernel config、
+Docker image identity、policy source/object hash、verifier log、dmesg、stdout/stderr、
+raw JSONL、checker output、workload source hash、alias manifest hash 和 table-only
+counterfactual output。若 checker failure、unexpected errno、dmesg warning/oops/panic、
+manifest 缺字段或 baseline unsupported operation 出现，相关 cell 失败。
+
+\subsection{Claim gates}
+
+投稿级 evaluation 的主图表必须覆盖 correctness、setup/materialization cost、metadata tail
+latency、programmability ablation、scale/failure semantics 和 artifact reproducibility。
+当前稿件尚未满足这些图表条件，所以表~\ref{tab:claim-ledger-short} 的 supported slice
+和 scoped-out verdict 是当前论文主张的上限；没有 paper release gate 的 claim
+不能写成发布级结论，slice-level supported claim 也必须保留命名范围。
+每个 subsection 都有降级规则。若四类 family 中少于四类
+达到 \code{qualified_for_c8}，论文只能声称已测若干 path-resolution extensions。若
+table-only 在同等预算下通过全部主 oracle，论文必须删除 ``需要 eBPF programmable logic''
+的表述。若 p99 latency 或 setup 成本未达到阈值，论文只能保留 expressiveness/correctness
+claim。
