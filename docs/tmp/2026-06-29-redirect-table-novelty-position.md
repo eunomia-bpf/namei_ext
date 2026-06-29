@@ -1,6 +1,6 @@
 # Redirect Table Novelty Position
 
-> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+> 2026-06-29 story scope update: this historical record is superseded by `docs/tmp/2026-06-29-paper-story-scope-update.md` for the paper story. Its redirect-table conclusion still holds: exact-map diagnostics are optional boundary evidence only when precomputed mapping is the relevant alternative, not the novelty or default baseline.
 
 ## Motivation
 

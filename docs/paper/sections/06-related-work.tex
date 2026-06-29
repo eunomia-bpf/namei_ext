@@ -3,23 +3,34 @@
 \subsection{用户态和可扩展文件系统}
 
 FUSE 允许用户态实现文件系统，并通过 kernel FUSE 模块接入 VFS~\cite{linux_fuse}。
-FUSE passthrough、ExtFUSE 和 Bento 都从不同方向降低用户态/内核文件系统扩展的成本：
-passthrough 让部分 I/O 绕过用户态 daemon~\cite{linux_fuse_passthrough}，ExtFUSE 把薄
-request handler 放到内核以优化用户态文件系统路径~\cite{extfuse}，Bento 用安全 Rust
-和框架化接口加速内核文件系统开发~\cite{bento}。\namei 的边界不同：它不实现新的文件系统，
-也不拥有 inode、dentry 或 file operations；它只在 VFS name-resolution 时让 eBPF policy
-返回受限 path-resolution action。
+FUSE 的优点是表达力强，并且避免把任意文件系统逻辑直接加载进内核；但 FUSE daemon 仍位于
+文件系统可信路径上，daemon crash、权限错误、cache incoherence 或不完整 POSIX 语义都会影响
+correctness 和 security，路径操作也可能支付用户态切换成本。FUSE passthrough 和 ExtFUSE
+分别试图降低数据路径或 request path 成本：passthrough 让部分 I/O 绕过用户态 daemon
+~\cite{linux_fuse_passthrough}，ExtFUSE 把薄 request handler 放到内核以优化用户态文件系统路径
+~\cite{extfuse}。Bento 用安全 Rust 和框架化接口降低内核文件系统开发风险~\cite{bento}，
+但仍面向实现文件系统。\namei 的边界不同：它不实现新的文件系统，也不拥有 inode、dentry
+或 file operations；它只在 VFS name-resolution 时让 eBPF policy 返回受限
+path-resolution action。
 
-\subsection{内核视图机制}
+\subsection{内核修改和自定义文件系统}
 
-OverlayFS、bind mount、symlink forest 和 copy tree 可以构造文件树视图。OverlayFS
+自定义内核文件系统或专用 kernel patch 可以把扩展逻辑放在最接近 VFS 和 lower filesystem
+的位置，因此有机会获得强表达力和低开销。但这种方式把扩展逻辑放进 kernel TCB；bug 可能破坏
+kernel integrity、权限边界或文件系统不变量，而且每个新机制都需要新的内核代码、部署路径和
+维护成本。\namei 选择把扩展能力限制在 verifier 约束的 \code{PASS}/\code{REDIRECT}
+name-resolution decision 中，避免把完整 filesystem semantics 暴露给扩展程序。
+
+\subsection{静态和物化视图机制}
+
+OverlayFS、bind mount、projected volume、symlink forest 和 copy tree 可以构造文件树视图。OverlayFS
 在内核中组合 lower/upper tree，并定义 lookup、readdir、whiteout 和 redirect-dir 等语义
 ~\cite{linux_overlayfs}。这些机制适合作为 baseline，因为它们成熟且性能接近原生路径。
-它们的策略通常在 mount 或 materialization 时固定，因此本文把 action-specific build
-precedence、restore epoch consistency 和 cache state transition 当作必须由 baseline
-反驳的假设，而不是已经证明的不足。当前证据只支持 W2 slice；其他场景仍需要真实 workload
-oracle、workload-appropriate baseline comparison、stale/update-window evidence 或明确范围收窄，才能说明这些 baseline
-不足以替代 programmable policy。
+它们同时说明 path view construction 已经是常见系统需求。本文不把这些机制作为主概念对手；
+它们是 workload-specific baselines。它们的策略通常在 mount 或 materialization 时固定，因此
+action-specific build precedence、restore epoch consistency 和 cache state transition 能否支撑
+\namei 的 balanced dynamic path-view claim，必须由真实 workload oracle、自然对照、
+safety/semantic-boundary evidence、stale/update-window evidence 或明确范围收窄来决定。
 
 \subsection{安全和事件接口}
 

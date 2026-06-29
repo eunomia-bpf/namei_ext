@@ -1,6 +1,6 @@
 # W3 checkpoint epoch C8 counterfactual
 
-> 2026-06-29 baseline scope update: this note is targeted mechanism evidence, not the main novelty story. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+> 2026-06-29 story scope update: this note is targeted mechanism evidence, not the main paper story. Current C8 is the balanced dynamic path-view claim in `docs/tmp/2026-06-29-paper-story-scope-update.md`; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the relevant alternative.
 
 ## Motivation
 
@@ -8,10 +8,10 @@ This record documents the W3 targeted C8 experiment added on 2026-06-29. The
 previous W3 Redis checkpoint replay was negative evidence for C8 because
 `table_redirect.bpf.c` could replay the same `dump.rdb -> checkpoint backing`
 mapping with the same correctness oracle. That result showed the current W3
-workload did not require programmable policy logic.
+workload did not support the balanced dynamic path-view claim.
 
-The sharper C8 question is whether an exact table can stay correct across
-checkpoint epoch changes without exceeding an update budget. This experiment
+This targeted mechanism question is whether an exact table can stay correct
+across checkpoint epoch changes without exceeding an update budget. This experiment
 therefore creates a dynamic epoch workload where the visible names stay fixed,
 but the correct backing object changes when the checkpoint session epoch
 changes.
@@ -48,7 +48,7 @@ have distinct backing files and distinct content. Correctness is checked by
 opening the visible name and verifying that the content matches the currently
 selected epoch.
 
-The latest experiment runs four feature-equivalent systems:
+The latest experiment runs five feature-equivalent systems:
 
 1. `checkpoint_epoch_policy`: uses `checkpoint_restore_view.bpf.c`. The runner
    preloads map rules for both epochs and switches
@@ -64,6 +64,10 @@ The latest experiment runs four feature-equivalent systems:
 4. `materialized_checkpoint_epoch_view`: external materialized view that copies
    epoch-1 backing objects into visible files during setup and copies epoch-2
    backing objects over those visible files during the epoch switch.
+5. `fuse_checkpoint_epoch_view`: external FUSE view that exposes only stable
+   visible names and stores each object in a private FUSE shadow backing. The
+   epoch switch copies each epoch-2 object into the corresponding private
+   shadow.
 
 The default targeted gate uses 16 checkpoint objects and a maximum table update
 write ratio of 10. With one policy epoch update and 16 table lookup rewrites,
@@ -85,6 +89,9 @@ The Make target hard-gates on the expected result shape:
 - table update writes must exceed the declared ratio budget;
 - materialized view current oracle must pass;
 - materialized update writes must exceed the declared ratio budget;
+- FUSE view current oracle must pass;
+- FUSE update writes must exceed the declared ratio budget;
+- each sample must create one FUSE mount;
 - the run must stay marked `qualified_for_c8=false` and
   `release_gate_pass=false` because it is not a real Podman/CRIU restore.
 
@@ -152,40 +159,53 @@ make kvm-w3-checkpoint-epoch-counterfactual \
   W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS=16
 ```
 
+Current follow-up release-style KVM run with the FUSE baseline included:
+
+```sh
+make kvm-w3-checkpoint-epoch-counterfactual \
+  RUN_ID=20260629T-w3-checkpoint-epoch-c8-fuse-v2 \
+  W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES=20 \
+  W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS=16
+```
+
 Input hash verification passed:
 
 ```sh
 sha256sum -c \
-  results/phase1/20260629T-w3-checkpoint-epoch-c8-materialized-v1/w3-checkpoint-epoch-counterfactual-inputs.sha256
+  results/phase1/20260629T-w3-checkpoint-epoch-c8-fuse-v2/w3-checkpoint-epoch-counterfactual-inputs.sha256
 ```
 
-The materialized follow-up JSONL contains 304 rows:
+The FUSE follow-up JSONL contains 384 rows:
 
 ```sh
 wc -l \
-  results/phase1/20260629T-w3-checkpoint-epoch-c8-materialized-v1/w3-checkpoint-epoch-counterfactual.jsonl
+  results/phase1/20260629T-w3-checkpoint-epoch-c8-fuse-v2/w3-checkpoint-epoch-counterfactual.jsonl
 ```
 
 The KVM dmesg issue scan found zero configured kernel diagnostics.
 
 ## Release summary
 
-The latest 20-sample materialized follow-up summary row reports:
+The latest 20-sample FUSE follow-up summary row reports:
 
 - `samples=20`
 - `objects=16`
-- `setup_rows=80`
-- `correctness_rows=160`
-- `update_rows=60`
+- `setup_rows=100`
+- `correctness_rows=200`
+- `update_rows=80`
 - `static_wrong_epoch_hits=320`
 - `policy_setup_writes=1940`
 - `table_setup_writes=1920`
 - `materialized_setup_writes=320`
+- `fuse_setup_writes=320`
 - `policy_update_writes=20`
 - `table_update_writes=320`
 - `materialized_update_writes=320`
+- `fuse_update_writes=320`
+- `fuse_mounts=20`
 - `table_update_write_ratio=16`
 - `materialized_update_write_ratio=16`
+- `fuse_update_write_ratio=16`
 - `max_table_update_write_ratio=10`
 - `table_static_current_oracle_pass=false`
 - `table_static_expected_failure_observed=true`
@@ -195,6 +215,9 @@ The latest 20-sample materialized follow-up summary row reports:
 - `materialized_current_oracle_pass=true`
 - `materialized_feature_equivalent_baseline=true`
 - `materialized_update_budget_failure=true`
+- `fuse_current_oracle_pass=true`
+- `fuse_feature_equivalent_baseline=true`
+- `fuse_update_budget_failure=true`
 - `targeted_c8_budget_failure=true`
 - `real_podman_criu_restore=false`
 - `pass=true`
@@ -206,18 +229,19 @@ The latest 20-sample materialized follow-up summary row reports:
 
 ## Interpretation
 
-This is the first W3 evidence where an externally updated exact table loses one
-of the declared C8 gates while preserving correctness. The static exact table
+This is the first W3 evidence where an externally updated exact table loses a
+targeted mechanism budget gate while preserving correctness. The static exact table
 fails the epoch-2 correctness oracle. The externally updated exact table passes
 correctness, but it needs one lookup-row rewrite per visible object, while the
 policy switches epoch with one session update. With 16 objects, the table
 update-write ratio is 16, exceeding the declared budget of 10.
 
-The follow-up materialized baseline reaches the same correctness oracle, but it
-also needs one visible file copy per object after the epoch switch. Its update
-write ratio is also 16. This strengthens the counterfactual by showing that the
-same dynamic checkpoint-epoch oracle is expensive for both exact-table
-rematerialization and external materialized views.
+The follow-up materialized and FUSE baselines reach the same correctness
+oracle, but each also needs one per-object backing update after the epoch
+switch. Their update write ratios are also 16. This strengthens the
+counterfactual by showing that the same dynamic checkpoint-epoch oracle is
+expensive for exact-table rematerialization, external materialized views, and a
+feature-equivalent FUSE view.
 
 The correct paper wording is narrow:
 

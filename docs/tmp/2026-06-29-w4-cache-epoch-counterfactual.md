@@ -1,6 +1,6 @@
 # W4 cache epoch C8 counterfactual
 
-> 2026-06-29 baseline scope update: this note is targeted mechanism evidence, not the main novelty story. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+> 2026-06-29 story scope update: this note is targeted mechanism evidence, not the main paper story. Current C8 is the balanced dynamic path-view claim in `docs/tmp/2026-06-29-paper-story-scope-update.md`; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the relevant alternative.
 
 ## Motivation
 
@@ -10,7 +10,7 @@ when cache state changes from verified local to stale/corrupt fallback. It did
 not make the externally updated exact table lose: the updated table preserved
 correctness with `table_update_write_ratio=1`.
 
-The sharper W4 C8 question is whether a cache policy can switch a generation
+This targeted W4 mechanism question is whether a cache policy can switch a generation
 or epoch for many visible cache objects with less update work than an exact
 table. The new experiment therefore creates a fanout cache epoch workload:
 the visible ccache-shaped names stay fixed, but the correct backing changes
@@ -73,7 +73,7 @@ fixture creates two distinct backing files:
 - `<visible>.local`: verified local cache object;
 - `<visible>.canon`: canonical fallback object.
 
-The current strongest validation compares four systems:
+The current strongest validation compares five systems:
 
 1. `cache_locality_epoch_policy`: preloads both cache epochs and switches the
    active epoch with one session update.
@@ -86,6 +86,9 @@ The current strongest validation compares four systems:
 4. `materialized_cache_epoch_view`: external materialized view that copies
    epoch-1 local objects into visible files during setup and copies epoch-2
    canonical objects over those visible files during the epoch switch.
+5. `fuse_cache_epoch_view`: external FUSE view that exposes only stable visible
+   names and stores each object in a private FUSE shadow backing. The epoch
+   switch copies each canonical object into the corresponding private shadow.
 
 Correctness oracle:
 
@@ -99,6 +102,7 @@ Budget oracle:
 - policy update writes are counted as cache epoch session updates;
 - table update writes are counted as exact lookup rewrites;
 - materialized update writes are counted as visible file copies;
+- FUSE update writes are counted as private backing-shadow rewrites;
 - the run must fail the targeted table budget when
   `table_update_write_ratio > OSDI_TABLE_MAX_UPDATE_WRITES_RATIO`.
 
@@ -152,11 +156,12 @@ make kvm-w4-cache-epoch-counterfactual \
   W4_CACHE_EPOCH_OBJECTS=16
 ```
 
-Follow-up release-style KVM run with the materialized baseline included:
+Follow-up release-style KVM run with the materialized and FUSE baselines
+included:
 
 ```sh
 make kvm-w4-cache-epoch-counterfactual \
-  RUN_ID=20260629T-w4-cache-epoch-c8-materialized-v1 \
+  RUN_ID=20260629T-w4-cache-epoch-c8-fuse-v1 \
   W4_CACHE_EPOCH_SAMPLES=20 \
   W4_CACHE_EPOCH_OBJECTS=16
 ```
@@ -165,36 +170,40 @@ Input hash verification passed:
 
 ```sh
 sha256sum -c \
-  results/phase1/20260629T-w4-cache-epoch-c8-materialized-v1/w4-cache-epoch-counterfactual-inputs.sha256
+  results/phase1/20260629T-w4-cache-epoch-c8-fuse-v1/w4-cache-epoch-counterfactual-inputs.sha256
 ```
 
-The materialized follow-up JSONL contains 304 rows:
+The FUSE follow-up JSONL contains 384 rows:
 
 ```sh
 wc -l \
-  results/phase1/20260629T-w4-cache-epoch-c8-materialized-v1/w4-cache-epoch-counterfactual.jsonl
+  results/phase1/20260629T-w4-cache-epoch-c8-fuse-v1/w4-cache-epoch-counterfactual.jsonl
 ```
 
 The dmesg issue scan found zero configured kernel diagnostics.
 
 ## Release summary
 
-The latest 20-sample materialized follow-up summary row reports:
+The latest 20-sample FUSE follow-up summary row reports:
 
 - `samples=20`
 - `objects=16`
-- `setup_rows=80`
-- `correctness_rows=160`
-- `update_rows=60`
+- `setup_rows=100`
+- `correctness_rows=200`
+- `update_rows=80`
 - `static_wrong_local_hits=320`
 - `policy_setup_writes=1940`
 - `table_setup_writes=1920`
 - `materialized_setup_writes=320`
+- `fuse_setup_writes=320`
 - `policy_update_writes=20`
 - `table_update_writes=320`
 - `materialized_update_writes=320`
+- `fuse_update_writes=320`
+- `fuse_mounts=20`
 - `table_update_write_ratio=16`
 - `materialized_update_write_ratio=16`
+- `fuse_update_write_ratio=16`
 - `max_table_update_write_ratio=10`
 - `table_static_current_oracle_pass=false`
 - `table_static_expected_failure_observed=true`
@@ -204,6 +213,9 @@ The latest 20-sample materialized follow-up summary row reports:
 - `materialized_current_oracle_pass=true`
 - `materialized_feature_equivalent_baseline=true`
 - `materialized_update_budget_failure=true`
+- `fuse_current_oracle_pass=true`
+- `fuse_feature_equivalent_baseline=true`
+- `fuse_update_budget_failure=true`
 - `targeted_c8_budget_failure=true`
 - `real_ccache_trace=false`
 - `release_sample_budget_pass=true`
@@ -216,19 +228,20 @@ The latest 20-sample materialized follow-up summary row reports:
 
 ## Interpretation
 
-This is the first W4 evidence where an externally updated exact table loses one
-of the declared C8 gates while preserving correctness. The static exact table
+This is the first W4 evidence where an externally updated exact table loses a
+targeted mechanism budget gate while preserving correctness. The static exact table
 fails after the cache epoch changes because it keeps returning verified-local
 objects when the oracle expects canonical objects. The externally updated table
 passes correctness, but it performs one lookup rewrite per visible object,
 while the eBPF policy changes epoch with one session update. With 16 objects,
 the table update-write ratio is 16, exceeding the declared budget of 10.
 
-The follow-up materialized baseline reaches the same correctness oracle, but it
-also needs one visible file copy per object after the epoch switch. Its update
-write ratio is also 16. This strengthens the counterfactual by showing that the
-same dynamic epoch oracle is expensive for both exact-table rematerialization
-and external materialized views.
+The follow-up materialized and FUSE baselines reach the same correctness
+oracle, but each also needs one per-object backing update after the epoch
+switch. Their update write ratios are also 16. This strengthens the
+counterfactual by showing that the same dynamic epoch oracle is expensive for
+exact-table rematerialization, external materialized views, and a
+feature-equivalent FUSE view.
 
 The correct claim wording is narrow:
 

@@ -1,6 +1,6 @@
 # W3 checkpoint epoch materialized baseline update
 
-> 2026-06-29 baseline scope update: this note is targeted mechanism evidence, not the main novelty story. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+> 2026-06-29 story scope update: this note is targeted mechanism evidence, not the main paper story. Current C8 is the balanced dynamic path-view claim in `docs/tmp/2026-06-29-paper-story-scope-update.md`; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the relevant alternative.
 
 ## Motivation
 
@@ -172,6 +172,8 @@ evidence for update-budget pressure, not full W3 Podman/CRIU release evidence.
   restore workload.
 - Add a stale-window run that issues operations during table/materialized
   rewrite and checks for mixed epoch exposure.
-- Add FUSE checkpoint-epoch behavior under the same dynamic oracle.
+- FUSE checkpoint-epoch behavior was added in
+  `docs/tmp/2026-06-29-w3-checkpoint-epoch-fuse-baseline.md`; the remaining
+  FUSE gap is a real checkpoint/restore transition, not this targeted fixture.
 - Preserve restore logs, checkpoint archive identity, post-restore health, and
   path traces before claiming W3 as a release-level novelty workload.

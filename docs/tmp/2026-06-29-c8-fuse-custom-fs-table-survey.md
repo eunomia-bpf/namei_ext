@@ -102,7 +102,7 @@ Implication for C8: sandboxfs proves that real systems wanted arbitrary path
 views badly enough to accept FUSE. It does not prove that eBPF policy logic is
 needed. A static redirect table may still be sufficient for a given action if
 the view is just a finite manifest of exact mappings. Therefore W1/build-graph
-or agent-sandbox claims need claim-driven baselines. Exact-map diagnostics are
+or agent-sandbox claims need claim-specific comparisons. Exact-map diagnostics are
 useful only when the claim is specifically about precomputed mappings, not as
 the default comparison.
 

@@ -1,19 +1,19 @@
-# C8 killer experiment update: table-only 到底够不够
+# C8 mechanism update: exact-map boundary evidence
 
-> 2026-06-29 baseline scope update: this note preserves historical reasoning and results, but older C8/B12 baseline-gate wording is superseded by `docs/tmp/2026-06-29-redirect-table-novelty-position.md`. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+> 2026-06-29 story scope update: this targeted mechanism note preserves historical reasoning and results, but the current paper story is `docs/tmp/2026-06-29-paper-story-scope-update.md`. C8 is now a balanced dynamic path-view claim over expressiveness, safety, and efficiency; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the relevant alternative.
 
 ## Motivation
 
-本记录回应 2026-06-29 的 C8 问题：不能只说相关工作用了 FUSE 或自定义文件系统，也不能用
-"eBPF 能跑"替代证据。C8 的核心实验问题是：
+本记录回应 2026-06-29 的 C8 机制问题：不能只说相关工作用了 FUSE 或自定义文件系统，也不能用
+"eBPF 能跑"替代证据。按当前 story，这不是 C8 主线，只是 exact-map boundary evidence：
 
 > 在真实或真实形状的动态 workload 中，`table_redirect.bpf.c` 的 exact table 是否能在同等
 > correctness、update budget、stale-window budget 和 materialization budget 下替代
 > eBPF policy logic？
 
 本次使用 `osdi-experiment-design` skill 的实验标准：正确性先 gate，性能/成本数字只在正确性成立后解释；
-每个 claim 必须有 feature-equivalent baseline；负结果必须保留，不能把 table-only 也能通过的结果写成
-C8 正证据。
+每个 claim 必须有对应自然机制或 workload-specific baseline；负结果必须保留，不能把 table-only
+也能通过的结果写成 C8 正证据。
 
 ## Related-work inputs downloaded
 
@@ -149,12 +149,12 @@ Release-style validation run:
 
 ```sh
 make kvm-w3-checkpoint-epoch-counterfactual \
-  RUN_ID=20260629T-w3-checkpoint-epoch-c8-materialized-v1 \
+  RUN_ID=20260629T-w3-checkpoint-epoch-c8-fuse-v2 \
   W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES=20 \
   W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS=16
 ```
 
-The target now compares four systems:
+The target now compares five systems:
 
 1. `checkpoint_epoch_policy`: `checkpoint_restore_view.bpf.c` preloads rules for both epochs and switches
    `checkpoint_sessions[cgroup_id].checkpoint_epoch` with one map update.
@@ -163,21 +163,26 @@ The target now compares four systems:
    epoch 2, expected to pass correctness but pay per-object updates.
 4. `materialized_checkpoint_epoch_view`: external materialized view that copies epoch-1 checkpoint backings into
    visible files and then copies epoch-2 backings over those visible files.
+5. `fuse_checkpoint_epoch_view`: external FUSE view that exposes stable visible names and switches epoch by copying
+   each epoch-2 object into a private FUSE shadow backing.
 
 The summary row from
-`results/phase1/20260629T-w3-checkpoint-epoch-c8-materialized-v1/w3-checkpoint-epoch-counterfactual.jsonl` reports:
+`results/phase1/20260629T-w3-checkpoint-epoch-c8-fuse-v2/w3-checkpoint-epoch-counterfactual.jsonl` reports:
 
 - `samples=20`
 - `objects=16`
-- `setup_rows=80`
-- `correctness_rows=160`
-- `update_rows=60`
+- `setup_rows=100`
+- `correctness_rows=200`
+- `update_rows=80`
 - `static_wrong_epoch_hits=320`
 - `policy_update_writes=20`
 - `table_update_writes=320`
 - `materialized_update_writes=320`
+- `fuse_update_writes=320`
+- `fuse_mounts=20`
 - `table_update_write_ratio=16`
 - `materialized_update_write_ratio=16`
+- `fuse_update_write_ratio=16`
 - `max_table_update_write_ratio=10`
 - `table_static_current_oracle_pass=false`
 - `table_static_expected_failure_observed=true`
@@ -187,6 +192,9 @@ The summary row from
 - `materialized_current_oracle_pass=true`
 - `materialized_feature_equivalent_baseline=true`
 - `materialized_update_budget_failure=true`
+- `fuse_current_oracle_pass=true`
+- `fuse_feature_equivalent_baseline=true`
+- `fuse_update_budget_failure=true`
 - `targeted_c8_budget_failure=true`
 - `real_podman_criu_restore=false`
 - `pass=true`
@@ -197,9 +205,9 @@ The summary row from
 - `release_gate_pass=false`
 
 This is stronger than the original W3 table diagnostic for one C8 criterion: the externally updated exact table keeps
-correctness but exceeds the declared update-write budget, and an external materialized checkpoint view pays the same
-per-object update count. It is still not full W3 C8 evidence because it is a targeted epoch fixture, not a real
-Podman/CRIU restore.
+correctness but exceeds the declared update-write budget, and both external materialized and FUSE checkpoint views pay
+the same per-object update count. It is still not full W3 C8 evidence because it is a targeted epoch fixture, not a
+real Podman/CRIU restore.
 
 ## New W4 cache epoch gate
 
@@ -208,12 +216,12 @@ that forces many ccache-shaped visible names to change backing epoch together:
 
 ```sh
 make kvm-w4-cache-epoch-counterfactual \
-  RUN_ID=20260629T-w4-cache-epoch-c8-materialized-v1 \
+  RUN_ID=20260629T-w4-cache-epoch-c8-fuse-v1 \
   W4_CACHE_EPOCH_SAMPLES=20 \
   W4_CACHE_EPOCH_OBJECTS=16
 ```
 
-The target now compares four systems:
+The target now compares five systems:
 
 1. `cache_locality_epoch_policy`: `cache_locality_view.bpf.c` preloads verified-local and canonical epoch rules and
    switches `cache_epoch_sessions[cgroup_id].cache_epoch` with one map update.
@@ -223,21 +231,26 @@ The target now compares four systems:
    objects, expected to pass correctness but pay per-object updates.
 4. `materialized_cache_epoch_view`: external materialized view that copies epoch-1 local objects into visible files
    and then copies epoch-2 canonical objects over those files.
+5. `fuse_cache_epoch_view`: external FUSE view that exposes stable visible names and switches epoch by copying each
+   canonical object into a private FUSE shadow backing.
 
 The summary row from
-`results/phase1/20260629T-w4-cache-epoch-c8-materialized-v1/w4-cache-epoch-counterfactual.jsonl` reports:
+`results/phase1/20260629T-w4-cache-epoch-c8-fuse-v1/w4-cache-epoch-counterfactual.jsonl` reports:
 
 - `samples=20`
 - `objects=16`
-- `setup_rows=80`
-- `correctness_rows=160`
-- `update_rows=60`
+- `setup_rows=100`
+- `correctness_rows=200`
+- `update_rows=80`
 - `static_wrong_local_hits=320`
 - `policy_update_writes=20`
 - `table_update_writes=320`
 - `materialized_update_writes=320`
+- `fuse_update_writes=320`
+- `fuse_mounts=20`
 - `table_update_write_ratio=16`
 - `materialized_update_write_ratio=16`
+- `fuse_update_write_ratio=16`
 - `max_table_update_write_ratio=10`
 - `table_static_current_oracle_pass=false`
 - `table_static_expected_failure_observed=true`
@@ -247,6 +260,9 @@ The summary row from
 - `materialized_current_oracle_pass=true`
 - `materialized_feature_equivalent_baseline=true`
 - `materialized_update_budget_failure=true`
+- `fuse_current_oracle_pass=true`
+- `fuse_feature_equivalent_baseline=true`
+- `fuse_update_budget_failure=true`
 - `targeted_c8_budget_failure=true`
 - `real_ccache_trace=false`
 - `pass=true`
@@ -257,15 +273,15 @@ The summary row from
 - `release_gate_pass=false`
 
 This is the strongest current W4 targeted result: the externally updated exact table preserves correctness but loses
-the update-write budget gate, and an external materialized view also preserves correctness only by paying the same
-per-object update count. It is still not full W4 C8 evidence because it is a targeted cache-epoch fixture, not an
-operation-weighted ccache or BuildKit trace.
+the update-write budget gate, and the external materialized and FUSE views also preserve correctness only by paying
+the same per-object update count. It is still not full W4 C8 evidence because it is a targeted cache-epoch fixture,
+not an operation-weighted ccache or BuildKit trace.
 
 ## What an OSDI reviewer would still ask
 
 For W4, the targeted epoch gate now answers the narrow update-budget mechanism: static exact table fails the cache epoch
-oracle, while externally updated exact table needs 16x the policy's epoch-switch update writes. The next reviewer-level
-step is to lift this into a real cache workload:
+oracle, while externally updated exact table, materialized cache view, and FUSE cache view all need 16x the policy's
+epoch-switch update writes. The next reviewer-level step is to lift this into a real cache workload:
 
 1. `correctness oracle fail`: run real ccache or BuildKit where the table cannot observe or update state before an
    operation consumes stale/corrupt local content.
@@ -279,8 +295,9 @@ step is to lift this into a real cache workload:
    where applicable under the same dynamic state transitions.
 
 For W3, the targeted epoch gate now answers the narrow update-budget mechanism: static exact table fails the epoch
-oracle, while externally updated exact table and materialized checkpoint view both need 16x the policy's epoch-switch
-update writes. The next reviewer-level step is to lift this into a real checkpoint/restore workload:
+oracle, while externally updated exact table, materialized checkpoint view, and FUSE checkpoint view all need 16x the
+policy's epoch-switch update writes. The next reviewer-level step is to lift this into a real checkpoint/restore
+workload:
 
 - run real Podman/CRIU or an equivalent restored Redis/nginx workflow after the capability blocker is cleared;
 - preserve restore stdout/stderr, checkpoint archive identity, post-restore health, output hash, and VFS trace;
@@ -293,11 +310,11 @@ update writes. The next reviewer-level step is to lift this into a real checkpoi
 The current C8 status is improved but still unsupported:
 
 - W4 now has both a static-table failure under dynamic state and a targeted cache-epoch update-budget failure for
-  externally updated exact tables; the same run also includes a feature-equivalent materialized cache-epoch view that
-  passes correctness but pays the same 16x update-write ratio. It still lacks real ccache/BuildKit operation-weighted
-  release evidence.
+  externally updated exact tables; the same run also includes feature-equivalent materialized and FUSE cache-epoch
+  views that pass correctness but pay the same 16x update-write ratio. It still lacks real ccache/BuildKit
+  operation-weighted release evidence.
 - W3 now has a targeted epoch fixture where static table fails and externally updated table plus materialized
-  checkpoint view both exceed the update-write budget, but the run explicitly records
+  checkpoint view plus FUSE checkpoint view all exceed the update-write budget, but the run explicitly records
   `real_podman_criu_restore=false`, `qualified_for_c8=false`, and `release_gate_pass=false`.
 - Literature supports the motivation for dynamic filesystem/path-state mechanisms, but the C8 proof must come from
   these counterfactual experiments.

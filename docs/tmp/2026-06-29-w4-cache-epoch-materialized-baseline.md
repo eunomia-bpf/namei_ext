@@ -1,6 +1,6 @@
 # W4 cache epoch materialized baseline update
 
-> 2026-06-29 baseline scope update: this note is targeted mechanism evidence, not the main novelty story. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+> 2026-06-29 story scope update: this note is targeted mechanism evidence, not the main paper story. Current C8 is the balanced dynamic path-view claim in `docs/tmp/2026-06-29-paper-story-scope-update.md`; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the relevant alternative.
 
 ## Motivation
 
@@ -88,7 +88,7 @@ KVM validation:
 
 ```sh
 make kvm-w4-cache-epoch-counterfactual \
-  RUN_ID=20260629T-w4-cache-epoch-c8-materialized-v1 \
+  RUN_ID=20260629T-w4-cache-epoch-c8-materialized-v3 \
   W4_CACHE_EPOCH_SAMPLES=20 \
   W4_CACHE_EPOCH_OBJECTS=16
 ```
@@ -101,14 +101,14 @@ Input hash verification passed:
 
 ```sh
 sha256sum -c \
-  results/phase1/20260629T-w4-cache-epoch-c8-materialized-v1/w4-cache-epoch-counterfactual-inputs.sha256
+  results/phase1/20260629T-w4-cache-epoch-c8-materialized-v3/w4-cache-epoch-counterfactual-inputs.sha256
 ```
 
 The JSONL file contains 304 rows:
 
 ```sh
 wc -l \
-  results/phase1/20260629T-w4-cache-epoch-c8-materialized-v1/w4-cache-epoch-counterfactual.jsonl
+  results/phase1/20260629T-w4-cache-epoch-c8-materialized-v3/w4-cache-epoch-counterfactual.jsonl
 ```
 
 The dmesg issue scan found zero configured kernel diagnostics.
@@ -180,5 +180,7 @@ evidence for update-budget pressure, not full W4 C8 release evidence.
 - Add operation-weighted branch metrics from real cache-path operations.
 - Add a stale-window run that issues operations during table/materialized
   rewrite and checks output hashes or reject/fallback behavior.
-- Add a complete compile-through-FUSE or cache-remap/native baseline under the
-  same release workload before claiming W4 as a novelty workload.
+- The targeted FUSE cache-epoch baseline was added in
+  `docs/tmp/2026-06-29-w4-cache-epoch-fuse-baseline.md`; the remaining FUSE
+  gap is a complete compile-through-FUSE release workload, not this synthetic
+  cache-epoch fixture.

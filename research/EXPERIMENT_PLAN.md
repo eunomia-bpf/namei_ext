@@ -2,9 +2,9 @@
 
 ## 2026-06-18 scoped-paper update
 
-当前 paper thesis 必须收窄为：`namei_ext` 在修改内核 KVM 中展示一个窄 VFS path-resolution eBPF extension point；现有正结果只覆盖 W2 nginx sandbox fixture 的 setup/materialization slice、tool-redirect lookup/access/open/exec metadata latency slice，以及声明 W1-W4 Phase 1 lookup/readdir oracle matrix。FUSE 是当前最重要的 feature-equivalent programmable baseline；native/no-hook 是 overhead reference，不是功能等价竞争者。
+当前 paper thesis 必须收窄为：`namei_ext` 探索一个 general but narrow programmable filesystem abstraction：动态 path view at VFS name resolution。现有正结果只覆盖 W2 nginx sandbox fixture 的 setup/materialization slice、tool-redirect lookup/access/open/exec metadata latency slice，以及声明 W1-W4 Phase 1 lookup/readdir oracle matrix。FUSE/custom FS、kernel modification 和 static/materialized mechanisms 是 conceptual comparisons；copy/symlink/bind/projected/FUSE/materialized/native cache 等只作为 workload-specific baselines。
 
-Sandbox fixture 当前状态：W2 nginx fixture 已有 real trace、no-production-open gate、五类 baseline 和 thresholded C2 ledger，可以作为主稿局部正结果。下一步若要升级到更强 OSDI result，应扩展到 trace-level cert/secret/poison coverage、endpoint matrix、reload/update trace、PostgreSQL secret fixture、operation-weighted redirected hit rate 和 claim-driven baseline gate。
+Sandbox fixture 当前状态：W2 nginx fixture 已有 real trace、no-production-open gate、五类 baseline 和 thresholded C2 ledger，可以作为主稿局部正结果。下一步若要升级到更强 OSDI result，应扩展到 trace-level cert/secret/poison coverage、endpoint matrix、reload/update trace、PostgreSQL secret fixture、operation-weighted redirected hit rate、claim-specific comparison 和 safety/semantic-boundary evidence。
 
 Checkpoint/restore 当前状态：W3 Redis 现在只有 RDB load/replay 和 checkpoint-view macrobench，不是 Podman/CRIU restore。W3 已有 materialized 和 FUSE checkpoint-view baselines，但 setup/update thresholds 失败。下一步若要把 W3 写成 release result，必须先让 `make workload-w3-podman-criu-capability` 通过，再做真实 Redis 或 nginx Podman/CRIU restore、post-restore VFS trace、0 mixed epoch oracle、restore health oracle 和 feature-equivalent baselines。
 
@@ -17,14 +17,14 @@ Completeness: partial
 
 ## 待验证 Thesis
 
-待验证 thesis：`namei_ext` 在 Linux VFS path-resolution hot path 中提供一个窄 eBPF decision hook，使真实读多写少的 build、fixture、checkpoint/restore 和 cache locality workloads 能以低于 FUSE 或物化目录视图的成本表达可编程路径解析，同时保持 lower filesystem 语义由内核拥有。
+待验证 thesis：`namei_ext` 在 Linux VFS path-resolution hot path 中提供一个窄 eBPF decision hook，为动态 path views 在 expressiveness、safety 和 efficiency 之间提供更好的平衡：表达 build、fixture、checkpoint/restore 和 cache locality policies，同时保持 lower filesystem 语义由内核拥有，并避免完整用户态或自定义内核文件系统的扩展面。
 
 ## Paper Type
 
 - Type：new system / kernel extension point / systems artifact。
 - Target venue：OSDI/SOSP 级 systems venue。
 - Artifact status：prototype in modified kernel + KVM validation + Docker packaging。
-- Main reviewer risk：当前 release gates 失败。C2/C3/C5 已有 batch=64 的 20-sample KVM microbench、tail/CI、随机化顺序、系统指标和五个 external baseline release rows，B2/B8 `input_gate_pass=true`。RCU-pass fastpath 两轮 PoC 均被负结果拒绝；ctx 初始化拆分提供部分 residual attribution；tail10 diagnostic 让 `fuse_speedup_threshold_pass=true`，但 `kernel_p99_threshold_pass=false`、`pass_only_threshold_pass=false` 仍失败。C2 已有 W2 proposed-system 与 copy/symlink/bind/projected-volume/FUSE baseline release inputs，且 W2 storage/threshold slice 已通过；W1 已有 20-sample proposed-system release input 和 copy/symlink/bind/projected-volume/FUSE baseline release input，但 W1 ledger 为负。W3 已有 20-sample proposed-system release input、materialized checkpoint-view baseline 和 FUSE checkpoint-view baseline，但 W3 ledger 为负。W4 已有 parent-rule/materialized release input、bulk materialized baseline、bulk FUSE cache-view baseline、bulk policy-attached compile smoke witness 和 bulk policy setup/update release input；v6 bulk ledger 仍为负，因为 update latency 输给 best external baseline，且仍缺更强 cache/native/BuildKit/complete-FUSE 对照。全局 C2 需要把 W1/W3/W4 负结果写清或收窄。C8 仍缺真实 workload oracle 和 claim-driven baseline evidence。
+- Main reviewer risk：当前 release gates 失败。C2/C3/C5 已有 batch=64 的 20-sample KVM microbench、tail/CI、随机化顺序、系统指标和五个 external baseline release rows，B2/B8 `input_gate_pass=true`。RCU-pass fastpath 两轮 PoC 均被负结果拒绝；ctx 初始化拆分提供部分 residual attribution；tail10 diagnostic 让 `fuse_speedup_threshold_pass=true`，但 `kernel_p99_threshold_pass=false`、`pass_only_threshold_pass=false` 仍失败。C2 已有 W2 proposed-system 与 copy/symlink/bind/projected-volume/FUSE baseline release inputs，且 W2 storage/threshold slice 已通过；W1 已有 20-sample proposed-system release input 和 copy/symlink/bind/projected-volume/FUSE baseline release input，但 W1 ledger 为负。W3 已有 20-sample proposed-system release input、materialized checkpoint-view baseline 和 FUSE checkpoint-view baseline，但 W3 ledger 为负。W4 已有 parent-rule/materialized release input、bulk materialized baseline、bulk FUSE cache-view baseline、bulk policy-attached compile smoke witness 和 bulk policy setup/update release input；v6 bulk ledger 仍为负，因为 update latency 输给 best external baseline，且仍缺更强 cache/native/BuildKit/complete-FUSE 对照。全局 C2 需要把 W1/W3/W4 负结果写清或收窄。C8 仍缺真实 workload oracle、claim-specific comparison 和 safety/semantic-boundary evidence。
 
 ## Claim-To-Experiment Map
 
@@ -37,7 +37,7 @@ Completeness: partial
 | C5 | ablation 证明 VFS placement 解释收益 | B8 | pass-only/table/FUSE/materialization 消融不能解释差异 | 删除机制归因，改成实现观察。 |
 | C6 | scale/failure/stress matrix 通过 | B9, B10 | dmesg warning、fail-open、unsupported path 静默成功 | 缩小支持范围。 |
 | C7 | clean Make/KVM/Docker artifact 复现 | B11 | dirty tree、缺输入 hash、手工步骤 | 只作为 prototype artifact。 |
-| C8 | dynamic policy 相比 workload-appropriate baseline 有必要且收益明确 | B8, B12 | 更简单自然替代机制在预算内通过主要 oracle | 删除“需要可编程性”主张。 |
+| C8 | dynamic path-view abstraction 在 expressiveness/safety/efficiency 上形成可证平衡 | B8, B12 | FUSE/custom FS、kernel modification 或 workload-specific 自然机制在主要 oracle、成本和安全边界上同等满足 | 删除“balanced abstraction”主张，只保留 scoped functional slices。 |
 
 ## System-Under-Test Model
 
@@ -64,7 +64,7 @@ Completeness: partial
 | B9 | C6 | scale/stress | alias fanout、path depth、cgroups、hot/cold cache | p99、memory、CPU、failures | no silent wrong result | 图 7 | must |
 | B10 | C6 | failure semantics | invalid redirect、verifier failure、detach/reload、migration | errno、dmesg、status | fail-fast、no panic/oops | 表 3 | must |
 | B11 | C7 | reproducibility | clean checkout、Docker、KVM | exit status、manifest completeness | Make exit 0 + report gates | artifact appendix | must |
-| B12 | C1,C8 | policy family programmability | four policy families、claim-driven baselines、optional exact-map diagnostic | oracle pass/fail、algorithm path、map stats、p99 | usecase oracle + workload-appropriate baseline | 图 8 / 表 4 | must |
+| B12 | C1,C8 | policy family programmability | four policy families、claim-specific comparisons、optional exact-map diagnostic | oracle pass/fail、algorithm path、map stats、p99 | usecase oracle + workload-specific baseline + safety/semantic-boundary evidence | 图 8 / 表 4 | must |
 
 ## Run Order
 
@@ -89,7 +89,7 @@ Completeness: partial
 
 - Named baselines：native/no-hook、pass-only、table-redirect-hit、FUSE redirectfs、copy tree、symlink forest、bind mount、OverlayFS、projected-volume where applicable。
 - Tuning policy：每个 baseline 使用 feature-equivalent checker；unsupported operation 是 hard failure，不可静默跳过。
-- What each baseline proves：FUSE 证明 user-space programmable remap 代价；copy/symlink/bind/OverlayFS 证明物化或现有 kernel path 能否同等表达；exact-map diagnostic 只在预计算映射是相关替代方案时使用。
+- What each comparison proves：FUSE/custom FS 和 kernel modification 是 conceptual comparison，用来定位 expressiveness/safety/efficiency tradeoff；copy/symlink/bind/OverlayFS/projected/materialized/native cache 是 workload-specific baseline；exact-map diagnostic 只在预计算映射是相关替代方案时使用。
 - Omitted baselines：当前没有可接受 omission；若某 baseline 不可表达某 use case，必须输出 raw failure row。
 
 ## Reproducibility

@@ -1,6 +1,6 @@
 # DeltaFS and YoloFS survey for the C8 argument
 
-> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+> 2026-06-29 story scope update: this historical record preserves prior reasoning and results. The current paper story is `docs/tmp/2026-06-29-paper-story-scope-update.md`: balanced dynamic path-view abstraction, with exact-map diagnostics only when precomputed mapping is the relevant alternative.
 
 ## Motivation
 

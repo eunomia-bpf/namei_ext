@@ -5,13 +5,20 @@
 使用同一个 policy 入口，通过事件类型区分行为。这个约束避免为每个操作暴露不同 ABI，也让
 lookup/readdir 一致性可以成为 checker 的显式 oracle。
 
+设计原则是分离 policy expressiveness 和 filesystem ownership。BPF 只拥有有界的
+name-resolution decision；内核和 lower filesystem 继续拥有 VFS object lifetime、权限检查、
+dcache/page-cache 行为、mount traversal、inode/dentry 语义和 file data path。因此
+\namei 可以把路径解析到已有 lower filesystem、FUSE mount、OverlayFS tree、cache directory
+或物化 view 中，但它本身不替代这些 backend。
+
 \subsection{边界}
 
 \namei 不创建 dentry，不分配 inode，不实现 file operations，也不绕过 lower filesystem
 权限。Phase 1 的 \code{REDIRECT} 只把当前 component 替换为同一父目录下的 backing
 component。完整 parent path、cross-directory target registry、write-through alias、
 recursive path rewrite 和用户态 policy interpreter 都不在当前已实现 ABI 中。论文中的
-任何强 claim 都必须受这个边界约束。
+任何强 claim 都必须受这个边界约束。这个限制也是 safety 边界：扩展程序不能把任意
+filesystem semantics 搬进 BPF，也不能通过 \namei 接管 lower filesystem invariants。
 
 \subsection{证据等级}
 
@@ -33,7 +40,7 @@ host trace-witness & 真实应用构建或运行 trace 中出现候选 alias/com
 BPF policy execution、KVM workload oracle 和 redirected operation hit rate。 \\
 KVM workload oracle & 修改后 kernel guest 中运行真实 workload、attach policy，并通过 usecase-specific checker。 &
 若缺少 claim 对应的 feature-equivalent baseline，仍不能支撑发布级比较。 \\
-release-level result & KVM workload oracle、raw artifacts、claim-driven baseline、dmesg/verifier gate 全部通过。 &
+release-level result & KVM workload oracle、raw artifacts、claim-specific comparison、dmesg/verifier gate 全部通过。 &
 超出已实现 ABI 的 cross-directory、write-through 或安全隔离主张。 \\
 \bottomrule
 \end{tabularx}
@@ -73,8 +80,8 @@ cache-state 和 hash witness checks。 & content hash、stale/corrupt reject、s
 \subsection{Policy families}
 
 表~\ref{tab:policy-families} 总结当前四类主线 policy family。它们共享同一个 ABI，但
-决策结构不同。如果未来实现把它们全部退化为同一个预计算 lookup map，最终
-dynamic-policy claim 必须判为 unsupported。
+	决策结构不同。如果未来实现把它们全部退化为同一个预计算 lookup map，最终
+	dynamic path-view abstraction claim 必须判为 unsupported。
 
 \begin{table}[t]
 \centering
@@ -96,16 +103,18 @@ cache locality & hit/miss/stale/corrupt cache & cache-state + hash witness & POC
 \label{tab:policy-families}
 \end{table}
 
-\subsection{为什么是窄 VFS hook}
+\subsection{为什么是动态 path-view hook}
 
 本文不把路径映射表作为新颖性来源。路径到 backing object 的 manifest、mount
-projection、FUSE view 和 overlay-style namespace 都是已有系统常用机制。本文的设计点更窄：
-在不实现新 filesystem、不接管 file operations、不改变 lower filesystem ownership 的前提下，
-把 lookup/readdir 期间的有界 policy decision 放到 VFS name-resolution 路径中。
+projection、FUSE view 和 overlay-style namespace 都是已有系统常用机制。本文的设计点是
+一个 general but narrow 的动态 path-view hook：在不实现新 filesystem、不接管 file
+operations、不改变 lower filesystem ownership 的前提下，把 lookup/readdir 期间的有界
+policy decision 放到 VFS name-resolution 路径中。
 
-因此 baseline 选择必须跟随 claim。若某个 workload 的自然替代方案是 FUSE、materialized
-tree、bind/symlink projection、OverlayFS 或 workload-native cache/runtime 机制，评估就应与
-这些机制比较。只有当论文明确声称 dynamic policy 优于预计算 exact mapping 时，exact-map
-counterfactual 才是相关 sanity check。build graph、fixture、checkpoint/restore 和 cache
-locality 的主问题分别是 precedence、path class、epoch consistency 和 content-state
-transition；它们是否需要 \namei，必须由对应 oracle 和 workload-appropriate baseline 决定。
+	因此对照选择必须跟随 claim。若某个 workload 的自然替代方案是 FUSE、materialized
+	tree、bind/symlink projection、OverlayFS 或 workload-native cache/runtime 机制，评估就应与
+	这些机制比较。exact-map counterfactual 只是边界诊断：当预计算映射是相关替代方案时，
+	它检查当前 workload oracle 是否已经窄到能被静态或外部更新的 map 解释。build graph、
+	fixture、checkpoint/restore 和 cache locality 的主问题分别是 precedence、path class、
+	epoch consistency 和 content-state transition；它们能否支撑 \namei 的 balanced dynamic
+	path-view claim，必须由真实 oracle、自然对照和 safety/semantic-boundary evidence 决定。

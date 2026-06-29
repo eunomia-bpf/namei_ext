@@ -3,21 +3,22 @@
 ## 摘要
 
 `namei_ext` 探索一个类似 `sched_ext` 的 VFS path-resolution 扩展点。目标不是实现
-新的文件系统，而是让内核继续拥有 path walk、dentry、inode、permission check、
-mount traversal 和 lower-filesystem operations，同时让 eBPF 程序在 lookup 和
-directory enumeration 时决定一个窄语义的 path-resolution policy。
+新的文件系统，而是在动态 path view 这个窄位置提供可编程性：内核继续拥有 path walk、
+dentry、inode、permission check、mount traversal、cache 和 lower-filesystem operations，
+eBPF 程序只在 lookup 和 directory enumeration 时决定受限的 `PASS/REDIRECT`
+path-resolution policy。
 
 ## 当前状态
 
-截至 2026-06-29，长期 research state 需要按 scoped paper verdict 和 redirect-table scope update 读取：当前论文可站住的正结果是 W2 nginx sandbox fixture 的 setup/materialization slice、tool-redirect lookup/access/open/exec metadata latency slice，以及 W1-W4 Phase 1 lookup/readdir oracle matrix。全局 C2、full metadata C3、dynamic-policy necessity 和 full C7 reproducibility 都没有通过。exact-map diagnostics 只在预计算映射是相关替代方案时使用，不是默认主 baseline。
+截至 2026-06-29，长期 research state 需要按 scoped paper verdict 和 story scope update 读取：当前论文主线是 expressiveness、safety 和 efficiency 的 tradeoff。`namei_ext` 被定位为 general but narrow programmable filesystem abstraction：VFS name resolution 处的动态 path view。当前可站住的正结果是 W2 nginx sandbox fixture 的 setup/materialization slice、tool-redirect lookup/access/open/exec metadata latency slice，以及 W1-W4 Phase 1 lookup/readdir oracle matrix。全局 C2、full metadata C3、balanced dynamic-path-view C8 和 full C7 reproducibility 都没有通过。exact-map diagnostics 只在预计算映射是相关替代方案时使用，不是默认主 baseline。
 
 Sandbox/fixture 当前最强：W2 nginx fixture 已通过 real trace/no-production-open gate，且在 copy/symlink/bind/projected-volume/FUSE baselines 下通过 storage、setup、update 和 materialization thresholds。它可以作为局部主结果，但还不能代表 W1/W3/W4，也不能证明 C8。
 
-Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、materialized checkpoint-view baseline 和 FUSE checkpoint-view baseline，但这不是 Podman/CRIU restore。W3 setup/update threshold ledger 为负；真实 restore 还需要先通过 Podman/CRIU capability gate，再补 post-restore VFS trace、restore health、0 mixed epoch 和 workload-appropriate baselines。
+Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、materialized checkpoint-view baseline 和 FUSE checkpoint-view baseline，但这不是 Podman/CRIU restore。W3 setup/update threshold ledger 为负；真实 restore 还需要先通过 Podman/CRIU capability gate，再补 post-restore VFS trace、restore health、0 mixed epoch、自然对照和 safety/semantic-boundary evidence。
 
 若下一轮改成更强 OSDI 叙事，顶层 use case 不应继续按 W1/W2/W3/W4 四条线并列，而应收敛为三个：agent sandbox lifecycle、service fixture sandbox 和 content-verified cache view。agent sandbox lifecycle 可以包含 fork/fanout、checkpoint rollback/restore、workspace materialization/update 和 deterministic trace replay；不包含 eval isolation。W1 build graph 更适合折叠为 agent sandbox trace replay 来源；当前 W3 Redis replay 不是主线 restore，除非重做成真实 sandbox checkpoint/rollback 或 Podman/CRIU restore workflow。
 
-新的解释记录见 `docs/tmp/2026-06-18-fuse-baseline-and-native-overhead-interpretation.md`；本次 sandbox/checkpoint benchmark 计划同步见 `docs/tmp/2026-06-18-sandbox-checkpoint-benchmark-plan.md`。
+当前 story 记录见 `docs/tmp/2026-06-29-paper-story-scope-update.md`。旧解释记录见 `docs/tmp/2026-06-18-fuse-baseline-and-native-overhead-interpretation.md`；sandbox/checkpoint benchmark 计划同步见 `docs/tmp/2026-06-18-sandbox-checkpoint-benchmark-plan.md`。
 
 截至 2026-06-16，Phase 1 已经完成以下工程里程碑：
 
@@ -39,7 +40,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   path oracle。9 个 entries、2 个 policy、0 failure，raw evidence 位于
   `results/phase1/20260615T-parent-key-poc/w1-oracle.jsonl`。该 gate 是
   `kvm_policy_path_oracle`，仍显式标记 `qualified_for_c8=false`，因为它还不是完整
-  build output hash oracle，也没有 workload-appropriate baseline comparison。
+	  build output hash oracle，也没有 claim-specific comparison。
 - `make phase1-smoke`、`make kvm-functional` 和 `make kvm-bench` 已通过现有
   Phase 1 smoke/functional/microbenchmark 回归。
 - `make phase1 RUN_ID=20260614T-w2-nginx-probes-phase1 SAMPLES=1 BENCH_ITERS=2000`
@@ -76,9 +77,9 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   table-only 只写入两条 exact redirect rule，`table_baseline_current_oracle_pass=true`、
   `table_rule_writes=2`、`table_budget_failure=false`、
   `zero_mixed_epoch_checker=false`、`restore_trace_checker=false`、
-  `qualified_for_c8=false`。这是 W3/C8 的负证据：当前 Redis RDB replay 仍可被
-  exact-map diagnostic 解释，不能证明 checkpoint/restore family 需要 eBPF
-  可编程逻辑。实现记录：
+	  `qualified_for_c8=false`。这是 W3/C8 的负证据：当前 Redis RDB replay 仍可被
+	  exact-map diagnostic 解释，不能支撑 checkpoint/restore family 的 balanced
+	  dynamic path-view claim。实现记录：
   `docs/tmp/2026-06-15-w3-table-replay-counterfactual-implementation.md`。
 - `make workload-w3-podman-criu-capability
   RUN_ID=20260615T-w3-podman-criu-capability-audit-v1` 新增 W3 real restore 的
@@ -287,7 +288,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   directory 副本中验证了 `private.h -> poison.dep` 和 `missing.h -> PASS/ENOENT`
   分支语义。但这些 branch probes 仍不是 release build trace 中自然触发的 workload
   hit；完整 trace-derived alias set、release-level operation-weighted redirected hit
-  rate 和 C8 workload-appropriate baseline comparison 仍未完成。
+	  rate、claim-specific comparison 和 safety/semantic-boundary evidence 仍未完成。
 - `docs/tmp/2026-06-15-w1-release-binary-replay-gap-analysis.md` 已把 W1
   release binary replay 缺口单独记录为 Phase 1 调研 artifact。该分析识别出的
   主要 blocker 是：当时 `struct namei_ext_component_key` 仍只按
@@ -298,8 +299,8 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `docs/tmp/2026-06-15-w1-release-binary-replay-implementation.md` 已补上
   KVM release-binary witness；`docs/tmp/2026-06-15-w1-branch-probes-implementation.md`
   又补上 KVM poison/negative branch probes。release-level 自然 workload hit、完整
-  trace-derived alias set、operation-weighted hit rate 和 workload-appropriate baseline comparison
-  counterfactual 仍未补齐，因此 W1 仍不能计入 C1/C8 主结论。
+	  trace-derived alias set、operation-weighted hit rate、claim-specific comparison 和
+	  safety/semantic-boundary evidence 仍未补齐，因此 W1 仍不能计入 C1/C8 主结论。
 - `docs/tmp/2026-06-15-parent-aware-namei-abi-survey.md` 和
   `docs/tmp/2026-06-15-parent-aware-namei-abi-implementation.md` 已把 parent-aware
   ABI 的调研、实现和验证独立记录。当前 kernel ctx 以 append-only 方式暴露
@@ -335,7 +336,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `qualified_for_c8=false`。该 witness 证明 W1 policy attach path 可支撑真实
   Redis/nginx release rebuild 的 output equivalence；它仍不是 C8，因为完整
   trace-derived alias set、release-level poison/negative natural workload hits、
-  operation-weighted hit rate 和 workload-appropriate baseline comparison 仍未完成。
+	  operation-weighted hit rate、claim-specific comparison 和 safety/semantic-boundary evidence 仍未完成。
 - `make kvm-w1-branch-probes RUN_ID=20260615T-parent-key-poc` 已在修改后的 kernel
   KVM guest 内补上 W1 build-graph poison/negative branch probes。该 target 复制
   Redis/nginx trace source 到 guest 临时目录，在 Redis `src/` 和 nginx `src/core/`
@@ -365,13 +366,13 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   且不等于同目录 production-like decoy。该结果是
   `kvm_real_app_health_oracle` + `functional_only` content probes，仍不做
   trace-level no-real-secret/cert/poison open checker、release-level endpoint matrix、
-  startup trace、operation-weighted hit rate 或 workload-appropriate baseline advantage。
+	  startup trace、operation-weighted hit rate 或 balanced dynamic path-view evidence。
 - 当前 W3 checkpoint-witness manifests 证明 Redis/nginx provenance 绑定的
   checkpoint/restore witness entries 可以生成 7 个 entries。`make kvm-w3-oracle`
   已在 KVM guest 中用 `checkpoint_restore_view.bpf.c` 和 `table_redirect.bpf.c`
   通过同一组 lookup/readdir path oracle；它仍不运行真实 Podman/CRIU restore，
   不验证 restore health、post-restore VFS trace、state/config/cache hash 或
-  0 mixed epoch oracle，也不证明 workload-appropriate baseline advantage。
+	  0 mixed epoch oracle，也不支撑 balanced dynamic path-view claim。
 - `make kvm-w3-redis-replay RUN_ID=20260615T-parent-key-poc` 已在修改后的 kernel
   KVM guest 内补上 Redis checkpoint replay witness。该 target 先用真实
   `redis-server` 生成包含 key `namei_ext:w3:checkpoint` 的 `dump.ckpt`，再证明
@@ -394,8 +395,8 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `table_baseline_current_oracle_pass=true`、`table_rule_writes=2` 和
   `qualified_for_c8=false`。因此 W3 当前从“缺 same-workload table comparator”变为
   “same-workload table comparator 通过”的负证据；后续要支持 C8，必须引入真实
-  Podman/CRIU restore、restore trace、zero mixed epoch/update/stale-window checker，
-  或其它能提供 workload-appropriate baseline advantage 的 release workload。
+	  Podman/CRIU restore、restore trace、zero mixed epoch/update/stale-window checker，
+	  或其它能同时提供表达力、安全边界和效率证据的 release workload。
 - 当前 W4 cache-witness manifests 证明 Redis/nginx/Prometheus provenance 绑定的
   cache-locality witness entries 可以生成 4 个 entries。`make kvm-w4-oracle`
   已在 KVM guest 中用 `cache_locality_view.bpf.c` 和 `table_redirect.bpf.c`
@@ -413,7 +414,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `results/phase1/20260614T-w2-nginx-probes-phase1/w4-cache-content.jsonl`，
   summary 同样为 0 failure。该 cache-content gate 本身不包含真实 ccache 编译或
   BuildKit build，不验证 compiler/go output hash、cache transition trace、
-  update writes 或 stale window，也不证明 workload-appropriate baseline advantage。
+	  update writes 或 stale window，也不支撑 balanced dynamic path-view claim。
 - `make kvm-w4-cache-table-content RUN_ID=20260615T-w4-cache-table-content-smoke-v1`
   已补上 W4 cache-content oracle 的 same-workload table-only comparator。该 target
   使用同一 `w4-cache-oracle-entries.tsv`、同一修改内核 KVM attach path 和同一内容
@@ -426,7 +427,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   cache-content oracle 当前也是 C8 负证据：verified hit、stale fallback、corrupt
   reject 和 miss canonical 的 manifest-derived witness 仍可被 exact table 表达；后续
   仍需要真实 stale/corrupt transition、operation-weighted hit rate、BuildKit cache
-  trace、update/stale window 或 workload-appropriate baseline advantage。
+	  trace、update/stale window 或 balanced dynamic path-view evidence。
 - `make kvm-w4-ccache-real RUN_ID=20260615T-parent-key-poc` 已在修改后的 kernel
   KVM guest 内补上 W4 真实 ccache cold/hot transition witness。该 target 对 Redis
   `src/crc64.c` 和 nginx `src/core/ngx_string.c` 分别执行 cold/hot 两次
@@ -445,7 +446,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `qualified_for_c8=false`，因为它只证明真实 ccache transition 和 ccache-derived
   object 上的 policy content oracle，不证明 ccache 自身 cache path 通过
   `namei_ext`、operation-weighted policy cache hit rate、真实 stale/corrupt
-  transition、update/stale-window measurement 或 workload-appropriate baseline advantage。
+	  transition、update/stale-window measurement 或 balanced dynamic path-view evidence。
 - `make kvm-w4-ccache-trace RUN_ID=20260615T-parent-key-poc` 进一步在修改后的 kernel
   KVM guest 中用 `strace -f -e trace=%file` 跟踪真实 `ccache` hot compile。该 target
   先用同一独立 `CCACHE_DIR` 对 Redis `src/crc64.c` 和 nginx
@@ -460,7 +461,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   只证明真实 ccache hot path 在 KVM 中实际访问 cache directory；`policy_executed=false`
   且 `qualified_for_c8=false`，因为它没有 attach `namei_ext` policy，也不提供
   operation-weighted policy cache hit rate、真实 stale/corrupt transition、
-  update/stale-window measurement 或 workload-appropriate baseline advantage。
+	  update/stale-window measurement 或 balanced dynamic path-view evidence。
 - `make kvm-w4-ccache-policy-bridge RUN_ID=20260615T-parent-key-poc` 已补上 W4
   trace-derived ccache policy bridge。该 target 从上述 Redis/nginx raw strace logs 中
   抽取成功 `openat(..., O_RDONLY) = fd` 的真实 cache object paths，生成
@@ -509,7 +510,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   解析 trace-derived cache objects，并保持 Redis/nginx output object hash 与 baseline
   hot object 一致；它仍显式 `qualified_for_c8=false`，因为还没有 release-level
   operation-weighted policy cache hit rate、真实 stale/corrupt transition、update/stale
-  window 或 workload-appropriate baseline comparison。
+	  window、自然对照或 safety/semantic-boundary evidence。
 - `make kvm-w4-ccache-table-compile RUN_ID=20260615T-parent-key-poc` 已补上 W4
   table-only policy-attached ccache compile comparator。该 target 复用同一份真实
   trace-derived `CCACHE_DIR`、同一组 Redis/nginx source file 和同一组 4 个 cache
@@ -523,9 +524,9 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `pass=true` 和 `failures=0`。ccache stats 同样记录 `cache_miss=0`、
   `direct_cache_hit=2`、`local_storage_hit=2` 和 `local_storage_write=0`。这个结果是
   C8 的负面证据：当前 sampled Redis/nginx ccache hot compile witness 能被
-  exact-map diagnostic 解释，因此 W4 仍不能声称需要 eBPF 可编程逻辑；后续必须用
-  release-level operation-weighted hit rate、stale/corrupt transition、update/stale
-  window 或 workload-appropriate baseline advantage support dynamic-policy necessity。
+	  exact-map diagnostic 解释，因此 W4 仍不能声称 balanced dynamic path-view claim；后续必须用
+	  release-level operation-weighted hit rate、stale/corrupt transition、update/stale
+	  window、自然对照和 safety/semantic-boundary evidence 支撑该 claim。
 - `make kvm-w4-ccache-parent-compile RUN_ID=20260615T-w4-valid-sibling-structured-oracle` 已补上
   W4 parent-scoped cache policy PoC。最终实现没有新增第二张 parent map，而是复用
   `cache_rules`，用 `name_len=0` 的 parent wildcard key 表示“该 cache leaf parent
@@ -636,8 +637,7 @@ parent path + component name + operation context -> path-resolution decision
 - `REDIRECT`：把当前 component 替换成 policy 选择的 component；实际 lookup、
   permission check 和 file operations 仍由内核执行。
 
-这个位置介于 bind mount、OverlayFS 等固定内核机制和 FUSE 这类完整用户态文件系统
-之间。
+这个位置介于完整用户态文件系统、自定义内核文件系统和静态/物化 path view 机制之间。
 
 ## OSDI 风格定位
 
@@ -651,12 +651,14 @@ local cache、remote cache 或 canonical store 按 hash/state 选择出来。这
 共同点不是需要一个新文件系统，而是需要在已有文件之上提供动态、可验证、每工作负载
 可编程的路径解析机制。
 
-现有机制落在两个极端。Bind mount、OverlayFS 等内核机制性能好，并保留
-原生 VFS 行为，但策略固定、粒度粗、动态重配置成本高。FUSE 提供了足够灵活
-的路径解析语义，但把大量路径决策移到用户态，引入额外上下文切换，并经常
-重复实现 VFS 和 lower filesystem 已经提供的功能。LSM、Landlock、fanotify
-和 BPF LSM 可以限制或观察访问，却不能自然表达“这个 workload 看到的路径树
-应该长什么样”。
+现有文件系统扩展机制在表达力、安全边界和效率之间取舍。自定义内核文件系统或
+kernel patch 可以快且表达力强，但把扩展逻辑放进 kernel TCB，bug 可能破坏内核完整性、
+权限边界或文件系统不变量。FUSE 把扩展逻辑移到用户态，降低任意内核文件系统代码风险，
+但 daemon 仍位于文件系统可信路径上，daemon failure、权限错误、cache incoherence 或
+不完整 POSIX 语义都可能影响 correctness 和 security。Bind mount、OverlayFS、projected
+volume、symlink forest 和 copied tree 保留内核文件系统语义，但通常是静态、粗粒度或
+workload-specific 的 path-view construction。LSM、Landlock、fanotify 和 BPF LSM 可以
+限制或观察访问，却不能自然表达“这个 workload 看到的路径树应该长什么样”。
 
 `namei_ext` 的核心观察是：许多真实 workload 需要的是可编程路径解析，而不是
 可编程 filesystem implementation。因此，`namei_ext` 在 VFS name resolution
@@ -669,8 +671,9 @@ local cache、remote cache 或 canonical store 按 hash/state 选择出来。这
 
 这种设计保留了内核对文件系统语义的所有权，同时让路径解析变成 per-workload
 可编程策略。目标是在 build graph view、controlled test fixture substitution、
-checkpoint/restore path view 和 content-verified cache locality 等真实场景中，
-获得接近内核机制的 data-path 行为，同时避免 FUSE 式全文件系统实现的复杂性和开销。
+checkpoint/restore path view 和 content-verified cache locality 等真实场景中，探索
+expressiveness、safety 和 efficiency 的更好平衡：比静态/物化 view 更可编程，比完整
+FUSE/custom FS 更窄，并且不接管 lower filesystem data path。
 
 一句话论文 claim：
 
@@ -682,13 +685,12 @@ PoC，让内核继续拥有 VFS object 和 lower-filesystem 语义。
 生产级路径解析定制能否由该 abstraction 支撑，仍是后续 OSDI 级别 evaluation gate，
 不能由当前 Phase 1 PoC 直接声明。
 
-论文不能把一个 generic redirect table 当成主证据。更强的 abstraction claim 必须由
-多个语义不同的 eBPF policy family 支撑：`build_graph_view.bpf.c`、
-`sandbox_fixture_view.bpf.c`、`checkpoint_restore_view.bpf.c` 和
-`cache_locality_view.bpf.c` 都必须在同一个 kernel ABI 上运行。只有当
-claim-driven baselines cannot simultaneously satisfy these family
-semantic oracle 和 cost gate 时，C8 的“需要 eBPF programmable path-resolution
-logic”才成立。
+论文不能把一个 generic redirect table 或一组 workload baselines 当成主证据。更强的
+abstraction claim 必须由多个语义不同的 eBPF policy family 支撑：
+`build_graph_view.bpf.c`、`sandbox_fixture_view.bpf.c`、`checkpoint_restore_view.bpf.c`
+和 `cache_locality_view.bpf.c` 都必须在同一个 kernel ABI 上运行。只有当真实 workload
+oracle、workload-specific baselines 和 safety/semantic-boundary evidence 同时支持时，
+C8 的“balanced dynamic path-view abstraction”才成立。
 
 ## 动机
 
@@ -709,13 +711,15 @@ logic”才成立。
 
 - Symlink forest 和 copied tree 物化成本高，更新和清理也贵。
 - Bind mount 和 OverlayFS 性能好，但策略固定、粒度粗、动态重配置成本高。
-- FUSE 灵活，但把路径决策推到用户态，带来额外 user/kernel crossing，并容易重复实现
-  lower filesystem 已有的语义。
+- FUSE 灵活，但 daemon 仍在文件系统可信路径上；实现错误、crash、权限和 cache 语义问题
+  会影响 correctness/security，并且路径操作可能带来额外 user/kernel crossing。
+- 自定义内核文件系统或 kernel patch 可以快且表达力强，但把扩展逻辑放进 kernel TCB，
+  不是通用、可部署、易演进的扩展点。
 - LSM、Landlock、fanotify 和 BPF LSM 可以限制或观察访问，却不能自然表达“这个
   workload 应该把此路径解析到哪个 backing object”。
 
 `namei_ext` 聚焦中间地带：用可编程 path-resolution policy 表达这些扩展，同时保留
-native lower-filesystem data I/O。
+native lower-filesystem data I/O 和内核拥有的 VFS safety properties。
 
 ## 设计目标
 

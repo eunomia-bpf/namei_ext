@@ -2,10 +2,11 @@
 
 ## 2026-06-18 current verdict snapshot
 
-2026-06-29 baseline scope update: C8 should now be read as dynamic-policy
-necessity relative to workload-appropriate baselines. Any older row below that
-treats an exact-map diagnostic as the sole C8 path is historical provenance,
-not current guidance.
+2026-06-29 story scope update: C8 should now be read as a balanced dynamic
+path-view abstraction claim: expressiveness, safety, and efficiency under a
+narrow VFS name-resolution hook. Any older row below that treats an exact-map
+diagnostic or a single workload baseline as the sole C8 path is historical
+provenance, not current guidance.
 
 Source/command: `results/eval-osdi/paper/20260617T-eval-claim-verdict-ledger-v17/claim-verdict/claim-verdict.jsonl`, W2 paper-release gate v6, W2 workload hardgate v11, W3 Redis workload ledger v7, C4 lookup/readdir matrix v4, and C7 artifact audit v11.
 
@@ -20,7 +21,7 @@ Completeness: scoped paper verdict complete; full release incomplete.
 | C5 | scoped out | Residual overhead diagnostics remain negative. | Nothing stronger than diagnostic observations. | VFS placement/lower-FS ownership as a proven mechanism explanation. |
 | C6 | scoped out | Phase 1 fail-fast/dmesg checks exist but no release stress matrix. | Phase 1 checks fail fast on declared gates. | Scalability, churn, reload, migration, and robustness claims. |
 | C7 | scoped out | Artifact packaging/replay/anonymization evidence exists, but clean-checkout reproduction is still missing. | Make-owned evidence paths are inspectable. | Full release reproducibility. |
-| C8 | scoped out | Current evidence does not show dynamic policy necessity relative to workload-appropriate baselines. Exact-map diagnostics only provide boundary/negative evidence. | No C8 positive claim. | "Programmable policy is necessary" as a broad claim. |
+| C8 | scoped out | Current evidence does not show the full expressiveness/safety/efficiency balance for dynamic path views across release workloads. Exact-map diagnostics only provide boundary/negative evidence. | No C8 positive claim. | "The balanced dynamic-path-view abstraction is proven" as a broad claim. |
 
 Key run verdict: claim verdict v17 records `weak_accept_ready=true`, `paper_release_gate_pass=true`, `release_gate_pass=false`, `active_main_claims=4`, `scoped_out_claims=4`, and highest-risk claims `C7` and `C8`.
 
@@ -40,13 +41,13 @@ Completeness: partial
 | C5 | unsupported | 最新 release-level tail10 comparison shows `pass_only_threshold_pass=false`，max pass-only/native p99 ratio 为 2.62x。新增 no-hook 和 matched baseline/pass-only diagnostics 将 worst case 降到 1.306x/1.323x，但仍高于 1.1x；rusage 显示非 exec p99 rows 主要是 self CPU/op 上升，不是 fault/context-switch。 | 可以说“ctx 初始化拆分和 rusage/no-hook 诊断定位了 pass-only residual 的一部分来源”；不应 claim VFS placement 已解释整体性能。 | 设计 helper-set/no-run-ctx 或其他 common dispatch 降低方案；若不改 ABI/helper fastpath，则收窄机制归因。 |
 | C6 | partial | Phase 1 dmesg gates and some failure semantics exist。 | “Phase 1 gates fail fast on declared smoke checks。” | full invalid redirect/verifier/map exhaustion/detach/reload/cgroup migration/stress matrix。 |
 | C7 | partial | Makefile-owned KVM/Docker path and provenance artifacts exist。 | “The prototype has Makefile-owned Phase 1 reproduction artifacts。” | clean tree final run、artifact checklist、release result manifest、external reproducibility audit。 |
-| C8 | unsupported | 当前 B12 ledger 仍为 `c8_supported=false`；多个 exact-map diagnostics/current oracle 都能通过；W3 Redis same-workload diagnostic 以 `table_rule_writes=2` 和 `table_baseline_current_oracle_pass=true` 通过；W3 Podman/CRIU capability audit 显示 `podman_checkpoint_listed=false`、`criu_present=false`；W4 cache-content same-workload diagnostic 也以 `content_equivalent_table_oracle=true` 通过，并且 B12 记录 `content_table_counterfactual_negative=true`；W4 sampled ccache diagnostic 也通过。W4 bulk ccache rows 现在证明 proposed system 和外部 materialized/FUSE cache-view baselines 都能在 20-source/40-object shape 上运行，但 v6 仍记录 `bulk_release_comparison_pass=false`、`operation_weighted_policy_cache_hit_rate=false` 和 `qualified_for_c8=false`；仍没有 external-baseline weakness、release operation-weighted advantage 或真实 workload necessity evidence。 | 还不能声称外部 materialized/FUSE baseline 或 native cache tooling 不足以表达这些场景。 | 四个 family class 的 release workloads 上需要 workload-appropriate baseline comparison；W3 还需要可运行的真实 Podman/CRIU restore 环境、restore trace、zero mixed epoch 或 update/stale window；W4 还需要 release operation-weighted hit rate、真实 stale/corrupt transition、BuildKit/Prometheus trace、cache-remap/native ccache/BuildKit baseline、完整 compile-through-FUSE baseline、external-baseline weakness 或 update/stale window。 |
+| C8 | unsupported | 当前 B12 ledger 仍为 `c8_supported=false`；多个 exact-map diagnostics/current oracle 都能通过；W3 Redis same-workload diagnostic 以 `table_rule_writes=2` 和 `table_baseline_current_oracle_pass=true` 通过；W3 Podman/CRIU capability audit 显示 `podman_checkpoint_listed=false`、`criu_present=false`；W4 cache-content same-workload diagnostic 也以 `content_equivalent_table_oracle=true` 通过，并且 B12 记录 `content_table_counterfactual_negative=true`；W4 sampled ccache diagnostic 也通过。W4 bulk ccache rows 现在证明 proposed system 和外部 materialized/FUSE cache-view baselines 都能在 20-source/40-object shape 上运行，但 v6 仍记录 `bulk_release_comparison_pass=false`、`operation_weighted_policy_cache_hit_rate=false` 和 `qualified_for_c8=false`；仍没有 release operation-weighted evidence、safety/semantic-boundary evidence 或真实 workload evidence 支撑 balanced dynamic path-view claim。 | 还不能声称外部 materialized/FUSE baseline 或 native cache tooling 不足以表达这些场景，也不能声称 C8 平衡点已成立。 | 四个 family class 的 release workloads 上需要 claim-specific comparison 和 safety/semantic-boundary evidence；W3 还需要可运行的真实 Podman/CRIU restore 环境、restore trace、zero mixed epoch 或 update/stale window；W4 还需要 release operation-weighted hit rate、真实 stale/corrupt transition、BuildKit/Prometheus trace、cache-remap/native ccache/BuildKit baseline、完整 compile-through-FUSE baseline 或 update/stale window。 |
 
 ## Paper wording guard
 
 在上述 verdict 改变前，论文中文稿必须避免：
 
-- “证明通用可编程 path-resolution abstraction”。
+- “证明通用动态 path-view abstraction 已完整成立”。
 - “性能优于 FUSE/OverlayFS/symlink/bind/copy”。
 - “四个 use case 都达到 OSDI release evidence”。
 - “exact-map diagnostic 已证明这些场景必须使用 dynamic policy”。
@@ -55,4 +56,4 @@ Completeness: partial
 
 - “Phase 1 原型在修改内核 KVM 中跑通了四类 policy semantic witnesses。”
 - “当前 evaluation contract 明确阻止 threshold-failing release evidence 被误写成 supported claim。”
-- “现有负结果显示 C8 仍需更强 release workload 和 baseline comparison 才能支持。”
+- “现有负结果显示 C8 仍需更强 release workload、baseline comparison 和 safety/semantic-boundary evidence 才能支持。”
