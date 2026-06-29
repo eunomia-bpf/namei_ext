@@ -1,4 +1,7 @@
 最后更新：2026-06-15
+
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 更新阶段：Phase 1 implementation
 来源命令：`make kvm-w1-branch-probes RUN_ID=20260615T-parent-key-poc`，`make report RUN_ID=20260615T-parent-key-poc`
 完成度：已完成 Phase 1 W1 KVM branch-probe witness；不能计入 C1/C8

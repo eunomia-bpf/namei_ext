@@ -1,4 +1,7 @@
 Last updated: 2026-06-15
+
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Stage at update: Phase 1 implementation
 Source/command: `make kvm-w1-release-build-replay RUN_ID=20260615T-parent-key-poc`, `make report RUN_ID=20260615T-parent-key-poc`
 Completeness: complete for Phase 1 W1 release-binary replay witness; not C1/C8 qualifying

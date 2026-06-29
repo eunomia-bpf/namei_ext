@@ -1,5 +1,7 @@
 # 2026-06-14 论文 Subagent Review 第二轮修订记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## 动机
 
 第二轮 subagent review 判断第一轮的结构性 blocker 大多已解决，但仍指出三类必须立即修订的

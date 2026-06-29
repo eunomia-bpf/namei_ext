@@ -1,4 +1,7 @@
 Last updated: 2026-06-15
+
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Stage at update: design / implementation planning
 Source/command: manual audit with `rg` and `sed` over `kernel/fs/namei_ext.c`, `kernel/fs/namei.c`, `kernel/fs/readdir.c`, `kernel/include/linux/namei_ext.h`, `kernel/include/uapi/linux/bpf.h`, `kernel/kernel/bpf/cgroup.c`, `bpf/include/namei_ext.h`, and `tests/abi/namei_ext_abi.c`
 Completeness: complete for choosing a Phase 1 parent-aware ABI direction; implementation PoC completed and recorded separately

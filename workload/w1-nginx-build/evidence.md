@@ -1,11 +1,14 @@
 # w1-nginx-build 证据
 
+> 2026-06-29 baseline scope update: older gate language is superseded by claim-driven baseline selection. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
+
 状态：`source-build-trace` + `functional_only_kvm_path_oracle` + KVM release-binary
 replay witness + KVM branch-probe witness。host-side 真实源码 configure/build、strace
 和 trace-witness manifest 已通过；KVM path oracle、policy preprocessing replay、
 release-binary replay 和 poison/negative branch probes 已在修改内核 guest 中通过。
 完整 trace-derived alias set、release-level poison/negative natural workload hit、
-operation-weighted hit rate 和 table/update budget counterfactual 仍未验证。
+operation-weighted hit rate 和 workload-appropriate baseline comparison 仍未验证。
 
 Policy family：`build_graph_view.bpf.c`
 
@@ -72,7 +75,7 @@ Policy family：`build_graph_view.bpf.c`
   0 failure。
 - 该 gate 只验证 per-entry lookup/readdir path semantics、attach/detach 行为和
   table baseline conformance；它不运行完整 nginx configure/build，不验证 output hash、
-  operation-weighted redirected hit rate 或 table/update budget failure。
+  operation-weighted redirected hit rate 或 workload-appropriate baseline gap。
 
 ## 当前 KVM setup/update macrobench release input
 
@@ -140,4 +143,4 @@ KVM attach path 执行；后续 release-binary replay、branch-probe witness 和
 setup/update release input 进一步证明 attached policy 路径可支撑 Redis/nginx
 preprocessing equivalence、poison/negative 分支语义和 proposed-system release
 repetition，但这些结果仍不是完整 trace-derived alias set、release-level natural branch
-hit、feature-equivalent baseline 或 table/update budget counterfactual。
+hit、feature-equivalent baseline 或 workload-appropriate baseline comparison。

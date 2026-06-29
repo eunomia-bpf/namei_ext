@@ -1,5 +1,8 @@
 # w2-nginx-fixture 证据
 
+> 2026-06-29 baseline scope update: older gate language is superseded by claim-driven baseline selection. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
+
 状态：`functional_only_kvm_path_oracle` + `functional_only_kvm_real_app_endpoint_health_oracle` + `functional_only_kvm_fixture_content_probes` + `kvm_c2_setup_update_release_input` + `copy_symlink_bind_projected_fuse_feature_baseline_input` + `w2_storage_threshold_supported_slice`；不能计入 C1/C8，且只能支撑 W2 slice，不能单独支撑全局 C2。
 
 Policy family：`sandbox_fixture_view.bpf.c`
@@ -143,9 +146,9 @@ Policy family：`sandbox_fixture_view.bpf.c`
 - release-level endpoint matrix checker
 - poison access trace/report
 - startup trace 和 operation-weighted redirected hit rate
-- table/update budget counterfactual
+- workload-appropriate baseline comparison
 - W1/W3/W4 对等 setup/storage/update macrobench；若用于 C1/C8，则还需要 W2
-  table/update budget counterfactual
+  workload-appropriate baseline comparison
 
 ## 当前 raw results
 
@@ -168,7 +171,7 @@ Policy family：`sandbox_fixture_view.bpf.c`
   cert/secret/poison 仍是 direct VFS probes，不是 nginx worker startup trace。
 - 它尚未证明 trace-level no-real-secret/config/cert backing、release-level endpoint
   matrix、poison access trace/report、startup trace、operation-weighted hit rate 或
-- table/update budget。
+- workload-appropriate baseline comparison。
 - C2 setup/update macrobench 已有 W2 nginx `namei_ext` 侧 20-sample raw input，以及同
   workload `copy_tree`/`symlink_forest`/`bind_mount`/`projected_volume`/`fuse_redirect`
   baseline input；v5 ledger 也已给出 W2 storage/threshold-supported slice。但全局 C2

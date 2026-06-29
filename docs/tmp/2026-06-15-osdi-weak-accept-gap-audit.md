@@ -1,5 +1,7 @@
 # OSDI weak-accept 差距自审记录
 
+> 2026-06-29 baseline scope update: this note preserves historical reasoning and results, but older C8/B12 baseline-gate wording is superseded by `docs/tmp/2026-06-29-redirect-table-novelty-position.md`. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
 最近更新：2026-06-15
 更新阶段：第一阶段研究审计
 来源/命令：主 agent 读取 `auto-research-orchestrator` 和

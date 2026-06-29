@@ -1,5 +1,7 @@
 # OSDI policy-family release gate 实现记录
 
+> 2026-06-29 baseline scope update: this note preserves historical reasoning and results, but older C8/B12 baseline-gate wording is superseded by `docs/tmp/2026-06-29-redirect-table-novelty-position.md`. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: Phase 1 implementation / OSDI evaluation gate
 Source/command: `make eval-osdi-policy-family-ledger RUN_ID=20260615T-eval-contract EVAL_OSDI_PHASE1_RUN_ID=20260615T-full-phase1-gatefix`

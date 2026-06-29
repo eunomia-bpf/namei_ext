@@ -1,5 +1,7 @@
 # W3 Redis Policy And FUSE Macrobench Implementation
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## Motivation
 
 The W3 checkpoint workload already had a KVM Redis replay witness for

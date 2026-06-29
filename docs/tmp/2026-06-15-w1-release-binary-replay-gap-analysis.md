@@ -1,4 +1,7 @@
 Last updated: 2026-06-15
+
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Stage at update: execute / claim gate
 Source/command: manual audit of `mk/workload.mk`, `mk/kvm.mk`, `tests/w1_oracle/namei_ext_w1_oracle.c`, `bpf/policies/build_graph_view.bpf.c`, `bpf/include/namei_ext_policy.h`, `docs/research_plan.md`, `docs/experiment-plans/osdi-evaluation.md`, and existing W1 result descriptions
 Completeness: complete for current Phase 1 evidence boundary; implementation follow-up required

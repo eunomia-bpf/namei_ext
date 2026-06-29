@@ -1,4 +1,7 @@
 Last updated: 2026-06-15
+
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Stage at update: implementation planning
 Source/command: audit of `mk/workload.mk`, `mk/kvm.mk`, `tests/w1_oracle/namei_ext_w1_oracle.c`, and `results/workloads/runs/20260615T-parent-key-poc/`
 Completeness: complete for choosing the next W1 release-binary replay implementation step

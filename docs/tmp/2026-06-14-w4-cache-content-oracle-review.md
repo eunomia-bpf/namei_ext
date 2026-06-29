@@ -1,5 +1,7 @@
 # W4 Cache Content Oracle 对抗 review 和修订记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## 背景
 
 本记录对应 `make kvm-w4-cache-content` 的第一版实现 review。该 gate 的目标是证明

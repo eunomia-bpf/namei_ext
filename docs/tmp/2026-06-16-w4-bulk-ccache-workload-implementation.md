@@ -1,5 +1,7 @@
 # W4 bulk ccache 真实 workload 实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## 背景
 
 此前 W4 ccache release ledger 使用 Redis/nginx two-file trace，只产生 4 个

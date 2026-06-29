@@ -1,5 +1,7 @@
 # W4 workload ledger 同步记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 更新日期：2026-06-15
 阶段：文档 / artifact ledger 同步
 来源/命令：Hooke 总体 OSDI review 的 P2

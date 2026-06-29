@@ -1,5 +1,7 @@
 # Full Phase 1 B12 refresh 运行记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: execute/gate loop
 Source/command: `make phase1 RUN_ID=20260615T-full-phase1-b12-refresh-v1`

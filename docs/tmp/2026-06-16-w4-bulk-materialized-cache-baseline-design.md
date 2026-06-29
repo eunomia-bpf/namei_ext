@@ -1,5 +1,7 @@
 # W4 bulk materialized cache baseline 设计
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## 背景
 
 `2026-06-16-w4-bulk-ccache-workload-implementation.md` 已把 W4 ccache trace 从

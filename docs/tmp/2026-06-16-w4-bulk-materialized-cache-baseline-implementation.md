@@ -1,5 +1,7 @@
 # W4 bulk materialized cache baseline 实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## 背景
 
 本实现把 W4 bulk ccache trace/bridge 的 40 个 trace-derived cache objects 接到

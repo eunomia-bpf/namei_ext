@@ -1,5 +1,7 @@
 # 2026-06-14 论文 LaTeX 骨架实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## 动机
 
 Phase 1 要求项目不仅有设计计划和 evaluation 计划，还要开始维护真实论文稿件。

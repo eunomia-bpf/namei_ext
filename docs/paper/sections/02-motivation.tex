@@ -3,8 +3,8 @@
 本文选择 workload 的标准不是“容易写一个 alias demo”，而是三点。第一，场景必须由真实系统
 文档或真实应用源码给出，而不是项目自造程序。第二，场景必须放大 path-resolution 机制：
 大量 metadata lookup、频繁 setup/teardown、多 path class、cache state 变化或 restore
-session 切换。第三，场景必须有明确 oracle，可以把功能正确性、性能开销和 table-only
-反事实分开判定。按这个标准，W1--W4 分别代表 build graph、fixture substitution、
+session 切换。第三，场景必须有明确 oracle，可以把功能正确性、性能开销和 claim-driven
+baseline 分开判定。按这个标准，W1--W4 分别代表 build graph、fixture substitution、
 checkpoint/restore 和 cache locality 四类不同的 policy family；其中 W4 的发布级目标是
 content-verified cache locality，当前 parent-scoped ccache 结果只是 suffix PoC。
 
@@ -51,5 +51,6 @@ Bazel remote cache 和 remote execution API、Nix binary cache 与 content-addre
 则说明真实构建系统已经把 cache key、content digest 和 fallback 作为 correctness 边界
 ~\cite{bazel_remote_cache,bazel_remote_execution_api,nix_binary_cache_substituter,nix_content_addressed_store}。
 这类 workload 暴露出可能需要 content hash、cache state 和 workload profile 参与路径选择的
-场景。本文只有在 release-level table-only counterfactual 失败、超预算或违反 stale/update
-门槛后，才会把它写成必须使用 eBPF programmable logic，而不是静态 redirect table。
+场景。本文不会把路径映射表本身作为新颖性来源；只有当 workload oracle 和
+workload-appropriate baselines 共同支持时，才会把这类场景写成需要 dynamic eBPF
+path-resolution policy。exact-map diagnostics 只在预计算映射是相关替代方案时使用。

@@ -1,5 +1,7 @@
 # W2 Nginx 真实配置解析 Oracle 独立审查记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 日期：2026-06-14
 
 范围声明：本文档只记录单一 W2 nginx real config oracle 增量的 scoped review。

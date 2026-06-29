@@ -1,5 +1,8 @@
 # w3-nginx-podman-criu 证据
 
+> 2026-06-29 baseline scope update: older gate language is superseded by claim-driven baseline selection. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
+
 状态：`functional_only_kvm_path_oracle`；不能计入 C1/C8。
 
 Policy family：`checkpoint_restore_view.bpf.c`
@@ -56,4 +59,4 @@ alias/backing 一致性和 detach 后 alias 不可达。`checkpoint_restore_view
   pid/socket path check 或 directory enumeration 触发的新 VFS lookup/readdir。
 - HTTP health、checkpoint config/static content hash、runtime pid/socket/log path checker、
   post-restore lookup/readdir trace coverage 和 0 mixed checkpoint/current epoch。
-- `table_redirect.bpf.c` 的同等 table/update budget counterfactual。
+- claim-driven baseline comparison or optional exact-map diagnostic。

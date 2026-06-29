@@ -1,5 +1,7 @@
 # W4 bulk policy-attached ccache compile implementation
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 来源：Phase 1 OSDI evaluation gate loop，针对 W4 ccache bulk workload 仍缺
 proposed-system policy-attached compile witness 的缺口。
 

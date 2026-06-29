@@ -31,7 +31,7 @@ load/attach 和 semantic gate 证明同一个 ABI 可以承载这些 policy obje
 当前证据支持的收窄结果：W2 nginx fixture 在
 copy/symlink/bind/projected-volume/FUSE baselines 下通过 storage 和 threshold gate，
 tool-redirect lookup/access/open/exec 通过 native/FUSE p99 阈值，而 W1/W3/W4、
-residual-overhead attribution 和 table-only insufficiency 均作为负结果和范围边界保留。
+residual-overhead attribution 和 dynamic-policy necessity 均作为负结果和范围边界保留。
 评估本身采用 claim-first ledger 作为审计方法：每个 workload 都必须绑定真实来源、KVM
 attach 路径、workload-specific oracle、baseline 和降级规则。
 
@@ -39,6 +39,6 @@ attach 路径、workload-specific oracle、baseline 和降级规则。
 feature-equivalent/FUSE baseline 后仍为负结果。W4 ccache bulk 已有 materialized/FUSE
 cache-view baseline、complete compile-through-FUSE baseline 和 policy setup/update
 release input，但 setup/update/materialization ledger 仍为负。C8 不进入当前主结论，
-因为 table-only comparator 在 W3 Redis replay、W4 cache-content oracle 和 W4 ccache
+因为 diagnostic comparator 在 W3 Redis replay、W4 cache-content oracle 和 W4 ccache
 sampled compile oracle 上都能通过；C5 也不进入当前主结论，因为 residual-overhead gate
 仍为负。后续论文若要扩大主张，必须先产生能改变这些 verdict 的真实 workload evidence。

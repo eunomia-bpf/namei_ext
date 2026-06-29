@@ -1,5 +1,8 @@
 # w2-postgres-secret-fixture 证据
 
+> 2026-06-29 baseline scope update: older gate language is superseded by claim-driven baseline selection. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
+
 状态：`functional_only_kvm_path_oracle`；不能计入 C1/C8。
 
 Policy family：`sandbox_fixture_view.bpf.c`
@@ -48,7 +51,7 @@ Policy family：`sandbox_fixture_view.bpf.c`
 - real secret hash never opened
 - poison access report
 - startup trace 和 operation-weighted redirected hit rate
-- table/update budget counterfactual
+- workload-appropriate baseline comparison
 
 ## 当前 raw results
 
@@ -59,4 +62,4 @@ Policy family：`sandbox_fixture_view.bpf.c`
 
 - 这是 per-entry synthetic-directory KVM path oracle。
 - 它不启动 PostgreSQL。
-- 它尚未证明 health/query result、no-real-secret、fake password use 或 table/update budget。
+- 它尚未证明 health/query result、no-real-secret、fake password use 或 workload-appropriate baseline comparison。

@@ -1,5 +1,7 @@
 # W1 FUSE Baseline Test Integration
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Date: 2026-06-17
 
 Stage: Phase 1 implementation / W1 feature-baseline evidence hardening

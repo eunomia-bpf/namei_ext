@@ -1,5 +1,7 @@
 # KVM bench policy baseline variants 实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: Phase 1 implementation / OSDI performance baseline plumbing
 Source/command: `make bench`; `make bpf`; `make eval-osdi-performance-ledger RUN_ID=20260615T-eval-contract EVAL_OSDI_PHASE1_RUN_ID=20260615T-full-phase1-gatefix`

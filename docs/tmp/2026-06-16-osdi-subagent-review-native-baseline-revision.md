@@ -1,5 +1,7 @@
 # OSDI Subagent Review And Native Baseline Revision
 
+> 2026-06-29 baseline scope update: this note preserves historical reasoning and results, but older C8/B12 baseline-gate wording is superseded by `docs/tmp/2026-06-29-redirect-table-novelty-position.md`. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
 Date: 2026-06-16
 
 ## Motivation

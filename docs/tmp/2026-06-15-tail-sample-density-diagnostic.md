@@ -1,5 +1,7 @@
 # tail sample density 诊断记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: research/execute
 Source/command: R050-R053 diagnostic over ctx 初始化拆分 PoC

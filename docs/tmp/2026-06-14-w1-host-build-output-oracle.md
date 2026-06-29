@@ -1,5 +1,7 @@
 # W1 host build-output oracle 实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 最后更新：2026-06-14
 更新阶段：Phase 1 实现
 来源/命令：`make workload-w1-build-output-oracle RUN_ID=20260614T-w2-nginx-probes-phase1` 和 `make kvm-w1-oracle RUN_ID=20260614T-w2-nginx-probes-phase1`

@@ -9,11 +9,11 @@ directory enumeration 时决定一个窄语义的 path-resolution policy。
 
 ## 当前状态
 
-截至 2026-06-18，长期 research state 需要按 scoped paper verdict 读取：当前论文可站住的正结果是 W2 nginx sandbox fixture 的 setup/materialization slice、tool-redirect lookup/access/open/exec metadata latency slice，以及 W1-W4 Phase 1 lookup/readdir oracle matrix。全局 C2、full metadata C3、C8 table-only insufficiency 和 full C7 reproducibility 都没有通过。
+截至 2026-06-29，长期 research state 需要按 scoped paper verdict 和 redirect-table scope update 读取：当前论文可站住的正结果是 W2 nginx sandbox fixture 的 setup/materialization slice、tool-redirect lookup/access/open/exec metadata latency slice，以及 W1-W4 Phase 1 lookup/readdir oracle matrix。全局 C2、full metadata C3、dynamic-policy necessity 和 full C7 reproducibility 都没有通过。exact-map diagnostics 只在预计算映射是相关替代方案时使用，不是默认主 baseline。
 
 Sandbox/fixture 当前最强：W2 nginx fixture 已通过 real trace/no-production-open gate，且在 copy/symlink/bind/projected-volume/FUSE baselines 下通过 storage、setup、update 和 materialization thresholds。它可以作为局部主结果，但还不能代表 W1/W3/W4，也不能证明 C8。
 
-Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、materialized checkpoint-view baseline 和 FUSE checkpoint-view baseline，但这不是 Podman/CRIU restore。W3 setup/update threshold ledger 为负；真实 restore 还需要先通过 Podman/CRIU capability gate，再补 post-restore VFS trace、restore health、0 mixed epoch 和 table/update budget counterfactual。
+Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、materialized checkpoint-view baseline 和 FUSE checkpoint-view baseline，但这不是 Podman/CRIU restore。W3 setup/update threshold ledger 为负；真实 restore 还需要先通过 Podman/CRIU capability gate，再补 post-restore VFS trace、restore health、0 mixed epoch 和 workload-appropriate baselines。
 
 若下一轮改成更强 OSDI 叙事，顶层 use case 不应继续按 W1/W2/W3/W4 四条线并列，而应收敛为三个：agent sandbox lifecycle、service fixture sandbox 和 content-verified cache view。agent sandbox lifecycle 可以包含 fork/fanout、checkpoint rollback/restore、workspace materialization/update 和 deterministic trace replay；不包含 eval isolation。W1 build graph 更适合折叠为 agent sandbox trace replay 来源；当前 W3 Redis replay 不是主线 restore，除非重做成真实 sandbox checkpoint/rollback 或 Podman/CRIU restore workflow。
 
@@ -39,7 +39,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   path oracle。9 个 entries、2 个 policy、0 failure，raw evidence 位于
   `results/phase1/20260615T-parent-key-poc/w1-oracle.jsonl`。该 gate 是
   `kvm_policy_path_oracle`，仍显式标记 `qualified_for_c8=false`，因为它还不是完整
-  build output hash oracle，也没有 table/update budget counterfactual。
+  build output hash oracle，也没有 workload-appropriate baseline comparison。
 - `make phase1-smoke`、`make kvm-functional` 和 `make kvm-bench` 已通过现有
   Phase 1 smoke/functional/microbenchmark 回归。
 - `make phase1 RUN_ID=20260614T-w2-nginx-probes-phase1 SAMPLES=1 BENCH_ITERS=2000`
@@ -77,7 +77,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `table_rule_writes=2`、`table_budget_failure=false`、
   `zero_mixed_epoch_checker=false`、`restore_trace_checker=false`、
   `qualified_for_c8=false`。这是 W3/C8 的负证据：当前 Redis RDB replay 仍可被
-  table-only exact redirect 解释，不能证明 checkpoint/restore family 需要 eBPF
+  exact-map diagnostic 解释，不能证明 checkpoint/restore family 需要 eBPF
   可编程逻辑。实现记录：
   `docs/tmp/2026-06-15-w3-table-replay-counterfactual-implementation.md`。
 - `make workload-w3-podman-criu-capability
@@ -287,7 +287,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   directory 副本中验证了 `private.h -> poison.dep` 和 `missing.h -> PASS/ENOENT`
   分支语义。但这些 branch probes 仍不是 release build trace 中自然触发的 workload
   hit；完整 trace-derived alias set、release-level operation-weighted redirected hit
-  rate 和 C8 table/update budget 仍未完成。
+  rate 和 C8 workload-appropriate baseline comparison 仍未完成。
 - `docs/tmp/2026-06-15-w1-release-binary-replay-gap-analysis.md` 已把 W1
   release binary replay 缺口单独记录为 Phase 1 调研 artifact。该分析识别出的
   主要 blocker 是：当时 `struct namei_ext_component_key` 仍只按
@@ -298,7 +298,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `docs/tmp/2026-06-15-w1-release-binary-replay-implementation.md` 已补上
   KVM release-binary witness；`docs/tmp/2026-06-15-w1-branch-probes-implementation.md`
   又补上 KVM poison/negative branch probes。release-level 自然 workload hit、完整
-  trace-derived alias set、operation-weighted hit rate 和 table/update budget
+  trace-derived alias set、operation-weighted hit rate 和 workload-appropriate baseline comparison
   counterfactual 仍未补齐，因此 W1 仍不能计入 C1/C8 主结论。
 - `docs/tmp/2026-06-15-parent-aware-namei-abi-survey.md` 和
   `docs/tmp/2026-06-15-parent-aware-namei-abi-implementation.md` 已把 parent-aware
@@ -335,7 +335,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `qualified_for_c8=false`。该 witness 证明 W1 policy attach path 可支撑真实
   Redis/nginx release rebuild 的 output equivalence；它仍不是 C8，因为完整
   trace-derived alias set、release-level poison/negative natural workload hits、
-  operation-weighted hit rate 和 table/update budget counterfactual 仍未完成。
+  operation-weighted hit rate 和 workload-appropriate baseline comparison 仍未完成。
 - `make kvm-w1-branch-probes RUN_ID=20260615T-parent-key-poc` 已在修改后的 kernel
   KVM guest 内补上 W1 build-graph poison/negative branch probes。该 target 复制
   Redis/nginx trace source 到 guest 临时目录，在 Redis `src/` 和 nginx `src/core/`
@@ -365,13 +365,13 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   且不等于同目录 production-like decoy。该结果是
   `kvm_real_app_health_oracle` + `functional_only` content probes，仍不做
   trace-level no-real-secret/cert/poison open checker、release-level endpoint matrix、
-  startup trace、operation-weighted hit rate 或 table/update budget failure。
+  startup trace、operation-weighted hit rate 或 workload-appropriate baseline advantage。
 - 当前 W3 checkpoint-witness manifests 证明 Redis/nginx provenance 绑定的
   checkpoint/restore witness entries 可以生成 7 个 entries。`make kvm-w3-oracle`
   已在 KVM guest 中用 `checkpoint_restore_view.bpf.c` 和 `table_redirect.bpf.c`
   通过同一组 lookup/readdir path oracle；它仍不运行真实 Podman/CRIU restore，
   不验证 restore health、post-restore VFS trace、state/config/cache hash 或
-  0 mixed epoch oracle，也不证明 table/update budget failure。
+  0 mixed epoch oracle，也不证明 workload-appropriate baseline advantage。
 - `make kvm-w3-redis-replay RUN_ID=20260615T-parent-key-poc` 已在修改后的 kernel
   KVM guest 内补上 Redis checkpoint replay witness。该 target 先用真实
   `redis-server` 生成包含 key `namei_ext:w3:checkpoint` 的 `dump.ckpt`，再证明
@@ -395,7 +395,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `qualified_for_c8=false`。因此 W3 当前从“缺 same-workload table comparator”变为
   “same-workload table comparator 通过”的负证据；后续要支持 C8，必须引入真实
   Podman/CRIU restore、restore trace、zero mixed epoch/update/stale-window checker，
-  或其它能让 table-only 在同等 budget 下失败的 release workload。
+  或其它能提供 workload-appropriate baseline advantage 的 release workload。
 - 当前 W4 cache-witness manifests 证明 Redis/nginx/Prometheus provenance 绑定的
   cache-locality witness entries 可以生成 4 个 entries。`make kvm-w4-oracle`
   已在 KVM guest 中用 `cache_locality_view.bpf.c` 和 `table_redirect.bpf.c`
@@ -413,7 +413,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `results/phase1/20260614T-w2-nginx-probes-phase1/w4-cache-content.jsonl`，
   summary 同样为 0 failure。该 cache-content gate 本身不包含真实 ccache 编译或
   BuildKit build，不验证 compiler/go output hash、cache transition trace、
-  update writes 或 stale window，也不证明 table/update budget failure。
+  update writes 或 stale window，也不证明 workload-appropriate baseline advantage。
 - `make kvm-w4-cache-table-content RUN_ID=20260615T-w4-cache-table-content-smoke-v1`
   已补上 W4 cache-content oracle 的 same-workload table-only comparator。该 target
   使用同一 `w4-cache-oracle-entries.tsv`、同一修改内核 KVM attach path 和同一内容
@@ -426,7 +426,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   cache-content oracle 当前也是 C8 负证据：verified hit、stale fallback、corrupt
   reject 和 miss canonical 的 manifest-derived witness 仍可被 exact table 表达；后续
   仍需要真实 stale/corrupt transition、operation-weighted hit rate、BuildKit cache
-  trace、update/stale window 或 table/update budget failure。
+  trace、update/stale window 或 workload-appropriate baseline advantage。
 - `make kvm-w4-ccache-real RUN_ID=20260615T-parent-key-poc` 已在修改后的 kernel
   KVM guest 内补上 W4 真实 ccache cold/hot transition witness。该 target 对 Redis
   `src/crc64.c` 和 nginx `src/core/ngx_string.c` 分别执行 cold/hot 两次
@@ -445,7 +445,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `qualified_for_c8=false`，因为它只证明真实 ccache transition 和 ccache-derived
   object 上的 policy content oracle，不证明 ccache 自身 cache path 通过
   `namei_ext`、operation-weighted policy cache hit rate、真实 stale/corrupt
-  transition、update/stale-window measurement 或 table/update budget failure。
+  transition、update/stale-window measurement 或 workload-appropriate baseline advantage。
 - `make kvm-w4-ccache-trace RUN_ID=20260615T-parent-key-poc` 进一步在修改后的 kernel
   KVM guest 中用 `strace -f -e trace=%file` 跟踪真实 `ccache` hot compile。该 target
   先用同一独立 `CCACHE_DIR` 对 Redis `src/crc64.c` 和 nginx
@@ -460,7 +460,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   只证明真实 ccache hot path 在 KVM 中实际访问 cache directory；`policy_executed=false`
   且 `qualified_for_c8=false`，因为它没有 attach `namei_ext` policy，也不提供
   operation-weighted policy cache hit rate、真实 stale/corrupt transition、
-  update/stale-window measurement 或 table/update budget failure。
+  update/stale-window measurement 或 workload-appropriate baseline advantage。
 - `make kvm-w4-ccache-policy-bridge RUN_ID=20260615T-parent-key-poc` 已补上 W4
   trace-derived ccache policy bridge。该 target 从上述 Redis/nginx raw strace logs 中
   抽取成功 `openat(..., O_RDONLY) = fd` 的真实 cache object paths，生成
@@ -509,7 +509,7 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   解析 trace-derived cache objects，并保持 Redis/nginx output object hash 与 baseline
   hot object 一致；它仍显式 `qualified_for_c8=false`，因为还没有 release-level
   operation-weighted policy cache hit rate、真实 stale/corrupt transition、update/stale
-  window 或 table/update budget counterfactual。
+  window 或 workload-appropriate baseline comparison。
 - `make kvm-w4-ccache-table-compile RUN_ID=20260615T-parent-key-poc` 已补上 W4
   table-only policy-attached ccache compile comparator。该 target 复用同一份真实
   trace-derived `CCACHE_DIR`、同一组 Redis/nginx source file 和同一组 4 个 cache
@@ -523,9 +523,9 @@ Checkpoint/restore 当前最弱：W3 Redis 有 Redis RDB load/replay witness、m
   `pass=true` 和 `failures=0`。ccache stats 同样记录 `cache_miss=0`、
   `direct_cache_hit=2`、`local_storage_hit=2` 和 `local_storage_write=0`。这个结果是
   C8 的负面证据：当前 sampled Redis/nginx ccache hot compile witness 能被
-  table-only exact redirect 解释，因此 W4 仍不能声称需要 eBPF 可编程逻辑；后续必须用
+  exact-map diagnostic 解释，因此 W4 仍不能声称需要 eBPF 可编程逻辑；后续必须用
   release-level operation-weighted hit rate、stale/corrupt transition、update/stale
-  window 或 table/update budget failure 证明 table-only 不足。
+  window 或 workload-appropriate baseline advantage support dynamic-policy necessity。
 - `make kvm-w4-ccache-parent-compile RUN_ID=20260615T-w4-valid-sibling-structured-oracle` 已补上
   W4 parent-scoped cache policy PoC。最终实现没有新增第二张 parent map，而是复用
   `cache_rules`，用 `name_len=0` 的 parent wildcard key 表示“该 cache leaf parent
@@ -686,7 +686,7 @@ PoC，让内核继续拥有 VFS object 和 lower-filesystem 语义。
 多个语义不同的 eBPF policy family 支撑：`build_graph_view.bpf.c`、
 `sandbox_fixture_view.bpf.c`、`checkpoint_restore_view.bpf.c` 和
 `cache_locality_view.bpf.c` 都必须在同一个 kernel ABI 上运行。只有当
-`table_redirect.bpf.c` 在同等 table/update budget 下无法同时满足这些 family 的
+claim-driven baselines cannot simultaneously satisfy these family
 semantic oracle 和 cost gate 时，C8 的“需要 eBPF programmable path-resolution
 logic”才成立。
 

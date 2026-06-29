@@ -1,5 +1,7 @@
 # W4 合法形状 sibling 结构化内容 oracle 实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: execute / claim-gate
 Source/command: `make kvm-w4-ccache-parent-compile RUN_ID=20260615T-w4-valid-sibling-structured-oracle`

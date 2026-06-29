@@ -1,5 +1,7 @@
 # W4 cache-content table-only counterfactual 实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: execute/gate loop
 Source/command: continue B12/C8 counterfactual work after W3 table replay

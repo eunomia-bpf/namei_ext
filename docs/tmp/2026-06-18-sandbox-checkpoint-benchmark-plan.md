@@ -1,5 +1,7 @@
 # Sandbox and Checkpoint Benchmark Plan
 
+> 2026-06-29 baseline scope update: this note preserves historical reasoning and results, but older C8/B12 baseline-gate wording is superseded by `docs/tmp/2026-06-29-redirect-table-novelty-position.md`. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
 ## Motivation
 
 This note records the current status of the sandbox fixture and checkpoint/restore lines, and turns them into an OSDI-grade benchmark plan. It is intentionally scoped: the current paper story is already a scoped weak-accept story, while full release claims still need stronger benchmark evidence.

@@ -1,5 +1,7 @@
 # Paper Sync For W4 FUSE Compile Baseline
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## Motivation
 
 After the W4 bulk FUSE compile-through baseline passed and entered the W4

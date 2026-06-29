@@ -1,5 +1,8 @@
 # w3-redis-podman-criu 证据
 
+> 2026-06-29 baseline scope update: older gate language is superseded by claim-driven baseline selection. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
+
 状态：`functional_only_kvm_path_oracle` + `kvm_checkpoint_restore_replay_witness`；
 不能计入 C1/C8。
 
@@ -98,7 +101,7 @@ trace、state/config/cache hash 或 0 mixed epoch。
 - Redis health check、RDB/AOF/config hash 等于 checkpoint manifest、runtime-local
   socket/temp path remap、post-restore lookup/readdir trace coverage 和 0 mixed
   checkpoint/current epoch。
-- `table_redirect.bpf.c` 的同等 table/update budget counterfactual。
+- claim-driven baseline comparison or optional exact-map diagnostic。
 
 CRIU 已恢复的 fd、mmap mapping 和 socket 不计为 `namei_ext` 证据，除非 workload
 在 restore 之后再次通过 VFS lookup/readdir 访问这些路径。

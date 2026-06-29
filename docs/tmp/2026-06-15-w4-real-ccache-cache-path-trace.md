@@ -1,5 +1,7 @@
 # W4 真实 ccache cache-path trace KVM 见证实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 最近更新：2026-06-15
 更新阶段：第一阶段实现
 来源/命令：`make kvm-w4-ccache-trace RUN_ID=20260615T-parent-key-poc`

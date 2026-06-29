@@ -1,5 +1,7 @@
 # OSDI performance run-order 与 system-metrics 实现记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: execute/gate loop
 Source/command: `make kvm-bench RUN_ID=20260615T-kvm-bench-order-metrics-pilot-v3 SAMPLES=1 BENCH_ITERS=200 BENCH_LATENCY_SAMPLES=2 BENCH_LATENCY_BATCH=4 BENCH_RANDOMIZE_ORDER=1` 和 `make eval-osdi-performance-ledger RUN_ID=20260615T-eval-ledger-order-metrics-pilot-v2 EVAL_OSDI_PHASE1_RUN_ID=20260615T-kvm-bench-order-metrics-pilot-v3 EVAL_OSDI_PERFORMANCE_BASELINE_RUN_ID=20260615T-kvm-external-baselines-fuse-smoke-v2`

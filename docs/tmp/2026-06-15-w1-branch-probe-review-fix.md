@@ -1,4 +1,7 @@
 最后更新：2026-06-15
+
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 更新阶段：Phase 1 documentation/report hardening
 来源：独立 subagent 对 W1 release replay 与 branch-probe claim 的对抗 review
 完成度：已修复 review 指出的 claim-to-evidence 一致性问题；不改变 C1/C8 qualification

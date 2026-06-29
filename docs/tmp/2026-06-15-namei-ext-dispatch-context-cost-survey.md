@@ -1,5 +1,7 @@
 # namei_ext dispatch/context 热路径成本调研
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 Last updated: 2026-06-15
 Stage at update: execute/gate
 Source/command: `nl`/`rg` inspect `kernel/fs/namei_ext.c`, `kernel/kernel/bpf/cgroup.c`, `kernel/include/linux/bpf.h`, `kernel/include/linux/cgroup.h`, `kernel/include/linux/bpf-cgroup.h`, `bpf/policies/*.bpf.c`, `bpf/include/namei_ext_policy.h`, `bench/workloads/namei_ext_bench.c`

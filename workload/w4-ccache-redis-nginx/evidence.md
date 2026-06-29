@@ -1,5 +1,8 @@
 # w4-ccache-redis-nginx 证据
 
+> 2026-06-29 baseline scope update: older gate language is superseded by claim-driven baseline selection. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
+
 状态：`functional_only_kvm_path_oracle` + `kvm_cache_content_oracle` +
 `kvm_real_ccache_workload_witness` + `kvm_real_ccache_cache_path_trace_witness` +
 `kvm_real_ccache_policy_bridge_witness` + `kvm_real_ccache_policy_compile_witness` +
@@ -73,11 +76,11 @@ sampled compile witness，不是 release-level operation-weighted policy cache h
 content oracle PASS。该 witness 证明 parent-scoped policy 的边界，但仍只有 4 个 sampled
 trace objects。
 
-第八层是 table-only comparator 与 release counterfactual accounting：
+第八层是 exact-map diagnostic comparator 与 release counterfactual accounting：
 `make kvm-w4-ccache-table-compile` 用同一份 sampled ccache witness 运行
 `table_redirect.bpf.c` exact redirects；该 comparator 通过，因而是 C8 的负面证据。
 `make kvm-w4-ccache-release-counterfactual RUN_ID=20260615T-full-phase1-gatefix`
-把真实 ccache trace、parent-scoped compile、table-only comparator 和 attach-window
+把真实 ccache trace、parent-scoped compile、exact-map diagnostic comparator 和 attach-window
 optrace 汇总成 accounting row，并保持 `qualified_for_c8=false`。
 
 - Cache witness manifest target：`make workload-ccache-manifest`
@@ -89,7 +92,7 @@ optrace 汇总成 accounting row，并保持 `qualified_for_c8=false`。
 - KVM trace-derived ccache policy bridge target：`make kvm-w4-ccache-policy-bridge`
 - KVM real ccache policy-attached compile target：`make kvm-w4-ccache-policy-compile`
 - KVM parent-scoped ccache compile target：`make kvm-w4-ccache-parent-compile`
-- KVM table-only ccache compile comparator target：`make kvm-w4-ccache-table-compile`
+- KVM exact-map ccache compile diagnostic target：`make kvm-w4-ccache-table-compile`
 - KVM release counterfactual accounting target：`make kvm-w4-ccache-release-counterfactual`
 - Cache witness manifest：
   `results/workloads/runs/20260615T-full-phase1-gatefix/w4-ccache-redis-nginx/cache-manifest.json`
@@ -158,7 +161,7 @@ Cache content oracle 额外检查：
 map-backed state dispatch，在真实 KVM attach path 中影响普通 VFS open/read/readdir；
 该 cache-content gate 本身不证明真实 ccache hit/miss 统计、BuildKit cache mount 行为、
 compiler/go output hash、cache transition trace、stale window、update writes 或
-table/update budget failure。
+workload-appropriate baseline gap。
 
 `w4-ccache-real.jsonl` 的 ccache row 记录：
 
@@ -183,7 +186,7 @@ table/update budget failure。
 可审计的 Redis/nginx object，并且这些 object 可以被 W4 policy content oracle 消费。
 它仍不证明 ccache 自身的 cache path 通过 `namei_ext` 解析，也不证明
 operation-weighted policy cache hit rate、真实 stale/corrupt transition、
-stale/update window 或 table/update budget failure。
+stale/update window 或 workload-appropriate baseline gap。
 
 `w4-ccache-trace.jsonl` 的 trace row 记录：
 
@@ -217,7 +220,7 @@ cache hit rate。
 policy TSV，并在 KVM 中通过 `cache_locality_view.bpf.c` 的 verified-hit content
 oracle：4 个 attached expected match、4 个 forbidden mismatch、4 个 readdir alias
 和 4 个 detach 后 absent 检查全部通过。后续 policy-attached compile、parent-scoped
-compile、table-only comparator 和 release counterfactual accounting 已经补上真实
+compile、exact-map diagnostic comparator 和 release counterfactual accounting 已经补上真实
 `ccache gcc -c` attach-window witness；但它们仍不提供 release-level operation-weighted
 policy cache hit rate。
 
@@ -230,4 +233,4 @@ policy cache hit rate。
 - BuildKit/Prometheus Go cache-path trace 与 output hash oracle。
 - 发布级 compiler output hash、local/remote cache hit/miss/stale/corrupt branch coverage、
   stale/corrupt 0 unexpected hit、update writes、stale window 和 lookup/readdir visible set checker。
-- `table_redirect.bpf.c` 的同等 table/update budget counterfactual。
+- claim-driven baseline comparison or optional exact-map diagnostic。

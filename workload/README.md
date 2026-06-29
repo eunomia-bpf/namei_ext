@@ -46,8 +46,9 @@ strace logs 和 source hashes 约束这些 candidates，记录 semantic branch h
 
 source provenance 和 host-side build traces 不会让 workload 变成 `validated`。
 workload 只有在修改后的 kernel、真实 policy attach path、workload-specific oracle
-和 table-only counterfactual 都在 KVM 中通过，并把 raw results 写到 `results/`
-之后，才能支撑 C1/C8。
+和 claim 对应的 feature-equivalent baseline/diagnostic gate 都在 KVM 中通过，并把
+raw results 写到 `results/` 之后，才能支撑 release-level claim。exact-map
+diagnostics 只在 claim 明确讨论预计算映射时需要；它不是所有 workload 的默认 gate。
 
 清理规则：
 

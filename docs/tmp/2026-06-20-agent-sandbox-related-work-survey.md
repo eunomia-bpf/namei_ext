@@ -1,5 +1,7 @@
 # Agent Sandbox Related Work Survey
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 ## Purpose
 
 This note records an expanded related-work survey for a possible `namei_ext` paper story centered on agent sandbox lifecycle workloads. The existing paper related-work draft in `docs/paper/sections/06-related-work.tex` covers FUSE, OverlayFS/materialized views, Landlock/BPF LSM/fanotify, and eBPF kernel policy interfaces. It does not yet cover coding-agent benchmarks, agent sandbox products, snapshot/fork systems, terminal-command traces, or serverless checkpoint work.

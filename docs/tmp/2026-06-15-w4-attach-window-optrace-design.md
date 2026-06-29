@@ -1,5 +1,7 @@
 # W4 attach-window operation trace 设计记录
 
+> 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
+
 更新日期：2026-06-15
 阶段：补充 / 执行设计
 来源/命令：Mencius Weak Accept 后继续推进 W4 release-level operation-weighted hit-rate blocker

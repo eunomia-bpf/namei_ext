@@ -1,5 +1,7 @@
 # 真实 workload 来源和性能信号台账
 
+> 2026-06-29 baseline scope update: this note preserves historical reasoning and results, but older C8/B12 baseline-gate wording is superseded by `docs/tmp/2026-06-29-redirect-table-novelty-position.md`. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
 日期：2026-06-14
 阶段：Phase 1 文档补强
 类型：研究记录

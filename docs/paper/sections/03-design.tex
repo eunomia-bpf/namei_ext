@@ -32,8 +32,8 @@ POC semantic gate & KVM guest 内 policy 可以 load/attach，并触发预设 lo
 host trace-witness & 真实应用构建或运行 trace 中出现候选 alias/component。 &
 BPF policy execution、KVM workload oracle 和 redirected operation hit rate。 \\
 KVM workload oracle & 修改后 kernel guest 中运行真实 workload、attach policy，并通过 usecase-specific checker。 &
-若缺少 table-only counterfactual，仍不能支撑 C8。 \\
-release-level result & KVM workload oracle、raw artifacts、baseline、table-only budget、dmesg/verifier gate 全部通过。 &
+若缺少 claim 对应的 feature-equivalent baseline，仍不能支撑发布级比较。 \\
+release-level result & KVM workload oracle、raw artifacts、claim-driven baseline、dmesg/verifier gate 全部通过。 &
 超出已实现 ABI 的 cross-directory、write-through 或安全隔离主张。 \\
 \bottomrule
 \end{tabularx}
@@ -73,8 +73,8 @@ cache-state 和 hash witness checks。 & content hash、stale/corrupt reject、s
 \subsection{Policy families}
 
 表~\ref{tab:policy-families} 总结当前四类主线 policy family。它们共享同一个 ABI，但
-决策结构不同。如果未来实现把它们全部退化为同一个 exact table lookup，最终
-programmability claim 必须判为 unsupported。
+决策结构不同。如果未来实现把它们全部退化为同一个预计算 lookup map，最终
+dynamic-policy claim 必须判为 unsupported。
 
 \begin{table}[t]
 \centering
@@ -96,13 +96,16 @@ cache locality & hit/miss/stale/corrupt cache & cache-state + hash witness & POC
 \label{tab:policy-families}
 \end{table}
 
-\subsection{为什么不是静态 redirect table}
+\subsection{为什么是窄 VFS hook}
 
-静态 table 可以表达 \code{(event, component) -> target}，因此它是必要 baseline。
-最终 programmability 主张需要证明多类 extension 在同一 ABI 上需要不同的
-verifier-safe policy logic。build graph 需要 precedence 和 poison 分支；fixture
-workload 需要 path-class campaign 和 no-real-secret oracle；checkpoint/restore 需要
-restore epoch consistency；cache locality 需要 content-state transition。当前版本只把
-未满足该条件的 cases 作为反事实边界。若 table-only 在同等 table/update budget 下
-通过全部主 oracle，论文必须降级为 kernel redirect-table artifact，而不能声称需要 eBPF
-programmable path resolution。
+本文不把路径映射表作为新颖性来源。路径到 backing object 的 manifest、mount
+projection、FUSE view 和 overlay-style namespace 都是已有系统常用机制。本文的设计点更窄：
+在不实现新 filesystem、不接管 file operations、不改变 lower filesystem ownership 的前提下，
+把 lookup/readdir 期间的有界 policy decision 放到 VFS name-resolution 路径中。
+
+因此 baseline 选择必须跟随 claim。若某个 workload 的自然替代方案是 FUSE、materialized
+tree、bind/symlink projection、OverlayFS 或 workload-native cache/runtime 机制，评估就应与
+这些机制比较。只有当论文明确声称 dynamic policy 优于预计算 exact mapping 时，exact-map
+counterfactual 才是相关 sanity check。build graph、fixture、checkpoint/restore 和 cache
+locality 的主问题分别是 precedence、path class、epoch consistency 和 content-state
+transition；它们是否需要 \namei，必须由对应 oracle 和 workload-appropriate baseline 决定。

@@ -1,5 +1,7 @@
 # 2026-06-14 Table-only Conformance Gate 实现记录
 
+> 2026-06-29 baseline scope update: this note preserves historical reasoning and results, but older C8/B12 baseline-gate wording is superseded by `docs/tmp/2026-06-29-redirect-table-novelty-position.md`. Current evaluation uses claim-driven, workload-appropriate baselines. Exact-map diagnostics are optional and only relevant when precomputed mapping is the competing claim.
+
 ## 动机
 
 第二轮论文 review 指出：`table_redirect.bpf.c` 已被定义为 C8 的强 table-only baseline，
