@@ -106,12 +106,18 @@ baseline, workload-source, or result verdicts.
   code 0, 2/2 fail-to-pass tests, 0/2 pass-to-pass failures, and
   `all_ok=true`. C# `btcpayserver__btcpayserver-6251` and Elixir
   `mhanberg__temple-135` are evaluator-positive but have raw row exit-code
-  caveats: C# has 21/21 F2P with raw exit 1 due one non-expected failed test;
-  Elixir has 51/51 F2P and 0/12 P2P failures with raw exit 2 due six raw
-  ExUnit failures outside the expected oracle. Selected public HF sample
-  coverage is now 12/20 rows. This is selected-row evidence, not full corpus,
-  full HF 20-task sample, image-builder, or environment-generation
-  reproduction.
+  caveats. A follow-up completed attempted coverage of the remaining public HF
+  sample rows: Elixir/Go remaining rows (`elixir-ecto__ecto-2338`,
+  `rrrene__credo-711`, `ceph__go-ceph-502`, and
+  `fsouza__fake-gcs-server-1035`) are all evaluator-positive, with `fsouza`
+  clean raw exit 0; Java remaining rows have clean `jchambers__pushy-850`,
+  evaluator-positive raw-exit caveats for `gchq__gaffer-2904` and
+  `apache__streampipes-2889`, and one mismatch:
+  `alibaba__fescar-382` passed 24/25 expected F2P and missed
+  `---NO TEST NAME FOUND YET---`. Public HF sample accounting is now 20/20
+  attempted, 19/20 evaluator-positive, 11/20 clean raw-exit-0 positives, 8/20
+  evaluator-positive raw-exit caveats, and 1/20 mismatch. This is still not
+  full corpus, image-builder, or environment-generation reproduction.
 - SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
   `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
   `mochajs__mocha-1965`, and `iamkun__dayjs-337` all completed and resolved
