@@ -1,50 +1,9 @@
-\section{引言}
+\section{Introduction}
 
-文件路径仍然是系统软件之间最常见、最稳定的接口之一。构建工具通过路径发现源码、
-生成文件、头文件和工具链。服务通过路径读取配置、证书、secret 和 socket。容器和
-checkpoint/restore 系统通过路径把运行时状态重新连接到新的执行环境。构建缓存通过路径
-在本地缓存、远端缓存和 canonical store 之间选择对象。这些场景的共同点不是需要一个完整
-新文件系统，而是需要动态 path view：同一个路径在不同 workload、action、restore session
-或 cache 状态下解析到不同 backing object。
+This section is intentionally a routing stub. The current introduction story,
+claim scope, non-goals, and next action live in \file{docs/idea-story.md}.
+Related-work and baseline implications live in
+\file{docs/background-related-work.md}.
 
-现有文件系统扩展机制在表达力、安全边界和效率之间取舍。内核补丁或自定义内核文件系统
-可以快且表达力强，但扩展逻辑进入 kernel trusted computing base，bug 可能破坏内核完整性
-或文件系统不变量。FUSE 把扩展逻辑移出内核，降低加载任意内核文件系统代码的风险，但
-FUSE daemon 仍位于文件系统可信路径上；daemon crash、权限错误、cache 不一致或不完整
-POSIX 语义都会影响 correctness 和 security。bind mount、OverlayFS、projected volume、
-symlink forest 和 copy tree 等静态或物化机制保留内核文件系统语义，但通常是粗粒度或
-workload-specific 的 path-view construction，而不是 general programmable abstraction。
-构建系统的 sandbox 和 hermeticity 文档说明，action 只应看到已知输入，否则构建会依赖
-未声明文件或主机环境~\cite{bazel_sandboxing,bazel_hermeticity}。Kubernetes projected
-volumes 和 Secrets 说明，生产部署经常把 config、secret 和 token 作为文件注入
-容器~\cite{kubernetes_projected_volumes,kubernetes_secrets}。Podman 和 CRIU 的
-checkpoint/restore 文档说明，恢复后的进程需要在新环境中继续运行~\cite{podman_checkpoint,criu_main}。
-Docker BuildKit cache mounts 说明，构建缓存需要跨构建保留 package 或 build cache
-目录~\cite{docker_buildkit_cache}。
-
-\namei 的目标是在这个 tradeoff 中提供一个更窄的点。它不是 BPF filesystem，也不是访问
-控制框架，而是一个面向动态 path view 的 VFS name-resolution 扩展点。内核在 VFS path
-walk 和 directory enumeration 中调用一个 cgroup-attached eBPF policy。policy 只能返回
-\code{PASS} 或受限 \code{REDIRECT}。内核仍负责 redirect 校验、真实 lookup、权限检查、
-dcache、inode 和 file operations。这个设计把可编程性放在路径解析处，同时避免让扩展接管
-文件数据路径或重新实现 lower filesystem 语义。
-
-本文当前版本的贡献是三部分。第一，我们把动态 path view 定义为一个 general but narrow
-programmable filesystem abstraction：BPF 拥有有界 name-resolution decision，内核和
-lower filesystem 拥有对象、权限、cache 和 data path。第二，我们实现四类语义不同的 POC
-eBPF policy family，并用 KVM load/attach 和 semantic gate 证明同一个 ABI 可以承载这些
-policy object。第三，我们报告
-当前证据支持的收窄结果：W2 nginx fixture 在
-copy/symlink/bind/projected-volume/FUSE baselines 下通过 storage 和 threshold gate，
-tool-redirect lookup/access/open/exec 通过 native/FUSE p99 阈值，而 W1/W3/W4、
-	residual-overhead attribution 和 balanced dynamic path-view claim 均作为负结果和范围边界保留。
-评估本身采用 claim-first ledger 作为审计方法：每个 workload 都必须绑定真实来源、KVM
-attach 路径、workload-specific oracle、baseline 和降级规则。
-
-这个 scope choice 是当前证据驱动的。W1 build graph 和 W3 Redis checkpoint replay 在补齐
-feature-equivalent/FUSE baseline 后仍为负结果。W4 ccache bulk 已有 materialized/FUSE
-cache-view baseline、complete compile-through-FUSE baseline 和 policy setup/update
-release input，但 setup/update/materialization ledger 仍为负。C8 不进入当前主结论，
-因为 diagnostic comparator 在 W3 Redis replay、W4 cache-content oracle 和 W4 ccache
-sampled compile oracle 上都能通过；C5 也不进入当前主结论，因为 residual-overhead gate
-仍为负。后续论文若要扩大主张，必须先产生能改变这些 verdict 的真实 workload evidence。
+Do not use historical draft text to claim that workloads require eBPF,
+\namei, dynamic policy logic, or table impossibility.

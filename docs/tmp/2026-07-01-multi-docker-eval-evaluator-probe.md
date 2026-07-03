@@ -1,0 +1,188 @@
+# Multi-Docker-Eval Evaluator Probe
+
+Date: 2026-07-01
+
+## Motivation
+
+The environment/cache workload survey previously found that Multi-Docker-Eval
+has a public task dataset and evaluator, but that full evaluator reproduction
+needs a `docker_res` artifact. This record checks that boundary more carefully:
+
+- whether the public Hugging Face dataset includes Dockerfile/eval-script
+  fields;
+- whether the public GitHub repository ships a sample `dataset` plus
+  `docker_res` pair;
+- whether the upstream evaluator can run on a real public task if a
+  `docker_res` entry is provided.
+
+This is workload-source evidence, not Phase 1 `namei_ext` validation. It does
+not exercise the modified kernel or any `namei_ext` policy.
+
+## Sources Inspected
+
+- Source checkout:
+  `.cache/source-inspection/multi-docker-eval`
+- Source commit:
+  `3160f50a6d18dcd0c01ec7c4dd221eae6e459c56`
+- Hugging Face dataset:
+  `litble/Multi-Docker-Eval`
+- Dataset revision from HF API:
+  `65b801017452077bfb23ef53f5a4b4668ed05a14`
+- Local parquet:
+  `.cache/source-inspection/hf-datasets/litble__Multi-Docker-Eval/data/test-00000-of-00001.parquet`
+
+Raw artifacts are under:
+
+- `results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/`
+
+## Public Artifact Boundary
+
+The HF dataset metadata exposes only three repository siblings:
+
+- `.gitattributes`
+- `README.md`
+- `data/test-00000-of-00001.parquet`
+
+The parquet has 334 task rows and these fields:
+
+- `repo`
+- `pull_number`
+- `instance_id`
+- `issue_numbers`
+- `base_commit`
+- `patch`
+- `test_patch`
+- `problem_statement`
+- `hints_text`
+- `created_at`
+- `language`
+- `label`
+
+It does not include Dockerfile, eval-script, setup-script, base-image, or
+generated environment-result fields.
+
+The evaluator requires `base.docker_res`. The code path is:
+
+- `evaluation/main.py` loads `cfg.base.docker_res`;
+- `evaluation/test_spec.py` requires `docker_res['eval_script']` and
+  `docker_res['dockerfile']`;
+- `scripts/swe-builder/gen_docker_res.py` converts SWE-Builder `results.json`;
+- `scripts/RepoLaunch/gen_docker_res.py` converts RepoLaunch `result.json`
+  files with `base_image`, `final_setup_commands`, and `final_test_commands`.
+
+No public checkout file provides the generated SWE-Builder/RepoLaunch
+`docker_res` for the 334 tasks.
+
+## Probe Design
+
+I selected one small real Multi-Docker-Eval task:
+
+- instance: `uber-go__atomic-90`
+- repo: `uber-go/atomic`
+- base commit: `2a929df6c0b396dd979a318801a58049914dcd56`
+- language: Go
+- label: Easy
+
+The probe created a synthetic `docker_res` from public task fields:
+
+- Dockerfile base: `golang:1.20-bookworm`
+- setup script: clone `uber-go/atomic`, reset to the base commit, remove the
+  remote;
+- eval script: apply the task `test_patch`, run `go test ./...`, and emit
+  `OMNIGRIL_EXIT_CODE`.
+
+This synthetic `docker_res` is not an upstream Multi-Docker-Eval generated
+environment artifact and must not be cited as full benchmark reproduction.
+
+## What Ran
+
+The successful evaluator run used the existing isolated venv:
+
+```text
+env PYTHONPATH=. .cache/venvs/multi-docker-eval/bin/python \
+  ./evaluation/main.py \
+  base.dataset=.../dataset-uber-go-atomic-90.jsonl \
+  base.docker_res=.../synthetic-docker-res-uber-go-atomic-90.json \
+  base.run_id=synthetic-uber-go-atomic-90 \
+  base.output_path=.../evaluator-output \
+  run_time.max_workers=1 \
+  run_time.force_rebuild=True \
+  docker.build_timeout=600 \
+  test.test_timeout=180 \
+  test.stability_runs=1
+```
+
+Two preliminary attempts are preserved as failures:
+
+- system Python failed with `ModuleNotFoundError: No module named 'hydra'`;
+- venv Python failed without `PYTHONPATH` because `evaluation` was not
+  importable as a package.
+
+The third attempt exited with status 0.
+
+## Result
+
+The upstream evaluator reported:
+
+```json
+{
+  "dataset_instances": 1,
+  "provided_instances": 1,
+  "provided_rate": 1.0,
+  "summary": {
+    "total_instances": 1,
+    "failed_before_patch": 1,
+    "passed_after_patch": 1,
+    "details": {
+      "f2p_instance": 1,
+      "p2p_instance": 0,
+      "f2f_instance": 0,
+      "p2f_instance": 0,
+      "resolved": 1,
+      "stable": 1
+    }
+  }
+}
+```
+
+The before-patch log applied the task test patch and failed as expected:
+
+- `undefined: NewUintptr`
+- `undefined: UnsafePointer`
+- `OMNIGRIL_EXIT_CODE=1`
+
+The after-patch log applied the gold patch, ran `go test ./...`, and passed:
+
+- `ok go.uber.org/atomic`
+- `OMNIGRIL_EXIT_CODE=0`
+
+The recorded Docker image size was 846,005,251 bytes.
+
+## Interpretation
+
+Multi-Docker-Eval remains a useful W4 environment-construction workload source:
+it provides 334 real repository tasks, language and difficulty labels, patches,
+test patches, and an evaluator that measures fail-to-pass behavior once a
+Docker environment result is available.
+
+This run does not close full Multi-Docker-Eval reproduction, because the
+critical environment-construction output (`docker_res`) was synthetic rather
+than released by the benchmark authors or generated by an official SWE-Builder
+or RepoLaunch run.
+
+The safe paper-facing use is:
+
+- cite Multi-Docker-Eval as a task/evaluator/metric source for W4;
+- use SWE-Factory-Gym, MEnvData-SWE, or SWE-rebench V2 for executable
+  Docker-backed seeds with official environment rows;
+- only cite this probe as evidence that the public evaluator path works when
+  `docker_res` is available.
+
+## Remaining Risks
+
+- Full reproduction still requires released or generated `docker_res` for more
+  tasks.
+- A synthetic single-task Go probe does not represent Multi-Docker-Eval's full
+  polyglot dependency difficulty.
+- This probe is not a `namei_ext` kernel result and should not be mixed with
+  KVM Phase 1 evidence.

@@ -1,6 +1,9 @@
 def ev($rows; $name):
   ($rows | map(select(.event == $name)) | first // {});
 
+def ev2($rows; $primary; $fallback):
+  (($rows | map(select(.event == $primary)) | first) // ev($rows; $fallback));
+
 def avg($xs):
   if ($xs | length) > 0 then (($xs | add) / ($xs | length)) else 0 end;
 
@@ -24,7 +27,7 @@ def metric_stats($rows; $event; $system; metric):
 ($w4_bulk_native // []) as $bncrows |
 ev($rows; "w4-ccache-rule-macrobench-summary") as $summary |
 ev($mrows; "w4-ccache-materialized-baseline-summary") as $msummary |
-ev($bprows; "w4-ccache-bulk-policy-compile-summary") as $bpsummary |
+ev2($bprows; "w4-ccache-bulk-policy-compile-release-summary"; "w4-ccache-bulk-policy-compile-summary") as $bpsummary |
 ev($bpmrows; "w4-ccache-bulk-policy-macrobench-summary") as $bpmsummary |
 ev($bmrows; "w4-ccache-materialized-baseline-summary") as $bmsummary |
 ev($bfrows; "w4-ccache-fuse-baseline-summary") as $bfsummary |
@@ -49,8 +52,18 @@ ev($bncrows; "w4-ccache-bulk-native-compile-summary") as $bncsummary |
  $bpsummary.policy_executed == true and
  $bpsummary.ccache_compile_policy_executed == true and
  $bpsummary.output_hash_match == true and
- $bpsummary.attached_compile_jobs == $bpsummary.source_manifest_count and
- $bpsummary.policy_redirected_cache_objects > 0) as $bulk_policy_compile_smoke_pass |
+ (($bpsummary.attached_compile_jobs == (($bpsummary.samples // 1) * $bpsummary.source_manifest_count)) or
+  ($bpsummary.attached_compile_jobs == $bpsummary.source_manifest_count)) and
+ $bpsummary.policy_redirected_cache_objects > 0) as $bulk_policy_compile_input_pass |
+($bulk_policy_compile_input_pass) as $bulk_policy_compile_smoke_pass |
+($bulk_policy_compile_input_pass and
+ ($bpsummary.samples // 0) >= $required_samples and
+ ($bpsummary.compile_rows // 0) == ($bpsummary.samples // 0) and
+ $bpsummary.attached_compile_jobs == (($bpsummary.samples // 0) * $bpsummary.source_manifest_count) and
+ $bpsummary.attached_compile_output_matches == $bpsummary.attached_compile_jobs and
+ ($bpsummary.attached_cache_path_file_ops // 0) > 0 and
+ ($bpsummary.attached_policy_cache_object_ops // 0) > 0 and
+ $bpsummary.operation_weighted_policy_hit_rate_is_release == true) as $bulk_policy_compile_release_input_pass |
 ($bmsummary.pass == true and
  $bmsummary.workload == "w4-ccache-bulk-redis-nginx" and
  $bmsummary.samples >= $required_samples and
@@ -198,7 +211,7 @@ ev($bncrows; "w4-ccache-bulk-native-compile-summary") as $bncsummary |
 ($bulk_setup_latency_threshold_pass and
  $bulk_update_latency_threshold_pass) as $bulk_threshold_pass |
 ($bulk_policy_release_input_pass and
- $bulk_policy_compile_smoke_pass and
+ $bulk_policy_compile_release_input_pass and
  $bulk_external_baseline_release_input_pass and
  $bulk_storage_footprint_pass and
  $bulk_threshold_pass) as $bulk_release_comparison_pass |
@@ -206,7 +219,7 @@ ev($bncrows; "w4-ccache-bulk-native-compile-summary") as $bncsummary |
   (if $policy_release_input_pass then empty else "W4 parent-rule policy release input" end),
   (if $table_release_input_pass then empty else "W4 table_redirect internal baseline release input" end),
   (if $materialized_release_input_pass then empty else "W4 materialized external baseline release input" end),
-  (if $bulk_policy_compile_smoke_pass then empty else "W4 bulk policy-attached compile smoke input" end),
+  (if $bulk_policy_compile_release_input_pass then empty else "W4 bulk policy-attached compile release input" end),
   (if $bulk_policy_release_input_pass then empty else "W4 bulk proposed-system release repetition setup/update ledger" end),
   (if $bulk_materialized_release_input_pass then empty else "W4 bulk materialized baseline release input" end),
   (if $bulk_fuse_release_input_pass then empty else "W4 bulk FUSE cache-view baseline release input" end),
@@ -217,7 +230,7 @@ ev($bncrows; "w4-ccache-bulk-native-compile-summary") as $bncsummary |
   (if $setup_latency_threshold_pass then empty else "W4 setup latency threshold failed against materialized external baseline" end),
   (if $update_latency_threshold_pass then empty else "W4 update latency threshold failed against materialized external baseline" end),
   (if $rule_materialization_threshold_pass then empty else "W4 rule materialization threshold failed against materialized external baseline" end),
-  (if $bulk_release_comparison_pass then empty else "W4 bulk comparison gate failed against materialized/FUSE/native external baselines or missing compile smoke" end)
+  (if $bulk_release_comparison_pass then empty else "W4 bulk comparison gate failed against materialized/FUSE/native external baselines or missing compile release input" end)
 ] as $failed_gates |
 {
   schema: "namei_ext.eval_osdi.w4_ccache_workload_macrobench.v1",
@@ -316,9 +329,11 @@ ev($bncrows; "w4-ccache-bulk-native-compile-summary") as $bncsummary |
   setup_rows: ([ $bpmrows[] | select(.event == "w4-ccache-bulk-policy-macrobench-setup" and .system == "cache_locality_exact_policy") ] | length),
   update_rows: ([ $bpmrows[] | select(.event == "w4-ccache-bulk-policy-macrobench-update" and .system == "cache_locality_exact_policy") ] | length),
   correctness_rows: ([ $bpmrows[] | select(.event == "w4-ccache-bulk-policy-macrobench-correctness" and .system == "cache_locality_exact_policy" and .pass == true) ] | length),
-  pass: ($bulk_policy_release_input_pass and $bulk_policy_compile_smoke_pass),
+  pass: ($bulk_policy_release_input_pass and $bulk_policy_compile_release_input_pass),
   smoke_input_pass: $bulk_policy_compile_smoke_pass,
-  release_input_pass: $bulk_policy_release_input_pass,
+  release_input_pass: ($bulk_policy_release_input_pass and $bulk_policy_compile_release_input_pass),
+  setup_update_release_input_pass: $bulk_policy_release_input_pass,
+  compile_release_input_pass: $bulk_policy_compile_release_input_pass,
   bulk_release_comparison_pass: $bulk_release_comparison_pass,
   setup_ns_avg: $bulk_policy_stats.setup_ns.avg,
   update_ns_avg: $bulk_policy_stats.update_ns.avg,
@@ -473,6 +488,7 @@ ev($bncrows; "w4-ccache-bulk-native-compile-summary") as $bncsummary |
   materialized_baseline_pass: $materialized_release_input_pass,
   full_feature_equivalent_baseline_pass: $materialized_release_input_pass,
   bulk_policy_compile_smoke_pass: $bulk_policy_compile_smoke_pass,
+  bulk_policy_compile_release_input_pass: $bulk_policy_compile_release_input_pass,
   bulk_policy_release_input_pass: $bulk_policy_release_input_pass,
   bulk_materialized_baseline_pass: $bulk_materialized_release_input_pass,
   bulk_fuse_baseline_pass: $bulk_fuse_release_input_pass,

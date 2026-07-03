@@ -26,7 +26,7 @@ include $(ROOT_DIR)/mk/eval_osdi.mk
 
 .DEFAULT_GOAL := phase1
 
-.PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional policy-load policy-semantic table-conformance table-budget w1-oracle kvm-w1-build-macrobench kvm-w1-build-baseline-macrobench kvm-w2-nginx-baseline-macrobench kvm-w3-redis-policy-macrobench kvm-w3-redis-baseline-macrobench kvm-w4-cache-transition-counterfactual kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-materialized-baseline-macrobench kvm-w4-ccache-bulk-fuse-baseline-macrobench kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-policy-macrobench kvm-w4-ccache-rule-macrobench kvm-w4-ccache-materialized-baseline-macrobench eval-osdi-smoke eval-osdi-policy-family-ledger eval-osdi-policy-family eval-osdi-baselines eval-osdi-macrobench-ledger eval-osdi-macrobench eval-osdi-workload-macrobench-ledger eval-osdi-workload-macrobench eval-osdi-c4-lookup-readdir-ledger eval-osdi-c4-lookup-readdir eval-osdi-claim-verdict-ledger eval-osdi-w1-build-workload-macrobench-ledger eval-osdi-w1-build-workload-macrobench eval-osdi-w2-nginx-workload-macrobench-ledger eval-osdi-w2-nginx-workload-macrobench eval-osdi-w3-redis-workload-macrobench-ledger eval-osdi-w3-redis-workload-macrobench eval-osdi-w4-ccache-workload-macrobench-ledger eval-osdi-w4-ccache-workload-macrobench eval-osdi-performance-tail eval-osdi-performance-ledger eval-osdi-performance-comparison eval-osdi-performance-tool-redirect-ledger eval-osdi-c3-residual-diagnostic-ledger eval-osdi-c5-rusage-nohook-ledger eval-osdi-c7-artifact-audit-ledger eval-osdi-performance eval-osdi-paper eval-osdi-paper-report help clean clean-results
+.PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional policy-load policy-semantic table-conformance table-budget w1-oracle kvm-w1-build-macrobench kvm-w1-build-baseline-macrobench kvm-w1-build-epoch-counterfactual kvm-w2-nginx-baseline-macrobench kvm-w2-fixture-epoch-counterfactual kvm-w3-redis-policy-macrobench kvm-w3-redis-baseline-macrobench kvm-w3-checkpoint-epoch-counterfactual kvm-w4-cache-transition-counterfactual kvm-w4-cache-epoch-counterfactual kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-materialized-baseline-macrobench kvm-w4-ccache-bulk-fuse-baseline-macrobench kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-policy-macrobench kvm-w4-ccache-rule-macrobench kvm-w4-ccache-materialized-baseline-macrobench eval-osdi-smoke eval-osdi-policy-family-ledger eval-osdi-policy-family eval-osdi-baselines eval-osdi-macrobench-ledger eval-osdi-macrobench eval-osdi-workload-macrobench-ledger eval-osdi-workload-macrobench eval-osdi-c4-lookup-readdir-ledger eval-osdi-c4-lookup-readdir eval-osdi-claim-verdict-ledger eval-osdi-w1-build-workload-macrobench-ledger eval-osdi-w1-build-workload-macrobench eval-osdi-w2-nginx-workload-macrobench-ledger eval-osdi-w2-nginx-workload-macrobench eval-osdi-w3-redis-workload-macrobench-ledger eval-osdi-w3-redis-workload-macrobench eval-osdi-w4-ccache-workload-macrobench-ledger eval-osdi-w4-ccache-workload-macrobench eval-osdi-performance-tail eval-osdi-performance-ledger eval-osdi-performance-comparison eval-osdi-performance-tool-redirect-ledger eval-osdi-c3-residual-diagnostic-ledger eval-osdi-c5-rusage-nohook-ledger eval-osdi-c7-artifact-audit-ledger eval-osdi-performance eval-osdi-paper eval-osdi-paper-report help clean clean-results
 .NOTPARALLEL: phase1
 
 all: phase1
@@ -86,21 +86,25 @@ help:
 	@printf '%s\n' '  make kvm-w1-release-build-replay boot the modified kernel and validate W1 policy release binary replay witness'
 	@printf '%s\n' '  make kvm-w1-build-macrobench boot the modified kernel and write W1 setup/update PoC rows'
 	@printf '%s\n' '  make kvm-w1-build-baseline-macrobench boot the modified kernel and write W1 build feature-equivalent baseline rows'
+	@printf '%s\n' '  make kvm-w1-build-epoch-counterfactual boot the modified kernel and run W1 build-epoch/table-update C8 counterfactual'
 	@printf '%s\n' '  make kvm-w1-branch-probes boot the modified kernel and validate W1 poison/negative branch probes'
 	@printf '%s\n' '  make kvm-w2-oracle  boot the modified kernel and validate W2 fixture path oracle'
 	@printf '%s\n' '  make kvm-w2-nginx-real boot the modified kernel and run real nginx endpoint health oracle'
 	@printf '%s\n' '  make kvm-w2-nginx-macrobench boot the modified kernel and write W2 nginx setup/update PoC rows'
 	@printf '%s\n' '  make kvm-w2-nginx-baseline-macrobench boot the modified kernel and write W2 nginx feature-equivalent baseline rows'
+	@printf '%s\n' '  make kvm-w2-fixture-epoch-counterfactual boot the modified kernel and run W2 fixture-epoch/table-update C8 counterfactual'
 	@printf '%s\n' '  make kvm-w3-oracle  boot the modified kernel and validate W3 checkpoint path oracle'
 	@printf '%s\n' '  make kvm-w3-redis-replay boot the modified kernel and run Redis checkpoint replay witness'
 	@printf '%s\n' '  make kvm-w3-redis-table-replay boot the modified kernel and run the same Redis replay through table_redirect'
 	@printf '%s\n' '  make kvm-w3-redis-counterfactual boot the modified kernel and write W3 table-only counterfactual accounting'
 	@printf '%s\n' '  make kvm-w3-redis-policy-macrobench boot the modified kernel and write W3 Redis policy setup/update rows'
 	@printf '%s\n' '  make kvm-w3-redis-baseline-macrobench boot the modified kernel and write W3 Redis materialized/FUSE baseline rows'
+	@printf '%s\n' '  make kvm-w3-checkpoint-epoch-counterfactual boot the modified kernel and run W3 epoch/table-update C8 counterfactual'
 	@printf '%s\n' '  make kvm-w4-oracle  boot the modified kernel and validate W4 cache path oracle'
 	@printf '%s\n' '  make kvm-w4-cache-content boot the modified kernel and validate W4 cache content oracle'
 	@printf '%s\n' '  make kvm-w4-cache-table-content boot the modified kernel and run W4 cache content through table_redirect'
 	@printf '%s\n' '  make kvm-w4-cache-transition-counterfactual boot the modified kernel and run W4 stale/corrupt/update transition counterfactual'
+	@printf '%s\n' '  make kvm-w4-cache-epoch-counterfactual boot the modified kernel and run W4 cache-epoch/table-update C8 counterfactual'
 	@printf '%s\n' '  make kvm-w4-ccache-real boot the modified kernel and run real ccache transition witness'
 	@printf '%s\n' '  make kvm-w4-ccache-trace boot the modified kernel and trace real ccache cache-path file ops'
 	@printf '%s\n' '  make kvm-w4-ccache-policy-bridge boot the modified kernel and validate trace-derived ccache cache objects through policy'

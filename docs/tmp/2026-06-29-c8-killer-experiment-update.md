@@ -133,6 +133,89 @@ But it does not prove full C8:
 - Therefore the correct paper wording is: "static exact table fails W4 cache-state transitions; exact table with
   external updates remains a viable counterfactual for this fixture, so C8 remains unsupported."
 
+## New W2 fixture epoch gate
+
+After the W3/W4 targeted gates, this update added a W2 fixture-epoch counterfactual because W2 is the current positive
+setup/update slice but did not yet test whether fixture selection needs policy state rather than a static table. The new
+target keeps visible fixture names stable while the backing epoch changes across config, secret, cert, endpoint, and
+poison path classes.
+
+New Make target:
+
+```sh
+make kvm-w2-fixture-epoch-counterfactual
+```
+
+Release-style validation run:
+
+```sh
+make kvm-w2-fixture-epoch-counterfactual \
+  RUN_ID=20260629T-w2-fixture-epoch-c8-release-v1 \
+  W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES=20 \
+  W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS=16
+```
+
+The implementation and validation record is
+`docs/tmp/2026-06-30-w2-fixture-epoch-counterfactual.md`.
+
+The target compares five systems:
+
+1. `sandbox_fixture_epoch_policy`: `sandbox_fixture_view.bpf.c` preloads both epoch rule sets and switches
+   `fixture_sessions[cgroup_id].fixture_epoch` with one map update.
+2. `table_redirect_static_fixture_epoch1`: `table_redirect.bpf.c` fixed to epoch 1, expected to fail epoch 2.
+3. `table_redirect_updated_fixture_exact`: `table_redirect.bpf.c` externally rewrites exact lookup rows from epoch 1
+   to epoch 2, expected to pass correctness but pay per-object updates.
+4. `materialized_fixture_epoch_view`: external materialized view that copies epoch-1 fixture backings into visible
+   files and then copies epoch-2 backings over those visible files.
+5. `fuse_fixture_epoch_view`: external FUSE view that exposes stable visible names and switches epoch by copying each
+   epoch-2 object into a private FUSE shadow backing.
+
+The summary row from
+`results/phase1/20260629T-w2-fixture-epoch-c8-release-v1/w2-fixture-epoch-counterfactual.jsonl` reports:
+
+- `samples=20`
+- `objects=16`
+- `setup_rows=100`
+- `correctness_rows=200`
+- `update_rows=80`
+- `dynamic_fixture_classes=5`
+- `static_wrong_fixture_hits=320`
+- `policy_update_writes=20`
+- `table_update_writes=320`
+- `materialized_update_writes=320`
+- `fuse_update_writes=320`
+- `fuse_mounts=20`
+- `table_update_write_ratio=16`
+- `materialized_update_write_ratio=16`
+- `fuse_update_write_ratio=16`
+- `max_table_update_write_ratio=10`
+- `table_static_current_oracle_pass=false`
+- `table_static_expected_failure_observed=true`
+- `table_updated_current_oracle_pass=true`
+- `table_requires_external_state_updates=true`
+- `table_update_budget_failure=true`
+- `materialized_current_oracle_pass=true`
+- `materialized_feature_equivalent_baseline=true`
+- `materialized_update_budget_failure=true`
+- `fuse_current_oracle_pass=true`
+- `fuse_feature_equivalent_baseline=true`
+- `fuse_update_budget_failure=true`
+- `targeted_c8_budget_failure=true`
+- `state_dependent_branch_not_static_table_expressible=true`
+- `real_nginx_trace=false`
+- `release_sample_budget_pass=true`
+- `pass=true`
+- `failures=0`
+- `policy_executed=true`
+- `kvm_validated=true`
+- `qualified_for_c8=false`
+- `release_gate_pass=false`
+
+Input hash verification passed and the dmesg hard gate found zero matching kernel diagnostics. This is stronger than
+the prior W2 setup/update evidence for one C8 criterion: static exact table fails the state-dependent epoch oracle, and
+the externally updated exact table, materialized view, and FUSE view preserve correctness only with 16x update writes.
+It is still not a full W2 C8 result because it is a targeted fixture-epoch oracle, not a real nginx reload/update trace.
+
 ## New W3 checkpoint epoch gate
 
 After the W4 result, this update added a W3 targeted epoch counterfactual because the existing Redis checkpoint
@@ -277,11 +360,225 @@ the update-write budget gate, and the external materialized and FUSE views also 
 the same per-object update count. It is still not full W4 C8 evidence because it is a targeted cache-epoch fixture,
 not an operation-weighted ccache or BuildKit trace.
 
+## W4 real ccache compile release refresh
+
+After the targeted cache-epoch result, this update refreshed the real ccache bulk compile side of W4 so that the
+operation-weighted workload input is no longer only a smoke witness. The implementation and validation record is
+`docs/tmp/2026-06-29-w4-bulk-compile-release-refresh.md`.
+
+Commands:
+
+```sh
+make kvm-w4-ccache-bulk-policy-compile \
+  RUN_ID=20260629T-w4-ccache-bulk-policy-compile-release-v1 \
+  W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES=20
+make kvm-w4-ccache-bulk-native-compile \
+  RUN_ID=20260629T-w4-ccache-bulk-native-compile-release-v2 \
+  W4_CCACHE_BULK_NATIVE_COMPILE_SAMPLES=20
+make kvm-w4-ccache-bulk-fuse-compile \
+  RUN_ID=20260629T-w4-ccache-bulk-fuse-compile-release-v2 \
+  W4_CCACHE_BULK_FUSE_COMPILE_SAMPLES=20
+```
+
+The proposed policy-attached compile run reports:
+
+- `samples=20`
+- `compile_rows=20`
+- `attached_compile_jobs=400`
+- `attached_compile_output_matches=400`
+- `policy_executed=true`
+- `ccache_compile_policy_executed=true`
+- `policy_redirected_cache_objects=800`
+- `attached_cache_path_file_ops=8000`
+- `attached_policy_cache_object_ops=3200`
+- `attached_sampled_operation_hit_rate=0.4`
+- `pass=true`
+- `failures=0`
+
+The native ccache compile baseline reports `samples=20`, `total_compile_jobs=400`,
+`total_compile_output_matches=400`, `compile_ns_avg=7562011642.3500004`,
+`cache_path_file_ops=8000`, `cache_object_ops=3200`, `direct_cache_hit=400`, and `pass=true`.
+
+The FUSE compile baseline reports `samples=20`, `total_compile_jobs=400`,
+`total_compile_output_matches=400`, `compile_ns_avg=14030225541.1`,
+`cache_path_file_ops=6000`, `cache_object_ops=3200`, `direct_cache_hit=400`,
+`fuse_mounts=20`, and `pass=true`.
+
+The derived W4 ledger
+`results/eval-osdi/paper/20260629T-eval-w4-ccache-workload-macrobench-ledger-v10/b3-macrobench/w4-ccache-workload-macrobench.jsonl`
+now records `bulk_policy_compile_release_input_pass=true`, `bulk_native_compile_baseline_pass=true`,
+`bulk_fuse_compile_baseline_pass=true`, and `bulk_external_baseline_release_input_pass=true`. The same summary still
+records `bulk_release_comparison_pass=false`, `w4_c2_slice_supported=false`, `c2_supported=false`, and
+`release_gate_pass=false`.
+
+This closes a W4 compile-input gap, not the C8 proof. The real ccache runs show policy-attached compile correctness,
+operation-weighted cache-path activity, and feature-equivalent native/FUSE compile baselines. They do not yet inject
+stale/corrupt state, measure stale windows, or show that an externally updated exact table fails or exceeds budget
+under real trace-derived dynamic conditions.
+
+## W4 trace-derived cache epoch counterfactual
+
+After the real ccache compile refresh, this update added a trace-derived version of the cache-epoch counterfactual.
+The implementation and validation record is
+`docs/tmp/2026-06-29-w4-trace-derived-cache-epoch-counterfactual.md`.
+
+Command:
+
+```sh
+make kvm-w4-ccache-bulk-cache-epoch-counterfactual \
+  RUN_ID=20260629T-w4-ccache-bulk-cache-epoch-c8-release-v1 \
+  W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES=20 \
+  W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS=16
+```
+
+The target first runs the Make-owned bulk ccache trace/bridge flow, then uses the 40 Redis/nginx trace-derived cache
+objects as the candidate object set for the dynamic epoch oracle. The summary row from
+`results/phase1/20260629T-w4-ccache-bulk-cache-epoch-c8-release-v1/w4-ccache-bulk-cache-epoch-counterfactual.jsonl`
+reports:
+
+- `samples=20`
+- `objects=16`
+- `trace_entries=40`
+- `static_wrong_local_hits=320`
+- `policy_update_writes=20`
+- `table_update_writes=320`
+- `materialized_update_writes=320`
+- `fuse_update_writes=320`
+- `fuse_mounts=20`
+- `table_update_write_ratio=16`
+- `materialized_update_write_ratio=16`
+- `fuse_update_write_ratio=16`
+- `max_table_update_write_ratio=10`
+- `table_static_current_oracle_pass=false`
+- `table_static_expected_failure_observed=true`
+- `table_updated_current_oracle_pass=true`
+- `table_update_budget_failure=true`
+- `materialized_feature_equivalent_baseline=true`
+- `materialized_update_budget_failure=true`
+- `fuse_feature_equivalent_baseline=true`
+- `fuse_update_budget_failure=true`
+- `targeted_c8_budget_failure=true`
+- `real_ccache_trace=true`
+- `trace_derived_counterfactual=true`
+- `trace_derived_targeted_c8_pass=true`
+- `release_sample_budget_pass=true`
+- `pass=true`
+- `failures=0`
+- `policy_executed=true`
+- `kvm_validated=true`
+- `qualified_for_c8=false`
+- `release_gate_pass=false`
+
+This strengthens the W4 exact-table boundary compared with the synthetic cache-epoch fixture: the dynamic object set is
+derived from a real ccache Redis/nginx trace, and all five systems are compared under the same correctness oracle.
+The result shows that static exact table fails and externally updated exact table, materialized view, and FUSE view
+only preserve correctness by paying 16x the policy update writes.
+
+The boundary remains important. The run uses trace-derived names and SHA provenance, but the epoch payloads are
+controlled oracle payloads rather than real ccache object bytes consumed by a live compile. It is therefore
+trace-derived C8 mechanism evidence, not full W4 release evidence; the correct summary stays `qualified_for_c8=false`.
+
+## W1 build-epoch counterfactual
+
+After W2/W3/W4 had five-system targeted epoch/cache counterfactuals, this update added the same shape for W1 build
+graph state. The implementation and validation record is
+`docs/tmp/2026-06-30-w1-build-epoch-counterfactual.md`.
+
+Command:
+
+```sh
+make kvm-w1-build-epoch-counterfactual \
+  RUN_ID=20260630T-w1-build-epoch-c8-release-v1 \
+  W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES=20 \
+  W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS=16
+```
+
+The target compares five systems:
+
+1. `build_graph_epoch_policy`: `build_graph_view.bpf.c` preloads both epoch rule sets and switches
+   `build_graph_sessions[cgroup_id].build_epoch` with one map update.
+2. `table_redirect_static_build_epoch1`: `table_redirect.bpf.c` fixed to epoch 1, expected to fail epoch 2.
+3. `table_redirect_updated_build_exact`: `table_redirect.bpf.c` externally rewrites exact lookup rows from epoch 1
+   to epoch 2, expected to pass correctness but pay per-object updates.
+4. `materialized_build_epoch_view`: external materialized view that copies epoch-1 build backings into visible files
+   and then copies epoch-2 backings over those visible files.
+5. `fuse_build_epoch_view`: external FUSE alias view that switches epoch by copying each epoch-2 object into a
+   private FUSE shadow backing.
+
+The summary row from
+`results/phase1/20260630T-w1-build-epoch-c8-release-v1/w1-build-epoch-counterfactual.jsonl` reports:
+
+- `samples=20`
+- `objects=16`
+- `dynamic_build_branches=5`
+- `static_wrong_epoch_hits=320`
+- `policy_update_writes=20`
+- `table_update_writes=320`
+- `materialized_update_writes=320`
+- `fuse_update_writes=320`
+- `fuse_mounts=20`
+- `table_update_write_ratio=16`
+- `materialized_update_write_ratio=16`
+- `fuse_update_write_ratio=16`
+- `max_table_update_write_ratio=10`
+- `table_static_current_oracle_pass=false`
+- `table_static_expected_failure_observed=true`
+- `table_updated_current_oracle_pass=true`
+- `table_requires_external_state_updates=true`
+- `table_update_budget_failure=true`
+- `materialized_current_oracle_pass=true`
+- `materialized_feature_equivalent_baseline=true`
+- `materialized_update_budget_failure=true`
+- `fuse_current_oracle_pass=true`
+- `fuse_feature_equivalent_baseline=true`
+- `fuse_update_budget_failure=true`
+- `targeted_c8_budget_failure=true`
+- `state_dependent_branch_not_static_table_expressible=true`
+- `real_redis_nginx_trace=false`
+- `release_sample_budget_pass=true`
+- `pass=true`
+- `failures=0`
+- `policy_executed=true`
+- `kvm_validated=true`
+- `qualified_for_c8=false`
+- `release_gate_pass=false`
+
+Input hash verification passed, `git diff --check` passed, and the dmesg hard gate found zero matching kernel
+diagnostics. The result gives W1 the same targeted boundary evidence as W2/W3/W4: static exact table fails the
+state-dependent epoch oracle, while externally updated exact table, materialized view, and FUSE view preserve
+correctness only with 16x the policy update writes. It is not a full W1 C8 result because it does not replay live
+Redis/nginx build operations or measure operation-weighted branch distribution under a real build trace.
+
 ## What an OSDI reviewer would still ask
+
+For W1, the targeted build-epoch gate now answers the narrow update-budget mechanism: static exact table fails the
+state-dependent build epoch oracle, while externally updated exact table, materialized build view, and FUSE build view
+all need 16x the policy's epoch-switch update writes. The next reviewer-level step is to lift this into a real build
+workload:
+
+- run Redis/nginx or another real build trace across generated/source/toolchain/dependency/poison epoch changes;
+- preserve compile success, output hashes, trace provenance, and operation-weighted branch distribution;
+- issue operations during the table-update stale window and check output hash or poison rejection;
+- compare copy, symlink, bind, projected/Overlay where applicable, FUSE, and exact table under the same build epoch
+  oracle.
+
+For W2, the targeted fixture-epoch gate now answers the narrow update-budget mechanism: static exact table fails the
+state-dependent fixture epoch oracle, while externally updated exact table, materialized fixture view, and FUSE fixture
+view all need 16x the policy's epoch-switch update writes. The next reviewer-level step is to lift this into a real
+service fixture workload:
+
+- run a real nginx reload/update or PostgreSQL secret/config rotation trace rather than controlled epoch payloads;
+- preserve real app health, endpoint response, config/secret/cert hash, no-production-open trace, and poison coverage;
+- issue operations during the stale window and check whether static/external table update lag can expose the wrong
+  fixture epoch;
+- compare projected-volume or Compose-style native mechanisms, FUSE, and materialized views under the same update
+  oracle.
 
 For W4, the targeted epoch gate now answers the narrow update-budget mechanism: static exact table fails the cache epoch
 oracle, while externally updated exact table, materialized cache view, and FUSE cache view all need 16x the policy's
-epoch-switch update writes. The next reviewer-level step is to lift this into a real cache workload:
+epoch-switch update writes. The trace-derived ccache bulk cache-epoch gate repeats that result on real trace-derived
+object names and SHA provenance, but it still does not run a live compile through stale/corrupt/update-window
+conditions. The next reviewer-level step is to lift this into a real cache workload:
 
 1. `correctness oracle fail`: run real ccache or BuildKit where the table cannot observe or update state before an
    operation consumes stale/corrupt local content.
@@ -309,10 +606,18 @@ workload:
 
 The current C8 status is improved but still unsupported:
 
+- W1 now has a targeted build-epoch counterfactual where static table fails and externally updated table plus
+  materialized build view plus FUSE build view all exceed the update-write budget, but the run explicitly records
+  `real_redis_nginx_trace=false`, `qualified_for_c8=false`, and `release_gate_pass=false`.
+- W2 now has a targeted fixture-epoch counterfactual where static table fails and externally updated table plus
+  materialized fixture view plus FUSE fixture view all exceed the update-write budget, but the run explicitly records
+  `real_nginx_trace=false`, `qualified_for_c8=false`, and `release_gate_pass=false`.
 - W4 now has both a static-table failure under dynamic state and a targeted cache-epoch update-budget failure for
   externally updated exact tables; the same run also includes feature-equivalent materialized and FUSE cache-epoch
-  views that pass correctness but pay the same 16x update-write ratio. It still lacks real ccache/BuildKit
-  operation-weighted release evidence.
+  views that pass correctness but pay the same 16x update-write ratio. W4 now also has 20-sample real ccache
+  policy/native/FUSE compile release inputs, and a trace-derived ccache bulk cache-epoch counterfactual where
+  `real_ccache_trace=true` and the exact-table/materialized/FUSE update ratio is again 16. These runs are still
+  boundary evidence; they do not yet include stale/corrupt/update-window table-only failure during a live compile.
 - W3 now has a targeted epoch fixture where static table fails and externally updated table plus materialized
   checkpoint view plus FUSE checkpoint view all exceed the update-write budget, but the run explicitly records
   `real_podman_criu_restore=false`, `qualified_for_c8=false`, and `release_gate_pass=false`.

@@ -1,50 +1,10 @@
-\section{相关工作}
+\section{Related Work}
 
-\subsection{用户态和可扩展文件系统}
+This section is intentionally a routing stub. The canonical related-work,
+novelty-risk, closest-work, workload-source, and mandatory-baseline map lives
+in \file{docs/background-related-work.md}. The local PDF inventory lives in
+\file{docs/reference/INDEX.md}; code and artifact entry points live in
+\file{docs/reference/CODE_SOURCES.md}.
 
-FUSE 允许用户态实现文件系统，并通过 kernel FUSE 模块接入 VFS~\cite{linux_fuse}。
-FUSE 的优点是表达力强，并且避免把任意文件系统逻辑直接加载进内核；但 FUSE daemon 仍位于
-文件系统可信路径上，daemon crash、权限错误、cache incoherence 或不完整 POSIX 语义都会影响
-correctness 和 security，路径操作也可能支付用户态切换成本。FUSE passthrough 和 ExtFUSE
-分别试图降低数据路径或 request path 成本：passthrough 让部分 I/O 绕过用户态 daemon
-~\cite{linux_fuse_passthrough}，ExtFUSE 把薄 request handler 放到内核以优化用户态文件系统路径
-~\cite{extfuse}。Bento 用安全 Rust 和框架化接口降低内核文件系统开发风险~\cite{bento}，
-但仍面向实现文件系统。\namei 的边界不同：它不实现新的文件系统，也不拥有 inode、dentry
-或 file operations；它只在 VFS name-resolution 时让 eBPF policy 返回受限
-path-resolution action。
-
-\subsection{内核修改和自定义文件系统}
-
-自定义内核文件系统或专用 kernel patch 可以把扩展逻辑放在最接近 VFS 和 lower filesystem
-的位置，因此有机会获得强表达力和低开销。但这种方式把扩展逻辑放进 kernel TCB；bug 可能破坏
-kernel integrity、权限边界或文件系统不变量，而且每个新机制都需要新的内核代码、部署路径和
-维护成本。\namei 选择把扩展能力限制在 verifier 约束的 \code{PASS}/\code{REDIRECT}
-name-resolution decision 中，避免把完整 filesystem semantics 暴露给扩展程序。
-
-\subsection{静态和物化视图机制}
-
-OverlayFS、bind mount、projected volume、symlink forest 和 copy tree 可以构造文件树视图。OverlayFS
-在内核中组合 lower/upper tree，并定义 lookup、readdir、whiteout 和 redirect-dir 等语义
-~\cite{linux_overlayfs}。这些机制适合作为 baseline，因为它们成熟且性能接近原生路径。
-它们同时说明 path view construction 已经是常见系统需求。本文不把这些机制作为主概念对手；
-它们是 workload-specific baselines。它们的策略通常在 mount 或 materialization 时固定，因此
-action-specific build precedence、restore epoch consistency 和 cache state transition 能否支撑
-\namei 的 balanced dynamic path-view claim，必须由真实 workload oracle、自然对照、
-safety/semantic-boundary evidence、stale/update-window evidence 或明确范围收窄来决定。
-
-\subsection{安全和事件接口}
-
-Landlock、BPF LSM 和 fanotify 都能观察或约束文件访问。Landlock 是非特权访问控制接口
-~\cite{linux_landlock}，BPF LSM 把 eBPF 程序挂到 LSM hook 上以实现 MAC/audit policy
-~\cite{linux_bpf_lsm}，fanotify 提供 filesystem event notification 和 interception
-~\cite{linux_fanotify}。这些接口回答的是“是否允许、审计或通知”这类问题。\namei 的问题
-不同：它在 lookup/readdir 阶段选择同一语义类路径的 backing component，并把后续权限、
-lookup 和 data path 留给 VFS 与 lower filesystem。
-
-\subsection{eBPF 内核策略接口}
-
-sched\_ext 说明 eBPF 可以作为受 verifier 约束的内核策略扩展点，用于把 scheduler policy
-移到可替换的 BPF programs 中~\cite{linux_sched_ext}。\namei 借鉴的是这种窄扩展点思路：
-内核保留对象所有权和安全边界，BPF 只做有界决策。但 \namei 面向 VFS path resolution，
-其 correctness oracle 是 lookup/readdir 一致性、lower filesystem permission preservation
-和 workload-specific path oracle，而不是 CPU scheduling fairness 或 throughput。
+Future related-work prose should be derived from those files rather than from
+older paper draft text.

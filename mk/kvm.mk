@@ -37,6 +37,11 @@ W1_BUILD_BASELINE_MACROBENCH_SAMPLES ?= $(W1_BUILD_MACROBENCH_SAMPLES)
 W1_BUILD_BASELINES ?= copy_tree symlink_forest bind_mount projected_volume fuse_redirect
 W1_BRANCH_PROBE_JSON ?= $(PHASE1_RESULT_DIR)/w1-branch-probes.jsonl
 W1_BRANCH_PROBE_WORK_DIR ?= /tmp/namei-ext-w1-branch-probes-$(RUN_ID)
+W1_BUILD_EPOCH_COUNTERFACTUAL_JSON ?= $(PHASE1_RESULT_DIR)/w1-build-epoch-counterfactual.jsonl
+W1_BUILD_EPOCH_COUNTERFACTUAL_INPUTS ?= $(PHASE1_RESULT_DIR)/w1-build-epoch-counterfactual-inputs.sha256
+W1_BUILD_EPOCH_COUNTERFACTUAL_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w1-build-epoch-counterfactual-work
+W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES ?= 2
+W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS ?= 16
 W2_ORACLE_RUNNER ?= $(W1_ORACLE_RUNNER)
 W2_ORACLE_RUNNER_SOURCE ?= $(W1_ORACLE_RUNNER_SOURCE)
 W2_ORACLE_ENTRIES_TSV ?= $(RESULT_ROOT)/workloads/runs/$(RUN_ID)/w2-sandbox-fixture-oracle-entries.tsv
@@ -60,6 +65,11 @@ W2_NGINX_BIN ?= $(NGINX_BUILD_SRC)/objs/nginx
 W2_NGINX_FIXTURE_CONF ?= $(NGINX_FIXTURE_CONFIG)
 W2_NGINX_ENDPOINT_FIXTURE ?= $(NGINX_FIXTURE_ENDPOINT)
 W2_NGINX_MIME_TYPES ?= $(NGINX_SRC)/conf/mime.types
+W2_FIXTURE_EPOCH_COUNTERFACTUAL_JSON ?= $(PHASE1_RESULT_DIR)/w2-fixture-epoch-counterfactual.jsonl
+W2_FIXTURE_EPOCH_COUNTERFACTUAL_INPUTS ?= $(PHASE1_RESULT_DIR)/w2-fixture-epoch-counterfactual-inputs.sha256
+W2_FIXTURE_EPOCH_COUNTERFACTUAL_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w2-fixture-epoch-counterfactual-work
+W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES ?= 2
+W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS ?= 16
 W3_ORACLE_RUNNER ?= $(W1_ORACLE_RUNNER)
 W3_ORACLE_RUNNER_SOURCE ?= $(W1_ORACLE_RUNNER_SOURCE)
 W3_ORACLE_ENTRIES_TSV ?= $(RESULT_ROOT)/workloads/runs/$(RUN_ID)/w3-checkpoint-oracle-entries.tsv
@@ -81,6 +91,11 @@ W3_REDIS_BASELINE_MACROBENCH_INPUTS ?= $(PHASE1_RESULT_DIR)/w3-redis-baseline-ma
 W3_REDIS_BASELINE_MACROBENCH_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w3-redis-baseline-macrobench-work
 W3_REDIS_BASELINE_MACROBENCH_SAMPLES ?= $(W3_REDIS_POLICY_MACROBENCH_SAMPLES)
 W3_REDIS_BASELINES ?= materialized_checkpoint_view fuse_redirect
+W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_JSON ?= $(PHASE1_RESULT_DIR)/w3-checkpoint-epoch-counterfactual.jsonl
+W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_INPUTS ?= $(PHASE1_RESULT_DIR)/w3-checkpoint-epoch-counterfactual-inputs.sha256
+W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w3-checkpoint-epoch-counterfactual-work
+W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES ?= 2
+W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS ?= 16
 W4_ORACLE_RUNNER ?= $(W1_ORACLE_RUNNER)
 W4_ORACLE_RUNNER_SOURCE ?= $(W1_ORACLE_RUNNER_SOURCE)
 W4_ORACLE_ENTRIES_TSV ?= $(RESULT_ROOT)/workloads/runs/$(RUN_ID)/w4-cache-oracle-entries.tsv
@@ -94,6 +109,16 @@ W4_CACHE_TRANSITION_JSON ?= $(PHASE1_RESULT_DIR)/w4-cache-transition-counterfact
 W4_CACHE_TRANSITION_INPUTS ?= $(PHASE1_RESULT_DIR)/w4-cache-transition-counterfactual-inputs.sha256
 W4_CACHE_TRANSITION_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-cache-transition-counterfactual-work
 W4_CACHE_TRANSITION_SAMPLES ?= 2
+W4_CACHE_EPOCH_JSON ?= $(PHASE1_RESULT_DIR)/w4-cache-epoch-counterfactual.jsonl
+W4_CACHE_EPOCH_INPUTS ?= $(PHASE1_RESULT_DIR)/w4-cache-epoch-counterfactual-inputs.sha256
+W4_CACHE_EPOCH_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-cache-epoch-counterfactual-work
+W4_CACHE_EPOCH_SAMPLES ?= 2
+W4_CACHE_EPOCH_OBJECTS ?= 16
+W4_CCACHE_BULK_CACHE_EPOCH_JSON ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-cache-epoch-counterfactual.jsonl
+W4_CCACHE_BULK_CACHE_EPOCH_INPUTS ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-cache-epoch-counterfactual-inputs.sha256
+W4_CCACHE_BULK_CACHE_EPOCH_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-cache-epoch-counterfactual-work
+W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES ?= $(W4_CACHE_EPOCH_SAMPLES)
+W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS ?= $(W4_CCACHE_BULK_MIN_TRACE_OBJECTS)
 W4_CCACHE_REAL_JSON ?= $(PHASE1_RESULT_DIR)/w4-ccache-real.jsonl
 W4_CCACHE_REAL_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-ccache-real-work
 W4_CCACHE_REAL_ENTRIES_TSV ?= $(PHASE1_RESULT_DIR)/w4-ccache-real-entries.tsv
@@ -130,6 +155,7 @@ W4_CCACHE_BULK_POLICY_COMPILE_JSON ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-policy
 W4_CCACHE_BULK_POLICY_COMPILE_INPUTS ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-policy-compile-inputs.sha256
 W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-policy-compile-work
 W4_CCACHE_BULK_POLICY_COMPILE_STATS ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-policy-compile-stats.txt
+W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES ?= $(W4_CCACHE_BULK_MATERIALIZED_BASELINE_SAMPLES)
 W4_CCACHE_BULK_NATIVE_COMPILE_JSON ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-native-compile.jsonl
 W4_CCACHE_BULK_NATIVE_COMPILE_INPUTS ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-native-compile-inputs.sha256
 W4_CCACHE_BULK_NATIVE_COMPILE_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-ccache-bulk-native-compile-work
@@ -166,7 +192,7 @@ W4_CCACHE_MATERIALIZED_BASELINE_INPUTS ?= $(PHASE1_RESULT_DIR)/w4-ccache-materia
 W4_CCACHE_MATERIALIZED_BASELINE_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-ccache-materialized-baseline-work
 W4_CCACHE_MATERIALIZED_BASELINE_SAMPLES ?= 2
 
-.PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-build-macrobench kvm-w1-build-baseline-macrobench kvm-w1-branch-probes kvm-w2-oracle kvm-w2-nginx-real kvm-w2-nginx-real-trace kvm-w2-nginx-macrobench kvm-w2-nginx-baseline-macrobench kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w3-redis-policy-macrobench kvm-w3-redis-baseline-macrobench kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-materialized-baseline-macrobench kvm-w4-ccache-bulk-fuse-baseline-macrobench kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-policy-macrobench kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual kvm-w4-ccache-rule-macrobench kvm-w4-ccache-materialized-baseline-macrobench kvm-functional kvm-bench kvm-eval-osdi-baselines __phase1_guest_smoke __phase1_guest_policy_load __phase1_guest_policy_semantic __phase1_guest_w1_oracle __phase1_guest_w1_build_replay __phase1_guest_w1_release_build_replay __phase1_guest_w1_build_macrobench __phase1_guest_w1_build_baseline_macrobench __phase1_guest_w1_branch_probes __phase1_guest_w2_oracle __phase1_guest_w2_nginx_real __phase1_guest_w2_nginx_real_trace __phase1_guest_w2_nginx_macrobench __phase1_guest_w2_nginx_baseline_macrobench __phase1_guest_w3_oracle __phase1_guest_w3_redis_replay __phase1_guest_w3_redis_table_replay __phase1_guest_w3_redis_counterfactual __phase1_guest_w3_redis_policy_macrobench __phase1_guest_w3_redis_baseline_macrobench __phase1_guest_w4_oracle __phase1_guest_w4_cache_content __phase1_guest_w4_cache_table_content __phase1_guest_w4_cache_transition_counterfactual __phase1_guest_w4_ccache_real __phase1_guest_w4_ccache_trace __phase1_guest_w4_ccache_policy_bridge __phase1_guest_w4_ccache_bulk_trace __phase1_guest_w4_ccache_bulk_policy_bridge __phase1_guest_w4_ccache_bulk_materialized_baseline_macrobench __phase1_guest_w4_ccache_bulk_fuse_baseline_macrobench __phase1_guest_w4_ccache_bulk_policy_compile __phase1_guest_w4_ccache_bulk_native_compile __phase1_guest_w4_ccache_bulk_fuse_compile __phase1_guest_w4_ccache_bulk_policy_macrobench __phase1_guest_w4_ccache_policy_compile __phase1_guest_w4_ccache_parent_compile __phase1_guest_w4_ccache_table_compile __phase1_guest_w4_ccache_release_counterfactual __phase1_guest_w4_ccache_rule_macrobench __phase1_guest_w4_ccache_materialized_baseline_macrobench __phase1_guest_functional __phase1_guest_bench __eval_osdi_guest_baselines
+.PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-build-macrobench kvm-w1-build-baseline-macrobench kvm-w1-branch-probes kvm-w1-build-epoch-counterfactual kvm-w2-oracle kvm-w2-nginx-real kvm-w2-nginx-real-trace kvm-w2-nginx-macrobench kvm-w2-nginx-baseline-macrobench kvm-w2-fixture-epoch-counterfactual kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w3-redis-policy-macrobench kvm-w3-redis-baseline-macrobench kvm-w3-checkpoint-epoch-counterfactual kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-cache-epoch-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-materialized-baseline-macrobench kvm-w4-ccache-bulk-fuse-baseline-macrobench kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-policy-macrobench kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual kvm-w4-ccache-rule-macrobench kvm-w4-ccache-materialized-baseline-macrobench kvm-functional kvm-bench kvm-eval-osdi-baselines __phase1_guest_smoke __phase1_guest_policy_load __phase1_guest_policy_semantic __phase1_guest_w1_oracle __phase1_guest_w1_build_replay __phase1_guest_w1_release_build_replay __phase1_guest_w1_build_macrobench __phase1_guest_w1_build_baseline_macrobench __phase1_guest_w1_branch_probes __phase1_guest_w1_build_epoch_counterfactual __phase1_guest_w2_oracle __phase1_guest_w2_nginx_real __phase1_guest_w2_nginx_real_trace __phase1_guest_w2_nginx_macrobench __phase1_guest_w2_nginx_baseline_macrobench __phase1_guest_w2_fixture_epoch_counterfactual __phase1_guest_w3_oracle __phase1_guest_w3_redis_replay __phase1_guest_w3_redis_table_replay __phase1_guest_w3_redis_counterfactual __phase1_guest_w3_redis_policy_macrobench __phase1_guest_w3_redis_baseline_macrobench __phase1_guest_w3_checkpoint_epoch_counterfactual __phase1_guest_w4_oracle __phase1_guest_w4_cache_content __phase1_guest_w4_cache_table_content __phase1_guest_w4_cache_transition_counterfactual __phase1_guest_w4_cache_epoch_counterfactual __phase1_guest_w4_ccache_real __phase1_guest_w4_ccache_trace __phase1_guest_w4_ccache_policy_bridge __phase1_guest_w4_ccache_bulk_trace __phase1_guest_w4_ccache_bulk_policy_bridge __phase1_guest_w4_ccache_bulk_materialized_baseline_macrobench __phase1_guest_w4_ccache_bulk_fuse_baseline_macrobench __phase1_guest_w4_ccache_bulk_policy_compile __phase1_guest_w4_ccache_bulk_native_compile __phase1_guest_w4_ccache_bulk_fuse_compile __phase1_guest_w4_ccache_bulk_policy_macrobench __phase1_guest_w4_ccache_policy_compile __phase1_guest_w4_ccache_parent_compile __phase1_guest_w4_ccache_table_compile __phase1_guest_w4_ccache_release_counterfactual __phase1_guest_w4_ccache_rule_macrobench __phase1_guest_w4_ccache_materialized_baseline_macrobench __phase1_guest_functional __phase1_guest_bench __eval_osdi_guest_baselines
 
 kvm-smoke: $(KERNEL_IMAGE)
 	install -d "$(PHASE1_RESULT_DIR)"
@@ -417,6 +443,35 @@ __phase1_guest_w1_branch_probes:
 	rm -rf "$(W1_BRANCH_PROBE_WORK_DIR)"
 	printf '{"event":"w1-branch-probes-done","run_id":"%s","result_level":"kvm_policy_branch_probe_witness"}\n' "$(RUN_ID)" >>"$(W1_BRANCH_PROBE_JSON)"
 
+kvm-w1-build-epoch-counterfactual: $(KERNEL_IMAGE) bpf w1-oracle
+	install -d "$(PHASE1_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w1_build_epoch_counterfactual RUN_ID=$(RUN_ID) W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES=$(W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES) W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS=$(W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS)"
+
+__phase1_guest_w1_build_epoch_counterfactual:
+	install -d "$(PHASE1_RESULT_DIR)"
+	rm -rf "$(W1_BUILD_EPOCH_COUNTERFACTUAL_WORK_DIR)"
+	install -d "$(W1_BUILD_EPOCH_COUNTERFACTUAL_WORK_DIR)"
+	printf '{"event":"w1-build-epoch-start","run_id":"%s","result_level":"kvm_build_graph_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS)" >"$(W1_BUILD_EPOCH_COUNTERFACTUAL_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	test -s "$(BUILD_GRAPH_POLICY_SOURCE)"
+	test -s "$(TABLE_REDIRECT_POLICY_SOURCE)"
+	test -s "$(BUILD_GRAPH_POLICY)"
+	test -s "$(TABLE_REDIRECT_POLICY)"
+	test -s "$(W1_ORACLE_RUNNER)"
+	test -s "$(W1_ORACLE_RUNNER_SOURCE)"
+	test -s "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk"
+	test -s "$(ROOT_DIR)/mk/kvm.mk"
+	sha256sum "$(BUILD_GRAPH_POLICY_SOURCE)" "$(TABLE_REDIRECT_POLICY_SOURCE)" "$(BUILD_GRAPH_POLICY)" "$(TABLE_REDIRECT_POLICY)" "$(W1_ORACLE_RUNNER_SOURCE)" "$(W1_ORACLE_RUNNER)" "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk" "$(ROOT_DIR)/mk/kvm.mk" >"$(W1_BUILD_EPOCH_COUNTERFACTUAL_INPUTS)"
+	sha256sum -c "$(W1_BUILD_EPOCH_COUNTERFACTUAL_INPUTS)" >/dev/null
+	printf '{"event":"w1-build-epoch-input","run_id":"%s","result_level":"kvm_build_graph_epoch_counterfactual","input_sha256_file":"w1-build-epoch-counterfactual-inputs.sha256","work_dir":"%s","runner_source":"%s","samples":%s,"objects":%s,"build_policy":"build_graph_view.bpf.c","table_policy":"table_redirect.bpf.c","max_table_update_write_ratio":%s}\n' "$(RUN_ID)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_WORK_DIR)" "$(W1_ORACLE_RUNNER_SOURCE)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS)" "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" >>"$(W1_BUILD_EPOCH_COUNTERFACTUAL_JSON)"
+	"$(W1_ORACLE_RUNNER)" --build-epoch-counterfactual "$(W1_BUILD_EPOCH_COUNTERFACTUAL_JSON)" /sys/fs/cgroup "$(W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_WORK_DIR)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS)" "$(BUILD_GRAPH_POLICY)" "$(TABLE_REDIRECT_POLICY)"
+	jq -e --argjson samples "$(W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES)" --argjson objects "$(W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS)" --argjson max_ratio "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" -s '([.[] | select(.event == "w1-build-epoch-summary")][0]) as $$s | $$s.samples == $$samples and $$s.objects == $$objects and $$s.pass == true and $$s.failures == 0 and $$s.policy_executed == true and $$s.kvm_validated == true and $$s.table_static_current_oracle_pass == false and $$s.table_static_expected_failure_observed == true and $$s.table_updated_current_oracle_pass == true and $$s.table_requires_external_state_updates == true and $$s.table_update_budget_failure == true and $$s.targeted_c8_budget_failure == true and $$s.state_dependent_branch_not_static_table_expressible == true and $$s.table_update_write_ratio > $$max_ratio and $$s.max_table_update_write_ratio == $$max_ratio and $$s.materialized_current_oracle_pass == true and $$s.materialized_feature_equivalent_baseline == true and $$s.materialized_update_budget_failure == true and $$s.materialized_update_write_ratio > $$max_ratio and $$s.fuse_current_oracle_pass == true and $$s.fuse_feature_equivalent_baseline == true and $$s.fuse_update_budget_failure == true and $$s.fuse_update_write_ratio > $$max_ratio and $$s.fuse_mounts == $$samples and $$s.real_redis_nginx_trace == false and $$s.qualified_for_c8 == false and $$s.release_gate_pass == false' "$(W1_BUILD_EPOCH_COUNTERFACTUAL_JSON)" >/dev/null
+	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w1-build-epoch-counterfactual.log"
+	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w1-build-epoch-counterfactual.log"); test "$$dmesg_issues" = "0"
+	printf '{"event":"w1-build-epoch-done","run_id":"%s","result_level":"kvm_build_graph_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W1_BUILD_EPOCH_COUNTERFACTUAL_OBJECTS)" >>"$(W1_BUILD_EPOCH_COUNTERFACTUAL_JSON)"
+
 kvm-w2-oracle: $(KERNEL_IMAGE) bpf w1-oracle workload-w2-oracle-entries
 	install -d "$(PHASE1_RESULT_DIR)"
 	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w2_oracle RUN_ID=$(RUN_ID)"
@@ -581,6 +636,31 @@ __phase1_guest_w2_nginx_baseline_macrobench:
 	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w2-nginx-baseline-macrobench.log"); test "$$dmesg_issues" = "0"
 	printf '{"event":"w2-nginx-baseline-macrobench-done","run_id":"%s","result_level":"kvm_workload_feature_baseline_input","samples":%s,"selected_baselines":"%s"}\n' "$(RUN_ID)" "$(W2_NGINX_BASELINE_MACROBENCH_SAMPLES)" "$(W2_NGINX_BASELINES)" >>"$(W2_NGINX_BASELINE_MACROBENCH_JSON)"
 
+kvm-w2-fixture-epoch-counterfactual: $(KERNEL_IMAGE) bpf w1-oracle
+	install -d "$(PHASE1_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w2_fixture_epoch_counterfactual RUN_ID=$(RUN_ID) W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES=$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES) W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS=$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS)"
+
+__phase1_guest_w2_fixture_epoch_counterfactual:
+	install -d "$(PHASE1_RESULT_DIR)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_WORK_DIR)"
+	printf '{"event":"w2-fixture-epoch-start","run_id":"%s","result_level":"kvm_sandbox_fixture_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS)" >"$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	test -s "$(SANDBOX_FIXTURE_POLICY_SOURCE)"
+	test -s "$(TABLE_REDIRECT_POLICY_SOURCE)"
+	test -s "$(SANDBOX_FIXTURE_POLICY)"
+	test -s "$(TABLE_REDIRECT_POLICY)"
+	test -s "$(W2_ORACLE_RUNNER)"
+	test -s "$(W2_ORACLE_RUNNER_SOURCE)"
+	sha256sum "$(SANDBOX_FIXTURE_POLICY_SOURCE)" "$(TABLE_REDIRECT_POLICY_SOURCE)" "$(SANDBOX_FIXTURE_POLICY)" "$(TABLE_REDIRECT_POLICY)" "$(W2_ORACLE_RUNNER_SOURCE)" "$(W2_ORACLE_RUNNER)" "$(ROOT_DIR)/mk/kvm.mk" >"$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_INPUTS)"
+	sha256sum -c "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_INPUTS)" >/dev/null
+	printf '{"event":"w2-fixture-epoch-input","run_id":"%s","result_level":"kvm_sandbox_fixture_epoch_counterfactual","input_sha256_file":"w2-fixture-epoch-counterfactual-inputs.sha256","work_dir":"%s","runner_source":"%s","samples":%s,"objects":%s,"fixture_policy":"sandbox_fixture_view.bpf.c","table_policy":"table_redirect.bpf.c","max_table_update_write_ratio":%s}\n' "$(RUN_ID)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_WORK_DIR)" "$(W2_ORACLE_RUNNER_SOURCE)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS)" "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" >>"$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_JSON)"
+	"$(W2_ORACLE_RUNNER)" --sandbox-fixture-epoch-counterfactual "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_JSON)" /sys/fs/cgroup "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_WORK_DIR)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS)" "$(SANDBOX_FIXTURE_POLICY)" "$(TABLE_REDIRECT_POLICY)"
+	jq -e --argjson samples "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES)" --argjson objects "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS)" --argjson max_ratio "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" -s '([.[] | select(.event == "w2-fixture-epoch-summary")][0]) as $$s | $$s.samples == $$samples and $$s.objects == $$objects and $$s.pass == true and $$s.failures == 0 and $$s.policy_executed == true and $$s.kvm_validated == true and $$s.table_static_current_oracle_pass == false and $$s.table_static_expected_failure_observed == true and $$s.table_updated_current_oracle_pass == true and $$s.table_requires_external_state_updates == true and $$s.table_update_budget_failure == true and $$s.targeted_c8_budget_failure == true and $$s.state_dependent_branch_not_static_table_expressible == true and $$s.table_update_write_ratio > $$max_ratio and $$s.max_table_update_write_ratio == $$max_ratio and $$s.materialized_current_oracle_pass == true and $$s.materialized_feature_equivalent_baseline == true and $$s.materialized_update_budget_failure == true and $$s.materialized_update_write_ratio > $$max_ratio and $$s.fuse_current_oracle_pass == true and $$s.fuse_feature_equivalent_baseline == true and $$s.fuse_update_budget_failure == true and $$s.fuse_update_write_ratio > $$max_ratio and $$s.fuse_mounts == $$samples and $$s.real_nginx_trace == false and $$s.qualified_for_c8 == false and $$s.release_gate_pass == false' "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_JSON)" >/dev/null
+	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w2-fixture-epoch-counterfactual.log"
+	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w2-fixture-epoch-counterfactual.log"); test "$$dmesg_issues" = "0"
+	printf '{"event":"w2-fixture-epoch-done","run_id":"%s","result_level":"kvm_sandbox_fixture_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_OBJECTS)" >>"$(W2_FIXTURE_EPOCH_COUNTERFACTUAL_JSON)"
+
 kvm-w3-oracle: $(KERNEL_IMAGE) bpf w1-oracle workload-w3-oracle-entries
 	install -d "$(PHASE1_RESULT_DIR)"
 	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w3_oracle RUN_ID=$(RUN_ID)"
@@ -685,6 +765,33 @@ __phase1_guest_w3_redis_counterfactual:
 	jq -cn --arg run_id "$(RUN_ID)" '{event:"w3-redis-counterfactual-summary", run_id:$$run_id, result_level:"kvm_checkpoint_restore_counterfactual_accounting", workload:"w3-redis-podman-criu", run_environment:"kvm", pass:true, failures:0, real_redis_replay:true, table_baseline_current_oracle_pass:true, table_budget_failure:false, zero_mixed_epoch_checker:false, restore_trace_checker:false, qualified_for_c8:false, detail:"counterfactual accounting preserves W3 negative C8 evidence: table-only exact redirects pass the current Redis replay"}' >>"$(W3_REDIS_COUNTERFACTUAL_JSON)"
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w3-redis-counterfactual.log"
 	printf '{"event":"w3-redis-counterfactual-done","run_id":"%s","result_level":"kvm_checkpoint_restore_counterfactual_accounting"}\n' "$(RUN_ID)" >>"$(W3_REDIS_COUNTERFACTUAL_JSON)"
+
+kvm-w3-checkpoint-epoch-counterfactual: $(KERNEL_IMAGE) bpf w1-oracle
+	install -d "$(PHASE1_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w3_checkpoint_epoch_counterfactual RUN_ID=$(RUN_ID) W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES=$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES) W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS=$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS)"
+
+__phase1_guest_w3_checkpoint_epoch_counterfactual:
+	install -d "$(PHASE1_RESULT_DIR)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_WORK_DIR)"
+	printf '{"event":"w3-checkpoint-epoch-start","run_id":"%s","result_level":"kvm_checkpoint_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS)" >"$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	test -s "$(CHECKPOINT_RESTORE_POLICY_SOURCE)"
+	test -s "$(TABLE_REDIRECT_POLICY_SOURCE)"
+	test -s "$(CHECKPOINT_RESTORE_POLICY)"
+	test -s "$(TABLE_REDIRECT_POLICY)"
+	test -s "$(W3_ORACLE_RUNNER)"
+	test -s "$(W3_ORACLE_RUNNER_SOURCE)"
+	test -s "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk"
+	test -s "$(ROOT_DIR)/mk/kvm.mk"
+	sha256sum "$(CHECKPOINT_RESTORE_POLICY_SOURCE)" "$(TABLE_REDIRECT_POLICY_SOURCE)" "$(CHECKPOINT_RESTORE_POLICY)" "$(TABLE_REDIRECT_POLICY)" "$(W3_ORACLE_RUNNER_SOURCE)" "$(W3_ORACLE_RUNNER)" "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk" "$(ROOT_DIR)/mk/kvm.mk" >"$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_INPUTS)"
+	sha256sum -c "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_INPUTS)" >/dev/null
+	printf '{"event":"w3-checkpoint-epoch-input","run_id":"%s","result_level":"kvm_checkpoint_epoch_counterfactual","input_sha256_file":"w3-checkpoint-epoch-counterfactual-inputs.sha256","work_dir":"%s","runner_source":"%s","samples":%s,"objects":%s,"checkpoint_policy":"checkpoint_restore_view.bpf.c","table_policy":"table_redirect.bpf.c","max_table_update_write_ratio":%s}\n' "$(RUN_ID)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_WORK_DIR)" "$(W3_ORACLE_RUNNER_SOURCE)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS)" "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" >>"$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_JSON)"
+	"$(W3_ORACLE_RUNNER)" --checkpoint-epoch-counterfactual "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_JSON)" /sys/fs/cgroup "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_WORK_DIR)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS)" "$(CHECKPOINT_RESTORE_POLICY)" "$(TABLE_REDIRECT_POLICY)"
+	jq -e --argjson samples "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES)" --argjson objects "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS)" --argjson max_ratio "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" -s '([.[] | select(.event == "w3-checkpoint-epoch-summary")][0]) as $$s | $$s.samples == $$samples and $$s.objects == $$objects and $$s.pass == true and $$s.failures == 0 and $$s.policy_executed == true and $$s.kvm_validated == true and $$s.table_static_current_oracle_pass == false and $$s.table_static_expected_failure_observed == true and $$s.table_updated_current_oracle_pass == true and $$s.table_requires_external_state_updates == true and $$s.table_update_budget_failure == true and $$s.targeted_c8_budget_failure == true and $$s.table_update_write_ratio > $$max_ratio and $$s.max_table_update_write_ratio == $$max_ratio and $$s.materialized_current_oracle_pass == true and $$s.materialized_feature_equivalent_baseline == true and $$s.materialized_update_budget_failure == true and $$s.materialized_update_write_ratio > $$max_ratio and $$s.fuse_current_oracle_pass == true and $$s.fuse_feature_equivalent_baseline == true and $$s.fuse_update_budget_failure == true and $$s.fuse_update_write_ratio > $$max_ratio and $$s.fuse_mounts == $$samples and $$s.qualified_for_c8 == false and $$s.release_gate_pass == false' "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_JSON)" >/dev/null
+	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w3-checkpoint-epoch-counterfactual.log"
+	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w3-checkpoint-epoch-counterfactual.log"); test "$$dmesg_issues" = "0"
+	printf '{"event":"w3-checkpoint-epoch-done","run_id":"%s","result_level":"kvm_checkpoint_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_SAMPLES)" "$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_OBJECTS)" >>"$(W3_CHECKPOINT_EPOCH_COUNTERFACTUAL_JSON)"
 
 kvm-w3-redis-policy-macrobench: $(KERNEL_IMAGE) bpf w1-oracle workload-redis-build workload-w3-oracle-entries
 	install -d "$(PHASE1_RESULT_DIR)"
@@ -850,6 +957,33 @@ __phase1_guest_w4_cache_transition_counterfactual:
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w4-cache-transition-counterfactual.log"
 	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w4-cache-transition-counterfactual.log"); test "$$dmesg_issues" = "0"
 	printf '{"event":"w4-cache-transition-done","run_id":"%s","result_level":"kvm_cache_state_transition_counterfactual","samples":%s}\n' "$(RUN_ID)" "$(W4_CACHE_TRANSITION_SAMPLES)" >>"$(W4_CACHE_TRANSITION_JSON)"
+
+kvm-w4-cache-epoch-counterfactual: $(KERNEL_IMAGE) bpf w1-oracle
+	install -d "$(PHASE1_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w4_cache_epoch_counterfactual RUN_ID=$(RUN_ID) W4_CACHE_EPOCH_SAMPLES=$(W4_CACHE_EPOCH_SAMPLES) W4_CACHE_EPOCH_OBJECTS=$(W4_CACHE_EPOCH_OBJECTS)"
+
+__phase1_guest_w4_cache_epoch_counterfactual:
+	install -d "$(PHASE1_RESULT_DIR)" "$(W4_CACHE_EPOCH_WORK_DIR)"
+	printf '{"event":"w4-cache-epoch-start","run_id":"%s","result_level":"kvm_cache_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W4_CACHE_EPOCH_SAMPLES)" "$(W4_CACHE_EPOCH_OBJECTS)" >"$(W4_CACHE_EPOCH_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	test -s "$(CACHE_LOCALITY_POLICY_SOURCE)"
+	test -s "$(TABLE_REDIRECT_POLICY_SOURCE)"
+	test -s "$(CACHE_LOCALITY_POLICY)"
+	test -s "$(TABLE_REDIRECT_POLICY)"
+	test -s "$(W4_ORACLE_RUNNER)"
+	test -s "$(W4_ORACLE_RUNNER_SOURCE)"
+	test -s "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk"
+	test -s "$(ROOT_DIR)/mk/kvm.mk"
+	sha256sum "$(CACHE_LOCALITY_POLICY_SOURCE)" "$(TABLE_REDIRECT_POLICY_SOURCE)" "$(CACHE_LOCALITY_POLICY)" "$(TABLE_REDIRECT_POLICY)" "$(W4_ORACLE_RUNNER_SOURCE)" "$(W4_ORACLE_RUNNER)" "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk" "$(ROOT_DIR)/mk/kvm.mk" >"$(W4_CACHE_EPOCH_INPUTS)"
+	sha256sum -c "$(W4_CACHE_EPOCH_INPUTS)" >/dev/null
+	printf '{"event":"w4-cache-epoch-input","run_id":"%s","result_level":"kvm_cache_epoch_counterfactual","input_sha256_file":"w4-cache-epoch-counterfactual-inputs.sha256","work_dir":"%s","runner_source":"%s","samples":%s,"objects":%s,"cache_policy":"cache_locality_view.bpf.c","table_policy":"table_redirect.bpf.c","max_table_update_write_ratio":%s}\n' "$(RUN_ID)" "$(W4_CACHE_EPOCH_WORK_DIR)" "$(W4_ORACLE_RUNNER_SOURCE)" "$(W4_CACHE_EPOCH_SAMPLES)" "$(W4_CACHE_EPOCH_OBJECTS)" "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" >>"$(W4_CACHE_EPOCH_JSON)"
+	"$(W4_ORACLE_RUNNER)" --cache-epoch-counterfactual "$(W4_CACHE_EPOCH_JSON)" /sys/fs/cgroup "$(W4_CACHE_EPOCH_SAMPLES)" "$(W4_CACHE_EPOCH_WORK_DIR)" "$(W4_CACHE_EPOCH_OBJECTS)" "$(CACHE_LOCALITY_POLICY)" "$(TABLE_REDIRECT_POLICY)"
+	jq -e --argjson samples "$(W4_CACHE_EPOCH_SAMPLES)" --argjson objects "$(W4_CACHE_EPOCH_OBJECTS)" --argjson max_ratio "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" -s '([.[] | select(.event == "w4-cache-epoch-summary")][0]) as $$s | $$s.samples == $$samples and $$s.objects == $$objects and $$s.pass == true and $$s.failures == 0 and $$s.policy_executed == true and $$s.kvm_validated == true and $$s.table_static_current_oracle_pass == false and $$s.table_static_expected_failure_observed == true and $$s.table_updated_current_oracle_pass == true and $$s.table_requires_external_state_updates == true and $$s.table_update_budget_failure == true and $$s.targeted_c8_budget_failure == true and $$s.table_update_write_ratio > $$max_ratio and $$s.max_table_update_write_ratio == $$max_ratio and $$s.materialized_current_oracle_pass == true and $$s.materialized_feature_equivalent_baseline == true and $$s.materialized_update_budget_failure == true and $$s.materialized_update_write_ratio > $$max_ratio and $$s.fuse_current_oracle_pass == true and $$s.fuse_feature_equivalent_baseline == true and $$s.fuse_update_budget_failure == true and $$s.fuse_update_write_ratio > $$max_ratio and $$s.fuse_mounts == $$samples and $$s.real_ccache_trace == false and $$s.qualified_for_c8 == false and $$s.release_gate_pass == false' "$(W4_CACHE_EPOCH_JSON)" >/dev/null
+	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w4-cache-epoch-counterfactual.log"
+	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w4-cache-epoch-counterfactual.log"); test "$$dmesg_issues" = "0"
+	printf '{"event":"w4-cache-epoch-done","run_id":"%s","result_level":"kvm_cache_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W4_CACHE_EPOCH_SAMPLES)" "$(W4_CACHE_EPOCH_OBJECTS)" >>"$(W4_CACHE_EPOCH_JSON)"
 
 kvm-w4-ccache-real: $(KERNEL_IMAGE) bpf w1-oracle workload-redis-build workload-nginx-build
 	install -d "$(PHASE1_RESULT_DIR)"
@@ -1129,13 +1263,49 @@ __phase1_guest_w4_ccache_bulk_policy_bridge:
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w4-ccache-bulk-policy-bridge.log"
 	printf '{"event":"w4-ccache-bulk-policy-bridge-done","run_id":"%s","result_level":"kvm_real_ccache_bulk_policy_bridge_witness"}\n' "$(RUN_ID)" >>"$(W4_CCACHE_BULK_BRIDGE_JSON)"
 
+kvm-w4-ccache-bulk-cache-epoch-counterfactual: $(KERNEL_IMAGE) bpf w1-oracle kvm-w4-ccache-bulk-policy-bridge
+	install -d "$(PHASE1_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w4_ccache_bulk_cache_epoch_counterfactual RUN_ID=$(RUN_ID) W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES=$(W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES) W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS=$(W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS)"
+
+__phase1_guest_w4_ccache_bulk_cache_epoch_counterfactual:
+	install -d "$(PHASE1_RESULT_DIR)" "$(W4_CCACHE_BULK_CACHE_EPOCH_WORK_DIR)"
+	printf '{"event":"w4-ccache-bulk-cache-epoch-start","run_id":"%s","result_level":"kvm_real_ccache_bulk_cache_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES)" "$(W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS)" >"$(W4_CCACHE_BULK_CACHE_EPOCH_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	test -s "$(W4_CCACHE_BULK_TRACE_JSON)"
+	test -s "$(W4_CCACHE_BULK_TRACE_INPUTS)"
+	test -s "$(W4_CCACHE_BULK_TRACE_ARTIFACTS)"
+	test -s "$(W4_CCACHE_BULK_BRIDGE_JSON)"
+	test -s "$(W4_CCACHE_BULK_BRIDGE_INPUTS)"
+	test -s "$(W4_CCACHE_BULK_BRIDGE_TRACE_OBJECTS)"
+	test -s "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)"
+	test -s "$(CACHE_LOCALITY_POLICY_SOURCE)"
+	test -s "$(TABLE_REDIRECT_POLICY_SOURCE)"
+	test -s "$(CACHE_LOCALITY_POLICY)"
+	test -s "$(TABLE_REDIRECT_POLICY)"
+	test -s "$(W4_ORACLE_RUNNER)"
+	test -s "$(W4_ORACLE_RUNNER_SOURCE)"
+	test -s "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk"
+	test -s "$(ROOT_DIR)/mk/kvm.mk"
+	trace_entries=$$(wc -l <"$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)"); test "$$trace_entries" -ge "$(W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS)"
+	while IFS="	" read -r workload branch parent_relative parent_absolute visible shadow original sha; do test -e "$$original"; printf '%s  %s\n' "$$sha" "$$original" | sha256sum -c - >/dev/null; done <"$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)"
+	sha256sum "$(W4_CCACHE_BULK_TRACE_JSON)" "$(W4_CCACHE_BULK_TRACE_INPUTS)" "$(W4_CCACHE_BULK_TRACE_ARTIFACTS)" "$(W4_CCACHE_BULK_BRIDGE_JSON)" "$(W4_CCACHE_BULK_BRIDGE_INPUTS)" "$(W4_CCACHE_BULK_BRIDGE_TRACE_OBJECTS)" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(CACHE_LOCALITY_POLICY_SOURCE)" "$(TABLE_REDIRECT_POLICY_SOURCE)" "$(CACHE_LOCALITY_POLICY)" "$(TABLE_REDIRECT_POLICY)" "$(W4_ORACLE_RUNNER_SOURCE)" "$(W4_ORACLE_RUNNER)" "$(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk" "$(ROOT_DIR)/mk/kvm.mk" >"$(W4_CCACHE_BULK_CACHE_EPOCH_INPUTS)"
+	sha256sum -c "$(W4_CCACHE_BULK_CACHE_EPOCH_INPUTS)" >/dev/null
+	printf '{"event":"w4-ccache-bulk-cache-epoch-input","run_id":"%s","result_level":"kvm_real_ccache_bulk_cache_epoch_counterfactual","input_sha256_file":"w4-ccache-bulk-cache-epoch-counterfactual-inputs.sha256","trace_json":"%s","bridge_json":"%s","entries_tsv":"%s","work_dir":"%s","runner_source":"%s","samples":%s,"objects":%s,"cache_policy":"cache_locality_view.bpf.c","table_policy":"table_redirect.bpf.c","max_table_update_write_ratio":%s}\n' "$(RUN_ID)" "$(W4_CCACHE_BULK_TRACE_JSON)" "$(W4_CCACHE_BULK_BRIDGE_JSON)" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(W4_CCACHE_BULK_CACHE_EPOCH_WORK_DIR)" "$(W4_ORACLE_RUNNER_SOURCE)" "$(W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES)" "$(W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS)" "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" >>"$(W4_CCACHE_BULK_CACHE_EPOCH_JSON)"
+	"$(W4_ORACLE_RUNNER)" --ccache-bulk-cache-epoch-counterfactual "$(W4_CCACHE_BULK_CACHE_EPOCH_JSON)" /sys/fs/cgroup "$(W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES)" "$(W4_CCACHE_BULK_CACHE_EPOCH_WORK_DIR)" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS)" "$(CACHE_LOCALITY_POLICY)" "$(TABLE_REDIRECT_POLICY)"
+	jq -e --argjson samples "$(W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES)" --argjson objects "$(W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS)" --argjson max_ratio "$(OSDI_TABLE_MAX_UPDATE_WRITES_RATIO)" -s '([.[] | select(.event == "w4-cache-epoch-summary")][0]) as $$s | $$s.samples == $$samples and $$s.objects == $$objects and $$s.trace_entries >= $$objects and $$s.pass == true and $$s.failures == 0 and $$s.policy_executed == true and $$s.kvm_validated == true and $$s.table_static_current_oracle_pass == false and $$s.table_static_expected_failure_observed == true and $$s.table_updated_current_oracle_pass == true and $$s.table_requires_external_state_updates == true and $$s.table_update_budget_failure == true and $$s.targeted_c8_budget_failure == true and $$s.trace_derived_targeted_c8_pass == true and $$s.table_update_write_ratio > $$max_ratio and $$s.max_table_update_write_ratio == $$max_ratio and $$s.materialized_current_oracle_pass == true and $$s.materialized_feature_equivalent_baseline == true and $$s.materialized_update_budget_failure == true and $$s.materialized_update_write_ratio > $$max_ratio and $$s.fuse_current_oracle_pass == true and $$s.fuse_feature_equivalent_baseline == true and $$s.fuse_update_budget_failure == true and $$s.fuse_update_write_ratio > $$max_ratio and $$s.fuse_mounts == $$samples and $$s.real_ccache_trace == true and $$s.trace_derived_counterfactual == true and $$s.qualified_for_c8 == false and $$s.release_gate_pass == false' "$(W4_CCACHE_BULK_CACHE_EPOCH_JSON)" >/dev/null
+	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w4-ccache-bulk-cache-epoch-counterfactual.log"
+	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w4-ccache-bulk-cache-epoch-counterfactual.log"); test "$$dmesg_issues" = "0"
+	printf '{"event":"w4-ccache-bulk-cache-epoch-done","run_id":"%s","result_level":"kvm_real_ccache_bulk_cache_epoch_counterfactual","samples":%s,"objects":%s}\n' "$(RUN_ID)" "$(W4_CCACHE_BULK_CACHE_EPOCH_SAMPLES)" "$(W4_CCACHE_BULK_CACHE_EPOCH_OBJECTS)" >>"$(W4_CCACHE_BULK_CACHE_EPOCH_JSON)"
+
 kvm-w4-ccache-bulk-policy-compile: $(KERNEL_IMAGE) bpf w1-oracle kvm-w4-ccache-bulk-policy-bridge
 	install -d "$(PHASE1_RESULT_DIR)"
-	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w4_ccache_bulk_policy_compile RUN_ID=$(RUN_ID)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __phase1_guest_w4_ccache_bulk_policy_compile RUN_ID=$(RUN_ID) W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES=$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)"
 
 __phase1_guest_w4_ccache_bulk_policy_compile:
 	install -d "$(PHASE1_RESULT_DIR)"
-	printf '{"event":"w4-ccache-bulk-policy-compile-start","run_id":"%s","result_level":"kvm_real_ccache_bulk_policy_compile_witness"}\n' "$(RUN_ID)" >"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
+	printf '{"event":"w4-ccache-bulk-policy-compile-start","run_id":"%s","result_level":"kvm_real_ccache_bulk_policy_compile_witness","samples":%s}\n' "$(RUN_ID)" "$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)" >"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
 	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
 	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
 	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
@@ -1162,7 +1332,8 @@ __phase1_guest_w4_ccache_bulk_policy_compile:
 	install -d "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)"
 	cp -a "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)/ccache"
 	sha256sum "$(W4_CCACHE_BULK_BRIDGE_JSON)" "$(W4_CCACHE_BULK_BRIDGE_TRACE_OBJECTS)" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)" "$(W4_CCACHE_BULK_TRACE_INPUTS)" "$(W4_CCACHE_BULK_TRACE_ARTIFACTS)" "$(CACHE_LOCALITY_POLICY_SOURCE)" "$(CACHE_LOCALITY_POLICY)" "$(W4_ORACLE_RUNNER_SOURCE)" "$(W4_ORACLE_RUNNER)" "$(PHASE1_RESULT_DIR)/w4-ccache-bulk-policy-compile-ccache.version" "$(ROOT_DIR)/docs/tmp/2026-06-16-w4-bulk-policy-compile-implementation.md" "$(ROOT_DIR)/mk/kvm.mk" >"$(W4_CCACHE_BULK_POLICY_COMPILE_INPUTS)"
-	printf '{"event":"w4-ccache-bulk-policy-compile-input","run_id":"%s","result_level":"kvm_real_ccache_bulk_policy_compile_witness","input_sha256_file":"w4-ccache-bulk-policy-compile-inputs.sha256","entries_tsv":"%s","source_manifest":"%s","work_dir":"%s","ccache_dir":"%s","trace_cache_dir":"%s","baseline_hot_dir":"%s","stats_file":"w4-ccache-bulk-policy-compile-stats.txt","policy":"cache_locality_view.bpf.c"}\n' "$(RUN_ID)" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)" "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/hot" >>"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
+	sha256sum -c "$(W4_CCACHE_BULK_POLICY_COMPILE_INPUTS)" >/dev/null
+	printf '{"event":"w4-ccache-bulk-policy-compile-input","run_id":"%s","result_level":"kvm_real_ccache_bulk_policy_compile_witness","input_sha256_file":"w4-ccache-bulk-policy-compile-inputs.sha256","entries_tsv":"%s","source_manifest":"%s","work_dir":"%s","ccache_dir":"%s","trace_cache_dir":"%s","baseline_hot_dir":"%s","stats_file":"w4-ccache-bulk-policy-compile-stats.txt","samples":%s,"policy":"cache_locality_view.bpf.c"}\n' "$(RUN_ID)" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)" "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/hot" "$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)" >>"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
 	"$(W4_ORACLE_RUNNER)" --ccache-bulk-policy-compile "$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)" /sys/fs/cgroup "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)" "$(REDIS_BUILD_SRC)" "$(NGINX_BUILD_SRC)" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/hot" "$(CACHE_LOCALITY_POLICY)" "$(W4_CCACHE_BULK_POLICY_COMPILE_STATS)"
 	source_count=$$(wc -l <"$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)"); \
 	output_count=$$(find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -maxdepth 1 -type f -name '*.policy.o' | wc -l); \
@@ -1191,9 +1362,38 @@ __phase1_guest_w4_ccache_bulk_policy_compile:
 	test "$$object_ops" -gt 0; \
 	test "$$direct_hit" -ge "$$source_count"; \
 	jq -cn --arg run_id "$(RUN_ID)" --argjson cache_miss "$$cache_miss" --argjson direct_cache_hit "$$direct_hit" --argjson local_storage_hit "$$local_hit" --argjson local_storage_write "$$local_write" --argjson source_count "$$source_count" --argjson compile_jobs "$$compile_jobs" --argjson output_matches "$$output_matches" --argjson redirected "$$redirected" --argjson cache_path_ops "$$cache_path_ops" --argjson object_ops "$$object_ops" '{event:"w4-ccache-bulk-policy-compile-stats", run_id:$$run_id, result_level:"kvm_real_ccache_bulk_policy_compile_witness", workload:"w4-ccache-bulk-redis-nginx", run_environment:"kvm", policy_family:"cache_locality_view.bpf.c", real_ccache_run:true, policy_executed:true, ccache_compile_policy_executed:true, kvm_validated:true, source_count:$$source_count, attached_compile_jobs:$$compile_jobs, attached_compile_output_matches:$$output_matches, policy_redirected_cache_objects:$$redirected, attached_cache_path_file_ops:$$cache_path_ops, attached_policy_cache_object_ops:$$object_ops, cache_miss:$$cache_miss, direct_cache_hit:$$direct_cache_hit, local_storage_hit:$$local_storage_hit, local_storage_write:$$local_storage_write, operation_weighted_policy_cache_hit_rate:false, operation_weighted_policy_hit_rate_is_release:false, qualified_for_c8:false, detail:"bulk Redis/nginx ccache hot compiles ran under attached cache_locality policy"}' >>"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
+	set -e; \
+	test "$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)" -ge 1; \
+	sample=1; \
+	while test "$$sample" -lt "$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)"; do \
+		sample_label=$$(printf '%03d' "$$sample"); \
+		sample_dir="$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)/sample-$$sample_label"; \
+		sample_cache="$$sample_dir/ccache"; \
+		sample_stats="$$sample_dir/w4-ccache-bulk-policy-compile-stats.txt"; \
+		install -d "$$sample_dir"; \
+		cp -a "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/ccache" "$$sample_cache"; \
+		"$(W4_ORACLE_RUNNER)" --ccache-bulk-policy-compile "$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)" /sys/fs/cgroup "$$sample_dir" "$$sample_cache" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/ccache" "$(W4_CCACHE_BULK_BRIDGE_ENTRIES_TSV)" "$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)" "$(REDIS_BUILD_SRC)" "$(NGINX_BUILD_SRC)" "$(W4_CCACHE_BULK_TRACE_WORK_DIR)/hot" "$(CACHE_LOCALITY_POLICY)" "$$sample_stats"; \
+		sample=$$((sample + 1)); \
+	done
+	source_count=$$(wc -l <"$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)"); \
+	expected_outputs=$$((source_count * $(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES))); \
+	output_count=$$(find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -type f -name '*.policy.o' | wc -l); \
+	trace_count=$$(find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -type f -name '*.policy.strace.log' | wc -l); \
+	test "$$output_count" = "$$expected_outputs"; \
+	test "$$trace_count" = "$$expected_outputs"
+	find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -type f \( -name '*.policy.o' -o -name '*.policy.strace.log' -o -name 'w4-ccache-bulk-policy-compile-stats.txt' \) -print | sort | xargs sha256sum >"$(PHASE1_RESULT_DIR)/w4-ccache-bulk-policy-compile-outputs.sha256"
+	source_count=$$(wc -l <"$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)"); \
+	cache_miss=$$(find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -type f -name 'w4-ccache-bulk-policy-compile-stats.txt' -print | sort | xargs awk '$$1 == "cache_miss" { v += $$2 } END { print v + 0 }'); \
+	direct_hit=$$(find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -type f -name 'w4-ccache-bulk-policy-compile-stats.txt' -print | sort | xargs awk '$$1 == "direct_cache_hit" { v += $$2 } END { print v + 0 }'); \
+	local_hit=$$(find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -type f -name 'w4-ccache-bulk-policy-compile-stats.txt' -print | sort | xargs awk '$$1 == "local_storage_hit" { v += $$2 } END { print v + 0 }'); \
+	local_write=$$(find "$(W4_CCACHE_BULK_POLICY_COMPILE_WORK_DIR)" -type f -name 'w4-ccache-bulk-policy-compile-stats.txt' -print | sort | xargs awk '$$1 == "local_storage_write" { v += $$2 } END { print v + 0 }'); \
+	jq -c -s --arg run_id "$(RUN_ID)" --argjson samples "$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)" --argjson source_count "$$source_count" --argjson cache_miss "$$cache_miss" --argjson direct_cache_hit "$$direct_hit" --argjson local_storage_hit "$$local_hit" --argjson local_storage_write "$$local_write" '[.[] | select(.event == "w4-ccache-bulk-policy-compile-summary")] as $$rows | ($$rows | map(.failures // 0) | add // 0) as $$failures | ($$rows | map(.attached_compile_jobs // 0) | add // 0) as $$jobs | ($$rows | map(.attached_compile_output_matches // 0) | add // 0) as $$matches | ($$rows | map(.policy_redirected_cache_objects // 0) | add // 0) as $$redirected | ($$rows | map(.attached_cache_path_file_ops // 0) | add // 0) as $$cache_path_ops | ($$rows | map(.attached_policy_cache_object_ops // 0) | add // 0) as $$object_ops | ($$rows | all(.output_hash_match == true)) as $$hash_ok | {event:"w4-ccache-bulk-policy-compile-release-summary", run_id:$$run_id, result_level:"kvm_real_ccache_bulk_policy_compile_release_input", workload:"w4-ccache-bulk-redis-nginx", policy_family:"cache_locality_view.bpf.c", run_environment:"kvm", real_ccache_run:true, bulk_policy_compile:true, samples:$$samples, compile_rows:($$rows | length), source_manifest_count:$$source_count, attached_compile_jobs:$$jobs, attached_compile_output_matches:$$matches, policy_executed:true, ccache_compile_policy_executed:true, kvm_validated:true, output_hash_match:$$hash_ok, policy_redirected_cache_objects:$$redirected, attached_cache_path_file_ops:$$cache_path_ops, attached_policy_cache_object_ops:$$object_ops, attached_sampled_operation_hit_rate:(if $$cache_path_ops > 0 then ($$object_ops / $$cache_path_ops) else 0 end), cache_miss:$$cache_miss, direct_cache_hit:$$direct_cache_hit, local_storage_hit:$$local_storage_hit, local_storage_write:$$local_storage_write, pass:(($$rows | length) == $$samples and $$failures == 0 and $$hash_ok and $$jobs == ($$samples * $$source_count) and $$matches == $$jobs and $$cache_path_ops > 0 and $$object_ops > 0), failures:$$failures, operation_weighted_policy_cache_hit_rate:true, operation_weighted_policy_hit_rate_is_release:true, qualified_for_c8:false, release_gate_pass:false, detail:"bulk Redis/nginx ccache hot compiles ran repeatedly under attached cache_locality policy; this is a release compile input, not a stale-window/table-budget C8 proof"}' "$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)" >"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON).release-summary"
+	cat "$(W4_CCACHE_BULK_POLICY_COMPILE_JSON).release-summary" >>"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
+	source_count=$$(wc -l <"$(W4_CCACHE_BULK_TRACE_SOURCE_MANIFEST)"); \
+	jq -e --argjson samples "$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)" --argjson source_count "$$source_count" --argjson min_trace_objects "$(W4_CCACHE_BULK_MIN_TRACE_OBJECTS)" -s '([.[] | select(.event == "w4-ccache-bulk-policy-compile-release-summary")][0]) as $$s | $$s.samples == $$samples and $$s.compile_rows == $$samples and $$s.pass == true and $$s.policy_executed == true and $$s.ccache_compile_policy_executed == true and $$s.output_hash_match == true and $$s.attached_compile_jobs == ($$samples * $$source_count) and $$s.attached_compile_output_matches == $$s.attached_compile_jobs and $$s.policy_redirected_cache_objects >= ($$samples * $$min_trace_objects) and $$s.attached_cache_path_file_ops > 0 and $$s.attached_policy_cache_object_ops > 0 and $$s.operation_weighted_policy_hit_rate_is_release == true and $$s.qualified_for_c8 == false' "$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)" >/dev/null
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-w4-ccache-bulk-policy-compile.log"
 	dmesg_issues=$$(awk '/] (BUG:|WARNING:|Oops:|Kernel panic|panic:|hung task)|kernel BUG at|INFO: task .* blocked for more than/ { n++ } END { print n + 0 }' "$(PHASE1_RESULT_DIR)/dmesg-w4-ccache-bulk-policy-compile.log"); test "$$dmesg_issues" = "0"
-	printf '{"event":"w4-ccache-bulk-policy-compile-done","run_id":"%s","result_level":"kvm_real_ccache_bulk_policy_compile_witness"}\n' "$(RUN_ID)" >>"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
+	printf '{"event":"w4-ccache-bulk-policy-compile-done","run_id":"%s","result_level":"kvm_real_ccache_bulk_policy_compile_witness","samples":%s}\n' "$(RUN_ID)" "$(W4_CCACHE_BULK_POLICY_COMPILE_SAMPLES)" >>"$(W4_CCACHE_BULK_POLICY_COMPILE_JSON)"
 
 kvm-w4-ccache-bulk-native-compile: $(KERNEL_IMAGE) w1-oracle kvm-w4-ccache-bulk-policy-bridge
 	install -d "$(PHASE1_RESULT_DIR)"

@@ -82,9 +82,87 @@ struct build_graph_rule {
 	struct namei_ext_redirect_rule redirect;
 };
 
+enum build_graph_branch {
+	BUILD_BRANCH_GENERATED = 1,
+	BUILD_BRANCH_SOURCE_FALLBACK = 2,
+	BUILD_BRANCH_TOOLCHAIN = 3,
+	BUILD_BRANCH_EXTERNAL_DEP = 4,
+	BUILD_BRANCH_UNDECLARED_POISON = 5,
+	BUILD_BRANCH_NEGATIVE = 6,
+};
+
+struct build_graph_session {
+	__u32 build_epoch;
+	__u32 active;
+	__u32 reserved[2];
+};
+
+struct build_graph_epoch_rule_key {
+	struct namei_ext_component_key component;
+	__u32 branch_class;
+	__u32 build_epoch;
+};
+
+struct build_graph_epoch_rule {
+	struct namei_ext_redirect_rule redirect;
+	__u32 branch_class;
+	__u32 reserved;
+};
+
 struct sandbox_fixture_rule {
 	struct namei_ext_redirect_rule redirect;
 	__u32 path_class;
+};
+
+enum sandbox_fixture_branch {
+	FIXTURE_BRANCH_CONFIG = 1,
+	FIXTURE_BRANCH_SECRET = 2,
+	FIXTURE_BRANCH_CERT = 3,
+	FIXTURE_BRANCH_ENDPOINT = 4,
+	FIXTURE_BRANCH_POISON = 5,
+};
+
+struct sandbox_fixture_session {
+	__u32 fixture_epoch;
+	__u32 active;
+	__u32 reserved[2];
+};
+
+struct sandbox_fixture_epoch_rule_key {
+	struct namei_ext_component_key component;
+	__u32 path_class;
+	__u32 fixture_epoch;
+};
+
+struct sandbox_fixture_epoch_rule {
+	struct namei_ext_redirect_rule redirect;
+	__u32 path_class;
+	__u32 reserved;
+};
+
+enum checkpoint_path_class {
+	CHECKPOINT_CLASS_STATE = 1,
+	CHECKPOINT_CLASS_CONFIG = 2,
+	CHECKPOINT_CLASS_CACHE = 3,
+	CHECKPOINT_CLASS_RUNTIME = 4,
+	CHECKPOINT_CLASS_MIXED_EPOCH = 5,
+};
+
+struct checkpoint_session {
+	__u32 restore_id;
+	__u32 checkpoint_epoch;
+	__u32 active;
+	__u32 reserved;
+};
+
+struct checkpoint_rule_key {
+	struct namei_ext_component_key component;
+	__u32 path_class;
+	__u32 checkpoint_epoch;
+};
+
+struct checkpoint_rule {
+	struct namei_ext_redirect_rule redirect;
 };
 
 enum cache_state {
@@ -103,6 +181,23 @@ struct cache_rule {
 	__u64 observed_hash[4];
 	__u32 state;
 	__u32 witness_count;
+};
+
+struct cache_epoch_session {
+	__u32 cache_epoch;
+	__u32 active;
+	__u32 reserved[2];
+};
+
+struct cache_epoch_rule_key {
+	struct namei_ext_component_key component;
+	__u32 cache_epoch;
+};
+
+struct cache_epoch_rule {
+	struct namei_ext_redirect_rule redirect;
+	__u32 state;
+	__u32 reserved;
 };
 
 enum policy_kind {
@@ -214,6 +309,17 @@ struct w1_fuse_context {
 	struct w1_fuse_mount mounts[W1_FUSE_MAX_MOUNTS];
 	size_t nr_mounts;
 };
+
+static int add_w1_alias_spec(struct w1_alias_spec *specs, size_t *nr,
+			     const char *dir, const char *visible,
+			     const char *shadow, const char *original);
+static int w1_fuse_backing_dir(const char *mount_dir, char *backing_dir,
+			       size_t size);
+static int unmount_w1_fuse_context(struct w1_fuse_context *ctx);
+static int setup_w1_fuse_mount(const struct w1_alias_spec *specs,
+			       size_t nr_specs, const char *dir,
+			       struct nginx_macro_stats *stats,
+			       struct w1_fuse_context *ctx);
 
 struct w4_fuse_env {
 	char backing_dir[PATH_MAX];
@@ -2498,6 +2604,150 @@ static int update_rule(struct attached_policy *policy, __u64 cgroup_id,
 	return 0;
 }
 
+static int policy_map_fd_by_name(const struct attached_policy *policy,
+				 const char *name)
+{
+	struct bpf_map *map;
+	int fd;
+
+	if (!policy || !policy->obj || !name)
+		return -EINVAL;
+	map = bpf_object__find_map_by_name(policy->obj, name);
+	if (!map)
+		return -ENOENT;
+	fd = bpf_map__fd(map);
+	if (fd < 0)
+		return -EINVAL;
+	return fd;
+}
+
+static int update_build_graph_session(struct attached_policy *policy,
+				      __u64 cgroup_id, __u32 build_epoch,
+				      bool active)
+{
+	struct build_graph_session session = {};
+	int fd = policy_map_fd_by_name(policy, "build_graph_sessions");
+
+	if (fd < 0)
+		return fd;
+	session.build_epoch = build_epoch;
+	session.active = active ? 1 : 0;
+	if (bpf_map_update_elem(fd, &cgroup_id, &session, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
+static int update_build_graph_epoch_rule(
+	struct attached_policy *policy, __u64 cgroup_id, __u32 event,
+	const char *parent_dir, const char *name, const char *target,
+	__u32 branch, __u32 branch_class, __u32 build_epoch)
+{
+	struct build_graph_epoch_rule_key key = {};
+	struct build_graph_epoch_rule rule = {};
+	int fd = policy_map_fd_by_name(policy, "build_graph_epoch_rules");
+	int ret;
+
+	if (fd < 0)
+		return fd;
+	if (strlen(name) > NAMEI_EXT_NAME_MAX ||
+	    strlen(target) > NAMEI_EXT_NAME_MAX)
+		return -ENAMETOOLONG;
+	ret = fill_key(&key.component, event, cgroup_id, parent_dir, name);
+	if (ret)
+		return ret;
+	key.branch_class = branch_class;
+	key.build_epoch = build_epoch;
+	fill_rule(&rule.redirect, target, branch);
+	rule.branch_class = branch_class;
+	if (bpf_map_update_elem(fd, &key, &rule, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
+static int update_sandbox_fixture_session(struct attached_policy *policy,
+					  __u64 cgroup_id,
+					  __u32 fixture_epoch, bool active)
+{
+	struct sandbox_fixture_session session = {};
+	int fd = policy_map_fd_by_name(policy, "fixture_sessions");
+
+	if (fd < 0)
+		return fd;
+	session.fixture_epoch = fixture_epoch;
+	session.active = active ? 1 : 0;
+	if (bpf_map_update_elem(fd, &cgroup_id, &session, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
+static int update_sandbox_fixture_epoch_rule(
+	struct attached_policy *policy, __u64 cgroup_id, __u32 event,
+	const char *parent_dir, const char *name, const char *target,
+	__u32 branch, __u32 path_class, __u32 fixture_epoch)
+{
+	struct sandbox_fixture_epoch_rule_key key = {};
+	struct sandbox_fixture_epoch_rule rule = {};
+	int fd = policy_map_fd_by_name(policy, "fixture_epoch_rules");
+	int ret;
+
+	if (fd < 0)
+		return fd;
+	if (strlen(name) > NAMEI_EXT_NAME_MAX ||
+	    strlen(target) > NAMEI_EXT_NAME_MAX)
+		return -ENAMETOOLONG;
+	ret = fill_key(&key.component, event, cgroup_id, parent_dir, name);
+	if (ret)
+		return ret;
+	key.path_class = path_class;
+	key.fixture_epoch = fixture_epoch;
+	fill_rule(&rule.redirect, target, branch);
+	rule.path_class = path_class;
+	if (bpf_map_update_elem(fd, &key, &rule, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
+static int update_checkpoint_session(struct attached_policy *policy,
+				     __u64 cgroup_id, __u32 restore_id,
+				     __u32 checkpoint_epoch, bool active)
+{
+	struct checkpoint_session session = {};
+	int fd = policy_map_fd_by_name(policy, "checkpoint_sessions");
+
+	if (fd < 0)
+		return fd;
+	session.restore_id = restore_id;
+	session.checkpoint_epoch = checkpoint_epoch;
+	session.active = active ? 1 : 0;
+	if (bpf_map_update_elem(fd, &cgroup_id, &session, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
+static int update_checkpoint_rule(struct attached_policy *policy,
+				  __u64 cgroup_id, __u32 event,
+				  const char *parent_dir, const char *name,
+				  const char *target, __u32 branch,
+				  __u32 path_class, __u32 checkpoint_epoch)
+{
+	struct checkpoint_rule_key key = {};
+	struct checkpoint_rule rule = {};
+	int ret;
+
+	if (strlen(name) > NAMEI_EXT_NAME_MAX ||
+	    strlen(target) > NAMEI_EXT_NAME_MAX)
+		return -ENAMETOOLONG;
+	ret = fill_key(&key.component, event, cgroup_id, parent_dir, name);
+	if (ret)
+		return ret;
+	key.path_class = path_class;
+	key.checkpoint_epoch = checkpoint_epoch;
+	fill_rule(&rule.redirect, target, branch);
+	if (bpf_map_update_elem(policy->map_fd, &key, &rule, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
 static int update_cache_parent_rule(struct attached_policy *policy,
 				    __u64 cgroup_id, __u32 event,
 				    const char *parent_dir, __u32 state,
@@ -2552,6 +2802,49 @@ static int update_cache_rule(struct attached_policy *policy, __u64 cgroup_id,
 	rule.state = state;
 	rule.witness_count = 1;
 	if (bpf_map_update_elem(policy->map_fd, &key, &rule, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
+static int update_cache_epoch_session(struct attached_policy *policy,
+				      __u64 cgroup_id, __u32 cache_epoch,
+				      bool active)
+{
+	struct cache_epoch_session session = {};
+	int fd = policy_map_fd_by_name(policy, "cache_epoch_sessions");
+
+	if (fd < 0)
+		return fd;
+	session.cache_epoch = cache_epoch;
+	session.active = active ? 1 : 0;
+	if (bpf_map_update_elem(fd, &cgroup_id, &session, BPF_ANY))
+		return -errno;
+	return 0;
+}
+
+static int update_cache_epoch_rule(struct attached_policy *policy,
+				   __u64 cgroup_id, __u32 event,
+				   const char *parent_dir, const char *name,
+				   const char *target, __u32 branch,
+				   __u32 state, __u32 cache_epoch)
+{
+	struct cache_epoch_rule_key key = {};
+	struct cache_epoch_rule rule = {};
+	int fd = policy_map_fd_by_name(policy, "cache_epoch_rules");
+	int ret;
+
+	if (fd < 0)
+		return fd;
+	if (strlen(name) > NAMEI_EXT_NAME_MAX ||
+	    strlen(target) > NAMEI_EXT_NAME_MAX)
+		return -ENAMETOOLONG;
+	ret = fill_key(&key.component, event, cgroup_id, parent_dir, name);
+	if (ret)
+		return ret;
+	key.cache_epoch = cache_epoch;
+	fill_rule(&rule.redirect, target, branch);
+	rule.state = state;
+	if (bpf_map_update_elem(fd, &key, &rule, BPF_ANY))
 		return -errno;
 	return 0;
 }
@@ -3512,6 +3805,3939 @@ static int run_w3_redis_replay(FILE *out, const char *cgroup_mount,
 	fputs("}\n", out);
 	fflush(out);
 	return failures ? 1 : 0;
+}
+
+#define W1_BUILD_EPOCH_ONE 1
+#define W1_BUILD_EPOCH_TWO 2
+#define W1_BUILD_EPOCH_DEFAULT_OBJECTS 16
+#define W1_BUILD_EPOCH_MAX_OBJECTS 64
+#define W1_BUILD_EPOCH_TABLE_MAX_UPDATE_RATIO 10
+
+struct w1_build_epoch_entry {
+	char visible[NAMEI_EXT_NAME_MAX + 1];
+	char epoch1[NAMEI_EXT_NAME_MAX + 1];
+	char epoch2[NAMEI_EXT_NAME_MAX + 1];
+	__u32 branch_class;
+};
+
+struct w1_build_epoch_stats {
+	int setup_rows;
+	int correctness_rows;
+	int update_rows;
+	int failures;
+	size_t objects;
+	size_t static_wrong_epoch_hits;
+	unsigned long long policy_setup_writes;
+	unsigned long long table_setup_writes;
+	unsigned long long materialized_setup_writes;
+	unsigned long long fuse_setup_writes;
+	unsigned long long policy_update_writes;
+	unsigned long long table_update_writes;
+	unsigned long long materialized_update_writes;
+	unsigned long long fuse_update_writes;
+	unsigned long long fuse_mounts;
+	bool policy_epoch_switch_pass;
+	bool table_static_expected_failure;
+	bool table_updated_pass;
+	bool materialized_updated_pass;
+	bool fuse_updated_pass;
+};
+
+static __u32 w1_build_epoch_class_for_index(size_t index)
+{
+	switch (index % 5) {
+	case 0:
+		return BUILD_BRANCH_GENERATED;
+	case 1:
+		return BUILD_BRANCH_SOURCE_FALLBACK;
+	case 2:
+		return BUILD_BRANCH_TOOLCHAIN;
+	case 3:
+		return BUILD_BRANCH_EXTERNAL_DEP;
+	default:
+		return BUILD_BRANCH_UNDECLARED_POISON;
+	}
+}
+
+static const char *w1_build_epoch_class_name(__u32 branch_class)
+{
+	switch (branch_class) {
+	case BUILD_BRANCH_GENERATED:
+		return "generated";
+	case BUILD_BRANCH_SOURCE_FALLBACK:
+		return "source_fallback";
+	case BUILD_BRANCH_TOOLCHAIN:
+		return "toolchain";
+	case BUILD_BRANCH_EXTERNAL_DEP:
+		return "external_dep";
+	case BUILD_BRANCH_UNDECLARED_POISON:
+		return "undeclared_poison";
+	default:
+		return "unknown";
+	}
+}
+
+static const char *w1_build_epoch_target(
+	const struct w1_build_epoch_entry *entry, __u32 epoch)
+{
+	return epoch == W1_BUILD_EPOCH_TWO ? entry->epoch2 : entry->epoch1;
+}
+
+static int prepare_w1_build_epoch_names(struct w1_build_epoch_entry *entry,
+					size_t index)
+{
+	const char *prefix = "obj";
+	const char *suffix = "dep";
+	int ret;
+
+	entry->branch_class = w1_build_epoch_class_for_index(index);
+	switch (entry->branch_class) {
+	case BUILD_BRANCH_GENERATED:
+		prefix = "gen";
+		suffix = "h";
+		break;
+	case BUILD_BRANCH_SOURCE_FALLBACK:
+		prefix = "src";
+		suffix = "h";
+		break;
+	case BUILD_BRANCH_TOOLCHAIN:
+		prefix = "tool";
+		suffix = "bin";
+		break;
+	case BUILD_BRANCH_EXTERNAL_DEP:
+		prefix = "dep";
+		suffix = "so";
+		break;
+	case BUILD_BRANCH_UNDECLARED_POISON:
+		prefix = "priv";
+		suffix = "h";
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = snprintf(entry->visible, sizeof(entry->visible), "%s%02zu.%s",
+		       prefix, index, suffix);
+	if (ret < 0)
+		return -errno;
+	if ((size_t)ret >= sizeof(entry->visible))
+		return -ENAMETOOLONG;
+	ret = snprintf(entry->epoch1, sizeof(entry->epoch1), "%s%02zu.e1",
+		       prefix, index);
+	if (ret < 0)
+		return -errno;
+	if ((size_t)ret >= sizeof(entry->epoch1))
+		return -ENAMETOOLONG;
+	ret = snprintf(entry->epoch2, sizeof(entry->epoch2), "%s%02zu.e2",
+		       prefix, index);
+	if (ret < 0)
+		return -errno;
+	if ((size_t)ret >= sizeof(entry->epoch2))
+		return -ENAMETOOLONG;
+	return 0;
+}
+
+static int prepare_w1_build_epoch_dir(const char *dir,
+				      struct w1_build_epoch_entry *entries,
+				      size_t objects, int sample)
+{
+	char path[PATH_MAX];
+	char text[192];
+	size_t i;
+	int ret;
+
+	ret = mkdir_if_missing(dir);
+	if (ret)
+		return ret;
+	for (i = 0; i < objects; i++) {
+		ret = prepare_w1_build_epoch_names(&entries[i], i);
+		if (ret)
+			return ret;
+		ret = set_path(path, sizeof(path), dir, entries[i].visible);
+		if (ret)
+			return ret;
+		unlink_existing(path);
+
+		ret = set_path(path, sizeof(path), dir, entries[i].epoch1);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w1 build sample %d object %zu branch %s epoch 1\n",
+			       sample, i,
+			       w1_build_epoch_class_name(entries[i].branch_class));
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+
+		ret = set_path(path, sizeof(path), dir, entries[i].epoch2);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w1 build sample %d object %zu branch %s epoch 2\n",
+			       sample, i,
+			       w1_build_epoch_class_name(entries[i].branch_class));
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int w1_build_epoch_lookup_matches(
+	const char *dir, const struct w1_build_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), dir,
+			       w1_build_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w1_build_epoch_readdir_hides_backings(
+	const char *dir, const struct w1_build_epoch_entry *entry)
+{
+	bool saw_visible;
+	bool saw_epoch1;
+	bool saw_epoch2;
+	int err = 0;
+
+	saw_visible = dir_has_name(dir, entry->visible, &err);
+	if (!err)
+		saw_epoch1 = dir_has_name(dir, entry->epoch1, &err);
+	else
+		saw_epoch1 = false;
+	if (!err)
+		saw_epoch2 = dir_has_name(dir, entry->epoch2, &err);
+	else
+		saw_epoch2 = false;
+	if (!err && saw_visible && !saw_epoch1 && !saw_epoch2)
+		return 0;
+	return err ? -err : -ENOENT;
+}
+
+static bool w1_build_epoch_current_oracle_passes(
+	const char *dir, const struct w1_build_epoch_entry *entries,
+	size_t objects, __u32 epoch, size_t *wrong_epoch_hits,
+	__u32 wrong_epoch)
+{
+	bool pass = true;
+	size_t wrong = 0;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w1_build_epoch_lookup_matches(dir, &entries[i], epoch))
+			pass = false;
+		if (w1_build_epoch_readdir_hides_backings(dir, &entries[i]))
+			pass = false;
+		if (wrong_epoch &&
+		    !w1_build_epoch_lookup_matches(dir, &entries[i],
+						   wrong_epoch))
+			wrong++;
+	}
+	if (wrong_epoch_hits)
+		*wrong_epoch_hits = wrong;
+	return pass;
+}
+
+static void emit_w1_build_epoch_setup(
+	FILE *out, int sample, const char *system, bool pass, int err,
+	__u64 setup_ns, size_t objects, unsigned long long setup_writes,
+	bool policy_executed, const char *detail)
+{
+	const char *write_key = policy_executed ? "setup_rule_writes" :
+						"setup_materialization_writes";
+
+	fputs("{\"event\":\"w1-build-epoch-setup\","
+	      "\"schema\":\"namei_ext.eval_osdi.w1_build_epoch.v1\","
+	      "\"result_level\":\"kvm_build_graph_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w1-build-graph-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"setup_ns\":%llu,\"objects\":%zu,"
+		"\"dynamic_build_branches\":5,"
+		"\"setup_writes\":%llu,\"%s\":%llu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)setup_ns, objects, setup_writes,
+		write_key, setup_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w1_build_epoch_correctness(
+	FILE *out, int sample, const char *system, const char *stage,
+	bool pass, bool current_oracle_pass,
+	bool expected_static_failure_observed, size_t wrong_epoch_hits,
+	bool policy_executed, const char *detail)
+{
+	fputs("{\"event\":\"w1-build-epoch-correctness\","
+	      "\"schema\":\"namei_ext.eval_osdi.w1_build_epoch.v1\","
+	      "\"result_level\":\"kvm_build_graph_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w1-build-graph-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fputs(",\"stage\":", out);
+	fprint_json_string(out, stage);
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,"
+		"\"current_oracle_pass\":%s,"
+		"\"expected_static_failure_observed\":%s,"
+		"\"wrong_epoch_hits\":%zu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false",
+		current_oracle_pass ? "true" : "false",
+		expected_static_failure_observed ? "true" : "false",
+		wrong_epoch_hits, policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w1_build_epoch_update(
+	FILE *out, int sample, const char *system, bool pass, int err,
+	__u64 update_ns, __u64 observed_window_ns,
+	unsigned long long update_writes, bool policy_executed,
+	const char *detail)
+{
+	fputs("{\"event\":\"w1-build-epoch-update-window\","
+	      "\"schema\":\"namei_ext.eval_osdi.w1_build_epoch.v1\","
+	      "\"result_level\":\"kvm_build_graph_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w1-build-graph-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"update_ns\":%llu,"
+		"\"observed_update_window_ns\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"from_epoch\":1,\"to_epoch\":2,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)update_ns,
+		(unsigned long long)observed_window_ns, update_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w1_build_epoch_summary(
+	FILE *out, int samples, const struct w1_build_epoch_stats *stats,
+	const char *detail)
+{
+	double update_ratio = stats->policy_update_writes ?
+		(double)stats->table_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double materialized_update_ratio = stats->policy_update_writes ?
+		(double)stats->materialized_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double fuse_update_ratio = stats->policy_update_writes ?
+		(double)stats->fuse_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	bool table_update_budget_failure =
+		update_ratio > W1_BUILD_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool materialized_update_budget_failure =
+		materialized_update_ratio > W1_BUILD_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool fuse_update_budget_failure =
+		fuse_update_ratio > W1_BUILD_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool targeted_c8_budget_failure =
+		stats->policy_epoch_switch_pass &&
+		stats->table_static_expected_failure &&
+		stats->table_updated_pass &&
+		table_update_budget_failure;
+	bool state_branch_not_static =
+		stats->policy_epoch_switch_pass &&
+		stats->table_static_expected_failure;
+
+	fputs("{\"event\":\"w1-build-epoch-summary\","
+	      "\"schema\":\"namei_ext.eval_osdi.w1_build_epoch.v1\","
+	      "\"result_level\":\"kvm_build_graph_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w1-build-graph-epoch\",",
+	      out);
+	fprintf(out,
+		"\"samples\":%d,\"setup_rows\":%d,"
+		"\"correctness_rows\":%d,\"update_rows\":%d,"
+		"\"objects\":%zu,"
+		"\"dynamic_build_branches\":5,"
+		"\"static_wrong_epoch_hits\":%zu,"
+		"\"policy_setup_writes\":%llu,"
+		"\"table_setup_writes\":%llu,"
+		"\"materialized_setup_writes\":%llu,"
+		"\"fuse_setup_writes\":%llu,"
+		"\"policy_update_writes\":%llu,"
+		"\"table_update_writes\":%llu,"
+		"\"materialized_update_writes\":%llu,"
+		"\"fuse_update_writes\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"table_update_write_ratio\":%.17g,"
+		"\"materialized_update_write_ratio\":%.17g,"
+		"\"fuse_update_write_ratio\":%.17g,"
+		"\"max_table_update_write_ratio\":%d,"
+		"\"table_static_current_oracle_pass\":false,"
+		"\"table_static_expected_failure_observed\":%s,"
+		"\"table_updated_current_oracle_pass\":%s,"
+		"\"table_requires_external_state_updates\":true,"
+		"\"table_update_budget_failure\":%s,"
+		"\"materialized_current_oracle_pass\":%s,"
+		"\"materialized_feature_equivalent_baseline\":%s,"
+		"\"materialized_update_budget_failure\":%s,"
+		"\"fuse_current_oracle_pass\":%s,"
+		"\"fuse_feature_equivalent_baseline\":%s,"
+		"\"fuse_update_budget_failure\":%s,"
+		"\"targeted_c8_budget_failure\":%s,"
+		"\"state_dependent_branch_not_static_table_expressible\":%s,"
+		"\"real_redis_nginx_trace\":false,"
+		"\"release_sample_budget_pass\":%s,"
+		"\"pass\":%s,\"failures\":%d,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
+		"\"detail\":",
+		samples, stats->setup_rows, stats->correctness_rows,
+		stats->update_rows, stats->objects,
+		stats->static_wrong_epoch_hits, stats->policy_setup_writes,
+		stats->table_setup_writes, stats->materialized_setup_writes,
+		stats->fuse_setup_writes,
+		stats->policy_update_writes, stats->table_update_writes,
+		stats->materialized_update_writes, stats->fuse_update_writes,
+		stats->fuse_mounts, update_ratio, materialized_update_ratio,
+		fuse_update_ratio, W1_BUILD_EPOCH_TABLE_MAX_UPDATE_RATIO,
+		stats->table_static_expected_failure ? "true" : "false",
+		stats->table_updated_pass ? "true" : "false",
+		table_update_budget_failure ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		materialized_update_budget_failure ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		fuse_update_budget_failure ? "true" : "false",
+		targeted_c8_budget_failure ? "true" : "false",
+		state_branch_not_static ? "true" : "false",
+		samples >= 20 ? "true" : "false",
+		stats->failures ? "false" : "true", stats->failures,
+		stats->failures ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static int populate_w1_build_epoch_policy_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w1_build_epoch_entry *entries, size_t objects,
+	unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		__u32 branch = (__u32)i + 1;
+		__u32 branch_class = entries[i].branch_class;
+		int ret;
+
+		ret = update_build_graph_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].epoch1, branch,
+			branch_class, W1_BUILD_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_build_graph_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].epoch2, branch,
+			branch_class, W1_BUILD_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_build_graph_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch1, entries[i].visible, branch,
+			branch_class, W1_BUILD_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_build_graph_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch2, entries[i].visible, branch,
+			branch_class, W1_BUILD_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_build_graph_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch1, entries[i].visible, branch,
+			branch_class, W1_BUILD_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_build_graph_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch2, entries[i].visible, branch,
+			branch_class, W1_BUILD_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int populate_w1_build_epoch_table_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w1_build_epoch_entry *entries, size_t objects,
+	__u32 epoch, bool include_readdir, unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		int ret;
+
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP,
+				  dir, entries[i].visible,
+				  w1_build_epoch_target(&entries[i], epoch),
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		if (!include_readdir)
+			continue;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].epoch1, entries[i].visible,
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].epoch2, entries[i].visible,
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int run_w1_build_epoch_policy_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w1_build_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w1_build_epoch_entry entries[W1_BUILD_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w1_build_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_BUILD_GRAPH,
+				  "build_graph_epoch", &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w1_build_epoch_policy_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			&setup_writes);
+	if (!ret)
+		ret = update_build_graph_session(
+			&policy, cgroup_id, W1_BUILD_EPOCH_ONE, true);
+	if (!ret)
+		setup_writes++;
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->policy_setup_writes += setup_writes;
+	emit_w1_build_epoch_setup(
+		out, sample, "build_graph_epoch_policy", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup build graph epoch policy" :
+		      "build graph policy attached with two epoch rule sets");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w1_build_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W1_BUILD_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "build_graph_epoch_policy", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, true,
+		epoch1_pass ? "build graph epoch 1 oracle passed" :
+			      "build graph epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = update_build_graph_session(
+		&policy, cgroup_id, W1_BUILD_EPOCH_TWO, true);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w1_build_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W1_BUILD_EPOCH_TWO,
+			NULL, 0);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->policy_update_writes++;
+	emit_w1_build_epoch_update(
+		out, sample, "build_graph_epoch_policy",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, 1, true,
+		(!ret && epoch2_pass) ?
+			"build graph policy switched epoch with one session update" :
+			"build graph policy epoch switch failed");
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "build_graph_epoch_policy", "epoch2",
+		!ret && epoch2_pass, !ret && epoch2_pass, false, 0, true,
+		(!ret && epoch2_pass) ?
+			"build graph epoch 2 oracle passed" :
+			"build graph epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->policy_epoch_switch_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w1_build_epoch_table_static_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w1_build_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w1_build_epoch_entry entries[W1_BUILD_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	size_t wrong_epoch_hits = 0;
+	bool epoch1_pass = false;
+	bool epoch2_current_pass = false;
+	bool expected_failure = false;
+	__u64 start_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w1_build_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w1_build_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W1_BUILD_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w1_build_epoch_setup(
+		out, sample, "table_redirect_static_build_epoch1", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup static build table" :
+		      "static exact table attached with build epoch 1 lookup rules");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w1_build_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W1_BUILD_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "table_redirect_static_build_epoch1", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, true,
+		epoch1_pass ? "static table build epoch 1 oracle passed" :
+			      "static table build epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	epoch2_current_pass = w1_build_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W1_BUILD_EPOCH_TWO,
+		&wrong_epoch_hits, W1_BUILD_EPOCH_ONE);
+	expected_failure = !epoch2_current_pass && wrong_epoch_hits == objects;
+	stats->correctness_rows++;
+	stats->static_wrong_epoch_hits += wrong_epoch_hits;
+	emit_w1_build_epoch_correctness(
+		out, sample, "table_redirect_static_build_epoch1",
+		"epoch2_without_update", expected_failure,
+		epoch2_current_pass, expected_failure, wrong_epoch_hits, true,
+		expected_failure ?
+			"static table failed build epoch 2 oracle with wrong epoch hits" :
+			"static table did not expose the expected build epoch failure");
+	if (!expected_failure)
+		stats->failures++;
+	else
+		stats->table_static_expected_failure = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !expected_failure;
+}
+
+static int run_w1_build_epoch_table_updated_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w1_build_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w1_build_epoch_entry entries[W1_BUILD_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w1_build_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w1_build_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W1_BUILD_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w1_build_epoch_setup(
+		out, sample, "table_redirect_updated_build_exact", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup externally updated build table" :
+		      "externally updated exact table attached at build epoch 1");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w1_build_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W1_BUILD_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "table_redirect_updated_build_exact", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, true,
+		epoch1_pass ? "updated table build epoch 1 oracle passed" :
+			      "updated table build epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = populate_w1_build_epoch_table_rules(
+		&policy, cgroup_id, sample_dir, entries, objects,
+		W1_BUILD_EPOCH_TWO, false, &update_writes);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w1_build_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W1_BUILD_EPOCH_TWO,
+			NULL, 0);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->table_update_writes += update_writes;
+	emit_w1_build_epoch_update(
+		out, sample, "table_redirect_updated_build_exact",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		true,
+		(!ret && epoch2_pass) ?
+			"exact table reached build epoch 2 after per-object lookup rewrites" :
+			"exact table build epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "table_redirect_updated_build_exact",
+		"epoch2_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, true,
+		(!ret && epoch2_pass) ?
+			"updated table build epoch 2 oracle passed" :
+			"updated table build epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->table_updated_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w1_build_epoch_materialized_copy_epoch(
+	const char *backing_dir, const char *view_dir,
+	const struct w1_build_epoch_entry *entries, size_t objects,
+	__u32 epoch, unsigned long long *writes,
+	unsigned long long *bytes_copied)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	struct stat st = {};
+	size_t i;
+
+	if (writes)
+		*writes = 0;
+	if (bytes_copied)
+		*bytes_copied = 0;
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), backing_dir,
+				   w1_build_epoch_target(&entries[i],
+							  epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), view_dir,
+				       entries[i].visible);
+		if (ret)
+			return ret;
+		if (bytes_copied && !stat(src, &st) && st.st_size > 0)
+			*bytes_copied += (unsigned long long)st.st_size;
+		ret = copy_file(src, dst);
+		if (ret)
+			return ret;
+		if (writes)
+			(*writes)++;
+	}
+	return 0;
+}
+
+static int w1_build_epoch_materialized_lookup_matches(
+	const char *view_dir, const char *backing_dir,
+	const struct w1_build_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), backing_dir,
+			       w1_build_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static bool w1_build_epoch_materialized_oracle_passes(
+	const char *view_dir, const char *backing_dir,
+	const struct w1_build_epoch_entry *entries, size_t objects,
+	__u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w1_build_epoch_materialized_lookup_matches(
+			    view_dir, backing_dir, &entries[i], epoch))
+			pass = false;
+		if (w1_build_epoch_readdir_hides_backings(view_dir,
+							  &entries[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int run_w1_build_epoch_materialized_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	struct w1_build_epoch_stats *stats)
+{
+	struct w1_build_epoch_entry entries[W1_BUILD_EPOCH_MAX_OBJECTS] = {};
+	char backing_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	unsigned long long bytes_copied = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(backing_dir, sizeof(backing_dir), sample_dir,
+			       "backing");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w1_build_epoch_dir(backing_dir, entries,
+						 objects, sample);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w1_build_epoch_materialized_copy_epoch(
+			backing_dir, view_dir, entries, objects,
+			W1_BUILD_EPOCH_ONE, &setup_writes, &bytes_copied);
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->materialized_setup_writes += setup_writes;
+	emit_w1_build_epoch_setup(
+		out, sample, "materialized_build_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? "failed to setup materialized build epoch view" :
+		      "materialized build epoch view copied epoch 1 objects");
+	if (ret) {
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w1_build_epoch_materialized_oracle_passes(
+		view_dir, backing_dir, entries, objects, W1_BUILD_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "materialized_build_epoch_view", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, false,
+		epoch1_pass ? "materialized build epoch 1 oracle passed" :
+			      "materialized build epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w1_build_epoch_materialized_copy_epoch(
+		backing_dir, view_dir, entries, objects,
+		W1_BUILD_EPOCH_TWO, &update_writes, &bytes_copied);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w1_build_epoch_materialized_oracle_passes(
+			view_dir, backing_dir, entries, objects,
+			W1_BUILD_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->materialized_update_writes += update_writes;
+	emit_w1_build_epoch_update(
+		out, sample, "materialized_build_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"materialized build view reached epoch 2 after per-object copies" :
+			"materialized build view epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "materialized_build_epoch_view",
+		"epoch2_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"materialized build epoch 2 oracle passed" :
+			"materialized build epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->materialized_updated_pass = true;
+
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w1_build_epoch_prepare_fuse_specs(
+	const char *view_dir, const char *source_dir,
+	const struct w1_build_epoch_entry *entries, size_t objects,
+	struct w1_alias_spec *specs, size_t *nr_specs)
+{
+	char source_path[PATH_MAX];
+	char shadow[NAMEI_EXT_NAME_MAX + 1];
+	size_t i;
+	int ret;
+
+	*nr_specs = 0;
+	for (i = 0; i < objects; i++) {
+		ret = snprintf(shadow, sizeof(shadow), "bld%02zu.fuse", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(shadow))
+			return -ENAMETOOLONG;
+		ret = set_path(source_path, sizeof(source_path), source_dir,
+			       entries[i].epoch1);
+		if (ret)
+			return ret;
+		ret = add_w1_alias_spec(specs, nr_specs, view_dir,
+					entries[i].visible, shadow,
+					source_path);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int w1_build_epoch_fuse_lookup_matches(
+	const char *view_dir, const char *source_dir,
+	const struct w1_build_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), source_dir,
+			       w1_build_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w1_build_epoch_fuse_readdir_hides_backings(
+	const char *view_dir, const struct w1_build_epoch_entry *entry,
+	const struct w1_alias_spec *spec)
+{
+	bool saw_shadow;
+	int err = 0;
+	int ret;
+
+	ret = w1_build_epoch_readdir_hides_backings(view_dir, entry);
+	if (ret)
+		return ret;
+	saw_shadow = dir_has_name(view_dir, spec->shadow, &err);
+	if (err)
+		return -err;
+	return saw_shadow ? -ENOENT : 0;
+}
+
+static bool w1_build_epoch_fuse_oracle_passes(
+	const char *view_dir, const char *source_dir,
+	const struct w1_build_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w1_build_epoch_fuse_lookup_matches(
+			    view_dir, source_dir, &entries[i], epoch))
+			pass = false;
+		if (w1_build_epoch_fuse_readdir_hides_backings(
+			    view_dir, &entries[i], &specs[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int w1_build_epoch_fuse_copy_epoch(
+	const char *source_dir, const char *fuse_backing_dir,
+	const struct w1_build_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch,
+	struct nginx_macro_stats *stats)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), source_dir,
+				   w1_build_epoch_target(&entries[i],
+							  epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), fuse_backing_dir,
+				       specs[i].shadow);
+		if (ret)
+			return ret;
+		ret = copy_file_counted(src, dst, stats, true);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int run_w1_build_epoch_fuse_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	struct w1_build_epoch_stats *stats)
+{
+	struct w1_build_epoch_entry entries[W1_BUILD_EPOCH_MAX_OBJECTS] = {};
+	struct w1_alias_spec specs[W1_BUILD_EPOCH_MAX_OBJECTS] = {};
+	struct w1_fuse_context fuse_ctx = {};
+	struct nginx_macro_stats setup_stats = {};
+	struct nginx_macro_stats update_stats = {};
+	char source_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	char fuse_backing_dir[PATH_MAX];
+	size_t nr_specs = 0;
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(source_dir, sizeof(source_dir), sample_dir,
+			       "source");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w1_build_epoch_dir(source_dir, entries,
+						 objects, sample);
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w1_build_epoch_prepare_fuse_specs(
+			view_dir, source_dir, entries, objects, specs,
+			&nr_specs);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = setup_w1_fuse_mount(specs, nr_specs, view_dir,
+					  &setup_stats, &fuse_ctx);
+	end_ns = monotonic_ns();
+	setup_writes = setup_stats.created_files;
+	stats->setup_rows++;
+	stats->fuse_setup_writes += setup_writes;
+	stats->fuse_mounts += setup_stats.fuse_mounts;
+	emit_w1_build_epoch_setup(
+		out, sample, "fuse_build_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? "failed to setup FUSE build epoch view" :
+		      "FUSE build epoch view mounted with epoch 1 backing shadows");
+	if (ret) {
+		unmount_w1_fuse_context(&fuse_ctx);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w1_build_epoch_fuse_oracle_passes(
+		view_dir, source_dir, entries, specs, objects,
+		W1_BUILD_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "fuse_build_epoch_view", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, false,
+		epoch1_pass ? "FUSE build epoch 1 oracle passed" :
+			      "FUSE build epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w1_fuse_backing_dir(view_dir, fuse_backing_dir,
+				  sizeof(fuse_backing_dir));
+	if (!ret)
+		ret = w1_build_epoch_fuse_copy_epoch(
+			source_dir, fuse_backing_dir, entries, specs, objects,
+			W1_BUILD_EPOCH_TWO, &update_stats);
+	update_done_ns = monotonic_ns();
+	update_writes = update_stats.source_update_writes;
+	if (!ret)
+		epoch2_pass = w1_build_epoch_fuse_oracle_passes(
+			view_dir, source_dir, entries, specs, objects,
+			W1_BUILD_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->fuse_update_writes += update_writes;
+	emit_w1_build_epoch_update(
+		out, sample, "fuse_build_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"FUSE build view reached epoch 2 after per-object backing rewrites" :
+			"FUSE build view epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w1_build_epoch_correctness(
+		out, sample, "fuse_build_epoch_view", "epoch2_after_update",
+		!ret && epoch2_pass, !ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"FUSE build epoch 2 oracle passed" :
+			"FUSE build epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->fuse_updated_pass = true;
+
+	ret = unmount_w1_fuse_context(&fuse_ctx);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w1_build_epoch_counterfactual(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	size_t objects, const char *build_policy_obj, const char *table_policy_obj)
+{
+	struct w1_build_epoch_stats stats = {};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	int sample;
+	int ret;
+
+	if (samples <= 0 || objects == 0 ||
+	    objects > W1_BUILD_EPOCH_MAX_OBJECTS) {
+		stats.failures = 1;
+		emit_w1_build_epoch_summary(
+			out, samples, &stats,
+			"invalid sample count or build object count");
+		return 1;
+	}
+	stats.objects = objects;
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		stats.failures = 1;
+		emit_w1_build_epoch_summary(
+			out, samples, &stats,
+			"failed to create W1 build epoch workdir");
+		return 1;
+	}
+	if (access(build_policy_obj, R_OK) || access(table_policy_obj, R_OK)) {
+		stats.failures = 1;
+		emit_w1_build_epoch_summary(
+			out, samples, &stats,
+			"W1 build epoch policy inputs are not readable");
+		return 1;
+	}
+	ret = current_cgroup_path(cgroup_mount, current_cgroup,
+				  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret) {
+		stats.failures = 1;
+		emit_w1_build_epoch_summary(
+			out, samples, &stats,
+			"failed to resolve current cgroup id");
+		return 1;
+	}
+
+	for (sample = 0; sample < samples; sample++) {
+		char sample_dir[PATH_MAX];
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/build-policy-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w1_build_epoch_policy_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, build_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/table-static-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w1_build_epoch_table_static_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/table-updated-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w1_build_epoch_table_updated_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/materialized-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w1_build_epoch_materialized_system(
+			out, sample_dir, sample, objects, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/fuse-sample-%03d", work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w1_build_epoch_fuse_system(
+			out, sample_dir, sample, objects, &stats);
+	}
+
+	emit_w1_build_epoch_summary(
+		out, samples, &stats,
+		stats.failures ?
+			"W1 build epoch counterfactual failed" :
+			"W1 build epoch counterfactual passed; static exact table fails the epoch switch, while externally updated table, materialized view, and FUSE view reach epoch 2 only with per-object updates");
+	return stats.failures ? 1 : 0;
+}
+
+#define W2_FIXTURE_EPOCH_ONE 1
+#define W2_FIXTURE_EPOCH_TWO 2
+#define W2_FIXTURE_EPOCH_DEFAULT_OBJECTS 16
+#define W2_FIXTURE_EPOCH_MAX_OBJECTS 64
+#define W2_FIXTURE_EPOCH_TABLE_MAX_UPDATE_RATIO 10
+
+struct w2_fixture_epoch_entry {
+	char visible[NAMEI_EXT_NAME_MAX + 1];
+	char epoch1[NAMEI_EXT_NAME_MAX + 1];
+	char epoch2[NAMEI_EXT_NAME_MAX + 1];
+	__u32 path_class;
+};
+
+struct w2_fixture_epoch_stats {
+	int setup_rows;
+	int correctness_rows;
+	int update_rows;
+	int failures;
+	size_t objects;
+	size_t static_wrong_fixture_hits;
+	unsigned long long policy_setup_writes;
+	unsigned long long table_setup_writes;
+	unsigned long long materialized_setup_writes;
+	unsigned long long fuse_setup_writes;
+	unsigned long long policy_update_writes;
+	unsigned long long table_update_writes;
+	unsigned long long materialized_update_writes;
+	unsigned long long fuse_update_writes;
+	unsigned long long fuse_mounts;
+	bool policy_epoch_switch_pass;
+	bool table_static_expected_failure;
+	bool table_updated_pass;
+	bool materialized_updated_pass;
+	bool fuse_updated_pass;
+};
+
+static __u32 w2_fixture_epoch_class_for_index(size_t index)
+{
+	switch (index % 5) {
+	case 0:
+		return FIXTURE_BRANCH_CONFIG;
+	case 1:
+		return FIXTURE_BRANCH_SECRET;
+	case 2:
+		return FIXTURE_BRANCH_CERT;
+	case 3:
+		return FIXTURE_BRANCH_ENDPOINT;
+	default:
+		return FIXTURE_BRANCH_POISON;
+	}
+}
+
+static const char *w2_fixture_epoch_class_name(__u32 path_class)
+{
+	switch (path_class) {
+	case FIXTURE_BRANCH_CONFIG:
+		return "config";
+	case FIXTURE_BRANCH_SECRET:
+		return "secret";
+	case FIXTURE_BRANCH_CERT:
+		return "cert";
+	case FIXTURE_BRANCH_ENDPOINT:
+		return "endpoint";
+	case FIXTURE_BRANCH_POISON:
+		return "poison";
+	default:
+		return "unknown";
+	}
+}
+
+static const char *w2_fixture_epoch_target(
+	const struct w2_fixture_epoch_entry *entry, __u32 epoch)
+{
+	return epoch == W2_FIXTURE_EPOCH_TWO ? entry->epoch2 : entry->epoch1;
+}
+
+static int prepare_w2_fixture_epoch_names(
+	struct w2_fixture_epoch_entry *entry, size_t index)
+{
+	const char *prefix = "obj";
+	const char *suffix = "dat";
+	int ret;
+
+	entry->path_class = w2_fixture_epoch_class_for_index(index);
+	switch (entry->path_class) {
+	case FIXTURE_BRANCH_CONFIG:
+		prefix = "cfg";
+		suffix = "conf";
+		break;
+	case FIXTURE_BRANCH_SECRET:
+		prefix = "sec";
+		suffix = "pass";
+		break;
+	case FIXTURE_BRANCH_CERT:
+		prefix = "crt";
+		suffix = "crt";
+		break;
+	case FIXTURE_BRANCH_ENDPOINT:
+		prefix = "ep";
+		suffix = "sock";
+		break;
+	case FIXTURE_BRANCH_POISON:
+		prefix = "tok";
+		suffix = "token";
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = snprintf(entry->visible, sizeof(entry->visible), "%s%02zu.%s",
+		       prefix, index, suffix);
+	if (ret < 0)
+		return -errno;
+	if ((size_t)ret >= sizeof(entry->visible))
+		return -ENAMETOOLONG;
+	ret = snprintf(entry->epoch1, sizeof(entry->epoch1), "%s%02zu.e1",
+		       prefix, index);
+	if (ret < 0)
+		return -errno;
+	if ((size_t)ret >= sizeof(entry->epoch1))
+		return -ENAMETOOLONG;
+	ret = snprintf(entry->epoch2, sizeof(entry->epoch2), "%s%02zu.e2",
+		       prefix, index);
+	if (ret < 0)
+		return -errno;
+	if ((size_t)ret >= sizeof(entry->epoch2))
+		return -ENAMETOOLONG;
+	return 0;
+}
+
+static int prepare_w2_fixture_epoch_dir(
+	const char *dir, struct w2_fixture_epoch_entry *entries,
+	size_t objects, int sample)
+{
+	char path[PATH_MAX];
+	char text[192];
+	size_t i;
+	int ret;
+
+	ret = mkdir_if_missing(dir);
+	if (ret)
+		return ret;
+	for (i = 0; i < objects; i++) {
+		ret = prepare_w2_fixture_epoch_names(&entries[i], i);
+		if (ret)
+			return ret;
+
+		ret = set_path(path, sizeof(path), dir, entries[i].visible);
+		if (ret)
+			return ret;
+		unlink_existing(path);
+
+		ret = set_path(path, sizeof(path), dir, entries[i].epoch1);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w2 fixture sample %d object %zu class %s epoch 1\n",
+			       sample, i,
+			       w2_fixture_epoch_class_name(entries[i].path_class));
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+
+		ret = set_path(path, sizeof(path), dir, entries[i].epoch2);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w2 fixture sample %d object %zu class %s epoch 2\n",
+			       sample, i,
+			       w2_fixture_epoch_class_name(entries[i].path_class));
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int w2_fixture_epoch_lookup_matches(
+	const char *dir, const struct w2_fixture_epoch_entry *entry,
+	__u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), dir,
+			       w2_fixture_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w2_fixture_epoch_readdir_hides_backings(
+	const char *dir, const struct w2_fixture_epoch_entry *entry)
+{
+	bool saw_visible;
+	bool saw_epoch1;
+	bool saw_epoch2;
+	int err = 0;
+
+	saw_visible = dir_has_name(dir, entry->visible, &err);
+	if (!err)
+		saw_epoch1 = dir_has_name(dir, entry->epoch1, &err);
+	else
+		saw_epoch1 = false;
+	if (!err)
+		saw_epoch2 = dir_has_name(dir, entry->epoch2, &err);
+	else
+		saw_epoch2 = false;
+	if (!err && saw_visible && !saw_epoch1 && !saw_epoch2)
+		return 0;
+	return err ? -err : -ENOENT;
+}
+
+static bool w2_fixture_epoch_current_oracle_passes(
+	const char *dir, const struct w2_fixture_epoch_entry *entries,
+	size_t objects, __u32 epoch, size_t *wrong_epoch_hits,
+	__u32 wrong_epoch)
+{
+	bool pass = true;
+	size_t wrong = 0;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w2_fixture_epoch_lookup_matches(dir, &entries[i], epoch))
+			pass = false;
+		if (w2_fixture_epoch_readdir_hides_backings(dir, &entries[i]))
+			pass = false;
+		if (wrong_epoch &&
+		    !w2_fixture_epoch_lookup_matches(dir, &entries[i],
+						     wrong_epoch))
+			wrong++;
+	}
+	if (wrong_epoch_hits)
+		*wrong_epoch_hits = wrong;
+	return pass;
+}
+
+static void emit_w2_fixture_epoch_setup(
+	FILE *out, int sample, const char *system, bool pass, int err,
+	__u64 setup_ns, size_t objects, unsigned long long setup_writes,
+	bool policy_executed, const char *detail)
+{
+	const char *write_key = policy_executed ? "setup_rule_writes" :
+						"setup_materialization_writes";
+
+	fputs("{\"event\":\"w2-fixture-epoch-setup\","
+	      "\"schema\":\"namei_ext.eval_osdi.w2_fixture_epoch.v1\","
+	      "\"result_level\":\"kvm_sandbox_fixture_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w2-sandbox-fixture-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"setup_ns\":%llu,\"objects\":%zu,"
+		"\"dynamic_fixture_classes\":5,"
+		"\"setup_writes\":%llu,\"%s\":%llu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)setup_ns, objects, setup_writes,
+		write_key, setup_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w2_fixture_epoch_correctness(
+	FILE *out, int sample, const char *system, const char *stage,
+	bool pass, bool current_oracle_pass,
+	bool expected_static_failure_observed, size_t wrong_epoch_hits,
+	bool policy_executed, const char *detail)
+{
+	fputs("{\"event\":\"w2-fixture-epoch-correctness\","
+	      "\"schema\":\"namei_ext.eval_osdi.w2_fixture_epoch.v1\","
+	      "\"result_level\":\"kvm_sandbox_fixture_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w2-sandbox-fixture-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fputs(",\"stage\":", out);
+	fprint_json_string(out, stage);
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,"
+		"\"current_oracle_pass\":%s,"
+		"\"expected_static_failure_observed\":%s,"
+		"\"wrong_epoch_hits\":%zu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false",
+		current_oracle_pass ? "true" : "false",
+		expected_static_failure_observed ? "true" : "false",
+		wrong_epoch_hits, policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w2_fixture_epoch_update(
+	FILE *out, int sample, const char *system, bool pass, int err,
+	__u64 update_ns, __u64 observed_window_ns,
+	unsigned long long update_writes, bool policy_executed,
+	const char *detail)
+{
+	fputs("{\"event\":\"w2-fixture-epoch-update-window\","
+	      "\"schema\":\"namei_ext.eval_osdi.w2_fixture_epoch.v1\","
+	      "\"result_level\":\"kvm_sandbox_fixture_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w2-sandbox-fixture-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"update_ns\":%llu,"
+		"\"observed_update_window_ns\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"from_epoch\":1,\"to_epoch\":2,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)update_ns,
+		(unsigned long long)observed_window_ns, update_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w2_fixture_epoch_summary(
+	FILE *out, int samples, const struct w2_fixture_epoch_stats *stats,
+	const char *detail)
+{
+	double update_ratio = stats->policy_update_writes ?
+		(double)stats->table_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double materialized_update_ratio = stats->policy_update_writes ?
+		(double)stats->materialized_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double fuse_update_ratio = stats->policy_update_writes ?
+		(double)stats->fuse_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	bool table_update_budget_failure =
+		update_ratio > W2_FIXTURE_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool materialized_update_budget_failure =
+		materialized_update_ratio >
+		W2_FIXTURE_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool fuse_update_budget_failure =
+		fuse_update_ratio > W2_FIXTURE_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool targeted_c8_budget_failure =
+		stats->policy_epoch_switch_pass &&
+		stats->table_static_expected_failure &&
+		stats->table_updated_pass &&
+		table_update_budget_failure;
+	bool state_branch_not_static =
+		stats->policy_epoch_switch_pass &&
+		stats->table_static_expected_failure;
+
+	fputs("{\"event\":\"w2-fixture-epoch-summary\","
+	      "\"schema\":\"namei_ext.eval_osdi.w2_fixture_epoch.v1\","
+	      "\"result_level\":\"kvm_sandbox_fixture_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w2-sandbox-fixture-epoch\",",
+	      out);
+	fprintf(out,
+		"\"samples\":%d,\"setup_rows\":%d,"
+		"\"correctness_rows\":%d,\"update_rows\":%d,"
+		"\"objects\":%zu,"
+		"\"dynamic_fixture_classes\":5,"
+		"\"static_wrong_fixture_hits\":%zu,"
+		"\"policy_setup_writes\":%llu,"
+		"\"table_setup_writes\":%llu,"
+		"\"materialized_setup_writes\":%llu,"
+		"\"fuse_setup_writes\":%llu,"
+		"\"policy_update_writes\":%llu,"
+		"\"table_update_writes\":%llu,"
+		"\"materialized_update_writes\":%llu,"
+		"\"fuse_update_writes\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"table_update_write_ratio\":%.17g,"
+		"\"materialized_update_write_ratio\":%.17g,"
+		"\"fuse_update_write_ratio\":%.17g,"
+		"\"max_table_update_write_ratio\":%d,"
+		"\"table_static_current_oracle_pass\":false,"
+		"\"table_static_expected_failure_observed\":%s,"
+		"\"table_updated_current_oracle_pass\":%s,"
+		"\"table_requires_external_state_updates\":true,"
+		"\"table_update_budget_failure\":%s,"
+		"\"materialized_current_oracle_pass\":%s,"
+		"\"materialized_feature_equivalent_baseline\":%s,"
+		"\"materialized_update_budget_failure\":%s,"
+		"\"fuse_current_oracle_pass\":%s,"
+		"\"fuse_feature_equivalent_baseline\":%s,"
+		"\"fuse_update_budget_failure\":%s,"
+		"\"targeted_c8_budget_failure\":%s,"
+		"\"state_dependent_branch_not_static_table_expressible\":%s,"
+		"\"real_nginx_trace\":false,"
+		"\"release_sample_budget_pass\":%s,"
+		"\"pass\":%s,\"failures\":%d,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
+		"\"detail\":",
+		samples, stats->setup_rows, stats->correctness_rows,
+		stats->update_rows, stats->objects,
+		stats->static_wrong_fixture_hits, stats->policy_setup_writes,
+		stats->table_setup_writes, stats->materialized_setup_writes,
+		stats->fuse_setup_writes,
+		stats->policy_update_writes, stats->table_update_writes,
+		stats->materialized_update_writes, stats->fuse_update_writes,
+		stats->fuse_mounts, update_ratio, materialized_update_ratio,
+		fuse_update_ratio,
+		W2_FIXTURE_EPOCH_TABLE_MAX_UPDATE_RATIO,
+		stats->table_static_expected_failure ? "true" : "false",
+		stats->table_updated_pass ? "true" : "false",
+		table_update_budget_failure ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		materialized_update_budget_failure ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		fuse_update_budget_failure ? "true" : "false",
+		targeted_c8_budget_failure ? "true" : "false",
+		state_branch_not_static ? "true" : "false",
+		samples >= 20 ? "true" : "false",
+		stats->failures ? "false" : "true", stats->failures,
+		stats->failures ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static int populate_w2_fixture_epoch_policy_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w2_fixture_epoch_entry *entries, size_t objects,
+	unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		__u32 branch = (__u32)i + 1;
+		__u32 path_class = entries[i].path_class;
+		int ret;
+
+		ret = update_sandbox_fixture_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].epoch1, branch,
+			path_class, W2_FIXTURE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_sandbox_fixture_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].epoch2, branch,
+			path_class, W2_FIXTURE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_sandbox_fixture_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch1, entries[i].visible, branch,
+			path_class, W2_FIXTURE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_sandbox_fixture_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch2, entries[i].visible, branch,
+			path_class, W2_FIXTURE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_sandbox_fixture_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch1, entries[i].visible, branch,
+			path_class, W2_FIXTURE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_sandbox_fixture_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch2, entries[i].visible, branch,
+			path_class, W2_FIXTURE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int populate_w2_fixture_epoch_table_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w2_fixture_epoch_entry *entries, size_t objects,
+	__u32 epoch, bool include_readdir, unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		int ret;
+
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP,
+				  dir, entries[i].visible,
+				  w2_fixture_epoch_target(&entries[i], epoch),
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		if (!include_readdir)
+			continue;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].epoch1,
+				  entries[i].visible, i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].epoch2,
+				  entries[i].visible, i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int run_w2_fixture_epoch_policy_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w2_fixture_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w2_fixture_epoch_entry entries[W2_FIXTURE_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w2_fixture_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_SANDBOX_FIXTURE,
+				  "sandbox_fixture_epoch", &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w2_fixture_epoch_policy_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			&setup_writes);
+	if (!ret)
+		ret = update_sandbox_fixture_session(
+			&policy, cgroup_id, W2_FIXTURE_EPOCH_ONE, true);
+	if (!ret)
+		setup_writes++;
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->policy_setup_writes += setup_writes;
+	emit_w2_fixture_epoch_setup(
+		out, sample, "sandbox_fixture_epoch_policy", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup sandbox fixture epoch policy" :
+		      "sandbox fixture policy attached with two epoch rule sets");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w2_fixture_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W2_FIXTURE_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "sandbox_fixture_epoch_policy", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, true,
+		epoch1_pass ? "sandbox fixture epoch 1 oracle passed" :
+			      "sandbox fixture epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = update_sandbox_fixture_session(
+		&policy, cgroup_id, W2_FIXTURE_EPOCH_TWO, true);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w2_fixture_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W2_FIXTURE_EPOCH_TWO,
+			NULL, 0);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->policy_update_writes++;
+	emit_w2_fixture_epoch_update(
+		out, sample, "sandbox_fixture_epoch_policy",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, 1, true,
+		(!ret && epoch2_pass) ?
+			"sandbox fixture policy switched epoch with one session update" :
+			"sandbox fixture policy epoch switch failed");
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "sandbox_fixture_epoch_policy", "epoch2",
+		!ret && epoch2_pass, !ret && epoch2_pass, false, 0, true,
+		(!ret && epoch2_pass) ?
+			"sandbox fixture epoch 2 oracle passed" :
+			"sandbox fixture epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->policy_epoch_switch_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w2_fixture_epoch_table_static_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w2_fixture_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w2_fixture_epoch_entry entries[W2_FIXTURE_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	size_t wrong_epoch_hits = 0;
+	bool epoch1_pass = false;
+	bool epoch2_current_pass = false;
+	bool expected_failure = false;
+	__u64 start_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w2_fixture_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w2_fixture_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W2_FIXTURE_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w2_fixture_epoch_setup(
+		out, sample, "table_redirect_static_fixture_epoch1", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup static fixture table" :
+		      "static exact table attached with fixture epoch 1 lookup rules");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w2_fixture_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W2_FIXTURE_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "table_redirect_static_fixture_epoch1", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, true,
+		epoch1_pass ? "static table fixture epoch 1 oracle passed" :
+			      "static table fixture epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	epoch2_current_pass = w2_fixture_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W2_FIXTURE_EPOCH_TWO,
+		&wrong_epoch_hits, W2_FIXTURE_EPOCH_ONE);
+	expected_failure = !epoch2_current_pass && wrong_epoch_hits == objects;
+	stats->correctness_rows++;
+	stats->static_wrong_fixture_hits += wrong_epoch_hits;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "table_redirect_static_fixture_epoch1",
+		"epoch2_without_update", expected_failure,
+		epoch2_current_pass, expected_failure, wrong_epoch_hits, true,
+		expected_failure ?
+			"static table failed fixture epoch 2 oracle with wrong epoch hits" :
+			"static table did not expose the expected fixture epoch failure");
+	if (!expected_failure)
+		stats->failures++;
+	else
+		stats->table_static_expected_failure = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !expected_failure;
+}
+
+static int run_w2_fixture_epoch_table_updated_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w2_fixture_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w2_fixture_epoch_entry entries[W2_FIXTURE_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w2_fixture_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w2_fixture_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W2_FIXTURE_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w2_fixture_epoch_setup(
+		out, sample, "table_redirect_updated_fixture_exact", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup externally updated fixture table" :
+		      "externally updated exact table attached at fixture epoch 1");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w2_fixture_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W2_FIXTURE_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "table_redirect_updated_fixture_exact", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, true,
+		epoch1_pass ? "updated table fixture epoch 1 oracle passed" :
+			      "updated table fixture epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = populate_w2_fixture_epoch_table_rules(
+		&policy, cgroup_id, sample_dir, entries, objects,
+		W2_FIXTURE_EPOCH_TWO, false, &update_writes);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w2_fixture_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W2_FIXTURE_EPOCH_TWO,
+			NULL, 0);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->table_update_writes += update_writes;
+	emit_w2_fixture_epoch_update(
+		out, sample, "table_redirect_updated_fixture_exact",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		true,
+		(!ret && epoch2_pass) ?
+			"exact table reached fixture epoch 2 after per-object lookup rewrites" :
+			"exact table fixture epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "table_redirect_updated_fixture_exact",
+		"epoch2_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, true,
+		(!ret && epoch2_pass) ?
+			"updated table fixture epoch 2 oracle passed" :
+			"updated table fixture epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->table_updated_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w2_fixture_epoch_materialized_copy_epoch(
+	const char *backing_dir, const char *view_dir,
+	const struct w2_fixture_epoch_entry *entries, size_t objects,
+	__u32 epoch, unsigned long long *writes,
+	unsigned long long *bytes_copied)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	struct stat st = {};
+	size_t i;
+
+	if (writes)
+		*writes = 0;
+	if (bytes_copied)
+		*bytes_copied = 0;
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), backing_dir,
+				   w2_fixture_epoch_target(&entries[i],
+							    epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), view_dir,
+				       entries[i].visible);
+		if (ret)
+			return ret;
+		if (bytes_copied && !stat(src, &st) && st.st_size > 0)
+			*bytes_copied += (unsigned long long)st.st_size;
+		ret = copy_file(src, dst);
+		if (ret)
+			return ret;
+		if (writes)
+			(*writes)++;
+	}
+	return 0;
+}
+
+static int w2_fixture_epoch_materialized_lookup_matches(
+	const char *view_dir, const char *backing_dir,
+	const struct w2_fixture_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), backing_dir,
+			       w2_fixture_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static bool w2_fixture_epoch_materialized_oracle_passes(
+	const char *view_dir, const char *backing_dir,
+	const struct w2_fixture_epoch_entry *entries, size_t objects,
+	__u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w2_fixture_epoch_materialized_lookup_matches(
+			    view_dir, backing_dir, &entries[i], epoch))
+			pass = false;
+		if (w2_fixture_epoch_readdir_hides_backings(view_dir,
+							    &entries[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int run_w2_fixture_epoch_materialized_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	struct w2_fixture_epoch_stats *stats)
+{
+	struct w2_fixture_epoch_entry entries[W2_FIXTURE_EPOCH_MAX_OBJECTS] = {};
+	char backing_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	unsigned long long bytes_copied = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(backing_dir, sizeof(backing_dir), sample_dir,
+			       "backing");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w2_fixture_epoch_dir(backing_dir, entries,
+						   objects, sample);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w2_fixture_epoch_materialized_copy_epoch(
+			backing_dir, view_dir, entries, objects,
+			W2_FIXTURE_EPOCH_ONE, &setup_writes, &bytes_copied);
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->materialized_setup_writes += setup_writes;
+	emit_w2_fixture_epoch_setup(
+		out, sample, "materialized_fixture_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? "failed to setup materialized fixture epoch view" :
+		      "materialized fixture epoch view copied epoch 1 objects");
+	if (ret) {
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w2_fixture_epoch_materialized_oracle_passes(
+		view_dir, backing_dir, entries, objects,
+		W2_FIXTURE_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "materialized_fixture_epoch_view", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, false,
+		epoch1_pass ? "materialized fixture epoch 1 oracle passed" :
+			      "materialized fixture epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w2_fixture_epoch_materialized_copy_epoch(
+		backing_dir, view_dir, entries, objects,
+		W2_FIXTURE_EPOCH_TWO, &update_writes, &bytes_copied);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w2_fixture_epoch_materialized_oracle_passes(
+			view_dir, backing_dir, entries, objects,
+			W2_FIXTURE_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->materialized_update_writes += update_writes;
+	emit_w2_fixture_epoch_update(
+		out, sample, "materialized_fixture_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"materialized fixture view reached epoch 2 after per-object copies" :
+			"materialized fixture view epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "materialized_fixture_epoch_view",
+		"epoch2_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"materialized fixture epoch 2 oracle passed" :
+			"materialized fixture epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->materialized_updated_pass = true;
+
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w2_fixture_epoch_prepare_fuse_specs(
+	const char *view_dir, const char *source_dir,
+	const struct w2_fixture_epoch_entry *entries, size_t objects,
+	struct w1_alias_spec *specs, size_t *nr_specs)
+{
+	char source_path[PATH_MAX];
+	char shadow[NAMEI_EXT_NAME_MAX + 1];
+	size_t i;
+	int ret;
+
+	*nr_specs = 0;
+	for (i = 0; i < objects; i++) {
+		ret = snprintf(shadow, sizeof(shadow), "fx%02zu.fuse", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(shadow))
+			return -ENAMETOOLONG;
+		ret = set_path(source_path, sizeof(source_path), source_dir,
+			       entries[i].epoch1);
+		if (ret)
+			return ret;
+		ret = add_w1_alias_spec(specs, nr_specs, view_dir,
+					entries[i].visible, shadow,
+					source_path);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int w2_fixture_epoch_fuse_lookup_matches(
+	const char *view_dir, const char *source_dir,
+	const struct w2_fixture_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), source_dir,
+			       w2_fixture_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w2_fixture_epoch_fuse_readdir_hides_backings(
+	const char *view_dir, const struct w2_fixture_epoch_entry *entry,
+	const struct w1_alias_spec *spec)
+{
+	bool saw_shadow;
+	int err = 0;
+	int ret;
+
+	ret = w2_fixture_epoch_readdir_hides_backings(view_dir, entry);
+	if (ret)
+		return ret;
+	saw_shadow = dir_has_name(view_dir, spec->shadow, &err);
+	if (err)
+		return -err;
+	return saw_shadow ? -ENOENT : 0;
+}
+
+static bool w2_fixture_epoch_fuse_oracle_passes(
+	const char *view_dir, const char *source_dir,
+	const struct w2_fixture_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w2_fixture_epoch_fuse_lookup_matches(
+			    view_dir, source_dir, &entries[i], epoch))
+			pass = false;
+		if (w2_fixture_epoch_fuse_readdir_hides_backings(
+			    view_dir, &entries[i], &specs[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int w2_fixture_epoch_fuse_copy_epoch(
+	const char *source_dir, const char *fuse_backing_dir,
+	const struct w2_fixture_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch,
+	struct nginx_macro_stats *stats)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), source_dir,
+				   w2_fixture_epoch_target(&entries[i],
+							    epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), fuse_backing_dir,
+				       specs[i].shadow);
+		if (ret)
+			return ret;
+		ret = copy_file_counted(src, dst, stats, true);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int run_w2_fixture_epoch_fuse_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	struct w2_fixture_epoch_stats *stats)
+{
+	struct w2_fixture_epoch_entry entries[W2_FIXTURE_EPOCH_MAX_OBJECTS] = {};
+	struct w1_alias_spec specs[W2_FIXTURE_EPOCH_MAX_OBJECTS] = {};
+	struct w1_fuse_context fuse_ctx = {};
+	struct nginx_macro_stats setup_stats = {};
+	struct nginx_macro_stats update_stats = {};
+	char source_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	char fuse_backing_dir[PATH_MAX];
+	size_t nr_specs = 0;
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(source_dir, sizeof(source_dir), sample_dir,
+			       "source");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w2_fixture_epoch_dir(source_dir, entries,
+						   objects, sample);
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w2_fixture_epoch_prepare_fuse_specs(
+			view_dir, source_dir, entries, objects, specs,
+			&nr_specs);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = setup_w1_fuse_mount(specs, nr_specs, view_dir,
+					  &setup_stats, &fuse_ctx);
+	end_ns = monotonic_ns();
+	setup_writes = setup_stats.created_files;
+	stats->setup_rows++;
+	stats->fuse_setup_writes += setup_writes;
+	stats->fuse_mounts += setup_stats.fuse_mounts;
+	emit_w2_fixture_epoch_setup(
+		out, sample, "fuse_fixture_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? "failed to setup FUSE fixture epoch view" :
+		      "FUSE fixture epoch view mounted with epoch 1 backing shadows");
+	if (ret) {
+		unmount_w1_fuse_context(&fuse_ctx);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w2_fixture_epoch_fuse_oracle_passes(
+		view_dir, source_dir, entries, specs, objects,
+		W2_FIXTURE_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "fuse_fixture_epoch_view", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, false,
+		epoch1_pass ? "FUSE fixture epoch 1 oracle passed" :
+			      "FUSE fixture epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w1_fuse_backing_dir(view_dir, fuse_backing_dir,
+				  sizeof(fuse_backing_dir));
+	if (!ret)
+		ret = w2_fixture_epoch_fuse_copy_epoch(
+			source_dir, fuse_backing_dir, entries, specs, objects,
+			W2_FIXTURE_EPOCH_TWO, &update_stats);
+	update_done_ns = monotonic_ns();
+	update_writes = update_stats.source_update_writes;
+	if (!ret)
+		epoch2_pass = w2_fixture_epoch_fuse_oracle_passes(
+			view_dir, source_dir, entries, specs, objects,
+			W2_FIXTURE_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->fuse_update_writes += update_writes;
+	emit_w2_fixture_epoch_update(
+		out, sample, "fuse_fixture_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"FUSE fixture view reached epoch 2 after per-object backing rewrites" :
+			"FUSE fixture view epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w2_fixture_epoch_correctness(
+		out, sample, "fuse_fixture_epoch_view",
+		"epoch2_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"FUSE fixture epoch 2 oracle passed" :
+			"FUSE fixture epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->fuse_updated_pass = true;
+
+	ret = unmount_w1_fuse_context(&fuse_ctx);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w2_fixture_epoch_counterfactual(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	size_t objects, const char *fixture_policy_obj,
+	const char *table_policy_obj)
+{
+	struct w2_fixture_epoch_stats stats = {};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	int sample;
+	int ret;
+
+	if (samples <= 0 || objects == 0 ||
+	    objects > W2_FIXTURE_EPOCH_MAX_OBJECTS) {
+		stats.failures = 1;
+		emit_w2_fixture_epoch_summary(
+			out, samples, &stats,
+			"invalid sample count or fixture object count");
+		return 1;
+	}
+	stats.objects = objects;
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		stats.failures = 1;
+		emit_w2_fixture_epoch_summary(
+			out, samples, &stats,
+			"failed to create W2 fixture epoch workdir");
+		return 1;
+	}
+	if (access(fixture_policy_obj, R_OK) || access(table_policy_obj, R_OK)) {
+		stats.failures = 1;
+		emit_w2_fixture_epoch_summary(
+			out, samples, &stats,
+			"W2 fixture epoch policy inputs are not readable");
+		return 1;
+	}
+	ret = current_cgroup_path(cgroup_mount, current_cgroup,
+				  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret) {
+		stats.failures = 1;
+		emit_w2_fixture_epoch_summary(
+			out, samples, &stats,
+			"failed to resolve current cgroup id");
+		return 1;
+	}
+
+	for (sample = 0; sample < samples; sample++) {
+		char sample_dir[PATH_MAX];
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/fixture-policy-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w2_fixture_epoch_policy_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, fixture_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/table-static-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w2_fixture_epoch_table_static_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/table-updated-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w2_fixture_epoch_table_updated_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/materialized-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w2_fixture_epoch_materialized_system(
+			out, sample_dir, sample, objects, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/fuse-sample-%03d", work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w2_fixture_epoch_fuse_system(
+			out, sample_dir, sample, objects, &stats);
+	}
+
+	emit_w2_fixture_epoch_summary(
+		out, samples, &stats,
+		stats.failures ?
+			"W2 fixture epoch counterfactual failed" :
+			"W2 fixture epoch counterfactual passed; static exact table fails the epoch switch, while externally updated table, materialized view, and FUSE view reach epoch 2 only with per-object updates");
+	return stats.failures ? 1 : 0;
+}
+
+#define W3_EPOCH_ONE 1
+#define W3_EPOCH_TWO 2
+#define W3_EPOCH_DEFAULT_OBJECTS 16
+#define W3_EPOCH_MAX_OBJECTS 64
+#define W3_EPOCH_TABLE_MAX_UPDATE_RATIO 10
+
+struct w3_epoch_entry {
+	char visible[NAMEI_EXT_NAME_MAX + 1];
+	char epoch1[NAMEI_EXT_NAME_MAX + 1];
+	char epoch2[NAMEI_EXT_NAME_MAX + 1];
+};
+
+struct w3_epoch_stats {
+	int setup_rows;
+	int correctness_rows;
+	int update_rows;
+	int failures;
+	size_t objects;
+	size_t static_wrong_epoch_hits;
+	unsigned long long policy_setup_writes;
+	unsigned long long table_setup_writes;
+	unsigned long long materialized_setup_writes;
+	unsigned long long fuse_setup_writes;
+	unsigned long long policy_update_writes;
+	unsigned long long table_update_writes;
+	unsigned long long materialized_update_writes;
+	unsigned long long fuse_update_writes;
+	unsigned long long fuse_mounts;
+	bool policy_epoch_switch_pass;
+	bool table_static_expected_failure;
+	bool table_updated_pass;
+	bool materialized_updated_pass;
+	bool fuse_updated_pass;
+};
+
+static const char *w3_epoch_target(const struct w3_epoch_entry *entry,
+				   __u32 epoch)
+{
+	return epoch == W3_EPOCH_TWO ? entry->epoch2 : entry->epoch1;
+}
+
+static int prepare_w3_epoch_dir(const char *dir,
+				struct w3_epoch_entry *entries,
+				size_t objects, int sample)
+{
+	char path[PATH_MAX];
+	char text[160];
+	size_t i;
+	int ret;
+
+	ret = mkdir_if_missing(dir);
+	if (ret)
+		return ret;
+	for (i = 0; i < objects; i++) {
+		ret = snprintf(entries[i].visible, sizeof(entries[i].visible),
+			       "state%02zu.rdb", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(entries[i].visible))
+			return -ENAMETOOLONG;
+		ret = snprintf(entries[i].epoch1, sizeof(entries[i].epoch1),
+			       "state%02zu.e1", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(entries[i].epoch1))
+			return -ENAMETOOLONG;
+		ret = snprintf(entries[i].epoch2, sizeof(entries[i].epoch2),
+			       "state%02zu.e2", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(entries[i].epoch2))
+			return -ENAMETOOLONG;
+
+		ret = set_path(path, sizeof(path), dir, entries[i].visible);
+		if (ret)
+			return ret;
+		unlink_existing(path);
+
+		ret = set_path(path, sizeof(path), dir, entries[i].epoch1);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w3 checkpoint sample %d object %zu epoch 1\n",
+			       sample, i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+
+		ret = set_path(path, sizeof(path), dir, entries[i].epoch2);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w3 checkpoint sample %d object %zu epoch 2\n",
+			       sample, i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int w3_epoch_lookup_matches(const char *dir,
+				   const struct w3_epoch_entry *entry,
+				   __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), dir,
+			       w3_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w3_epoch_readdir_hides_backings(const char *dir,
+					   const struct w3_epoch_entry *entry)
+{
+	bool saw_visible;
+	bool saw_epoch1;
+	bool saw_epoch2;
+	int err = 0;
+
+	saw_visible = dir_has_name(dir, entry->visible, &err);
+	if (!err)
+		saw_epoch1 = dir_has_name(dir, entry->epoch1, &err);
+	else
+		saw_epoch1 = false;
+	if (!err)
+		saw_epoch2 = dir_has_name(dir, entry->epoch2, &err);
+	else
+		saw_epoch2 = false;
+	if (!err && saw_visible && !saw_epoch1 && !saw_epoch2)
+		return 0;
+	return err ? -err : -ENOENT;
+}
+
+static bool w3_epoch_current_oracle_passes(
+	const char *dir, const struct w3_epoch_entry *entries, size_t objects,
+	__u32 epoch, size_t *wrong_epoch_hits, __u32 wrong_epoch)
+{
+	bool pass = true;
+	size_t wrong = 0;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w3_epoch_lookup_matches(dir, &entries[i], epoch))
+			pass = false;
+		if (w3_epoch_readdir_hides_backings(dir, &entries[i]))
+			pass = false;
+		if (wrong_epoch &&
+		    !w3_epoch_lookup_matches(dir, &entries[i], wrong_epoch))
+			wrong++;
+	}
+	if (wrong_epoch_hits)
+		*wrong_epoch_hits = wrong;
+	return pass;
+}
+
+static void emit_w3_epoch_setup(FILE *out, int sample, const char *system,
+				bool pass, int err, __u64 setup_ns,
+				size_t objects,
+				unsigned long long setup_writes,
+				bool policy_executed, const char *detail)
+{
+	const char *write_key = policy_executed ? "setup_rule_writes" :
+						"setup_materialization_writes";
+
+	fputs("{\"event\":\"w3-checkpoint-epoch-setup\","
+	      "\"schema\":\"namei_ext.eval_osdi.w3_checkpoint_epoch.v1\","
+	      "\"result_level\":\"kvm_checkpoint_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w3-checkpoint-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"setup_ns\":%llu,\"objects\":%zu,"
+		"\"setup_writes\":%llu,\"%s\":%llu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)setup_ns, objects, setup_writes,
+		write_key, setup_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w3_epoch_correctness(FILE *out, int sample,
+				      const char *system, const char *stage,
+				      bool pass, bool current_oracle_pass,
+				      bool expected_static_failure_observed,
+				      size_t wrong_epoch_hits,
+				      bool policy_executed,
+				      const char *detail)
+{
+	fputs("{\"event\":\"w3-checkpoint-epoch-correctness\","
+	      "\"schema\":\"namei_ext.eval_osdi.w3_checkpoint_epoch.v1\","
+	      "\"result_level\":\"kvm_checkpoint_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w3-checkpoint-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fputs(",\"stage\":", out);
+	fprint_json_string(out, stage);
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,"
+		"\"current_oracle_pass\":%s,"
+		"\"expected_static_failure_observed\":%s,"
+		"\"wrong_epoch_hits\":%zu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false",
+		current_oracle_pass ? "true" : "false",
+		expected_static_failure_observed ? "true" : "false",
+		wrong_epoch_hits,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w3_epoch_update(FILE *out, int sample, const char *system,
+				 bool pass, int err, __u64 update_ns,
+				 __u64 observed_window_ns,
+				 unsigned long long update_writes,
+				 bool policy_executed, const char *detail)
+{
+	fputs("{\"event\":\"w3-checkpoint-epoch-update-window\","
+	      "\"schema\":\"namei_ext.eval_osdi.w3_checkpoint_epoch.v1\","
+	      "\"result_level\":\"kvm_checkpoint_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w3-checkpoint-epoch\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"update_ns\":%llu,"
+		"\"observed_update_window_ns\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"from_epoch\":1,\"to_epoch\":2,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)update_ns,
+		(unsigned long long)observed_window_ns, update_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w3_epoch_summary(FILE *out, int samples,
+				  const struct w3_epoch_stats *stats,
+				  const char *detail)
+{
+	double update_ratio = stats->policy_update_writes ?
+		(double)stats->table_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double materialized_update_ratio = stats->policy_update_writes ?
+		(double)stats->materialized_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double fuse_update_ratio = stats->policy_update_writes ?
+		(double)stats->fuse_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	bool table_update_budget_failure =
+		update_ratio > W3_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool materialized_update_budget_failure =
+		materialized_update_ratio > W3_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool fuse_update_budget_failure =
+		fuse_update_ratio > W3_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool targeted_c8_budget_failure =
+		stats->policy_epoch_switch_pass &&
+		stats->table_static_expected_failure &&
+		stats->table_updated_pass &&
+		table_update_budget_failure;
+
+	fputs("{\"event\":\"w3-checkpoint-epoch-summary\","
+	      "\"schema\":\"namei_ext.eval_osdi.w3_checkpoint_epoch.v1\","
+	      "\"result_level\":\"kvm_checkpoint_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w3-checkpoint-epoch\",",
+	      out);
+	fprintf(out,
+		"\"samples\":%d,\"setup_rows\":%d,"
+		"\"correctness_rows\":%d,\"update_rows\":%d,"
+		"\"objects\":%zu,"
+		"\"static_wrong_epoch_hits\":%zu,"
+		"\"policy_setup_writes\":%llu,"
+		"\"table_setup_writes\":%llu,"
+		"\"materialized_setup_writes\":%llu,"
+		"\"fuse_setup_writes\":%llu,"
+		"\"policy_update_writes\":%llu,"
+		"\"table_update_writes\":%llu,"
+		"\"materialized_update_writes\":%llu,"
+		"\"fuse_update_writes\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"table_update_write_ratio\":%.17g,"
+		"\"materialized_update_write_ratio\":%.17g,"
+		"\"fuse_update_write_ratio\":%.17g,"
+		"\"max_table_update_write_ratio\":%d,"
+		"\"table_static_current_oracle_pass\":false,"
+		"\"table_static_expected_failure_observed\":%s,"
+		"\"table_updated_current_oracle_pass\":%s,"
+		"\"table_requires_external_state_updates\":true,"
+		"\"table_update_budget_failure\":%s,"
+		"\"materialized_current_oracle_pass\":%s,"
+		"\"materialized_feature_equivalent_baseline\":%s,"
+		"\"materialized_update_budget_failure\":%s,"
+		"\"fuse_current_oracle_pass\":%s,"
+		"\"fuse_feature_equivalent_baseline\":%s,"
+		"\"fuse_update_budget_failure\":%s,"
+		"\"targeted_c8_budget_failure\":%s,"
+		"\"real_podman_criu_restore\":false,"
+		"\"release_sample_budget_pass\":%s,"
+		"\"pass\":%s,\"failures\":%d,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
+		"\"detail\":",
+		samples, stats->setup_rows, stats->correctness_rows,
+		stats->update_rows, stats->objects,
+		stats->static_wrong_epoch_hits, stats->policy_setup_writes,
+		stats->table_setup_writes, stats->materialized_setup_writes,
+		stats->fuse_setup_writes,
+		stats->policy_update_writes, stats->table_update_writes,
+		stats->materialized_update_writes, stats->fuse_update_writes,
+		stats->fuse_mounts, update_ratio, materialized_update_ratio,
+		fuse_update_ratio,
+		W3_EPOCH_TABLE_MAX_UPDATE_RATIO,
+		stats->table_static_expected_failure ? "true" : "false",
+		stats->table_updated_pass ? "true" : "false",
+		table_update_budget_failure ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		materialized_update_budget_failure ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		fuse_update_budget_failure ? "true" : "false",
+		targeted_c8_budget_failure ? "true" : "false",
+		samples >= 20 ? "true" : "false",
+		stats->failures ? "false" : "true", stats->failures,
+		stats->failures ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static int populate_w3_epoch_policy_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w3_epoch_entry *entries, size_t objects,
+	unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		int ret;
+
+		ret = update_checkpoint_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].epoch1, i + 1,
+			CHECKPOINT_CLASS_STATE, W3_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_checkpoint_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].epoch2, i + 1,
+			CHECKPOINT_CLASS_STATE, W3_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_checkpoint_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch1, entries[i].visible, i + 1,
+			CHECKPOINT_CLASS_STATE, W3_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_checkpoint_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch2, entries[i].visible, i + 1,
+			CHECKPOINT_CLASS_STATE, W3_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_checkpoint_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch1, entries[i].visible, i + 1,
+			CHECKPOINT_CLASS_STATE, W3_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_checkpoint_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].epoch2, entries[i].visible, i + 1,
+			CHECKPOINT_CLASS_STATE, W3_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int populate_w3_epoch_table_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w3_epoch_entry *entries, size_t objects,
+	__u32 epoch, bool include_readdir, unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		int ret;
+
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP,
+				  dir, entries[i].visible,
+				  w3_epoch_target(&entries[i], epoch), i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		if (!include_readdir)
+			continue;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].epoch1, entries[i].visible,
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].epoch2, entries[i].visible,
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int run_w3_epoch_policy_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w3_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w3_epoch_entry entries[W3_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w3_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_CHECKPOINT_RESTORE,
+				  "checkpoint_restore_epoch", &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w3_epoch_policy_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			&setup_writes);
+	if (!ret)
+		ret = update_checkpoint_session(&policy, cgroup_id,
+						(__u32)sample + 1,
+						W3_EPOCH_ONE, true);
+	if (!ret)
+		setup_writes++;
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->policy_setup_writes += setup_writes;
+	emit_w3_epoch_setup(
+		out, sample, "checkpoint_epoch_policy", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup checkpoint epoch policy" :
+		      "checkpoint epoch policy attached with two epoch rule sets");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w3_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W3_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "checkpoint_epoch_policy", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0,
+		true,
+		epoch1_pass ? "checkpoint policy epoch 1 oracle passed" :
+			      "checkpoint policy epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = update_checkpoint_session(&policy, cgroup_id, (__u32)sample + 1,
+					W3_EPOCH_TWO, true);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w3_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W3_EPOCH_TWO, NULL, 0);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->policy_update_writes++;
+	emit_w3_epoch_update(
+		out, sample, "checkpoint_epoch_policy",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, 1, true,
+		(!ret && epoch2_pass) ?
+			"checkpoint policy switched epoch with one session update" :
+			"checkpoint policy epoch switch failed");
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "checkpoint_epoch_policy", "epoch2",
+		!ret && epoch2_pass, !ret && epoch2_pass, false, 0,
+		true,
+		(!ret && epoch2_pass) ?
+			"checkpoint policy epoch 2 oracle passed" :
+			"checkpoint policy epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->policy_epoch_switch_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w3_epoch_table_static_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w3_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w3_epoch_entry entries[W3_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	size_t wrong_epoch_hits = 0;
+	bool epoch1_pass = false;
+	bool epoch2_current_pass = false;
+	bool expected_failure = false;
+	__u64 start_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w3_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w3_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W3_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w3_epoch_setup(
+		out, sample, "table_redirect_static_epoch1", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup static epoch table" :
+		      "static exact table attached with epoch 1 lookup rules");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w3_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W3_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "table_redirect_static_epoch1", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0,
+		true,
+		epoch1_pass ? "static table epoch 1 oracle passed" :
+			      "static table epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	epoch2_current_pass = w3_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W3_EPOCH_TWO,
+		&wrong_epoch_hits, W3_EPOCH_ONE);
+	expected_failure = !epoch2_current_pass && wrong_epoch_hits == objects;
+	stats->correctness_rows++;
+	stats->static_wrong_epoch_hits += wrong_epoch_hits;
+	emit_w3_epoch_correctness(
+		out, sample, "table_redirect_static_epoch1", "epoch2_without_update",
+		expected_failure, epoch2_current_pass, expected_failure,
+		wrong_epoch_hits,
+		true,
+		expected_failure ?
+			"static table failed epoch 2 oracle with wrong epoch hits" :
+			"static table did not expose the expected epoch failure");
+	if (!expected_failure)
+		stats->failures++;
+	else
+		stats->table_static_expected_failure = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !expected_failure;
+}
+
+static int run_w3_epoch_table_updated_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, struct w3_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w3_epoch_entry entries[W3_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w3_epoch_dir(sample_dir, entries, objects, sample);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w3_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W3_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w3_epoch_setup(
+		out, sample, "table_redirect_updated_exact", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? "failed to setup externally updated exact table" :
+		      "externally updated exact table attached at epoch 1");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w3_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W3_EPOCH_ONE, NULL, 0);
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "table_redirect_updated_exact", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0,
+		true,
+		epoch1_pass ? "updated table epoch 1 oracle passed" :
+			      "updated table epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = populate_w3_epoch_table_rules(
+		&policy, cgroup_id, sample_dir, entries, objects,
+		W3_EPOCH_TWO, false, &update_writes);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w3_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W3_EPOCH_TWO, NULL, 0);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->table_update_writes += update_writes;
+	emit_w3_epoch_update(
+		out, sample, "table_redirect_updated_exact",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		true,
+		(!ret && epoch2_pass) ?
+			"exact table reached epoch 2 after per-object lookup rewrites" :
+			"exact table epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "table_redirect_updated_exact", "epoch2_after_update",
+		!ret && epoch2_pass, !ret && epoch2_pass, false, 0,
+		true,
+		(!ret && epoch2_pass) ?
+			"updated table epoch 2 oracle passed" :
+			"updated table epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->table_updated_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w3_epoch_materialized_copy_epoch(
+	const char *backing_dir, const char *view_dir,
+	const struct w3_epoch_entry *entries, size_t objects, __u32 epoch,
+	unsigned long long *writes, unsigned long long *bytes_copied)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	struct stat st = {};
+	size_t i;
+
+	if (writes)
+		*writes = 0;
+	if (bytes_copied)
+		*bytes_copied = 0;
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), backing_dir,
+				   w3_epoch_target(&entries[i], epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), view_dir,
+				       entries[i].visible);
+		if (ret)
+			return ret;
+		if (bytes_copied && !stat(src, &st) && st.st_size > 0)
+			*bytes_copied += (unsigned long long)st.st_size;
+		ret = copy_file(src, dst);
+		if (ret)
+			return ret;
+		if (writes)
+			(*writes)++;
+	}
+	return 0;
+}
+
+static int w3_epoch_materialized_lookup_matches(
+	const char *view_dir, const char *backing_dir,
+	const struct w3_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), backing_dir,
+			       w3_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static bool w3_epoch_materialized_oracle_passes(
+	const char *view_dir, const char *backing_dir,
+	const struct w3_epoch_entry *entries, size_t objects, __u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w3_epoch_materialized_lookup_matches(
+			    view_dir, backing_dir, &entries[i], epoch))
+			pass = false;
+		if (w3_epoch_readdir_hides_backings(view_dir, &entries[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int run_w3_epoch_materialized_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	struct w3_epoch_stats *stats)
+{
+	struct w3_epoch_entry entries[W3_EPOCH_MAX_OBJECTS] = {};
+	char backing_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	unsigned long long bytes_copied = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(backing_dir, sizeof(backing_dir), sample_dir,
+			       "backing");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w3_epoch_dir(backing_dir, entries, objects,
+					   sample);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w3_epoch_materialized_copy_epoch(
+			backing_dir, view_dir, entries, objects,
+			W3_EPOCH_ONE, &setup_writes, &bytes_copied);
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->materialized_setup_writes += setup_writes;
+	emit_w3_epoch_setup(
+		out, sample, "materialized_checkpoint_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? "failed to setup materialized checkpoint epoch view" :
+		      "materialized checkpoint epoch view copied epoch 1 objects");
+	if (ret) {
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w3_epoch_materialized_oracle_passes(
+		view_dir, backing_dir, entries, objects, W3_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "materialized_checkpoint_epoch_view", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, false,
+		epoch1_pass ? "materialized checkpoint epoch 1 oracle passed" :
+			      "materialized checkpoint epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w3_epoch_materialized_copy_epoch(
+		backing_dir, view_dir, entries, objects, W3_EPOCH_TWO,
+		&update_writes, &bytes_copied);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w3_epoch_materialized_oracle_passes(
+			view_dir, backing_dir, entries, objects,
+			W3_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->materialized_update_writes += update_writes;
+	emit_w3_epoch_update(
+		out, sample, "materialized_checkpoint_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"materialized checkpoint view reached epoch 2 after per-object copies" :
+			"materialized checkpoint view epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "materialized_checkpoint_epoch_view",
+		"epoch2_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"materialized checkpoint epoch 2 oracle passed" :
+			"materialized checkpoint epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->materialized_updated_pass = true;
+
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w3_epoch_prepare_fuse_specs(
+	const char *view_dir, const char *source_dir,
+	const struct w3_epoch_entry *entries, size_t objects,
+	struct w1_alias_spec *specs, size_t *nr_specs)
+{
+	char source_path[PATH_MAX];
+	char shadow[NAMEI_EXT_NAME_MAX + 1];
+	size_t i;
+	int ret;
+
+	*nr_specs = 0;
+	for (i = 0; i < objects; i++) {
+		ret = snprintf(shadow, sizeof(shadow), "state%02zu.fuse", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(shadow))
+			return -ENAMETOOLONG;
+		ret = set_path(source_path, sizeof(source_path), source_dir,
+			       entries[i].epoch1);
+		if (ret)
+			return ret;
+		ret = add_w1_alias_spec(specs, nr_specs, view_dir,
+					entries[i].visible, shadow,
+					source_path);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int w3_epoch_fuse_lookup_matches(
+	const char *view_dir, const char *source_dir,
+	const struct w3_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), source_dir,
+			       w3_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w3_epoch_fuse_readdir_hides_backings(
+	const char *view_dir, const struct w3_epoch_entry *entry,
+	const struct w1_alias_spec *spec)
+{
+	bool saw_shadow;
+	int err = 0;
+	int ret;
+
+	ret = w3_epoch_readdir_hides_backings(view_dir, entry);
+	if (ret)
+		return ret;
+	saw_shadow = dir_has_name(view_dir, spec->shadow, &err);
+	if (err)
+		return -err;
+	return saw_shadow ? -ENOENT : 0;
+}
+
+static bool w3_epoch_fuse_oracle_passes(
+	const char *view_dir, const char *source_dir,
+	const struct w3_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w3_epoch_fuse_lookup_matches(
+			    view_dir, source_dir, &entries[i], epoch))
+			pass = false;
+		if (w3_epoch_fuse_readdir_hides_backings(
+			    view_dir, &entries[i], &specs[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int w3_epoch_fuse_copy_epoch(
+	const char *source_dir, const char *fuse_backing_dir,
+	const struct w3_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch,
+	struct nginx_macro_stats *stats)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), source_dir,
+				   w3_epoch_target(&entries[i], epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), fuse_backing_dir,
+				       specs[i].shadow);
+		if (ret)
+			return ret;
+		ret = copy_file_counted(src, dst, stats, true);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int run_w3_epoch_fuse_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	struct w3_epoch_stats *stats)
+{
+	struct w3_epoch_entry entries[W3_EPOCH_MAX_OBJECTS] = {};
+	struct w1_alias_spec specs[W3_EPOCH_MAX_OBJECTS] = {};
+	struct w1_fuse_context fuse_ctx = {};
+	struct nginx_macro_stats setup_stats = {};
+	struct nginx_macro_stats update_stats = {};
+	char source_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	char fuse_backing_dir[PATH_MAX];
+	size_t nr_specs = 0;
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(source_dir, sizeof(source_dir), sample_dir,
+			       "source");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w3_epoch_dir(source_dir, entries, objects,
+					   sample);
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w3_epoch_prepare_fuse_specs(
+			view_dir, source_dir, entries, objects, specs,
+			&nr_specs);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = setup_w1_fuse_mount(specs, nr_specs, view_dir,
+					  &setup_stats, &fuse_ctx);
+	end_ns = monotonic_ns();
+	setup_writes = setup_stats.created_files;
+	stats->setup_rows++;
+	stats->fuse_setup_writes += setup_writes;
+	stats->fuse_mounts += setup_stats.fuse_mounts;
+	emit_w3_epoch_setup(
+		out, sample, "fuse_checkpoint_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? "failed to setup FUSE checkpoint epoch view" :
+		      "FUSE checkpoint epoch view mounted with epoch 1 backing shadows");
+	if (ret) {
+		unmount_w1_fuse_context(&fuse_ctx);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w3_epoch_fuse_oracle_passes(
+		view_dir, source_dir, entries, specs, objects, W3_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "fuse_checkpoint_epoch_view", "epoch1",
+		epoch1_pass, epoch1_pass, false, 0, false,
+		epoch1_pass ? "FUSE checkpoint epoch 1 oracle passed" :
+			      "FUSE checkpoint epoch 1 oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w1_fuse_backing_dir(view_dir, fuse_backing_dir,
+				  sizeof(fuse_backing_dir));
+	if (!ret)
+		ret = w3_epoch_fuse_copy_epoch(
+			source_dir, fuse_backing_dir, entries, specs, objects,
+			W3_EPOCH_TWO, &update_stats);
+	update_done_ns = monotonic_ns();
+	update_writes = update_stats.source_update_writes;
+	if (!ret)
+		epoch2_pass = w3_epoch_fuse_oracle_passes(
+			view_dir, source_dir, entries, specs, objects,
+			W3_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->fuse_update_writes += update_writes;
+	emit_w3_epoch_update(
+		out, sample, "fuse_checkpoint_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"FUSE checkpoint view reached epoch 2 after per-object backing rewrites" :
+			"FUSE checkpoint view epoch 2 update failed");
+	stats->correctness_rows++;
+	emit_w3_epoch_correctness(
+		out, sample, "fuse_checkpoint_epoch_view",
+		"epoch2_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"FUSE checkpoint epoch 2 oracle passed" :
+			"FUSE checkpoint epoch 2 oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->fuse_updated_pass = true;
+
+	ret = unmount_w1_fuse_context(&fuse_ctx);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w3_checkpoint_epoch_counterfactual(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	size_t objects, const char *checkpoint_policy_obj,
+	const char *table_policy_obj)
+{
+	struct w3_epoch_stats stats = {};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	int sample;
+	int ret;
+
+	if (samples <= 0 || objects == 0 || objects > W3_EPOCH_MAX_OBJECTS) {
+		stats.failures = 1;
+		emit_w3_epoch_summary(
+			out, samples, &stats,
+			"invalid sample count or checkpoint object count");
+		return 1;
+	}
+	stats.objects = objects;
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		stats.failures = 1;
+		emit_w3_epoch_summary(
+			out, samples, &stats,
+			"failed to create W3 checkpoint epoch workdir");
+		return 1;
+	}
+	if (access(checkpoint_policy_obj, R_OK) || access(table_policy_obj, R_OK)) {
+		stats.failures = 1;
+		emit_w3_epoch_summary(
+			out, samples, &stats,
+			"W3 checkpoint epoch policy inputs are not readable");
+		return 1;
+	}
+	ret = current_cgroup_path(cgroup_mount, current_cgroup,
+				  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret) {
+		stats.failures = 1;
+		emit_w3_epoch_summary(
+			out, samples, &stats,
+			"failed to resolve current cgroup id");
+		return 1;
+	}
+
+	for (sample = 0; sample < samples; sample++) {
+		char sample_dir[PATH_MAX];
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/checkpoint-policy-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w3_epoch_policy_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, checkpoint_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/table-static-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w3_epoch_table_static_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/table-updated-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w3_epoch_table_updated_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/materialized-sample-%03d", work_dir,
+			       sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w3_epoch_materialized_system(
+			out, sample_dir, sample, objects, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/fuse-sample-%03d", work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w3_epoch_fuse_system(
+			out, sample_dir, sample, objects, &stats);
+	}
+
+	emit_w3_epoch_summary(
+		out, samples, &stats,
+		stats.failures ?
+			"W3 checkpoint epoch counterfactual failed" :
+			"W3 checkpoint epoch counterfactual passed; static exact table fails epoch switch, while externally updated table, materialized view, and FUSE view reach epoch 2 only with per-object update writes");
+	return stats.failures ? 1 : 0;
 }
 
 static const char *cache_forbidden_name(const struct oracle_entry *entry)
@@ -9509,8 +13735,8 @@ static int run_ccache_policy_compile(
 	    .prog_fd = -1,
 	    .map_fd = -1,
 	};
-	struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES] = {};
-	struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES] = {};
+	static struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	static struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES];
 	char current_cgroup[PATH_MAX];
 	char redis_output[PATH_MAX];
 	char nginx_output[PATH_MAX];
@@ -9545,6 +13771,9 @@ static int run_ccache_policy_compile(
 	size_t cache_leaf_parents = 0;
 	size_t exact_readdir_updates = 0;
 	size_t parent_sibling_index = NAMEI_EXT_MAX_ENTRIES;
+
+	memset(entries, 0, sizeof(entries));
+	memset(sources, 0, sizeof(sources));
 
 	ccache_compile_table_baseline = policy_kind == POLICY_TABLE;
 	ccache_compile_parent_rules = use_parent_rules;
@@ -11384,6 +15613,1565 @@ static int run_w4_cache_transition_counterfactual(
 	return stats.failures ? 1 : 0;
 }
 
+#define W4_CACHE_EPOCH_ONE 1
+#define W4_CACHE_EPOCH_TWO 2
+#define W4_CACHE_EPOCH_DEFAULT_OBJECTS 16
+#define W4_CACHE_EPOCH_MAX_OBJECTS 64
+#define W4_CACHE_EPOCH_TABLE_MAX_UPDATE_RATIO 10
+
+struct w4_cache_epoch_entry {
+	char visible[NAMEI_EXT_NAME_MAX + 1];
+	char local[NAMEI_EXT_NAME_MAX + 1];
+	char canonical[NAMEI_EXT_NAME_MAX + 1];
+};
+
+struct w4_cache_epoch_stats {
+	int setup_rows;
+	int correctness_rows;
+	int update_rows;
+	int failures;
+	size_t objects;
+	size_t trace_entries;
+	size_t static_wrong_local_hits;
+	unsigned long long policy_setup_writes;
+	unsigned long long table_setup_writes;
+	unsigned long long materialized_setup_writes;
+	unsigned long long fuse_setup_writes;
+	unsigned long long policy_update_writes;
+	unsigned long long table_update_writes;
+	unsigned long long materialized_update_writes;
+	unsigned long long fuse_update_writes;
+	unsigned long long fuse_mounts;
+	bool policy_epoch_switch_pass;
+	bool table_static_expected_failure;
+	bool table_updated_pass;
+	bool materialized_updated_pass;
+	bool fuse_updated_pass;
+	bool real_ccache_trace;
+	bool trace_derived_counterfactual;
+};
+
+static char w4_cache_epoch_prepare_error[256];
+
+static void w4_cache_epoch_set_prepare_error(const char *stage,
+					     const char *path, int ret)
+{
+	snprintf(w4_cache_epoch_prepare_error,
+		 sizeof(w4_cache_epoch_prepare_error),
+		 "trace-derived cache epoch prepare failed at %.64s errno %d path %.120s",
+		 stage, ret, path ? path : "");
+}
+
+static const char *w4_cache_epoch_failure_detail(const char *fallback)
+{
+	return w4_cache_epoch_prepare_error[0] ?
+		       w4_cache_epoch_prepare_error :
+		       fallback;
+}
+
+static const char *w4_cache_epoch_target(
+	const struct w4_cache_epoch_entry *entry, __u32 epoch)
+{
+	return epoch == W4_CACHE_EPOCH_TWO ? entry->canonical : entry->local;
+}
+
+static int prepare_w4_cache_epoch_dir(
+	const char *dir, struct w4_cache_epoch_entry *entries, size_t objects,
+	int sample)
+{
+	char path[PATH_MAX];
+	char text[192];
+	size_t i;
+	int ret;
+
+	ret = mkdir_if_missing(dir);
+	if (ret)
+		return ret;
+	for (i = 0; i < objects; i++) {
+		ret = snprintf(entries[i].visible, sizeof(entries[i].visible),
+			       "c8%029zuM", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(entries[i].visible))
+			return -ENAMETOOLONG;
+		ret = snprintf(entries[i].local, sizeof(entries[i].local),
+			       "%s.local", entries[i].visible);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(entries[i].local))
+			return -ENAMETOOLONG;
+		ret = snprintf(entries[i].canonical,
+			       sizeof(entries[i].canonical), "%s.canon",
+			       entries[i].visible);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(entries[i].canonical))
+			return -ENAMETOOLONG;
+
+		ret = set_path(path, sizeof(path), dir, entries[i].visible);
+		if (ret)
+			return ret;
+		unlink_existing(path);
+
+		ret = set_path(path, sizeof(path), dir, entries[i].local);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w4 cache sample %d object %zu verified local\n",
+			       sample, i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+
+		ret = set_path(path, sizeof(path), dir, entries[i].canonical);
+		if (ret)
+			return ret;
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w4 cache sample %d object %zu canonical epoch\n",
+			       sample, i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static bool w4_cache_epoch_valid_component(const char *name)
+{
+	return name && name[0] && strcmp(name, ".") && strcmp(name, "..") &&
+	       !strchr(name, '/') && strlen(name) <= NAMEI_EXT_NAME_MAX;
+}
+
+static int prepare_w4_cache_epoch_trace_dir(
+	const char *dir, struct w4_cache_epoch_entry *entries,
+	const struct oracle_entry *trace_entries, size_t objects, int sample)
+{
+	char path[PATH_MAX];
+	char text[256];
+	size_t i;
+	int ret;
+
+	ret = mkdir_if_missing(dir);
+	if (ret) {
+		w4_cache_epoch_set_prepare_error("mkdir_dir", dir, ret);
+		return ret;
+	}
+	for (i = 0; i < objects; i++) {
+		if (!w4_cache_epoch_valid_component(trace_entries[i].visible) ||
+		    !w4_cache_epoch_valid_component(trace_entries[i].shadow)) {
+			w4_cache_epoch_set_prepare_error("component_validate",
+							 trace_entries[i].visible,
+							 -EINVAL);
+			return -EINVAL;
+		}
+		ret = copy_string(entries[i].visible,
+				  sizeof(entries[i].visible),
+				  trace_entries[i].visible);
+		if (!ret)
+			ret = copy_string(entries[i].local,
+					  sizeof(entries[i].local),
+					  trace_entries[i].shadow);
+		if (!ret) {
+			ret = snprintf(entries[i].canonical,
+				       sizeof(entries[i].canonical), "%s.canon",
+				       entries[i].visible);
+			if (ret < 0)
+				return -errno;
+			if ((size_t)ret >= sizeof(entries[i].canonical))
+				return -ENAMETOOLONG;
+			ret = 0;
+		}
+		if (ret) {
+			w4_cache_epoch_set_prepare_error("component_copy",
+							 trace_entries[i].visible,
+							 ret);
+			return ret;
+		}
+		if (!w4_cache_epoch_valid_component(entries[i].canonical)) {
+			w4_cache_epoch_set_prepare_error("canonical_validate",
+							 entries[i].canonical,
+							 -EINVAL);
+			return -EINVAL;
+		}
+
+		ret = set_path(path, sizeof(path), dir, entries[i].visible);
+		if (ret) {
+			w4_cache_epoch_set_prepare_error("visible_path",
+							 entries[i].visible,
+							 ret);
+			return ret;
+		}
+		unlink_existing(path);
+
+		ret = set_path(path, sizeof(path), dir, entries[i].local);
+		if (ret) {
+			w4_cache_epoch_set_prepare_error("local_path",
+							 entries[i].local, ret);
+			return ret;
+		}
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w4 trace-derived verified-local sample %d object %zu sha %s\n",
+			       sample, i, trace_entries[i].original_sha256);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret) {
+			w4_cache_epoch_set_prepare_error("write_local", path,
+							 ret);
+			return ret;
+		}
+
+		ret = set_path(path, sizeof(path), dir, entries[i].canonical);
+		if (ret) {
+			w4_cache_epoch_set_prepare_error("canonical_path",
+							 entries[i].canonical,
+							 ret);
+			return ret;
+		}
+		ret = snprintf(text, sizeof(text),
+			       "namei_ext w4 trace-derived canonical sample %d object %zu sha %s\n",
+			       sample, i, trace_entries[i].original_sha256);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(text))
+			return -ENAMETOOLONG;
+		ret = write_text_file(path, text);
+		if (ret) {
+			w4_cache_epoch_set_prepare_error("write_canonical",
+							 path, ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static int prepare_w4_cache_epoch_sample_dir(
+	const char *dir, struct w4_cache_epoch_entry *entries, size_t objects,
+	int sample, const struct oracle_entry *trace_entries)
+{
+	w4_cache_epoch_prepare_error[0] = '\0';
+	if (trace_entries)
+		return prepare_w4_cache_epoch_trace_dir(dir, entries,
+							trace_entries, objects,
+							sample);
+	return prepare_w4_cache_epoch_dir(dir, entries, objects, sample);
+}
+
+static int w4_cache_epoch_lookup_matches(
+	const char *dir, const struct w4_cache_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), dir,
+			       w4_cache_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w4_cache_epoch_readdir_hides_backings(
+	const char *dir, const struct w4_cache_epoch_entry *entry)
+{
+	bool saw_visible;
+	bool saw_local;
+	bool saw_canonical;
+	int err = 0;
+
+	saw_visible = dir_has_name(dir, entry->visible, &err);
+	if (!err)
+		saw_local = dir_has_name(dir, entry->local, &err);
+	else
+		saw_local = false;
+	if (!err)
+		saw_canonical = dir_has_name(dir, entry->canonical, &err);
+	else
+		saw_canonical = false;
+	if (!err && saw_visible && !saw_local && !saw_canonical)
+		return 0;
+	return err ? -err : -ENOENT;
+}
+
+static bool w4_cache_epoch_current_oracle_passes(
+	const char *dir, const struct w4_cache_epoch_entry *entries,
+	size_t objects, __u32 epoch, size_t *wrong_local_hits)
+{
+	bool pass = true;
+	size_t wrong = 0;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w4_cache_epoch_lookup_matches(dir, &entries[i], epoch))
+			pass = false;
+		if (w4_cache_epoch_readdir_hides_backings(dir, &entries[i]))
+			pass = false;
+		if (epoch == W4_CACHE_EPOCH_TWO &&
+		    !w4_cache_epoch_lookup_matches(dir, &entries[i],
+						   W4_CACHE_EPOCH_ONE))
+			wrong++;
+	}
+	if (wrong_local_hits)
+		*wrong_local_hits = wrong;
+	return pass;
+}
+
+static void emit_w4_cache_epoch_setup(
+	FILE *out, int sample, const char *system, bool pass, int err,
+	__u64 setup_ns, size_t objects, unsigned long long setup_writes,
+	bool policy_executed, const char *detail)
+{
+	const char *write_key = policy_executed ? "setup_rule_writes" :
+						"setup_materialization_writes";
+
+	fputs("{\"event\":\"w4-cache-epoch-setup\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_cache_epoch.v1\","
+	      "\"result_level\":\"kvm_cache_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-cache-epoch\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"setup_ns\":%llu,\"objects\":%zu,"
+		"\"setup_writes\":%llu,\"%s\":%llu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)setup_ns, objects, setup_writes,
+		write_key, setup_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w4_cache_epoch_correctness(
+	FILE *out, int sample, const char *system, const char *stage,
+	bool pass, bool current_oracle_pass,
+	bool expected_static_failure_observed, size_t wrong_local_hits,
+	bool policy_executed, const char *detail)
+{
+	fputs("{\"event\":\"w4-cache-epoch-correctness\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_cache_epoch.v1\","
+	      "\"result_level\":\"kvm_cache_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-cache-epoch\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fputs(",\"stage\":", out);
+	fprint_json_string(out, stage);
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,"
+		"\"current_oracle_pass\":%s,"
+		"\"expected_static_failure_observed\":%s,"
+		"\"wrong_local_hits\":%zu,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false",
+		current_oracle_pass ? "true" : "false",
+		expected_static_failure_observed ? "true" : "false",
+		wrong_local_hits,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w4_cache_epoch_update(
+	FILE *out, int sample, const char *system, bool pass, int err,
+	__u64 update_ns, __u64 observed_window_ns,
+	unsigned long long update_writes, bool policy_executed,
+	const char *detail)
+{
+	fputs("{\"event\":\"w4-cache-epoch-update-window\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_cache_epoch.v1\","
+	      "\"result_level\":\"kvm_cache_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-cache-epoch\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fputs("\"system\":", out);
+	fprint_json_string(out, system);
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, policy_executed ? "policy_or_table" :
+						"external_baseline");
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"errno\":%d,"
+		"\"update_ns\":%llu,"
+		"\"observed_update_window_ns\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"from_epoch\":1,\"to_epoch\":2,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"qualified_for_c8\":false,\"detail\":",
+		sample, pass ? "true" : "false", err,
+		(unsigned long long)update_ns,
+		(unsigned long long)observed_window_ns, update_writes,
+		policy_executed ? "true" : "false",
+		policy_executed ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w4_cache_epoch_summary(
+	FILE *out, int samples, const struct w4_cache_epoch_stats *stats,
+	const char *detail)
+{
+	double update_ratio = stats->policy_update_writes ?
+		(double)stats->table_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double materialized_update_ratio = stats->policy_update_writes ?
+		(double)stats->materialized_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	double fuse_update_ratio = stats->policy_update_writes ?
+		(double)stats->fuse_update_writes /
+			(double)stats->policy_update_writes :
+		0.0;
+	bool table_update_budget_failure =
+		update_ratio > W4_CACHE_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool materialized_update_budget_failure =
+		materialized_update_ratio > W4_CACHE_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool fuse_update_budget_failure =
+		fuse_update_ratio > W4_CACHE_EPOCH_TABLE_MAX_UPDATE_RATIO;
+	bool targeted_c8_budget_failure =
+		stats->policy_epoch_switch_pass &&
+		stats->table_static_expected_failure &&
+		stats->table_updated_pass &&
+		table_update_budget_failure;
+
+	fputs("{\"event\":\"w4-cache-epoch-summary\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_cache_epoch.v1\","
+	      "\"result_level\":\"kvm_cache_epoch_counterfactual\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-cache-epoch\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fprintf(out,
+		"\"samples\":%d,\"setup_rows\":%d,"
+		"\"correctness_rows\":%d,\"update_rows\":%d,"
+		"\"objects\":%zu,"
+		"\"trace_entries\":%zu,"
+		"\"static_wrong_local_hits\":%zu,"
+		"\"policy_setup_writes\":%llu,"
+		"\"table_setup_writes\":%llu,"
+		"\"materialized_setup_writes\":%llu,"
+		"\"fuse_setup_writes\":%llu,"
+		"\"policy_update_writes\":%llu,"
+		"\"table_update_writes\":%llu,"
+		"\"materialized_update_writes\":%llu,"
+		"\"fuse_update_writes\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"table_update_write_ratio\":%.17g,"
+		"\"materialized_update_write_ratio\":%.17g,"
+		"\"fuse_update_write_ratio\":%.17g,"
+		"\"max_table_update_write_ratio\":%d,"
+		"\"table_static_current_oracle_pass\":false,"
+		"\"table_static_expected_failure_observed\":%s,"
+		"\"table_updated_current_oracle_pass\":%s,"
+		"\"table_requires_external_state_updates\":true,"
+		"\"table_update_budget_failure\":%s,"
+		"\"materialized_current_oracle_pass\":%s,"
+		"\"materialized_feature_equivalent_baseline\":%s,"
+		"\"materialized_update_budget_failure\":%s,"
+		"\"fuse_current_oracle_pass\":%s,"
+		"\"fuse_feature_equivalent_baseline\":%s,"
+		"\"fuse_update_budget_failure\":%s,"
+		"\"targeted_c8_budget_failure\":%s,"
+		"\"real_ccache_trace\":%s,"
+		"\"trace_derived_counterfactual\":%s,"
+		"\"trace_derived_targeted_c8_pass\":%s,"
+		"\"release_sample_budget_pass\":%s,"
+		"\"pass\":%s,\"failures\":%d,"
+		"\"policy_executed\":%s,\"kvm_validated\":true,"
+		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
+		"\"detail\":",
+		samples, stats->setup_rows, stats->correctness_rows,
+		stats->update_rows, stats->objects, stats->trace_entries,
+		stats->static_wrong_local_hits, stats->policy_setup_writes,
+		stats->table_setup_writes, stats->materialized_setup_writes,
+		stats->fuse_setup_writes,
+		stats->policy_update_writes, stats->table_update_writes,
+		stats->materialized_update_writes, stats->fuse_update_writes,
+		stats->fuse_mounts, update_ratio, materialized_update_ratio,
+		fuse_update_ratio,
+		W4_CACHE_EPOCH_TABLE_MAX_UPDATE_RATIO,
+		stats->table_static_expected_failure ? "true" : "false",
+		stats->table_updated_pass ? "true" : "false",
+		table_update_budget_failure ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		stats->materialized_updated_pass ? "true" : "false",
+		materialized_update_budget_failure ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		fuse_update_budget_failure ? "true" : "false",
+		targeted_c8_budget_failure ? "true" : "false",
+		stats->real_ccache_trace ? "true" : "false",
+		stats->trace_derived_counterfactual ? "true" : "false",
+		(stats->real_ccache_trace && targeted_c8_budget_failure) ?
+			"true" : "false",
+		samples >= 20 ? "true" : "false",
+		stats->failures ? "false" : "true", stats->failures,
+		stats->failures ? "false" : "true");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static int populate_w4_cache_epoch_policy_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w4_cache_epoch_entry *entries, size_t objects,
+	unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		int ret;
+
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].local, i + 1,
+			CACHE_STATE_VERIFIED_HIT, W4_CACHE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP, dir,
+			entries[i].visible, entries[i].canonical, i + 1,
+			CACHE_STATE_STALE, W4_CACHE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].local, entries[i].visible, i + 1,
+			CACHE_STATE_VERIFIED_HIT, W4_CACHE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].canonical, entries[i].visible, i + 1,
+			CACHE_STATE_VERIFIED_HIT, W4_CACHE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].local, entries[i].visible, i + 1,
+			CACHE_STATE_STALE, W4_CACHE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR, dir,
+			entries[i].canonical, entries[i].visible, i + 1,
+			CACHE_STATE_STALE, W4_CACHE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int populate_w4_cache_epoch_table_rules(
+	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
+	const struct w4_cache_epoch_entry *entries, size_t objects,
+	__u32 epoch, bool include_readdir, unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < objects; i++) {
+		int ret;
+
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP,
+				  dir, entries[i].visible,
+				  w4_cache_epoch_target(&entries[i], epoch),
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		if (!include_readdir)
+			continue;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].local, entries[i].visible,
+				  i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_rule(policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+				  dir, entries[i].canonical,
+				  entries[i].visible, i + 1);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int run_w4_cache_epoch_policy_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, const struct oracle_entry *trace_entries,
+	struct w4_cache_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w4_cache_epoch_entry entries[W4_CACHE_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w4_cache_epoch_sample_dir(sample_dir, entries, objects,
+						sample, trace_entries);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_CACHE_LOCALITY,
+				  "cache_locality_epoch", &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w4_cache_epoch_policy_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			&setup_writes);
+	if (!ret)
+		ret = update_cache_epoch_session(&policy, cgroup_id,
+						 W4_CACHE_EPOCH_ONE, true);
+	if (!ret)
+		setup_writes++;
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->policy_setup_writes += setup_writes;
+	emit_w4_cache_epoch_setup(
+		out, sample, "cache_locality_epoch_policy", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? w4_cache_epoch_failure_detail(
+			      "failed to setup cache epoch policy") :
+		      "cache epoch policy attached with two epoch rule sets");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w4_cache_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W4_CACHE_EPOCH_ONE, NULL);
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "cache_locality_epoch_policy", "verified_epoch",
+		epoch1_pass, epoch1_pass, false, 0,
+		true,
+		epoch1_pass ? "cache epoch policy verified-local oracle passed" :
+			      "cache epoch policy verified-local oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = update_cache_epoch_session(&policy, cgroup_id,
+					 W4_CACHE_EPOCH_TWO, true);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w4_cache_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W4_CACHE_EPOCH_TWO, NULL);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->policy_update_writes++;
+	emit_w4_cache_epoch_update(
+		out, sample, "cache_locality_epoch_policy",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, 1, true,
+		(!ret && epoch2_pass) ?
+			"cache policy switched epoch with one session update" :
+			"cache policy epoch switch failed");
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "cache_locality_epoch_policy", "canonical_epoch",
+		!ret && epoch2_pass, !ret && epoch2_pass, false, 0,
+		true,
+		(!ret && epoch2_pass) ?
+			"cache epoch policy canonical oracle passed" :
+			"cache epoch policy canonical oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->policy_epoch_switch_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w4_cache_epoch_table_static_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, const struct oracle_entry *trace_entries,
+	struct w4_cache_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w4_cache_epoch_entry entries[W4_CACHE_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	size_t wrong_local_hits = 0;
+	bool epoch1_pass = false;
+	bool epoch2_current_pass = false;
+	bool expected_failure = false;
+	__u64 start_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w4_cache_epoch_sample_dir(sample_dir, entries, objects,
+						sample, trace_entries);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w4_cache_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W4_CACHE_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w4_cache_epoch_setup(
+		out, sample, "table_redirect_static_verified_epoch", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? w4_cache_epoch_failure_detail(
+			      "failed to setup static verified cache table") :
+		      "static exact table attached with verified-local rules");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w4_cache_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W4_CACHE_EPOCH_ONE, NULL);
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "table_redirect_static_verified_epoch",
+		"verified_epoch", epoch1_pass, epoch1_pass, false, 0,
+		true,
+		epoch1_pass ? "static table verified-local oracle passed" :
+			      "static table verified-local oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	epoch2_current_pass = w4_cache_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W4_CACHE_EPOCH_TWO,
+		&wrong_local_hits);
+	expected_failure = !epoch2_current_pass && wrong_local_hits == objects;
+	stats->correctness_rows++;
+	stats->static_wrong_local_hits += wrong_local_hits;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "table_redirect_static_verified_epoch",
+		"canonical_epoch_without_update", expected_failure,
+		epoch2_current_pass, expected_failure, wrong_local_hits,
+		true,
+		expected_failure ?
+			"static table failed canonical epoch with local hits" :
+			"static table did not expose expected local-hit failure");
+	if (!expected_failure)
+		stats->failures++;
+	else
+		stats->table_static_expected_failure = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !expected_failure;
+}
+
+static int run_w4_cache_epoch_table_updated_system(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *sample_dir, int sample, size_t objects,
+	const char *policy_obj, const struct oracle_entry *trace_entries,
+	struct w4_cache_epoch_stats *stats)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct w4_cache_epoch_entry entries[W4_CACHE_EPOCH_MAX_OBJECTS] = {};
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = prepare_w4_cache_epoch_sample_dir(sample_dir, entries, objects,
+						sample, trace_entries);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_TABLE, "table_redirect",
+				  &policy);
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = populate_w4_cache_epoch_table_rules(
+			&policy, cgroup_id, sample_dir, entries, objects,
+			W4_CACHE_EPOCH_ONE, true, &setup_writes);
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->table_setup_writes += setup_writes;
+	emit_w4_cache_epoch_setup(
+		out, sample, "table_redirect_updated_exact_epoch", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, true,
+		ret ? w4_cache_epoch_failure_detail(
+			      "failed to setup externally updated cache table") :
+		      "externally updated exact table attached at verified epoch");
+	if (ret) {
+		if (policy.obj)
+			destroy_policy(&policy);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w4_cache_epoch_current_oracle_passes(
+		sample_dir, entries, objects, W4_CACHE_EPOCH_ONE, NULL);
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "table_redirect_updated_exact_epoch",
+		"verified_epoch", epoch1_pass, epoch1_pass, false, 0,
+		true,
+		epoch1_pass ? "updated table verified-local oracle passed" :
+			      "updated table verified-local oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = populate_w4_cache_epoch_table_rules(
+		&policy, cgroup_id, sample_dir, entries, objects,
+		W4_CACHE_EPOCH_TWO, false, &update_writes);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w4_cache_epoch_current_oracle_passes(
+			sample_dir, entries, objects, W4_CACHE_EPOCH_TWO, NULL);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->table_update_writes += update_writes;
+	emit_w4_cache_epoch_update(
+		out, sample, "table_redirect_updated_exact_epoch",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		true,
+		(!ret && epoch2_pass) ?
+			"exact table reached canonical epoch after per-object rewrites" :
+			"exact table canonical epoch update failed");
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "table_redirect_updated_exact_epoch",
+		"canonical_epoch_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0,
+		true,
+		(!ret && epoch2_pass) ?
+			"updated table canonical epoch oracle passed" :
+			"updated table canonical epoch oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->table_updated_pass = true;
+
+	ret = destroy_policy(&policy);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w4_cache_epoch_materialized_copy_epoch(
+	const char *backing_dir, const char *view_dir,
+	const struct w4_cache_epoch_entry *entries, size_t objects,
+	__u32 epoch, unsigned long long *writes,
+	unsigned long long *bytes_copied)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	struct stat st = {};
+	size_t i;
+
+	if (writes)
+		*writes = 0;
+	if (bytes_copied)
+		*bytes_copied = 0;
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), backing_dir,
+				   w4_cache_epoch_target(&entries[i], epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), view_dir,
+				       entries[i].visible);
+		if (ret)
+			return ret;
+		if (bytes_copied && !stat(src, &st) && st.st_size > 0)
+			*bytes_copied += (unsigned long long)st.st_size;
+		ret = copy_file(src, dst);
+		if (ret)
+			return ret;
+		if (writes)
+			(*writes)++;
+	}
+	return 0;
+}
+
+static int w4_cache_epoch_materialized_lookup_matches(
+	const char *view_dir, const char *backing_dir,
+	const struct w4_cache_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), backing_dir,
+			       w4_cache_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static bool w4_cache_epoch_materialized_oracle_passes(
+	const char *view_dir, const char *backing_dir,
+	const struct w4_cache_epoch_entry *entries, size_t objects, __u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w4_cache_epoch_materialized_lookup_matches(
+			    view_dir, backing_dir, &entries[i], epoch))
+			pass = false;
+		if (w4_cache_epoch_readdir_hides_backings(view_dir,
+							  &entries[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int run_w4_cache_epoch_materialized_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	const struct oracle_entry *trace_entries,
+	struct w4_cache_epoch_stats *stats)
+{
+	struct w4_cache_epoch_entry entries[W4_CACHE_EPOCH_MAX_OBJECTS] = {};
+	char backing_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	unsigned long long bytes_copied = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(backing_dir, sizeof(backing_dir), sample_dir,
+			       "backing");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w4_cache_epoch_sample_dir(
+			backing_dir, entries, objects, sample, trace_entries);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w4_cache_epoch_materialized_copy_epoch(
+			backing_dir, view_dir, entries, objects,
+			W4_CACHE_EPOCH_ONE, &setup_writes, &bytes_copied);
+	end_ns = monotonic_ns();
+	stats->setup_rows++;
+	stats->materialized_setup_writes += setup_writes;
+	emit_w4_cache_epoch_setup(
+		out, sample, "materialized_cache_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? w4_cache_epoch_failure_detail(
+			      "failed to setup materialized cache epoch view") :
+		      "materialized cache epoch view copied verified-local objects");
+	if (ret) {
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w4_cache_epoch_materialized_oracle_passes(
+		view_dir, backing_dir, entries, objects, W4_CACHE_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "materialized_cache_epoch_view",
+		"verified_epoch", epoch1_pass, epoch1_pass, false, 0,
+		false,
+		epoch1_pass ? "materialized verified-local oracle passed" :
+			      "materialized verified-local oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w4_cache_epoch_materialized_copy_epoch(
+		backing_dir, view_dir, entries, objects, W4_CACHE_EPOCH_TWO,
+		&update_writes, &bytes_copied);
+	update_done_ns = monotonic_ns();
+	if (!ret)
+		epoch2_pass = w4_cache_epoch_materialized_oracle_passes(
+			view_dir, backing_dir, entries, objects,
+			W4_CACHE_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->materialized_update_writes += update_writes;
+	emit_w4_cache_epoch_update(
+		out, sample, "materialized_cache_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"materialized cache view reached canonical epoch after per-object copies" :
+			"materialized cache view canonical epoch update failed");
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "materialized_cache_epoch_view",
+		"canonical_epoch_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"materialized canonical epoch oracle passed" :
+			"materialized canonical epoch oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->materialized_updated_pass = true;
+
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int w4_cache_epoch_prepare_fuse_specs(
+	const char *view_dir, const char *source_dir,
+	const struct w4_cache_epoch_entry *entries, size_t objects,
+	struct w1_alias_spec *specs, size_t *nr_specs)
+{
+	char source_path[PATH_MAX];
+	char shadow[NAMEI_EXT_NAME_MAX + 1];
+	size_t i;
+	int ret;
+
+	*nr_specs = 0;
+	for (i = 0; i < objects; i++) {
+		ret = snprintf(shadow, sizeof(shadow), "w4f%02zu", i);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(shadow))
+			return -ENAMETOOLONG;
+		ret = set_path(source_path, sizeof(source_path), source_dir,
+			       entries[i].local);
+		if (ret)
+			return ret;
+		ret = add_w1_alias_spec(specs, nr_specs, view_dir,
+					entries[i].visible, shadow,
+					source_path);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int w4_cache_epoch_fuse_lookup_matches(
+	const char *view_dir, const char *source_dir,
+	const struct w4_cache_epoch_entry *entry, __u32 epoch)
+{
+	char visible_path[PATH_MAX];
+	char target_path[PATH_MAX];
+	int ret;
+
+	ret = set_path(visible_path, sizeof(visible_path), view_dir,
+		       entry->visible);
+	if (!ret)
+		ret = set_path(target_path, sizeof(target_path), source_dir,
+			       w4_cache_epoch_target(entry, epoch));
+	if (ret)
+		return ret;
+	return compare_files(visible_path, target_path);
+}
+
+static int w4_cache_epoch_fuse_readdir_hides_backings(
+	const char *view_dir, const struct w4_cache_epoch_entry *entry,
+	const struct w1_alias_spec *spec)
+{
+	bool saw_shadow;
+	int err = 0;
+	int ret;
+
+	ret = w4_cache_epoch_readdir_hides_backings(view_dir, entry);
+	if (ret)
+		return ret;
+	saw_shadow = dir_has_name(view_dir, spec->shadow, &err);
+	if (err)
+		return -err;
+	return saw_shadow ? -ENOENT : 0;
+}
+
+static bool w4_cache_epoch_fuse_oracle_passes(
+	const char *view_dir, const char *source_dir,
+	const struct w4_cache_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch)
+{
+	bool pass = true;
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		if (w4_cache_epoch_fuse_lookup_matches(
+			    view_dir, source_dir, &entries[i], epoch))
+			pass = false;
+		if (w4_cache_epoch_fuse_readdir_hides_backings(
+			    view_dir, &entries[i], &specs[i]))
+			pass = false;
+	}
+	return pass;
+}
+
+static int w4_cache_epoch_fuse_copy_epoch(
+	const char *source_dir, const char *fuse_backing_dir,
+	const struct w4_cache_epoch_entry *entries,
+	const struct w1_alias_spec *specs, size_t objects, __u32 epoch,
+	struct nginx_macro_stats *stats)
+{
+	char src[PATH_MAX];
+	char dst[PATH_MAX];
+	size_t i;
+
+	for (i = 0; i < objects; i++) {
+		int ret = set_path(src, sizeof(src), source_dir,
+				   w4_cache_epoch_target(&entries[i], epoch));
+		if (!ret)
+			ret = set_path(dst, sizeof(dst), fuse_backing_dir,
+				       specs[i].shadow);
+		if (ret)
+			return ret;
+		ret = copy_file_counted(src, dst, stats, true);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
+static int run_w4_cache_epoch_fuse_system(
+	FILE *out, const char *sample_dir, int sample, size_t objects,
+	const struct oracle_entry *trace_entries,
+	struct w4_cache_epoch_stats *stats)
+{
+	struct w4_cache_epoch_entry entries[W4_CACHE_EPOCH_MAX_OBJECTS] = {};
+	struct w1_alias_spec specs[W4_CACHE_EPOCH_MAX_OBJECTS] = {};
+	struct w1_fuse_context fuse_ctx = {};
+	struct nginx_macro_stats setup_stats = {};
+	struct nginx_macro_stats update_stats = {};
+	char source_dir[PATH_MAX];
+	char view_dir[PATH_MAX];
+	char fuse_backing_dir[PATH_MAX];
+	size_t nr_specs = 0;
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	bool epoch1_pass = false;
+	bool epoch2_pass = false;
+	__u64 start_ns;
+	__u64 update_done_ns;
+	__u64 end_ns;
+	int ret;
+
+	ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(source_dir, sizeof(source_dir), sample_dir,
+			       "source");
+	if (!ret)
+		ret = set_path(view_dir, sizeof(view_dir), sample_dir, "view");
+	if (!ret)
+		ret = prepare_w4_cache_epoch_sample_dir(
+			source_dir, entries, objects, sample, trace_entries);
+	if (!ret)
+		ret = mkdir_if_missing(view_dir);
+	if (!ret)
+		ret = w4_cache_epoch_prepare_fuse_specs(
+			view_dir, source_dir, entries, objects, specs,
+			&nr_specs);
+
+	start_ns = monotonic_ns();
+	if (!ret)
+		ret = setup_w1_fuse_mount(specs, nr_specs, view_dir,
+					  &setup_stats, &fuse_ctx);
+	end_ns = monotonic_ns();
+	setup_writes = setup_stats.created_files;
+	stats->setup_rows++;
+	stats->fuse_setup_writes += setup_writes;
+	stats->fuse_mounts += setup_stats.fuse_mounts;
+	emit_w4_cache_epoch_setup(
+		out, sample, "fuse_cache_epoch_view", !ret,
+		ret ? -ret : 0, end_ns >= start_ns ? end_ns - start_ns : 0,
+		objects, setup_writes, false,
+		ret ? w4_cache_epoch_failure_detail(
+			      "failed to setup FUSE cache epoch view") :
+		      "FUSE cache epoch view mounted with verified-local backing shadows");
+	if (ret) {
+		unmount_w1_fuse_context(&fuse_ctx);
+		stats->failures++;
+		return 1;
+	}
+
+	epoch1_pass = w4_cache_epoch_fuse_oracle_passes(
+		view_dir, source_dir, entries, specs, objects,
+		W4_CACHE_EPOCH_ONE);
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "fuse_cache_epoch_view", "verified_epoch",
+		epoch1_pass, epoch1_pass, false, 0, false,
+		epoch1_pass ? "FUSE verified-local oracle passed" :
+			      "FUSE verified-local oracle failed");
+	if (!epoch1_pass)
+		stats->failures++;
+
+	start_ns = monotonic_ns();
+	ret = w1_fuse_backing_dir(view_dir, fuse_backing_dir,
+				  sizeof(fuse_backing_dir));
+	if (!ret)
+		ret = w4_cache_epoch_fuse_copy_epoch(
+			source_dir, fuse_backing_dir, entries, specs, objects,
+			W4_CACHE_EPOCH_TWO, &update_stats);
+	update_done_ns = monotonic_ns();
+	update_writes = update_stats.source_update_writes;
+	if (!ret)
+		epoch2_pass = w4_cache_epoch_fuse_oracle_passes(
+			view_dir, source_dir, entries, specs, objects,
+			W4_CACHE_EPOCH_TWO);
+	end_ns = monotonic_ns();
+	stats->update_rows++;
+	stats->fuse_update_writes += update_writes;
+	emit_w4_cache_epoch_update(
+		out, sample, "fuse_cache_epoch_view",
+		!ret && epoch2_pass, ret ? -ret : 0,
+		update_done_ns >= start_ns ? update_done_ns - start_ns : 0,
+		end_ns >= start_ns ? end_ns - start_ns : 0, update_writes,
+		false,
+		(!ret && epoch2_pass) ?
+			"FUSE cache view reached canonical epoch after per-object backing rewrites" :
+			"FUSE cache view canonical epoch update failed");
+	stats->correctness_rows++;
+	emit_w4_cache_epoch_correctness(
+		out, sample, "fuse_cache_epoch_view",
+		"canonical_epoch_after_update", !ret && epoch2_pass,
+		!ret && epoch2_pass, false, 0, false,
+		(!ret && epoch2_pass) ?
+			"FUSE canonical epoch oracle passed" :
+			"FUSE canonical epoch oracle failed");
+	if (ret || !epoch2_pass)
+		stats->failures++;
+	else
+		stats->fuse_updated_pass = true;
+
+	ret = unmount_w1_fuse_context(&fuse_ctx);
+	if (ret)
+		stats->failures++;
+	return ret || !epoch1_pass || !epoch2_pass;
+}
+
+static int run_w4_cache_epoch_counterfactual(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	size_t objects, const char *cache_policy_obj,
+	const char *table_policy_obj)
+{
+	struct w4_cache_epoch_stats stats = {};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	int sample;
+	int ret;
+
+	if (samples <= 0 || objects == 0 ||
+	    objects > W4_CACHE_EPOCH_MAX_OBJECTS) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"invalid sample count or cache epoch object count");
+		return 1;
+	}
+	stats.objects = objects;
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"failed to create W4 cache epoch workdir");
+		return 1;
+	}
+	if (access(cache_policy_obj, R_OK) || access(table_policy_obj, R_OK)) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"W4 cache epoch counterfactual inputs are not readable");
+		return 1;
+	}
+	ret = current_cgroup_path(cgroup_mount, current_cgroup,
+				  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"failed to resolve current cgroup id");
+		return 1;
+	}
+
+	for (sample = 0; sample < samples; sample++) {
+		char sample_dir[PATH_MAX];
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/cache-epoch-policy-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_policy_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, cache_policy_obj, NULL, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/cache-epoch-table-static-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_table_static_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, NULL, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/cache-epoch-table-updated-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_table_updated_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, NULL, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/cache-epoch-materialized-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_materialized_system(
+			out, sample_dir, sample, objects, NULL, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/cache-epoch-fuse-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_fuse_system(
+			out, sample_dir, sample, objects, NULL, &stats);
+	}
+
+	emit_w4_cache_epoch_summary(
+		out, samples, &stats,
+		stats.failures ?
+			"W4 cache epoch counterfactual failed" :
+			"W4 cache epoch counterfactual passed; static table fails epoch switch, while externally updated table, materialized view, and FUSE view reach canonical epoch only with per-object update writes");
+	return stats.failures ? 1 : 0;
+}
+
+static int run_w4_ccache_bulk_cache_epoch_counterfactual(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	const char *entries_tsv, size_t objects, const char *cache_policy_obj,
+	const char *table_policy_obj)
+{
+	static struct oracle_entry trace_entries[NAMEI_EXT_MAX_ENTRIES];
+	struct w4_cache_epoch_stats stats = {
+		.real_ccache_trace = true,
+		.trace_derived_counterfactual = true,
+	};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	size_t nr_entries = 0;
+	int sample;
+	int ret;
+
+	memset(trace_entries, 0, sizeof(trace_entries));
+	if (samples <= 0 || objects == 0 ||
+	    objects > W4_CACHE_EPOCH_MAX_OBJECTS) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"invalid sample count or ccache trace object count");
+		return 1;
+	}
+	ret = read_entries(entries_tsv, trace_entries, &nr_entries);
+	if (ret || nr_entries < objects) {
+		stats.failures = 1;
+		stats.trace_entries = nr_entries;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"failed to read enough trace-derived ccache objects");
+		return 1;
+	}
+	stats.objects = objects;
+	stats.trace_entries = nr_entries;
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"failed to create trace-derived W4 cache epoch workdir");
+		return 1;
+	}
+	if (access(entries_tsv, R_OK) || access(cache_policy_obj, R_OK) ||
+	    access(table_policy_obj, R_OK)) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"trace-derived W4 cache epoch inputs are not readable");
+		return 1;
+	}
+	ret = current_cgroup_path(cgroup_mount, current_cgroup,
+				  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret) {
+		stats.failures = 1;
+		emit_w4_cache_epoch_summary(
+			out, samples, &stats,
+			"failed to resolve current cgroup id");
+		return 1;
+	}
+
+	for (sample = 0; sample < samples; sample++) {
+		char sample_dir[PATH_MAX];
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/ccache-bulk-epoch-policy-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_policy_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, cache_policy_obj, trace_entries,
+			&stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/ccache-bulk-epoch-table-static-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_table_static_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, trace_entries,
+			&stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/ccache-bulk-epoch-table-updated-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_table_updated_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, table_policy_obj, trace_entries,
+			&stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/ccache-bulk-epoch-materialized-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_materialized_system(
+			out, sample_dir, sample, objects, trace_entries, &stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/ccache-bulk-epoch-fuse-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_fuse_system(
+			out, sample_dir, sample, objects, trace_entries, &stats);
+	}
+
+	emit_w4_cache_epoch_summary(
+		out, samples, &stats,
+		stats.failures ?
+			"trace-derived W4 ccache bulk cache epoch counterfactual failed" :
+			"trace-derived W4 ccache bulk cache epoch counterfactual passed; static table fails epoch switch and exact updated table/FUSE/materialized baselines need per-object update writes");
+	return stats.failures ? 1 : 0;
+}
+
 struct w4_rule_macro_stats {
 	unsigned long long created_dirs;
 	unsigned long long created_files;
@@ -12500,7 +18288,7 @@ static int run_w4_ccache_bulk_policy_macrobench(
 	const char *trace_cache_dir, const char *entries_tsv,
 	const char *source_manifest, const char *cache_policy_obj)
 {
-	struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES] = {};
+	static struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES];
 	char current_cgroup[PATH_MAX];
 	__u64 current_cgroup_id = 0;
 	size_t nr_sources = 0;
@@ -12514,6 +18302,8 @@ static int run_w4_ccache_bulk_policy_macrobench(
 	int sample;
 	int ret;
 	size_t i;
+
+	memset(sources, 0, sizeof(sources));
 
 	if (samples <= 0) {
 		emit_w4_bulk_policy_summary(
@@ -12999,8 +18789,8 @@ static int run_w4_ccache_bulk_native_compile(
 	const char *redis_build_src, const char *nginx_build_src,
 	const char *baseline_hot_dir)
 {
-	struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES] = {};
-	struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES] = {};
+	static struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	static struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES];
 	size_t nr_entries = 0;
 	size_t nr_sources = 0;
 	size_t total_compile_jobs = 0;
@@ -13016,6 +18806,9 @@ static int run_w4_ccache_bulk_native_compile(
 	int failures = 0;
 	int sample;
 	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(sources, 0, sizeof(sources));
 
 	if (samples <= 0) {
 		emit_w4_bulk_native_compile_summary(
@@ -13411,8 +19204,8 @@ static int run_w4_ccache_bulk_fuse_compile(
 	const char *redis_build_src, const char *nginx_build_src,
 	const char *baseline_hot_dir)
 {
-	struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES] = {};
-	struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES] = {};
+	static struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	static struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES];
 	size_t nr_entries = 0;
 	size_t nr_sources = 0;
 	size_t total_compile_jobs = 0;
@@ -13426,6 +19219,9 @@ static int run_w4_ccache_bulk_fuse_compile(
 	int failures = 0;
 	int sample;
 	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(sources, 0, sizeof(sources));
 
 	if (samples <= 0) {
 		emit_w4_bulk_fuse_compile_summary(
@@ -15502,6 +21298,38 @@ int main(int argc, char **argv)
 		return ret ? 1 : 0;
 	}
 
+	if (argc == 9 && !strcmp(argv[1], "--build-epoch-counterfactual")) {
+		char *end = NULL;
+		long samples;
+		long objects;
+
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		errno = 0;
+		end = NULL;
+		objects = strtol(argv[6], &end, 10);
+		if (errno || !end || *end || objects <= 0 ||
+		    objects > W1_BUILD_EPOCH_MAX_OBJECTS) {
+			fprintf(stderr, "invalid build object count: %s\n",
+				argv[6]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w1_build_epoch_counterfactual(
+			out, argv[3], (int)samples, argv[5],
+			(size_t)objects, argv[7], argv[8]);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
 	if (argc == 10 &&
 	    !strcmp(argv[1], "--sandbox-nginx-baseline-macrobench")) {
 		char *end = NULL;
@@ -15569,6 +21397,38 @@ int main(int argc, char **argv)
 		ret = run_nginx_real_app(out, argv[3], argv[4], argv[5],
 					 argv[6], argv[7], argv[8], argv[9],
 					 true);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
+	if (argc == 9 && !strcmp(argv[1], "--sandbox-fixture-epoch-counterfactual")) {
+		char *end = NULL;
+		long samples;
+		long objects;
+
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		errno = 0;
+		end = NULL;
+		objects = strtol(argv[6], &end, 10);
+		if (errno || !end || *end || objects <= 0 ||
+		    objects > W2_FIXTURE_EPOCH_MAX_OBJECTS) {
+			fprintf(stderr, "invalid fixture object count: %s\n",
+				argv[6]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w2_fixture_epoch_counterfactual(
+			out, argv[3], (int)samples, argv[5],
+			(size_t)objects, argv[7], argv[8]);
 		fclose(out);
 		return ret ? 1 : 0;
 	}
@@ -15648,6 +21508,38 @@ int main(int argc, char **argv)
 		return ret ? 1 : 0;
 	}
 
+	if (argc == 9 && !strcmp(argv[1], "--checkpoint-epoch-counterfactual")) {
+		char *end = NULL;
+		long samples;
+		long objects;
+
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		errno = 0;
+		end = NULL;
+		objects = strtol(argv[6], &end, 10);
+		if (errno || !end || *end || objects <= 0 ||
+		    objects > W3_EPOCH_MAX_OBJECTS) {
+			fprintf(stderr, "invalid checkpoint object count: %s\n",
+				argv[6]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w3_checkpoint_epoch_counterfactual(
+			out, argv[3], (int)samples, argv[5],
+			(size_t)objects, argv[7], argv[8]);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
 	if (argc == 7 && !strcmp(argv[1], "--cache-content")) {
 		out = fopen(argv[2], "a");
 		if (!out) {
@@ -15703,6 +21595,71 @@ int main(int argc, char **argv)
 		ret = run_w4_cache_transition_counterfactual(
 			out, argv[3], (int)samples, argv[5], argv[6],
 			argv[7], argv[8]);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
+	if (argc == 9 && !strcmp(argv[1], "--cache-epoch-counterfactual")) {
+		char *end = NULL;
+		long samples;
+		long objects;
+
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		errno = 0;
+		end = NULL;
+		objects = strtol(argv[6], &end, 10);
+		if (errno || !end || *end || objects <= 0 ||
+		    objects > W4_CACHE_EPOCH_MAX_OBJECTS) {
+			fprintf(stderr, "invalid cache object count: %s\n",
+				argv[6]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w4_cache_epoch_counterfactual(
+			out, argv[3], (int)samples, argv[5],
+			(size_t)objects, argv[7], argv[8]);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
+	if (argc == 10 &&
+	    !strcmp(argv[1], "--ccache-bulk-cache-epoch-counterfactual")) {
+		char *end = NULL;
+		long samples;
+		long objects;
+
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		errno = 0;
+		end = NULL;
+		objects = strtol(argv[7], &end, 10);
+		if (errno || !end || *end || objects <= 0 ||
+		    objects > W4_CACHE_EPOCH_MAX_OBJECTS) {
+			fprintf(stderr, "invalid cache object count: %s\n",
+				argv[7]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w4_ccache_bulk_cache_epoch_counterfactual(
+			out, argv[3], (int)samples, argv[5], argv[6],
+			(size_t)objects, argv[8], argv[9]);
 		fclose(out);
 		return ret ? 1 : 0;
 	}
@@ -16034,9 +21991,12 @@ int main(int argc, char **argv)
 			fprintf(stderr,
 				"       %s --checkpoint-restore OUT_JSONL CGROUP_MOUNT ENTRIES_TSV CHECKPOINT_POLICY TABLE_POLICY\n"
 				"       %s --cache-locality OUT_JSONL CGROUP_MOUNT ENTRIES_TSV CACHE_POLICY TABLE_POLICY\n"
+				"       %s --sandbox-fixture-epoch-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR OBJECTS SANDBOX_POLICY TABLE_POLICY\n"
 				"       %s --cache-content OUT_JSONL CGROUP_MOUNT WORK_DIR ENTRIES_TSV CACHE_POLICY\n"
 				"       %s --cache-table-content OUT_JSONL CGROUP_MOUNT WORK_DIR ENTRIES_TSV TABLE_POLICY\n"
 				"       %s --cache-transition-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR ENTRIES_TSV CACHE_POLICY TABLE_POLICY\n"
+				"       %s --cache-epoch-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR OBJECTS CACHE_POLICY TABLE_POLICY\n"
+				"       %s --ccache-bulk-cache-epoch-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR ENTRIES_TSV OBJECTS CACHE_POLICY TABLE_POLICY\n"
 				"       %s --ccache-rule-macrobench OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR ENTRIES_TSV CACHE_POLICY TABLE_POLICY\n"
 				"       %s --ccache-materialized-baseline-macrobench OUT_JSONL SAMPLES WORK_DIR ENTRIES_TSV [WORKLOAD]\n"
 				"       %s --ccache-bulk-policy-macrobench OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST CACHE_POLICY\n"
@@ -16050,6 +22010,9 @@ int main(int argc, char **argv)
 					"       %s --sandbox-nginx-baseline-macrobench OUT_JSONL WORK_DIR SAMPLES NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES BASELINES\n"
 					"       %s --sandbox-nginx-macrobench OUT_JSONL CGROUP_MOUNT WORK_DIR SAMPLES NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES SANDBOX_POLICY\n"
 					"       %s --sandbox-nginx-smoke OUT_JSONL CGROUP_MOUNT WORK_DIR NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES SANDBOX_POLICY\n",
+				argv[0],
+				argv[0],
+				argv[0],
 				argv[0],
 				argv[0],
 				argv[0],
@@ -16082,6 +22045,12 @@ int main(int argc, char **argv)
 				argv[0]);
 			fprintf(stderr,
 				"       %s --checkpoint-redis-baseline-macrobench OUT_JSONL WORK_DIR SAMPLES REDIS_BIN BASELINES\n",
+				argv[0]);
+			fprintf(stderr,
+				"       %s --checkpoint-epoch-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR OBJECTS CHECKPOINT_POLICY TABLE_POLICY\n",
+				argv[0]);
+			fprintf(stderr,
+				"       %s --build-epoch-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR OBJECTS BUILD_POLICY TABLE_POLICY\n",
 				argv[0]);
 			fprintf(stderr,
 				"       %s --build-replay OUT_JSONL CGROUP_MOUNT ENTRIES_TSV BUILD_POLICY REDIS_SRC NGINX_SRC RESULT_DIR\n",

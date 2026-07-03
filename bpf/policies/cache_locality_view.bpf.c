@@ -30,12 +30,43 @@ struct cache_rule {
 	__u32 witness_count;
 };
 
+struct cache_epoch_session {
+	__u32 cache_epoch;
+	__u32 active;
+	__u32 reserved[2];
+};
+
+struct cache_epoch_rule_key {
+	struct namei_ext_component_key component;
+	__u32 cache_epoch;
+};
+
+struct cache_epoch_rule {
+	struct namei_ext_redirect_rule redirect;
+	__u32 state;
+	__u32 reserved;
+};
+
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, NAMEI_EXT_POLICY_MAX_RULES);
 	__type(key, struct namei_ext_component_key);
 	__type(value, struct cache_rule);
 } cache_rules SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, NAMEI_EXT_POLICY_MAX_STATE);
+	__type(key, __u64);
+	__type(value, struct cache_epoch_session);
+} cache_epoch_sessions SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, NAMEI_EXT_POLICY_MAX_RULES);
+	__type(key, struct cache_epoch_rule_key);
+	__type(value, struct cache_epoch_rule);
+} cache_epoch_rules SEC(".maps");
 
 static __always_inline void cache_build_parent_component_key(
 	const struct bpf_namei_ext_ctx *ctx,
@@ -216,11 +247,33 @@ static __always_inline int apply_cache_parent_rule(struct bpf_namei_ext_ctx *ctx
 	return BPF_NAMEI_EXT_PASS;
 }
 
+static __always_inline int apply_cache_epoch_rule(struct bpf_namei_ext_ctx *ctx)
+{
+	struct cache_epoch_rule_key key = {};
+	struct cache_epoch_session *session;
+	struct cache_epoch_rule *rule;
+	__u64 cgroup_id = ctx->cgroup_id;
+
+	session = bpf_map_lookup_elem(&cache_epoch_sessions, &cgroup_id);
+	if (!session || !session->active)
+		return BPF_NAMEI_EXT_PASS;
+	namei_ext_build_component_key(ctx, &key.component);
+	key.cache_epoch = session->cache_epoch;
+	rule = bpf_map_lookup_elem(&cache_epoch_rules, &key);
+	if (!rule)
+		return BPF_NAMEI_EXT_PASS;
+	return namei_ext_apply_rule(ctx, &rule->redirect);
+}
+
 static __inline int apply_cache_rule(struct bpf_namei_ext_ctx *ctx)
 {
 	struct namei_ext_component_key key = {};
 	struct cache_rule *rule;
 	int ret;
+
+	ret = apply_cache_epoch_rule(ctx);
+	if (ret != BPF_NAMEI_EXT_PASS)
+		return ret;
 
 	namei_ext_build_component_key(ctx, &key);
 	rule = bpf_map_lookup_elem(&cache_rules, &key);
