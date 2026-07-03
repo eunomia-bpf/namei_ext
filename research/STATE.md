@@ -83,9 +83,14 @@ baseline, workload-source, or result verdicts.
   a single preserved auth status-code drift. A follow-up Docker backend record
   built `swe-rex-test:latest` and passed 6/6 Docker deployment tests; Modal,
   Fargate, and Daytona remain unreproduced.
-- SWE-rebench V2 now has an independent README sample reproduction record:
-  `unidata__netcdf-c-1925` passed the Docker evaluator with all 12
-  fail-to-pass tests passed, no pass-to-pass failures, and `all_ok=true`.
+- SWE-rebench V2 now has an independent README sample reproduction record and
+  a selected public HF sample follow-up. `unidata__netcdf-c-1925` passed the
+  Docker evaluator with all 12 fail-to-pass tests passed, no pass-to-pass
+  failures, and `all_ok=true`; HF row `pilosus__pip-license-checker-119` also
+  passed through the official evaluator with all 11 fail-to-pass tests passed,
+  no pass-to-pass failures, and `all_ok=true`. This is selected-row evidence,
+  not full corpus, full HF 20-task sample, image-builder, or
+  environment-generation reproduction.
 - SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
   `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
   `mochajs__mocha-1965`, and `iamkun__dayjs-337` all completed and resolved

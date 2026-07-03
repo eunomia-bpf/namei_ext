@@ -173,7 +173,7 @@ Out of scope: new filesystem implementation, distributed metadata service, stora
 | Expansion axis | Bigger experiment | Claim upside | Cost/risk | Probe |
 | --- | --- | --- | --- | --- |
 | Agent workspace | Branch/session/COW/checkpoint workload from public agent systems. | Makes the paper timely and real. | Needs trace extraction and KVM integration. | Start with one source-backed oracle. |
-| Environment/cache | SWE-rebench V2, SWE-Factory-Gym, or MEnvData-SWE stale/corrupt/update-window run. | Best evidence for state-dependent path views. | Docker build variability and image access. | Reuse the passing `pallets__click-2622`, `python-attrs__attrs-586`, or SWE-rebench sample. |
+| Environment/cache | SWE-rebench V2, SWE-Factory-Gym, or MEnvData-SWE stale/corrupt/update-window run. | Best evidence for state-dependent path views. | Docker build variability and image access. | Reuse the passing `pallets__click-2622`, `python-attrs__attrs-586`, SWE-rebench `unidata__netcdf-c-1925`, or SWE-rebench HF `pilosus__pip-license-checker-119` row. |
 | Service sandbox | nginx reload/update or PostgreSQL secret/config rotation. | Operational systems relevance. | Needs real reload/update trace. | Extend existing W2 fixture. |
 
 ### Reviewer Attack Surface
