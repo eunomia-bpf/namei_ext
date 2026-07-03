@@ -86,9 +86,11 @@ baseline, workload-source, or result verdicts.
 - SWE-rebench V2 now has an independent README sample reproduction record:
   `unidata__netcdf-c-1925` passed the Docker evaluator with all 12
   fail-to-pass tests passed, no pass-to-pass failures, and `all_ok=true`.
-- SWE-Factory-Gym now has an independent single-row replay record:
-  `pallets__click-2622` built a generated Dockerfile, applied the gold patch,
-  passed 40 pytest tests, emitted `OMNIGRIL_EXIT_CODE=0`, and resolved.
+- SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
+  `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
+  `mochajs__mocha-1965`, and `iamkun__dayjs-337` all completed and resolved
+  with `OMNIGRIL_EXIT_CODE=0`. The `iamkun/dayjs` row keeps a post-oracle
+  cleanup warning as an artifact caveat.
 - MEnvData-SWE now has an independent selected-row replay record: Python
   `python-attrs__attrs-586` and Go `go-task__task-1814` pass with
   `OMNIGRIL_EXIT_CODE=0`; Rust `eyre-rs__color-eyre-114` remains a preserved
