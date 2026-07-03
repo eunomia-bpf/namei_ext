@@ -105,6 +105,15 @@ baseline, workload-source, or result verdicts.
   Rust `cobalt-org__liquid-rust-403` pass with `OMNIGRIL_EXIT_CODE=0`;
   combined MEnvData evidence now has positive selected rows for all 10 dataset
   languages. Earlier negative rows remain artifact caveats.
+- DockSmith now has a trajectory-inspection and smoke-replay record. Local
+  shard 1 of `8sj7df9k8m5x8/docker_building_training` contains 298 instances
+  with tagged Dockerfile/eval-script text, but tagged eval scripts use
+  placeholder test patches rather than concrete official fail-to-pass patches.
+  A trajectory-derived smoke replay for `00imvj00__mqttrs-7` built the
+  extracted Dockerfile, ran target Rust tests at commit
+  `77d51fb5449394e450b3565205d989433511082b`, passed 15 decoder and 14 encoder
+  tests, and reported `OMNIGRIL_EXIT_CODE=0`. Treat DockSmith as trajectory and
+  smoke workload evidence, not full official benchmark reproduction.
 - Terminal-Bench selected official-task evidence, OpenHands SDK, SWE-ReX,
   SWE-rebench V2, SWE-Factory-Gym, MEnvData-SWE, Multi-Docker-Eval, Redis AFS,
   BranchFS, Sandlock, YoloFS, DeltaFS, TableFS, and IndexFS statuses are
