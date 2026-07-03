@@ -97,6 +97,8 @@ baseline, workload-source, or result verdicts.
   code 0, 406/406 fail-to-pass tests, no pass-to-pass failures, and
   `all_ok=true`. A public HF Dart row, `nyxx-discord__nyxx-547`, also passes
   with raw exit code 0, 15/15 fail-to-pass tests, 0/520 pass-to-pass failures,
+  and `all_ok=true`. A public HF Go row, `mgechev__revive-1408`, also passes
+  with raw exit code 0, 2/2 fail-to-pass tests, 0/492 pass-to-pass failures,
   and `all_ok=true`. This is selected-row evidence, not full corpus, full HF
   20-task sample, image-builder, or environment-generation reproduction.
 - SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
