@@ -1,29 +1,9 @@
 # Background And Related Work
 
 Last updated: 2026-07-02
-Stage at update: skill-layout convergence and workload-source consolidation
+Stage at update: research-literature-novelty skill-template convergence and workload-source consolidation
 Source/command: `research-literature-novelty` skill layout, local PDF corpus in `docs/reference/`, source catalog in `docs/reference/CODE_SOURCES.md`, reproduction records in `docs/tmp/`, raw logs in `results/reproduction/`
 Completeness: partial but usable for next experiment design
-
-## Document Ownership
-
-This is the canonical `research-literature-novelty` output for durable
-related-work, novelty, baseline, and workload-source conclusions. Keep verdicts
-and reviewer-facing implications here.
-
-Do not store per-paper scratch notes, raw command output, logs, JSON/JSONL, or
-benchmark summaries here. Source/code entry points belong in
-`docs/reference/CODE_SOURCES.md`; PDF inventory belongs in
-`docs/reference/INDEX.md`; standalone dated evidence records belong in
-`docs/tmp/YYYY-MM-DD-*.md`; raw artifacts belong under `results/`.
-
-This repository keeps dated notes directly under `docs/tmp/YYYY-MM-DD-*.md`
-because AGENTS.md is stricter than the skill's optional
-`docs/tmp/phase-1-related-work/` path. Historical planning documents such as
-`docs/research_plan.md`, `docs/case_studies.md`,
-`docs/experiment-plans/*.md`, `docs/phase1_design.md`, older files under
-`research/`, and paper drafts under `docs/paper/` are provenance or drafts
-unless their current claims are repeated here or in `docs/idea-story.md`.
 
 ## Search Log
 

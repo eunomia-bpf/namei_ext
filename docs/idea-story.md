@@ -1,26 +1,9 @@
 # Idea Story
 
 Last updated: 2026-07-02
-Stage at update: skill-layout convergence after workload-source consolidation
-Source/command: local source/reproduction records under `docs/tmp/`, canonical related-work state in `docs/background-related-work.md`, and raw logs under `results/reproduction/`
+Stage at update: research-project-startup skill-template convergence after workload-source consolidation
+Source/command: `research-project-startup` skill layout, local source/reproduction records under `docs/tmp/`, related-work state in `docs/background-related-work.md`, and raw logs under `results/reproduction/`
 Completeness: partial; ready to drive the next KVM workload implementation, not ready for final paper claims
-
-## Document Ownership
-
-This is the canonical story and claim-scope document. Keep the current thesis,
-claim ledger, scope, non-goals, and next action here.
-
-Use `docs/background-related-work.md` for related work, novelty risk, closest
-work, baselines, and venue-evaluation implications. Use
-`docs/reference/CODE_SOURCES.md` for code/artifact entry points. Use
-`docs/tmp/YYYY-MM-DD-*.md` for standalone dated research or implementation
-records, and keep raw logs, JSON/JSONL, and benchmark outputs under `results/`.
-Historical planning files such as `docs/research_plan.md`,
-`docs/case_studies.md`, `docs/experiment-plans/*.md`, `docs/phase1_design.md`,
-and `research/*.md` are provenance stubs or handoff pointers, not current
-verdict stores. Paper files under `docs/paper/` are drafts and must follow the
-claim scope recorded here and the related-work verdicts in
-`docs/background-related-work.md`.
 
 ## Current State
 
