@@ -138,6 +138,12 @@ baseline, workload-source, or result verdicts.
   Rust `cobalt-org__liquid-rust-403` pass with `OMNIGRIL_EXIT_CODE=0`;
   combined MEnvData evidence now has positive selected rows for all 10 dataset
   languages. Earlier negative rows remain artifact caveats.
+- A MEnvData-SWE second-sample run added five more passing official image/eval
+  rows: Python `PyCQA__pycodestyle-859`, Go `go-yaml__yaml-353`,
+  JavaScript `AlaSQL__alasql-970`, Rust `pest-parser__pest-702`, and
+  TypeScript `refined-github__refined-github-7041`. Selected MEnvData evidence
+  now has 15 passing rows across all 10 dataset languages, plus four preserved
+  artifact-caveat rows.
 - DockSmith now has a trajectory-inspection and smoke-replay record. Local
   shard 1 of `8sj7df9k8m5x8/docker_building_training` contains 298 instances
   with tagged Dockerfile/eval-script text, but tagged eval scripts use
