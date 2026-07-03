@@ -95,7 +95,9 @@ baseline, workload-source, or result verdicts.
   cleaner W4 candidates are `pilosus` and `chrovis` rows. A public HF
   JavaScript row, `pbiswas101__mathball-153`, now also passes with raw exit
   code 0, 406/406 fail-to-pass tests, no pass-to-pass failures, and
-  `all_ok=true`. This is selected-row evidence, not full corpus, full HF
+  `all_ok=true`. A public HF Dart row, `nyxx-discord__nyxx-547`, also passes
+  with raw exit code 0, 15/15 fail-to-pass tests, 0/520 pass-to-pass failures,
+  and `all_ok=true`. This is selected-row evidence, not full corpus, full HF
   20-task sample, image-builder, or environment-generation reproduction.
 - SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
   `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
