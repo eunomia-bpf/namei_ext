@@ -93,11 +93,16 @@ baseline, workload-source, or result verdicts.
   `python-attrs__attrs-586` and Go `go-task__task-1814` pass with
   `OMNIGRIL_EXIT_CODE=0`; Rust `eyre-rs__color-eyre-114` remains a preserved
   negative test-patch artifact caveat.
-- A follow-up MEnvData-SWE language extension now attempts the remaining
+- The first follow-up MEnvData-SWE language extension attempted the remaining
   language families with released image/eval rows: JavaScript, Ruby, PHP,
   Java, and C pass with `OMNIGRIL_EXIT_CODE=0`; TypeScript, C++, and Rust are
-  preserved negative artifact rows. Combined MEnvData evidence now attempts
-  all 10 dataset languages, with positive rows for seven.
+  preserved negative artifact rows. That extension brought attempted coverage
+  to all 10 dataset languages, with positive rows for seven at that point.
+- A MEnvData-SWE positive retry closed the remaining language-positive gap:
+  TypeScript `sindresorhus__type-fest-818`, C++ `CLIUtils__CLI11-926`, and
+  Rust `cobalt-org__liquid-rust-403` pass with `OMNIGRIL_EXIT_CODE=0`;
+  combined MEnvData evidence now has positive selected rows for all 10 dataset
+  languages. Earlier negative rows remain artifact caveats.
 - Terminal-Bench selected official-task evidence, OpenHands SDK, SWE-ReX,
   SWE-rebench V2, SWE-Factory-Gym, MEnvData-SWE, Multi-Docker-Eval, Redis AFS,
   BranchFS, Sandlock, YoloFS, DeltaFS, TableFS, and IndexFS statuses are
