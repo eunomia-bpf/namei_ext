@@ -1,7 +1,7 @@
 # Idea Story
 
-Last updated: 2026-07-02
-Stage at update: research-project-startup skill-template convergence after workload-source consolidation
+Last updated: 2026-07-03
+Stage at update: workload-source reuse decision after inventory consolidation
 Source/command: `research-project-startup` skill layout, local source/reproduction records under `docs/tmp/`, related-work state in `docs/background-related-work.md`, and raw logs under `results/reproduction/`
 Completeness: partial; ready to drive the next KVM workload implementation, not ready for final paper claims
 
@@ -9,7 +9,7 @@ Completeness: partial; ready to drive the next KVM workload implementation, not 
 
 - Stage: runnable prototype plus workload-source selection.
 - Blocking gate: the paper needs a Make-owned KVM workload derived from real agent/workspace or environment/cache sources.
-- Next action: implement the AI agent workspace lifecycle workload first; use SWE-rebench V2, SWE-Factory-Gym, or MEnvData-SWE for the W4 environment/cache workload next.
+- Next action: implement the AgentFS-derived AI agent workspace lifecycle workload first; use SWE-Factory-Gym or MEnvData-SWE for the W4 environment/cache workload next, with SWE-rebench V2 as a broader companion source.
 
 ## Downstream Document Index
 
@@ -155,7 +155,7 @@ Out of scope: new filesystem implementation, distributed metadata service, stora
 
 | Expansion axis | Bigger experiment | Claim upside | Cost/risk | Probe |
 | --- | --- | --- | --- | --- |
-| Agent workspace | Branch/session/COW/checkpoint workload from public agent systems. | Makes the paper timely and real. | Needs trace extraction and KVM integration. | Start with one source-backed oracle. |
+| Agent workspace | Branch/session/COW/checkpoint workload from public agent systems. | Makes the paper timely and real. | Needs trace extraction and KVM integration. | Start with AgentFS-derived COW/FUSE/git/bash/cache-invalidation/whiteout oracle, using Redis AFS, Mirage, BranchFS, Sandlock, YoloFS, OpenHands, SWE-agent, and SWE-ReX as supporting source evidence. |
 | Environment/cache | SWE-rebench V2, SWE-Factory-Gym, or MEnvData-SWE stale/corrupt/update-window run. | Best evidence for state-dependent path views. | Docker build variability and image access. | Reuse the passing SWE-Factory rows such as `pallets__click-2622`, `nodejs__undici-3566`, `tailwindlabs__tailwindcss-12404`, or `python-pillow__Pillow-5425`; MEnvData rows such as `python-attrs__attrs-586`, `PyCQA__pycodestyle-859`, `go-yaml__yaml-353`, `pest-parser__pest-702`, or `refined-github__refined-github-7041`; SWE-rebench `unidata__netcdf-c-1925`; or clean raw-exit-0 SWE-rebench HF rows such as `pilosus__pip-license-checker-119`, `chrovis__cljam-268`, `pilosus__pip-license-checker-49`, high-cardinality JS row `pbiswas101__mathball-153`, Dart row `nyxx-discord__nyxx-547`, Go rows `mgechev__revive-1408`, `hashicorp__consul-10576`, or `fsouza__fake-gcs-server-1035`, and Java rows `spoonlabs__gumtree-spoon-ast-diff-171` or `jchambers__pushy-850`. Keep caveated HF rows as source-diversity evidence rather than first-choice W4 candidates; avoid `alibaba__fescar-382` unless investigating the mismatch. |
 | Service sandbox | nginx reload/update or PostgreSQL secret/config rotation. | Operational systems relevance. | Needs real reload/update trace. | Extend existing W2 fixture. |
 
@@ -168,6 +168,5 @@ Out of scope: new filesystem implementation, distributed metadata service, stora
 
 ### Open Questions
 
-- Which one agent workspace source should be the first Make-owned KVM workload?
 - Should the first W4 implementation use SWE-rebench V2, SWE-Factory-Gym, or the newly passing MEnvData-SWE slice?
 - What is the minimum safe directory-enumeration policy needed for the first workload?

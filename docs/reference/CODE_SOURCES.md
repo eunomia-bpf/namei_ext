@@ -84,6 +84,7 @@ are recorded in dated evidence files:
 
 | Record | Scope |
 | --- | --- |
+| `docs/tmp/2026-07-03-workload-inventory-and-reuse-decision.md` | Consolidated workload inventory and reuse decision: AgentFS-derived workspace lifecycle selected as the first KVM workload source; SWE-Factory-Gym or MEnvData-SWE selected for first W4; DeltaFS/IndexFS/TableFS kept as appendix/related-work only; 2026-07-03 YoloFS `agent-eval`/`perf-eval`/result submodule access checks still return GitHub `Repository not found`. |
 | `docs/tmp/2026-06-30-filesystem-workload-reproduction-report.md` | AgentFS, Redis AFS, Mirage, YoloFS historical state, DeltaFS, TableFS, and IndexFS build/smoke reproduction. |
 | `docs/tmp/2026-07-01-yolofs-public-artifact-reproduction-update.md` | YoloFS public filesystem artifact and unavailable agent/perf submodule boundary. |
 | `docs/tmp/2026-07-01-yolofs-e2e-vm-retry.md` | YoloFS public mounted VM e2e retry and guest-readiness failure boundary. |

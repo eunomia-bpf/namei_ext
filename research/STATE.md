@@ -1,6 +1,6 @@
 # Research State
 
-Last updated: 2026-07-02
+Last updated: 2026-07-03
 Status: handoff pointer only.
 
 This file is intentionally short. It does not own related-work, novelty,
@@ -27,8 +27,9 @@ baseline, workload-source, or result verdicts.
   filesystem semantics.
 - Current claim boundary: do not claim workloads require eBPF, `namei_ext`, or
   dynamic policy logic; do not frame the paper around table-only impossibility.
-- Paper-facing workload direction: AI agent workspace lifecycle first, W4
-  environment/cache transition second, W2 service reload/update upgrade third.
+- Paper-facing workload direction: AgentFS-derived AI agent workspace lifecycle
+  first, W4 environment/cache transition second, W2 service reload/update
+  upgrade third.
 - `table_redirect.bpf.c`: archived boundary ablation only, not the next
   research mainline.
 - The paper draft tree under `docs/paper/` is routing-only after the
@@ -56,7 +57,9 @@ baseline, workload-source, or result verdicts.
   dependency installation and cleanup of local generated kmod artifacts,
   upstream `make test-e2e-vm` built/installed `yolofs.ko`, loaded the module,
   ran 593/593 mounted e2e tests, unloaded the module, and stopped the VM.
-  Private `agent-eval` and `perf-eval` submodules remain unreproduced.
+  A 2026-07-03 current-access check confirmed `agent-eval`, `perf-eval`,
+  `agent-results`, and `perf-results` still return GitHub `Repository not
+  found`; original YoloFS agent/perf benchmark reproduction remains unclaimed.
 - Mirage official workload/test evidence now includes both the earlier Python
   subset and a TypeScript/FUSE follow-up: TypeScript build/test passed, 5522
   package tests passed, 15/15 TypeScript examples matched truth files, explicit
@@ -167,13 +170,18 @@ baseline, workload-source, or result verdicts.
   BranchFS, Sandlock, YoloFS, DeltaFS, TableFS, and IndexFS statuses are
   indexed in `docs/background-related-work.md` and
   `docs/reference/CODE_SOURCES.md`.
+- `docs/tmp/2026-07-03-workload-inventory-and-reuse-decision.md` consolidates
+  workload reuse: AgentFS-derived workspace lifecycle is the first KVM target,
+  SWE-Factory-Gym or MEnvData-SWE is the first W4 target, and
+  DeltaFS/IndexFS/TableFS stay appendix/related-work only.
 
 ## Next Action
 
-Implement a Make-owned, KVM-validated AI agent workspace lifecycle workload in
-`namei_ext`. The workload should include a real source-backed oracle, a
-state-transition path view, operation-weighted lookup/readdir signal, and
-natural baselines such as source-system/FUSE/materialized/native behavior.
+Implement a Make-owned, KVM-validated AgentFS-derived AI agent workspace
+lifecycle workload in `namei_ext`. The workload should include a real
+source-backed oracle, a state-transition path view, operation-weighted
+lookup/readdir signal, and natural baselines such as
+source-system/FUSE/materialized/native behavior.
 
 Second priority is a W4 environment/cache run with real stale/corrupt/update or
 environment-reuse behavior. Third priority is a W2 real reload/update or
