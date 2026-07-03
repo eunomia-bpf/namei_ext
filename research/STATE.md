@@ -92,9 +92,11 @@ baseline, workload-source, or result verdicts.
   `pilosus__pip-license-checker-49`; all report `all_ok=true` and
   `passed_match=true`. Preserve the `yogthos__migratus-223` caveat: the raw
   row `exit_code` is 1 due a nested testcontainers Docker-socket error, so
-  cleaner W4 candidates are `pilosus` and `chrovis` rows. This is selected-row
-  evidence, not full corpus, full HF 20-task sample, image-builder, or
-  environment-generation reproduction.
+  cleaner W4 candidates are `pilosus` and `chrovis` rows. A public HF
+  JavaScript row, `pbiswas101__mathball-153`, now also passes with raw exit
+  code 0, 406/406 fail-to-pass tests, no pass-to-pass failures, and
+  `all_ok=true`. This is selected-row evidence, not full corpus, full HF
+  20-task sample, image-builder, or environment-generation reproduction.
 - SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
   `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
   `mochajs__mocha-1965`, and `iamkun__dayjs-337` all completed and resolved
