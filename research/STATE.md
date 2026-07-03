@@ -118,11 +118,12 @@ baseline, workload-source, or result verdicts.
   attempted, 19/20 evaluator-positive, 11/20 clean raw-exit-0 positives, 8/20
   evaluator-positive raw-exit caveats, and 1/20 mismatch. This is still not
   full corpus, image-builder, or environment-generation reproduction.
-- SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
-  `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
-  `mochajs__mocha-1965`, and `iamkun__dayjs-337` all completed and resolved
-  with `OMNIGRIL_EXIT_CODE=0`. The `iamkun/dayjs` row keeps a post-oracle
-  cleanup warning as an artifact caveat.
+- SWE-Factory-Gym now has seven selected resolved row replays across seven
+  repositories. `pallets__click-2622` resolved first; follow-ups resolved
+  `python-attrs__attrs-556`, `mochajs__mocha-1965`, `iamkun__dayjs-337`,
+  `nodejs__undici-3566`, `tailwindlabs__tailwindcss-12404`, and
+  `python-pillow__Pillow-5425`, all with `OMNIGRIL_EXIT_CODE=0`. The
+  `iamkun/dayjs` row keeps a post-oracle cleanup warning as an artifact caveat.
 - MEnvData-SWE now has an independent selected-row replay record: Python
   `python-attrs__attrs-586` and Go `go-task__task-1814` pass with
   `OMNIGRIL_EXIT_CODE=0`; Rust `eyre-rs__color-eyre-114` remains a preserved
