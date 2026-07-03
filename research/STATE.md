@@ -84,12 +84,16 @@ baseline, workload-source, or result verdicts.
   built `swe-rex-test:latest` and passed 6/6 Docker deployment tests; Modal,
   Fargate, and Daytona remain unreproduced.
 - SWE-rebench V2 now has an independent README sample reproduction record and
-  a selected public HF sample follow-up. `unidata__netcdf-c-1925` passed the
+  selected public HF sample follow-ups. `unidata__netcdf-c-1925` passed the
   Docker evaluator with all 12 fail-to-pass tests passed, no pass-to-pass
-  failures, and `all_ok=true`; HF row `pilosus__pip-license-checker-119` also
-  passed through the official evaluator with all 11 fail-to-pass tests passed,
-  no pass-to-pass failures, and `all_ok=true`. This is selected-row evidence,
-  not full corpus, full HF 20-task sample, image-builder, or
+  failures, and `all_ok=true`. Four public HF Clojure rows now reproduce
+  through the official evaluator: `pilosus__pip-license-checker-119`,
+  `chrovis__cljam-268`, `yogthos__migratus-223`, and
+  `pilosus__pip-license-checker-49`; all report `all_ok=true` and
+  `passed_match=true`. Preserve the `yogthos__migratus-223` caveat: the raw
+  row `exit_code` is 1 due a nested testcontainers Docker-socket error, so
+  cleaner W4 candidates are `pilosus` and `chrovis` rows. This is selected-row
+  evidence, not full corpus, full HF 20-task sample, image-builder, or
   environment-generation reproduction.
 - SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
   `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
