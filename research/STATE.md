@@ -114,6 +114,15 @@ baseline, workload-source, or result verdicts.
   `77d51fb5449394e450b3565205d989433511082b`, passed 15 decoder and 14 encoder
   tests, and reported `OMNIGRIL_EXIT_CODE=0`. Treat DockSmith as trajectory and
   smoke workload evidence, not full official benchmark reproduction.
+- Multi-Docker-Eval now has a second-language public-task replay beyond the
+  earlier Go synthetic/manual probe. Public Python task
+  `pallets-eco__flask-wtf-512` was run through the upstream evaluator with a
+  manual `docker_res`: v1 exposed missing `pytest`, v2 exposed current
+  Flask/Werkzeug dependency drift, and v3 pinned `Flask==2.1.3`,
+  `Werkzeug==2.1.0`, and `WTForms==3.0.1`, producing a positive F2P result
+  with before-patch failure, after-patch 13/13 target tests passed,
+  `resolved=1`, and `stable=1`. This remains manual-environment evidence; the
+  public dataset still lacks official generated `docker_res`.
 - Terminal-Bench selected official-task evidence, OpenHands SDK, SWE-ReX,
   SWE-rebench V2, SWE-Factory-Gym, MEnvData-SWE, Multi-Docker-Eval, Redis AFS,
   BranchFS, Sandlock, YoloFS, DeltaFS, TableFS, and IndexFS statuses are
