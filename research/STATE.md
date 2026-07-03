@@ -99,8 +99,11 @@ baseline, workload-source, or result verdicts.
   with raw exit code 0, 15/15 fail-to-pass tests, 0/520 pass-to-pass failures,
   and `all_ok=true`. A public HF Go row, `mgechev__revive-1408`, also passes
   with raw exit code 0, 2/2 fail-to-pass tests, 0/492 pass-to-pass failures,
-  and `all_ok=true`. This is selected-row evidence, not full corpus, full HF
-  20-task sample, image-builder, or environment-generation reproduction.
+  and `all_ok=true`. A public HF Java row,
+  `spoonlabs__gumtree-spoon-ast-diff-171`, also passes with raw exit code 0,
+  2/2 fail-to-pass tests, 0/2 pass-to-pass failures, and `all_ok=true`. This
+  is selected-row evidence, not full corpus, full HF 20-task sample,
+  image-builder, or environment-generation reproduction.
 - SWE-Factory-Gym now has a single-row replay plus a multirepo follow-up:
   `pallets__click-2622` resolved first, then `python-attrs__attrs-556`,
   `mochajs__mocha-1965`, and `iamkun__dayjs-337` all completed and resolved
