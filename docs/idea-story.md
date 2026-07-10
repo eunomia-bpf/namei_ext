@@ -1,7 +1,7 @@
 # Idea Story
 
-Last updated: 2026-07-03
-Stage at update: workload-source reuse decision after inventory consolidation
+Last updated: 2026-07-09
+Stage at update: iter-refine-writing-idea round 5 stress-test refinement
 Source/command: `research-project-startup` skill layout, local source/reproduction records under `docs/tmp/`, related-work state in `docs/background-related-work.md`, and raw logs under `results/reproduction/`
 Completeness: partial; ready to drive the next KVM workload implementation, not ready for final paper claims
 
@@ -17,7 +17,7 @@ Completeness: partial; ready to drive the next KVM workload implementation, not 
 | --- | --- | --- | --- |
 | `docs/background-related-work.md` | novelty, closest work, baselines | present; newly consolidated | Keep source status current when new workload reproduction closes. |
 | `docs/design.md` | mechanism and artifact boundary | missing | Define the one-decision-function VFS name-resolution ABI and policy/lower-FS boundary. |
-| `docs/implementation.md` | prototype and runnable commands | missing | Document Make-owned KVM paths once the selected workload is implemented. |
+| `docs/implementation.md` | prototype and runnable commands | missing | Document Make-owned KVM paths once the next source-derived workload is implemented. |
 | `docs/evaluation.md` | experiment plan, results, claim verdict | missing | Convert workload-source decisions into run matrix, oracles, baselines, and thresholds. |
 
 ## Intro P1: Problem And Stakes
@@ -25,9 +25,11 @@ Completeness: partial; ready to drive the next KVM workload implementation, not 
 Purpose: establish why dynamic path views matter now.
 
 Draft paragraph:
-AI agents, service sandboxes, and build/environment systems increasingly need to present different filesystem views to the same unmodified programs as execution state changes. Agent workspaces branch, fork, checkpoint, and hide side effects; service tasks rotate configs, secrets, and generated fixtures; build and cache systems choose among verified local artifacts, canonical backing stores, and regenerated environments. These decisions happen at path-resolution time, but current deployments usually express them by building a user-space filesystem, a custom filesystem or metadata service, or a materialized namespace.
+Modern agent and environment systems repeatedly fork, checkpoint, validate, and discard filesystem state while running unmodified tools. If a tool observes the wrong workspace branch, consumes a stale or corrupt cached artifact, or sees files that should remain hidden until commit, the task can pass against the wrong state or leak side effects into the host workspace. These failures appear at ordinary pathnames: the same name should resolve to a different backing object under the current workspace, branch, epoch, or request state.
 
-Evidence/claim dependency: BranchFS, Sandlock, AgentFS, Redis AFS, Mirage, YoloFS, OpenHands SDK, Terminal-Bench, SWE-rebench V2, SWE-Factory-Gym, and MEnv/DockSmith trajectory evidence.
+Primary executable evidence: AgentFS-derived workspace lifecycle first; SWE-Factory-Gym or MEnvData-SWE environment/cache second.
+
+Motivating and related evidence: BranchFS, Sandlock, Redis AFS, Mirage, YoloFS, OpenHands SDK, Terminal-Bench, SWE-rebench V2, MEnv/DockSmith trajectories, DeltaFS, IndexFS, TableFS, and FUSE/custom-FS literature.
 
 Completeness: plausible, needs one implemented real workload trace.
 
@@ -36,7 +38,7 @@ Completeness: plausible, needs one implemented real workload trace.
 Purpose: distinguish the project from FUSE, full filesystems, and static namespace construction.
 
 Draft paragraph:
-The status quo offers powerful but coarse mechanisms. FUSE and NFS-like agent filesystems can implement rich semantics, but they put the whole filesystem path into a user-space service. Custom kernel filesystems and metadata services can be fast and expressive, but they require owning file objects, persistence, and metadata layout. Static tables, bind mounts, symlink forests, OverlayFS layers, and projected views are operationally useful, but they materialize a path view outside the VFS lookup decision. The gap is a narrow interface for policies that only need to choose a path view while leaving ordinary VFS objects, lower-filesystem data, writes, permissions, and persistence alone.
+The status quo offers powerful mechanisms, but their control granularity often does not match this requirement. FUSE and NFS-like agent filesystems are the natural choice when a system owns filesystem semantics, but using them for state-transition path views also moves lookup and directory enumeration, cache consistency, failure handling, and service availability into a separate filesystem server. Custom kernel filesystems and metadata services are appropriate when a system owns metadata layout, persistence, or storage distribution. Static tables, bind mounts, symlink forests, OverlayFS layers, and projected views are operationally useful, but they precompute or update the namespace outside the lookup that needs the current state. The gap is a narrow interface for state changes that affect pathname binding or visibility, not new file data semantics, distributed metadata, or custom persistence.
 
 Evidence/claim dependency: ExtFUSE, Bento, FUSE studies, DeltaFS, IndexFS, TableFS, Wrapfs, Kubernetes projected-volume style baselines, and our materialized/FUSE baseline rows.
 
@@ -47,18 +49,18 @@ Completeness: good as framing; needs careful wording to avoid claiming mechanism
 Purpose: state the central idea.
 
 Draft paragraph:
-The key insight is that many of these workloads do not need a new filesystem for all operations. They need a programmable decision at VFS name resolution: for a lookup or directory-enumeration event, select the path view that corresponds to the current workspace, branch, sandbox, cache epoch, or service state. If the kernel keeps ownership of dentries, inodes, file data, writes, permissions, and lower-filesystem semantics, a small eBPF policy can express the path-view decision without replacing the filesystem.
+The key insight is a decomposition for state-transition path views: workloads where a state change alters which existing lower object a pathname denotes, or whether that pathname is visible, while file contents, metadata persistence, writes, permissions, and consistency remain lower-filesystem responsibilities. Agent workspace and environment/cache systems expose this pattern when branches, checkpoints, epochs, or validation results change what unmodified tools should see at ordinary pathnames. This class is defined from source-system state transitions and workload oracles before assigning a mechanism. For this class, the desired behavior is a state-indexed mapping from an event, pathname, and workspace/branch/cache/request state to a lower object or visibility decision. VFS name resolution is the boundary where pathnames become objects, so it can specialize the path view before object acquisition without moving filesystem methods, the read/write data path, or the filesystem object model into a new service.
 
-Evidence/claim dependency: real workload traces must show that the selected behavior is path-view/state-transition dominated and can be validated with correctness oracles.
+Evidence/claim dependency: source-derived workload traces must first identify state-transition path-view effects, then show that oracle-relevant behavior can be validated without workload-specific data-path interposition.
 
-Completeness: thesis is clear; implementation evidence still pending for the new selected workload.
+Completeness: thesis is clear; implementation evidence still pending for the first source-derived workload.
 
 ## Intro P4: Proposed Artifact Or Method
 
 Purpose: define `namei_ext`.
 
 Draft paragraph:
-`namei_ext` is a narrow VFS name-resolution extension point. A policy is an eBPF program attached through the real `cgroup/namei_ext` path in the modified kernel. The kernel exposes one decision function, with lookup and directory-enumeration represented as event types to that function. The policy returns path-resolution actions; it does not define a filesystem, a YAML policy language, or a replacement VFS object model.
+`namei_ext` realizes this decomposition as a programmable path-view layer at VFS name resolution. A policy is an eBPF program attached through the real `cgroup/namei_ext` path in the modified kernel. The kernel exposes one decision function because lookup and directory enumeration share the same contract: given an event, pathname context, and policy state, choose the visible lower path or visibility action while leaving the VFS object model and lower filesystem semantics intact. Unlike a stackable or passthrough filesystem, the policy does not implement filesystem methods or own VFS objects; it returns a path-resolution action before the kernel continues through the ordinary lower filesystem. It does not define a filesystem, a YAML policy language, or a replacement VFS object model.
 
 Evidence/claim dependency: kernel ABI/design docs, BPF policy examples, and KVM Phase 1 validation.
 
@@ -69,7 +71,7 @@ Completeness: mechanism boundary is stable; design doc should be created.
 Purpose: map claims to evidence.
 
 Draft paragraph:
-The evaluation should show that `namei_ext` can implement realistic path-view workloads with correctness first: agent workspace lifecycle oracles, service reload/secret-rotation oracles, and environment/cache oracles must pass before latency or overhead is interpreted. The comparison is against natural mechanisms for the same oracle: native workload behavior, FUSE or the source system where applicable, and materialized copy/symlink/bind/Overlay/projected views. Operation-weighted lookup and readdir traces should show where policy decisions occur during state transitions.
+The evaluation should show that `namei_ext` can implement realistic state-transition path views with correctness first: agent workspace lifecycle and environment/cache oracles must pass before latency or overhead is interpreted. The first characterization must start from upstream state transitions and classify each oracle-relevant filesystem effect as object selection, visibility, lower-filesystem behavior, or out-of-model behavior before any `namei_ext` implementation is counted as evidence. Transitions that require workload-specific open/read/write/setattr interposition or synthetic file contents are excluded from the current claim rather than counted as successes. The comparison is against natural mechanisms for the same oracle: native workload behavior, FUSE or the source system where applicable, and materialized copy/symlink/bind/Overlay/projected views. Operation-weighted lookup and readdir traces should show where policy decisions occur during state transitions.
 
 Evidence/claim dependency: Make-owned KVM workload result, natural baseline result, operation-weighted trace, and correctness oracle.
 
@@ -79,8 +81,16 @@ Completeness: evaluation promise is defined; next workload implementation is req
 
 Purpose: keep the paper defensible.
 
-Draft paragraph:
-The contribution is not a claim that tables are impossible, that all selected workloads require eBPF, or that `namei_ext` replaces agent filesystems, FUSE, or metadata services. The contribution is a kernel/VFS mechanism point and an evaluation showing when a narrow programmable name-resolution hook is sufficient for real path-view workloads. Full filesystem semantics, storage layout, distributed metadata services, and agent orchestration frameworks remain outside the artifact boundary.
+Draft contribution list:
+1. A state-transition path-view abstraction for agent/workspace and environment/cache systems, defining the state changes that affect pathname-to-object binding or visibility while delegating data, writes, permissions, persistence, and consistency to the lower filesystem.
+2. `namei_ext`, a VFS name-resolution prototype that realizes this abstraction with one eBPF decision interface for lookup and directory enumeration, without implementing filesystem methods or owning VFS objects.
+3. A source-derived characterization and correctness-first evaluation that first classifies agent/workspace and environment/cache state transitions by filesystem effect, then shows the in-model effects pass workload oracles in KVM and expose operation-weighted lookup/readdir decision points against natural baselines.
+
+Status:
+Contribution 3 is a candidate until the two KVM workload families pass.
+
+Non-goals:
+The paper does not claim that tables are impossible, that every candidate workload requires eBPF, or that `namei_ext` replaces agent filesystems, FUSE, or metadata services. Synthetic file contents, custom metadata persistence, distributed directory indexing, write-conflict resolution, data-path mediation, storage layout, and agent orchestration remain outside the artifact boundary.
 
 Evidence/claim dependency: related-work map, workload-source catalog, and explicit negative/appendix rows.
 
@@ -90,31 +100,42 @@ Completeness: wording guard is ready.
 
 ### Problem Anchor
 
-- Bottom-line problem: dynamic path views are currently implemented with mechanisms that are often broader than the path-resolution decision they need.
-- Must-solve bottleneck: demonstrate a real workload where path-view transitions can be implemented correctly through the real kernel/BPF attach path.
-- Success condition: correctness oracle passes in KVM, operation-weighted lookup/readdir signal is recorded, and natural baselines are measured for the same oracle.
+- Pain: tools can observe the wrong or stale filesystem view during workspace, branch, cache, or request-state transitions.
+- Root cause: policy state changes at workspace, branch, epoch, or request boundaries, while existing middle points either materialize namespace state outside lookup or implement filesystem/server methods to decide it. The missing boundary is policy-only selection before VFS object acquisition.
+- Status quo gap: FUSE, custom filesystems, metadata services, and materialized views remain valid, but they take responsibility for broader filesystem service, metadata, daemon availability, or precomputation work when a state transition only changes pathname-to-object binding or visibility.
+- Scope: target state-transition path views where the lower filesystem should retain file data, writes, permissions, persistence, and per-object consistency semantics.
+- Release gate: correctness oracle passes in KVM, operation-weighted lookup/readdir signal is recorded, and natural baselines are measured for the same oracle.
 
 ### Why Now
 
 - Technical/scientific change: AI agents and environment-construction benchmarks now expose public code, traces, and executable oracles for workspace and build/test state transitions.
 - New deployment pressure or workload shift: agents and build systems frequently create, fork, checkpoint, evaluate, and discard filesystem views.
-- Why prior approaches are newly insufficient: FUSE/custom FS/materialization remain valid, but they are broad for path-view-only policies and should be compared against a narrower VFS hook.
+- Why prior approaches are newly insufficient: FUSE/custom FS/materialization remain valid, but for state-transition path views they either move policy into a filesystem service or rebuild namespace state outside lookup; the VFS boundary keeps policy at the point where pathnames become objects while reusing lower-filesystem semantics.
 
 ### Target Audience And Venue Bar
 
 Systems reviewers should see a precise kernel mechanism, real workload provenance, KVM validation, correctness-first evaluation, and fair comparisons against FUSE, full filesystem/source-system behavior, and materialized views.
 
+### Design Goals
+
+| Goal | Statement | Evaluation mapping |
+| --- | --- | --- |
+| G1 Path-view completeness | A source-derived transition is in scope only when its oracle-relevant behavior is completely expressible as lookup/readdir-time selection or hiding of existing lower objects. | Upstream-transition classification plus operation-weighted lookup/readdir trace; any required open/read/write/setattr interposition or synthetic contents is marked out of model rather than counted as success. |
+| G2 Lower-FS ownership preservation | File data, metadata persistence, permissions, writeback, and per-object consistency remain with the lower filesystem; path-view freshness is checked by workload oracles. | Boundary checks, permission/write behavior, lower-object consistency checks, freshness oracles, and no workload-specific data-path interposition. |
+| G3 Narrow programmable interface | One policy decision interface covers lookup and directory enumeration for classified state-transition path-view effects. | ABI tests plus policies loaded through the real `cgroup/namei_ext` attach path for source-derived transitions whose oracle-relevant effects pass G1. |
+| G4 Practical comparison boundary | Compare against natural source-system, FUSE, native, and materialized mechanisms for the same correctness oracle. | Per-workload baseline matrix recording same oracle, baseline type, whether it implements filesystem methods, whether it needs a daemon, whether it performs materialization writes, and setup/update/runtime measurements interpreted only after correctness passes. |
+
 ### Method Thesis
 
-- Thesis sentence: a narrow eBPF-controlled VFS name-resolution hook can implement useful dynamic path views for real workloads while preserving lower-filesystem semantics.
-- Smallest adequate mechanism: one BPF decision function over lookup and directory-enumeration events.
-- Why the mechanism should work: the selected workloads' visible behavior is mostly path selection during state transitions, not custom file data or persistence semantics.
+- Thesis sentence: state-transition path views separate pathname-to-object binding from filesystem ownership; `namei_ext` realizes that boundary while preserving lower-filesystem semantics.
+- Mechanism hypothesis: one BPF decision function over lookup and directory-enumeration events is sufficient for source-derived transitions whose oracle-relevant effects are state-transition path views.
+- Why the mechanism should work: the relevant filesystem work is object selection before VFS object acquisition, not custom file data or persistence semantics.
 
 ### Dominant Claim
 
-- Core claim: for selected agent/workspace and environment/cache workloads, `namei_ext` can implement the required path-view behavior with correct oracles and lower mechanism scope than FUSE/custom filesystems.
-- Stretch claim: this interface is a general programmable filesystem abstraction for path-view policies across agent, service, and cache/environment workloads.
-- Evidence needed to promote stretch claim: at least two real workload families beyond controlled fixtures, with KVM correctness, operation-weighted traces, and natural baseline comparisons.
+- Target claim after two KVM workloads pass: for state-transition path views in agent workspace and environment/cache systems, the relevant filesystem work is object selection before VFS object acquisition. `namei_ext` exposes that boundary as a policy-only layer, preserving lower-filesystem ownership while avoiding a separate filesystem server or materialized namespace for every state transition.
+- Stretch opportunity: service reload/secret-rotation can become a third workload family only after an implemented oracle and natural baseline exist.
+- Evidence needed to promote the claim: at least two real workload families beyond controlled fixtures, with KVM correctness, operation-weighted traces, and natural baseline comparisons.
 
 ### Core Mechanism
 
@@ -122,31 +143,31 @@ Systems reviewers should see a precise kernel mechanism, real workload provenanc
 
 ### Scope And Non-Goals
 
-In scope: lookup/readdir path-view policy, workspace/sandbox/cache/service path-state transitions, KVM validation, and natural baselines.
+In scope: lookup/readdir-time selection or hiding of existing lower objects, source-derived workspace/sandbox/cache transitions whose oracle-relevant effects are classified as state-transition path views, KVM validation, and natural baselines.
 
-Out of scope: new filesystem implementation, distributed metadata service, storage layout changes, YAML/JSON policy language, and proof that static tables or FUSE cannot handle a workload.
+Out of scope: synthetic file contents, custom metadata persistence, distributed directory indexing, write-conflict resolution, data-path mediation, new filesystem implementation, storage layout changes, YAML/JSON policy language, and proof that static tables or FUSE cannot handle a workload.
 
 ### Claim Ledger
 
 | ID | Claim | Scope | Metric/evidence needed | Status |
 | --- | --- | --- | --- | --- |
-| C1 | `namei_ext` is a narrow, safe mechanism boundary for programmable path views. | VFS lookup/readdir policies in the modified kernel. | ABI/design doc, BPF policy examples, KVM attach validation, lower-FS semantic boundary checks. | proposed |
-| C2 | Real agent workspace lifecycle can be expressed as path-view policy. | Branch/session/workspace/COW/checkpoint/fork/protected-path workloads. | Make-owned KVM workload using BranchFS/Sandlock/AgentFS/OpenHands/Terminal-Bench style source, correctness oracle, operation-weighted trace, natural baselines. | next |
-| C3 | Real environment/cache reuse can be expressed as path-view policy. | SWE-rebench V2, SWE-Factory-Gym, or MEnvData-SWE style Docker-backed build/test tasks. | Correctness oracle, stale/corrupt/update-window behavior, operation-weighted cache path signal, native/FUSE/materialized baselines. | proposed |
-| C4 | The mechanism is narrower than FUSE/custom FS for path-view-only workloads. | Selected workloads where lower FS owns file data and writes. | Code-size/scope comparison, baseline behavior, explanation of non-owned semantics. | proposed |
+| C1 Model | State-transition path views are a recurring filesystem subproblem in agent/workspace and environment/cache systems. | State changes that alter pathname-to-object binding or visibility while lower FS owns data, writes, permissions, persistence, and consistency. | Upstream-transition classification plus oracle checks showing no workload-specific data-path interposition. | next |
+| C2 System | `namei_ext` realizes the model without owning filesystem methods or VFS objects. | Modified-kernel VFS lookup/readdir path with one eBPF decision interface. | ABI/design doc, BPF policy examples, KVM attach validation, lower-FS ownership boundary checks. | proposed |
+| C3 Evidence | Two workload families pass correctness oracles through the policy-only object-selection boundary. | AgentFS-derived workspace lifecycle first; SWE-Factory-Gym or MEnvData-SWE W4 second. | KVM correctness, raw traces, natural baselines, and operation-weighted policy events after transition classification. | next |
+| C4 Comparison | The mechanism preserves lower-FS ownership while avoiding daemon/FS-method ownership or per-transition materialization for the same oracle. | State-transition path views where lower FS owns data and writes. | Code/scope comparison, daemon/FS-method/materialization matrix, setup/update/runtime behavior, and baseline correctness parity. | proposed |
 
 ### Largest Plausible Claim
 
-- Bigger claim hypothesis: `namei_ext` is the missing middle point between static namespace construction and full programmable filesystems for dynamic path-view policies.
-- Why it would matter: it would let systems reuse the kernel and lower filesystem for ordinary file semantics while specializing only path resolution.
-- Experiments needed: AI agent workspace lifecycle, W4 environment/cache reuse, service reload/secret-rotation, FUSE/source-system/materialized baselines, and overhead measurements.
-- Cheapest probe: implement one BranchFS/Sandlock/AgentFS-derived KVM workload with commit/abort or protected-path oracle.
+- Paper thesis candidate: state-transition path views are a real subproblem in agent/workspace and environment/cache systems, and `namei_ext` is a policy-only VFS boundary for that subproblem.
+- Why it would matter: it would let systems reuse the kernel and lower filesystem for ordinary file semantics while specializing only the pathname bindings and visibility decisions that turn state transitions into visible filesystem views.
+- Experiments needed: AgentFS-derived workspace lifecycle, W4 environment/cache reuse, FUSE/source-system/materialized baselines, and overhead measurements; service reload/secret-rotation is stretch only.
+- Cheapest probe: implement the AgentFS-derived COW workspace lifecycle KVM workload.
 
 ### Adjacent Idea Intake
 
 | Adjacent idea/source | What can be absorbed | How it could expand the paper | Risk |
 | --- | --- | --- | --- |
-| BranchFS/Sandlock/AgentFS/Redis AFS/Mirage/YoloFS | Branch, COW, checkpoint/fork, cache invalidation, staging, hidden-side-effect, and multi-backend namespace oracles. | Strong AI agent workspace lifecycle workload. | Some systems are broader than path resolution; avoid claiming replacement. |
+| AgentFS first; BranchFS/Sandlock/Redis AFS/Mirage/YoloFS as supporting evidence | AgentFS COW/FUSE/git/bash/cache-invalidation/whiteout oracle first; branch, checkpoint/fork, staging, hidden-side-effect, and multi-backend namespace oracles as motivation and baseline checks. | Strong AI agent workspace lifecycle workload. | Some systems are broader than path resolution; avoid claiming replacement or mixing all sources into one implementation target. |
 | SWE-rebench V2/SWE-Factory-Gym/MEnvData-SWE | Docker-backed repo build/test oracles. | Strong W4 environment/cache workload. | Full environment generation may require LLM/API or broader image access. |
 | MEnvAgent/DockSmith/Multi-Docker-Eval | Environment scripts, trajectories, Docker/eval generation methodology. | Broader W4 task selection and operation traces. | Some artifacts are datasets/trajectories rather than executable systems. |
 | DeltaFS/IndexFS/TableFS | Metadata-service/full-filesystem workload shapes. | Appendix or related-work context. | Mainline drift into full FS comparison. |
@@ -155,8 +176,8 @@ Out of scope: new filesystem implementation, distributed metadata service, stora
 
 | Expansion axis | Bigger experiment | Claim upside | Cost/risk | Probe |
 | --- | --- | --- | --- | --- |
-| Agent workspace | Branch/session/COW/checkpoint workload from public agent systems. | Makes the paper timely and real. | Needs trace extraction and KVM integration. | Start with AgentFS-derived COW/FUSE/git/bash/cache-invalidation/whiteout oracle, using Redis AFS, Mirage, BranchFS, Sandlock, YoloFS, OpenHands, SWE-agent, and SWE-ReX as supporting source evidence. |
-| Environment/cache | SWE-rebench V2, SWE-Factory-Gym, or MEnvData-SWE stale/corrupt/update-window run. | Best evidence for state-dependent path views. | Docker build variability and image access. | Reuse the passing SWE-Factory rows such as `pallets__click-2622`, `nodejs__undici-3566`, `tailwindlabs__tailwindcss-12404`, or `python-pillow__Pillow-5425`; MEnvData rows such as `python-attrs__attrs-586`, `PyCQA__pycodestyle-859`, `go-yaml__yaml-353`, `pest-parser__pest-702`, or `refined-github__refined-github-7041`; SWE-rebench `unidata__netcdf-c-1925`; or clean raw-exit-0 SWE-rebench HF rows such as `pilosus__pip-license-checker-119`, `chrovis__cljam-268`, `pilosus__pip-license-checker-49`, high-cardinality JS row `pbiswas101__mathball-153`, Dart row `nyxx-discord__nyxx-547`, Go rows `mgechev__revive-1408`, `hashicorp__consul-10576`, or `fsouza__fake-gcs-server-1035`, and Java rows `spoonlabs__gumtree-spoon-ast-diff-171` or `jchambers__pushy-850`. Keep caveated HF rows as source-diversity evidence rather than first-choice W4 candidates; avoid `alibaba__fescar-382` unless investigating the mismatch. |
+| Agent workspace | AgentFS-derived COW workspace lifecycle. | Makes the paper timely and real. | Needs trace extraction and KVM integration. | First workload is AgentFS-derived; Redis AFS, Mirage, BranchFS, Sandlock, YoloFS, OpenHands, SWE-agent, and SWE-ReX are supporting motivation, checklist, or baseline sources. |
+| Environment/cache | SWE-Factory-Gym or MEnvData-SWE stale/corrupt/update-window run, with SWE-rebench V2 as a companion source. | Best evidence for state-dependent path views. | Docker build variability and image access. | Pick one clean source-backed row family from the evidence inventory, then promote only if the KVM workload passes G1-G4. |
 | Service sandbox | nginx reload/update or PostgreSQL secret/config rotation. | Operational systems relevance. | Needs real reload/update trace. | Extend existing W2 fixture. |
 
 ### Reviewer Attack Surface
