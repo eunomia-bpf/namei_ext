@@ -1,10 +1,86 @@
 \section{Design}
+\label{sec:design}
 
-This section is intentionally a routing stub. The stable project invariant is
-that \namei is a narrow VFS name-resolution extension point, not a BPF
-filesystem, access-control framework, mount namespace replacement, or custom
-configuration language.
+\namei keeps the boundary narrow by letting policy choose a visible lower
+object during name resolution while the lower filesystem owns ordinary object
+semantics. The design first classifies each source-system transition before
+choosing a mechanism, then exposes only the lookup and directory-enumeration
+decisions needed for classified in-model effects.
 
-Current mechanism scope and non-goals live in \file{docs/idea-story.md}.
-Implementation evidence must be recorded in dated files under
-\file{docs/tmp/YYYY-MM-DD-*.md} with raw artifacts under \file{results/}.
+\subsection{Design Goals}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{0.12\linewidth}p{0.28\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+\hline
+Goal & Motivation & Mechanism & RQ \\
+\hline
+G1 & Source transitions mix path-view effects with broader filesystem behavior. & Classify oracle-relevant effects before selecting a mechanism. & RQ1 \\
+G2 & Workloads rely on ordinary lower-file semantics. & Leave reads, writes, permissions, persistence, and per-object consistency in the lower filesystem. & RQ2 \\
+G3 & Lookup and directory views are the policy surface. & Use one decision interface for lookup and directory-enumeration events. & RQ2, RQ3 \\
+G4 & Baseline comparisons must not trade correctness for convenience. & Interpret setup/update/runtime costs only after the same oracle passes. & RQ4 \\
+\hline
+\end{tabular}
+\caption{Design goals and their evaluation mapping.}
+\label{tab:design-goals}
+\end{table}
+
+\subsection{Model}
+
+The model classifies each upstream transition by filesystem effect before a
+mechanism is assigned.
+
+\begin{itemize}
+\item \emph{Object selection}: a pathname should resolve to one existing lower
+object rather than another.
+\item \emph{Visibility}: a pathname or directory entry should be hidden or
+shown for the current state.
+\item \emph{Lower-filesystem behavior}: reads, writes, permissions,
+persistence, and per-object consistency remain ordinary lower-filesystem
+semantics.
+\item \emph{Out-of-model behavior}: synthetic contents, data-path mediation,
+custom metadata persistence, cross-path transactions, or workload-specific
+open/read/write/setattr interposition.
+\end{itemize}
+
+A transition supports the boundary claim only if its oracle-relevant behavior
+fits object selection and visibility completely. Out-of-model behavior is
+preserved as motivation or related work rather than counted as \namei evidence.
+
+\subsection{Policy Boundary}
+
+\namei places policy at VFS name resolution, where pathnames become VFS
+objects. The policy receives lookup and directory-enumeration events through one
+decision function. For classified in-model effects, the function returns a
+path-resolution action or visibility decision. The kernel then continues through
+ordinary lower-filesystem lookup and object handling.
+
+\subsection{Boundary Invariants}
+
+The interface is sufficient only for transitions that satisfy the model in the
+previous subsection. A policy decision receives the event type, pathname
+context, current component, and policy state associated with the attached
+cgroup. It may return a lower-path selection, a pass-through decision, or a
+visibility decision for directory enumeration. Visibility is represented by
+hide decisions or by pass-through decisions that expose an entry for the
+current state. The policy may not synthesize file contents, implement
+open/read/write/setattr behavior, persist custom metadata, commit multi-object
+transactions, or replace lower-filesystem permission checks.
+
+The decision is scoped to name resolution. A lookup decision selects the lower
+object or parent path before the VFS acquires the object for later operations.
+Lookup events include open/create path walks. Final-component create may select
+the branch parent before lower-filesystem create and write semantics run.
+Directory enumeration must be consistent with lookup. An entry hidden from
+readdir for a state must not resolve through the policy for that same state,
+and an entry exposed by readdir must resolve to the same lower object that the
+lookup policy would select. Policy state may change across epochs,
+checkpoints, or cache-validation results, but each decision is evaluated
+against the state visible to that lookup or enumeration event.
+
+The boundary deliberately excludes filesystem ownership. \namei is not a BPF
+filesystem, a new policy language, a mount namespace replacement, or a
+replacement VFS object model. It does not implement file operations, own
+dentries, inodes, page cache state, writeback, or lower-filesystem permission
+semantics.

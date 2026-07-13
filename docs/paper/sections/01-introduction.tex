@@ -1,9 +1,75 @@
 \section{Introduction}
 
-This section is intentionally a routing stub. The current introduction story,
-claim scope, non-goals, and next action live in \file{docs/idea-story.md}.
-Related-work and baseline implications live in
-\file{docs/background-related-work.md}.
+Agent-workspace and environment/cache workflows create short-lived branches,
+checkpoints, cache epochs, and validation states while invoking unmodified
+build and test tools. These workflows are common in agent runtimes, repository
+repair systems, and environment-construction benchmarks because they need to
+reuse ordinary tools while changing the state those tools should see.
 
-Do not use historical draft text to claim that workloads require eBPF,
-\namei, dynamic policy logic, or table impossibility.
+The state transition becomes a filesystem problem when ordinary pathnames
+continue to name objects from the wrong state. After a workspace transition, a
+path bound to the previous state can cause a tool to validate the wrong
+revision. A path bound to shared state can direct writes into the parent
+workspace. After a cache-epoch change, a path bound to an old cache object can
+feed stale inputs into a build.
+
+The root cause is a mismatch in pathname-to-object binding or visibility for
+the current state, not a need to replace lower filesystem read/write semantics.
+For write-leak cases, the relevant decision is the open/create resolution that
+selects the branch object or branch parent before the write occurs. After that
+selection, the lower filesystem still owns write semantics.
+
+Existing mechanisms cover this need at different ownership boundaries. FUSE can
+present a dynamic view, but it makes a filesystem service own the view boundary.
+Bind mounts, projected volumes, symlink forests, and OverlayFS can construct a
+namespace, but the namespace must be created or updated as state changes.
+Stackable filesystems can interpose beneath applications, but they own
+filesystem methods and object handling~\cite{linux_fuse,kubernetes_projected_volumes,linux_overlayfs,wrapfs}.
+The unresolved mismatch is the need to change only pathname-to-object bindings
+or visibility while leaving ordinary filesystem ownership and semantics
+unchanged.
+
+These cases define state-transition path views, which are source-system
+transitions where state changes affect only object selection or visibility. The
+key insight is not that pathname lookup can choose objects. Existing
+filesystems and namespace mechanisms already do that. The useful separation is
+between state-dependent object selection, namespace materialization, and
+filesystem-service ownership when the lower filesystem continues to own data,
+writes, permissions, persistence, and consistency.
+
+\namei realizes this separation as a policy-only object-selection boundary
+inside VFS name resolution. A policy is an eBPF program attached through the
+real \code{cgroup/namei_ext} path in the modified kernel. The kernel exposes one
+decision function because lookup and directory enumeration share the same
+contract. Given an event, pathname context, and policy state, the policy chooses
+the visible lower path or visibility action while leaving the VFS object model
+and lower filesystem semantics intact. Unlike a stackable or passthrough filesystem, the
+policy does not implement filesystem methods, own VFS objects, run a filesystem
+server, or materialize a namespace tree.
+
+The claim is deliberately falsifiable. The evaluation begins with two upstream
+transitions, one AgentFS-derived workspace transition and one
+SWE-Factory-Gym-derived environment/cache transition. It classifies each
+transition's oracle-relevant filesystem effects before any \namei
+implementation is counted as boundary evidence. A transition that requires
+workload-specific read/write/setattr interposition, synthetic contents, or
+cross-path transactions is reported outside the boundary rather than counted as
+\namei evidence. Same-oracle baselines then support only practical value and
+cost claims.
+
+The paper makes three planned contributions.
+\begin{enumerate}
+\item A state-transition path-view model that classifies source-system state
+transitions into pathname-to-object selection, visibility, lower-filesystem
+behavior, and out-of-model effects (Sections~\ref{sec:workload-characterization}
+and~\ref{sec:design}).
+\item \namei, a VFS name-resolution prototype that realizes classified
+in-model effects with one eBPF decision interface for lookup and directory
+enumeration, without implementing filesystem methods or owning VFS objects
+(Sections~\ref{sec:design} and~\ref{sec:implementation}).
+\item A correctness-first KVM evaluation plan for two examined upstream
+transitions, measuring oracle correctness, operation-weighted lookup/readdir
+policy events, and setup/update/runtime behavior against source-system,
+distinct standalone FUSE, and materialized baselines
+(Section~\ref{sec:evaluation}).
+\end{enumerate}

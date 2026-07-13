@@ -1,10 +1,52 @@
 \section{Related Work}
+\label{sec:related-work}
 
-This section is intentionally a routing stub. The canonical related-work,
-novelty-risk, closest-work, workload-source, and mandatory-baseline map lives
-in \file{docs/background-related-work.md}. The local PDF inventory lives in
-\file{docs/reference/INDEX.md}; code and artifact entry points live in
-\file{docs/reference/CODE_SOURCES.md}.
+\subsection{Programmable Filesystem Boundaries}
+FUSE is the closest general-purpose mechanism for programmable filesystem
+behavior~\cite{linux_fuse}. ExtFUSE moves selected FUSE handling into the
+kernel to reduce overhead~\cite{extfuse}. \namei targets a different boundary
+because it does not accelerate a filesystem service or implement filesystem
+methods. It exposes only state-transition object selection and visibility
+before lower filesystem lookup continues.
 
-Future related-work prose should be derived from those files rather than from
-older paper draft text.
+Wrapfs and related stackable approaches show the long-standing value of adding
+filesystem behavior beneath existing applications~\cite{wrapfs}. Bento lowers
+the cost and risk of writing in-kernel filesystems~\cite{bento}. These systems
+remain relevant baselines and related work, but they ask the developer to own a
+broader filesystem interface than \namei's policy boundary.
+FUSE and stackable systems own a filesystem service or filesystem methods,
+while \namei owns only the object-selection policy decision inside VFS name
+resolution.
+
+\subsection{Namespace And Materialization Boundaries}
+Bind mounts, projected volumes, symlink forests, and OverlayFS are practical
+ways to present alternate views~\cite{kubernetes_projected_volumes,linux_overlayfs}.
+They are appropriate when a view can be constructed or layered outside the
+transition. \namei instead measures whether object selection can remain a
+policy-only boundary under the same oracle.
+Namespace mechanisms materialize or layer a view, while \namei updates policy
+state and lets each lookup or enumeration event select the lower object for the
+current state.
+
+\subsection{Agent Workspace Filesystems}
+AgentFS, BranchFS, Sandlock, and YoloFS show that agent workspaces need
+branching, copy-on-write state, snapshot-like behavior, and constrained file
+views~\cite{agentfs_repo,branchfs_repo,sandlock_repo,yolofs_repo}. These
+systems supply transition shapes and oracles. \namei reuses a transition only
+when its oracle-relevant effect is selecting or hiding existing lower objects.
+Broader sandbox, runtime, snapshot, or custom-filesystem behavior remains part
+of the source system's boundary.
+The source systems define agent workspace semantics, while \namei tests only
+the classified path-view slice of a selected transition.
+
+\subsection{Agent Environment And Build Workloads}
+OpenHands, SWE-agent, SWE-ReX, SWE-Factory-Gym, MEnvData-SWE, and SWE-rebench
+V2 provide repository repair, Docker-backed environment construction, and
+build/test oracles~\cite{openhands_sdk_repo,swe_agent_repo,swe_rex_repo,swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}.
+These systems motivate the environment/cache transition in this proposal. The
+paper's boundary is narrower because it asks whether the path-view part of a
+selected transition can be implemented as policy-only name resolution while the
+source system or lower filesystem continues to own environment construction,
+command execution, and data-path behavior. These workloads supply environment
+and build oracles, while \namei contributes the name-resolution policy boundary
+under those oracles.

@@ -1,12 +1,115 @@
-\section{Evaluation}
+\section{Evaluation Plan}
+\label{sec:evaluation}
 
-This section is intentionally a routing stub. Current evaluation direction,
-mandatory baselines, source-use verdicts, and workload-source evidence live in
-\file{docs/background-related-work.md}. The current handoff state lives in
-\file{research/STATE.md}.
+\subsection{Research Questions}
 
-The paper draft must not re-center on table-only experiments. Exact-map or
-table diagnostics are archival boundary evidence only when a precomputed map is
-the relevant workload-specific comparison. Future evaluation prose should be
-written after a Make-owned, KVM-validated real workload has been implemented
-and recorded under the canonical layout.
+Four questions organize the correctness-first evaluation.
+
+\begin{description}
+\item[RQ1] Do the two examined upstream transitions fit the
+object-selection-and-visibility boundary with their own oracles?
+\item[RQ2] Can \namei implement those slices through the real KVM
+\code{cgroup/namei_ext} path while preserving lower-filesystem behavior?
+\item[RQ3] Where do policy decisions occur in operation-weighted lookup and
+directory-enumeration traces?
+\item[RQ4] Under the same correctness oracle, how do source-system behavior,
+distinct standalone FUSE, and materialized views differ in daemon ownership,
+filesystem-method ownership, materialization writes, setup/update cost, and
+runtime cost?
+\end{description}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{0.12\linewidth}p{0.45\linewidth}p{0.31\linewidth}}
+\hline
+RQ & Evidence & Gate \\
+\hline
+RQ1 & Source-derived transition classification and oracle-relevant effect split & Fits the boundary or is rejected as out of model \\
+RQ2 & KVM run through the real \code{cgroup/namei_ext} attach path & Correct oracle and preserved lower-filesystem behavior \\
+RQ3 & Operation-weighted lookup/readdir trace & Recorded policy-event mix for the transition \\
+RQ4 & Source, FUSE, and materialized baselines checked against the same correctness oracle & Costs interpreted only after correctness parity \\
+\hline
+\end{tabular}
+\caption{Research questions and required evidence.}
+\label{tab:evaluation-map}
+\end{table}
+
+\subsection{Workloads}
+
+The evaluation instantiates the two rows in
+Table~\ref{tab:transition-characterization}: an AgentFS-derived workspace
+transition and a SWE-Factory-Gym-derived environment/cache transition. The
+AgentFS-derived row starts from a workspace lifecycle transition and records the
+source oracle, policy-controlled effects, and out-of-model exclusions. The
+environment/cache row starts from a Docker-backed transition and records the
+same fields.
+
+\subsection{Correctness Oracles}
+
+Each transition begins with source-derived classification. The input is the
+upstream transition and its oracle, not a preselected \namei implementation. If
+the oracle requires out-of-model behavior, the transition cannot support the
+boundary claim. If the transition fits the object-selection-and-visibility
+boundary with its own oracle, the KVM run must pass the same oracle before any
+latency or overhead number is interpreted.
+
+Table~\ref{tab:acceptance-matrix} makes the claims falsifiable. Both selected
+transitions must pass the source-oracle, in-model-slice, KVM-oracle, and
+boundary-check gates for the boundary-validity claim to hold. Baseline results
+support the practical value and cost claim only after those correctness gates
+pass. If either selected transition is out of model or fails the KVM oracle, the
+failure narrows the boundary claim to the transition that passed or becomes a
+reported negative result.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}p{0.22\linewidth}p{0.55\linewidth}p{0.13\linewidth}@{}}
+\hline
+Gate & Required evidence for each selected transition & Claim effect \\
+\hline
+Source oracle & Runnable source-derived oracle and state transition sequence & required \\
+In-model slice & Oracle-relevant effects are only object selection or visibility plus preserved lower-FS behavior & required \\
+KVM oracle & \namei pass through the real attach path with the same oracle & required \\
+Boundary checks & Lower-FS reads, writes, permissions, and object identity remain ordinary & required \\
+Baselines & Source/reference, standalone FUSE, and materialized-view comparison where applicable & required for cost claims \\
+\hline
+\end{tabular}
+\caption{Acceptance matrix for boundary-validity and cost claims.}
+\label{tab:acceptance-matrix}
+\end{table}
+
+\subsection{Baselines}
+
+Baseline roles are separated before comparison. The source system provides
+reference behavior and the oracle when runnable. A distinct standalone FUSE
+baseline represents the same policy behind a filesystem-service boundary.
+Materialized baselines represent precomputed namespace boundaries using copy,
+symlink, bind, Overlay, or projected views where applicable. These mechanisms
+remain valid baselines outside the policy-only boundary. The evaluation
+measures the ownership boundary each baseline chooses under the same oracle.
+
+\subsection{Evaluation Setup}
+
+Host-only checks can catch build or formatting errors, but only KVM runs on the
+modified kernel validate the real policy path. The setup records kernel
+identity, policy identity, Docker or KVM image identity, workload commit,
+stdout/stderr, dmesg, and raw per-operation observations. Verifier output,
+syscall failures, dmesg, workload stdout/stderr, and per-operation observations
+are preserved under \file{results/}.
+
+\subsection{Metrics}
+
+Correctness gates are source-oracle pass/fail, in-model classification, KVM
+oracle pass/fail, and preserved lower-filesystem behavior. Trace metrics record
+operation-weighted lookup and readdir policy events. Cost metrics include setup
+time, update time, runtime, and materialization writes. Boundary attributes
+record daemon requirements and whether a baseline implements filesystem
+methods.
+
+\subsection{Results Skeleton}
+
+After correctness parity, the evaluation reports classification verdicts, KVM
+oracle outcomes, lower-filesystem checks, operation-weighted event mixes, and
+same-oracle baseline costs.

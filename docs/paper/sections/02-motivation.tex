@@ -1,9 +1,65 @@
-\section{Motivation}
+\section{Workload Characterization}
+\label{sec:workload-characterization}
 
-This section is intentionally a routing stub. Current workload motivation and
-source-backed workload direction live in \file{docs/idea-story.md} and
-\file{docs/background-related-work.md}. Source repositories, datasets, and
-artifact entry points live in \file{docs/reference/CODE_SOURCES.md}.
+\subsection{Source Transitions}
 
-Future paper prose should be regenerated from those canonical files after the
-next Make-owned KVM workload evidence is available.
+Agent-workspace and environment/cache systems expose short-lived state
+transitions that are visible through ordinary pathnames. Agent systems create
+branches, copy-on-write sandboxes, and checkpoint-like workspace states.
+Environment systems validate builds against cache epochs and generated
+environment state.
+
+For these transitions, choosing a broader mechanism changes more than name
+resolution. A FUSE agent
+filesystem can implement a dynamic view, but it also owns a filesystem service
+boundary. A materialized namespace can present the correct files, but it must
+construct or update that namespace as state changes. A stackable filesystem can
+interpose beneath applications, but it implements filesystem methods. These are
+valid mechanisms and important baselines. The question is when the upstream
+transition and oracle require only policy over name resolution.
+
+\subsection{Workload Sources}
+
+Table~\ref{tab:transition-characterization} records the source, oracle,
+policy-controlled effects, preserved lower-filesystem checks, and companion
+motivation for each transition. A row supports the claim only if the chosen
+transition fits the object-selection-and-visibility boundary with its own
+oracle.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}p{0.15\linewidth}p{0.17\linewidth}p{0.19\linewidth}p{0.18\linewidth}p{0.17\linewidth}@{}}
+\hline
+Selected source & Oracle source & Policy-controlled effects & Preserved lower-FS checks & Companion motivation \\
+\hline
+AgentFS workspace transition & AgentFS lifecycle oracle & object selection and visibility & branch-object writes and permissions & BranchFS, Sandlock, YoloFS \\
+SWE-Factory-Gym cache transition & SWE-Factory-Gym build/test oracle & cache-object selection and visibility & lower-FS reads and cache-object identity & MEnvData-SWE, SWE-rebench V2 \\
+\hline
+\end{tabular}
+\caption{Source-derived transition characterization. Rows summarize the source and oracle fields that the KVM evaluation instantiates for the two selected transitions.}
+\label{tab:transition-characterization}
+\end{table}
+
+The first selected transition is derived from AgentFS~\cite{agentfs_repo}.
+BranchFS, Sandlock, and YoloFS motivate nearby agent-workspace behavior but do
+not define the oracle for this row~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
+The trace creates or forks a workspace state, opens a path whose parent
+state also contains that name, performs a write through the workspace path,
+changes to a checkpoint or sibling state, and then checks that lookup and
+directory enumeration expose the expected branch object and hide stale entries.
+The write itself remains a lower-filesystem write after open/create path
+resolution has selected the branch object. This trace contributes evidence only
+when the source oracle is expressible as lookup/readdir-time selection or
+hiding of existing lower objects.
+
+The second selected transition is an environment/cache transition from
+SWE-Factory-Gym~\cite{swe_factory_repo}. MEnvData-SWE and SWE-rebench V2
+motivate nearby Docker-backed environment behavior but do not define the oracle
+for this row~\cite{menvagent_repo,swe_rebench_v2_repo}.
+The trace begins at a cache epoch, resolves a hit to a verified local
+object, resolves a miss to canonical backing, marks a local object stale or
+corrupt, falls back to backing for that path, and then advances the epoch and
+checks that subsequent lookup selects the new valid object. If the selected
+oracle requires workload-specific file-content generation or custom write
+handling, it is out of model for this paper.

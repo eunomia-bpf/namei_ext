@@ -1,10 +1,38 @@
 \section{Implementation}
+\label{sec:implementation}
 
-This section is intentionally a routing stub. Historical implementation tables
-and Phase 1 artifact inventories were removed from the paper draft area during
-skill-layout convergence because they duplicated current-looking verdicts
-outside the canonical documents.
+The prototype extends VFS name resolution with a \code{cgroup/namei_ext}
+attachment point. Policies are eBPF programs under \file{bpf/policies/*.bpf.c}.
+The kernel-facing ABI exposes one decision function, and lookup and directory
+enumeration are event types passed to that function.
 
-Use \file{docs/tmp/YYYY-MM-DD-*.md} for standalone implementation records and
-\file{results/} for raw logs, JSON/JSONL, benchmark outputs, generated
-summaries, kernel evidence, verifier output, and workload artifacts.
+\subsection{Kernel Attachment Placement}
+
+The attachment point runs before the kernel commits to the lower object for a
+pathname. For lookup events, the policy chooses the lower path or action for
+the current component. For directory-enumeration events, the policy chooses
+visibility for entries in the current state. After the decision, ordinary VFS and
+lower-filesystem logic continues to own dentries, inodes, permissions, and file
+operations.
+
+\subsection{BPF ABI And Attach Path}
+
+The ABI is intentionally one decision function rather than separate policy
+interfaces for lookup and directory enumeration. The context records the event
+type, current pathname context, component name, operation context for
+open/create path walks, and policy-visible state. The decision enum covers
+pass-through, lower-path selection, hide, and hard error outcomes. Readdir
+visibility is encoded as hide or pass-through. User space loads a policy
+through the real \code{cgroup/namei_ext} attach path and updates policy state
+through the maps owned by the loaded BPF program.
+
+\subsection{Policy Loading And Failure Handling}
+
+The loader and runtime treat unsupported actions, verifier failures, syscall
+failures, malformed decisions, and invalid lower-path selections as hard
+failures. The policy either attaches through the real cgroup hook and returns
+valid decisions, or the owning Make target fails. The runtime path does not
+silently fall back to a weaker filesystem behavior.
+
+All build, KVM, Docker, benchmark, and report workflows run through Make
+targets, which keeps evidence paths and default configuration explicit.

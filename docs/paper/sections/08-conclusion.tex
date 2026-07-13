@@ -1,0 +1,13 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+State-transition path views isolate a narrow filesystem subproblem in which a
+state change alters pathname-to-object binding or visibility while the lower
+filesystem continues to own ordinary file semantics.
+\namei
+tests whether that subproblem can be served by a policy-only VFS
+name-resolution boundary rather than by namespace materialization or
+filesystem-service ownership. The planned evaluation accepts or rejects this
+boundary on two source-derived KVM transitions with oracle-first
+classification, correctness parity, operation-weighted traces, and
+source-system, standalone FUSE, and materialized baselines.

@@ -11,24 +11,33 @@
 \newcommand{\code}[1]{\texttt{\detokenize{#1}}}
 \newcommand{\file}[1]{\path{#1}}
 
-\title{\namei Historical Draft Routing}
+\title{\namei: Policy-Only Path Views at VFS Name Resolution}
 \author{Anonymous}
-\date{Historical draft; current scope is in docs/idea-story.md}
+\date{Draft synchronized with docs/idea-story.md, 2026-07-10}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-This LaTeX tree is a historical draft area, not the canonical owner for the
-current paper claim, workload selection, related-work verdicts, or baseline
-requirements. Current story and non-goals live in \file{docs/idea-story.md};
-related work, novelty risk, source-use decisions, and mandatory baselines live
-in \file{docs/background-related-work.md}; source and artifact entry points live
-in \file{docs/reference/CODE_SOURCES.md}; dated evidence records live under
-\file{docs/tmp/YYYY-MM-DD-*.md}; raw logs and generated results live under
-\file{results/}. The old detailed draft text was removed from this tree during
-skill-layout convergence to avoid reviving table-centered C8,
-workload-necessity, or interface-exclusivity claims.
+Agent workspaces and environment/cache systems increasingly run unmodified
+build, test, and agent tools across short-lived branches, checkpoints, cache
+epochs, and validation states. In these transitions, a pathname that resolves
+to the wrong existing object can validate the wrong revision, leak writes into
+a parent workspace, or feed stale cache inputs into a build. Existing solutions
+can present alternate views by materializing namespaces, running filesystem
+services, or adopting broader filesystem mechanisms, but those choices also
+move ownership of more filesystem behavior than the transition may require.
+This proposal separates classification from mechanism. It first classifies
+source-system transitions by filesystem effect, and \namei then uses one
+decision function for lookup and directory-enumeration events to implement only
+pathname-to-object selection and visibility. The lower filesystem retains data,
+writes, permissions, persistence, and consistency. \namei is a policy-only VFS
+name-resolution extension that does not own filesystem methods, VFS objects,
+daemons, or namespace trees. The planned
+evaluation separates boundary validity from practical value by requiring two
+source-derived KVM transitions to pass correctness and lower-filesystem checks
+for the boundary claim before same-oracle baselines are interpreted for
+setup/update/runtime cost claims.
 \end{abstract}
 
 \input{sections/01-introduction}
@@ -38,5 +47,9 @@ workload-necessity, or interface-exclusivity claims.
 \input{sections/05-evaluation}
 \input{sections/06-related-work}
 \input{sections/07-limitations}
+\input{sections/08-conclusion}
+
+\bibliographystyle{plain}
+\bibliography{refs}
 
 \end{document}

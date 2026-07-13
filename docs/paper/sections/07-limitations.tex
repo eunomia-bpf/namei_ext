@@ -1,9 +1,21 @@
 \section{Limitations}
+\label{sec:limitations}
 
-This section is intentionally a routing stub. Current non-goals and claim
-boundaries live in \file{docs/idea-story.md} and
-\file{docs/background-related-work.md}.
+The boundary-validity claim covers two examined upstream transitions after KVM
+correctness and lower-filesystem-behavior checks pass. Operation-weighted traces and
+same-oracle baselines support practical value and cost claims. Broader
+family-level claims require additional classified transitions.
 
-Do not claim full reproduction for systems whose code, images, evaluators, or
-private benchmark submodules are unavailable. Do not claim that selected
-workloads require eBPF, \namei, dynamic policy logic, or table impossibility.
+This artifact excludes mechanisms that require ownership beyond
+object selection and visibility. Precomputed maps, FUSE, agent filesystems, and
+metadata services remain valid mechanisms outside that scope. The artifact
+also excludes synthetic file contents, custom metadata persistence, distributed
+directory indexing, and write-conflict resolution. It also excludes data-path
+mediation, storage layout, agent orchestration, cross-path transactional
+snapshots, atomic multi-object commits, and consistency beyond selecting
+existing lower objects.
+
+Source systems whose code, images, evaluators, or private benchmark submodules
+are unavailable can motivate workload design or provide related-work context,
+but they cannot count as KVM transition evidence until their relevant oracle is
+source-derived, runnable, and recorded with raw results.
