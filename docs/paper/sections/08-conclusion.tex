@@ -1,13 +1,14 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-State-transition path views isolate a narrow filesystem subproblem in which a
-state change alters pathname-to-object binding or visibility while the lower
-filesystem continues to own ordinary file semantics.
-\namei
-tests whether that subproblem can be served by a policy-only VFS
-name-resolution boundary rather than by namespace materialization or
-filesystem-service ownership. The planned evaluation accepts or rejects this
-boundary on two source-derived KVM transitions with oracle-first
-classification, correctness parity, operation-weighted traces, and
-source-system, standalone FUSE, and materialized baselines.
+\namei frames state-dependent path views as a systems problem in which pathname
+policy is programmable while filesystem ownership remains with the VFS and lower
+filesystem. The abstraction occupies the space between namespace materialization
+and full programmable filesystems, following the same policy-versus-ownership
+split used by \code{sched_ext}. The design and prototype show that lookup-time
+policy can be exposed as one bounded eBPF decision while VFS and lower
+filesystems retain object ownership.
+The evaluation therefore centers on three lookup/readdir claims:
+expressiveness for source-derived path-view policies, placement cost versus
+feature-equivalent FUSE, and ownership and containment versus custom or
+stackable filesystems.

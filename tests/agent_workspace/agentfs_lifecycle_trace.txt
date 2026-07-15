@@ -1,0 +1,14 @@
+TRACE_ID=agentfs-bash-git-workspace-v1
+SOURCE_RECORD=docs/tmp/2026-07-02-agentfs-official-workload-reproduction.md
+SOURCE_BEHAVIOR=bash/git overlay actions over AgentFS COW sandbox
+STEP 01 git-head base ref: refs/heads/main
+STEP 02 git-head agent ref: refs/heads/agent
+STEP 03 edit src/app.txt agent-edited-app
+STEP 04 hide deleted.txt as whiteout
+STEP 05 preserve symlink link.txt -> main.txt
+STEP 06 create generated.txt generated-in-upper
+STEP 07 create cached-negative.txt cached-negative-created
+STEP 08 rename generated.txt renamed.txt
+STEP 09 rename renamed.txt generated.txt
+STEP 10 unlink cached-negative.txt
+ORACLE final-tree main=upper-main generated=generated-in-upper deleted=ENOENT cached-negative=ENOENT base-generated=ENOENT

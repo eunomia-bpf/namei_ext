@@ -1,52 +1,79 @@
 \section{Related Work}
 \label{sec:related-work}
 
-\subsection{Programmable Filesystem Boundaries}
-FUSE is the closest general-purpose mechanism for programmable filesystem
-behavior~\cite{linux_fuse}. ExtFUSE moves selected FUSE handling into the
-kernel to reduce overhead~\cite{extfuse}. \namei targets a different boundary
-because it does not accelerate a filesystem service or implement filesystem
-methods. It exposes only state-transition object selection and visibility
-before lower filesystem lookup continues.
+Related work falls along a spectrum of filesystem ownership. Namespace
+mechanisms construct views before lookup, and access-control hooks mediate or
+observe operations near the VFS. \namei puts bounded object-selection policy in
+VFS name resolution, while FUSE, stackable filesystems, custom filesystems, and
+metadata services require broader filesystem-service or object-model ownership.
 
-Wrapfs and related stackable approaches show the long-standing value of adding
-filesystem behavior beneath existing applications~\cite{wrapfs}. Bento lowers
-the cost and risk of writing in-kernel filesystems~\cite{bento}. These systems
-remain relevant baselines and related work, but they ask the developer to own a
-broader filesystem interface than \namei's policy boundary.
-FUSE and stackable systems own a filesystem service or filesystem methods,
-while \namei owns only the object-selection policy decision inside VFS name
-resolution.
+\subsection{FUSE Policy Services}
 
-\subsection{Namespace And Materialization Boundaries}
-Bind mounts, projected volumes, symlink forests, and OverlayFS are practical
-ways to present alternate views~\cite{kubernetes_projected_volumes,linux_overlayfs}.
-They are appropriate when a view can be constructed or layered outside the
-transition. \namei instead measures whether object selection can remain a
-policy-only boundary under the same oracle.
-Namespace mechanisms materialize or layer a view, while \namei updates policy
-state and lets each lookup or enumeration event select the lower object for the
-current state.
+FUSE~\cite{linux_fuse}, FUSE passthrough~\cite{linux_fuse_passthrough},
+ExtFUSE~\cite{extfuse}, and FUSE-BPF~\cite{fuse_bpf_patch} demonstrate the
+value of placing filesystem policy in, or accelerating, a filesystem-service
+boundary. They are the RQ2 baseline family because they can implement the same
+path-view policy under the same source oracle while keeping policy in a FUSE
+request path. \namei instead keeps policy needed by the source oracle at VFS
+name resolution when the workload only needs path selection or visibility over
+existing objects.
 
-\subsection{Agent Workspace Filesystems}
-AgentFS, BranchFS, Sandlock, and YoloFS show that agent workspaces need
-branching, copy-on-write state, snapshot-like behavior, and constrained file
-views~\cite{agentfs_repo,branchfs_repo,sandlock_repo,yolofs_repo}. These
-systems supply transition shapes and oracles. \namei reuses a transition only
-when its oracle-relevant effect is selecting or hiding existing lower objects.
-Broader sandbox, runtime, snapshot, or custom-filesystem behavior remains part
-of the source system's boundary.
-The source systems define agent workspace semantics, while \namei tests only
-the classified path-view slice of a selected transition.
+\subsection{Custom, Stackable, And Metadata-Service Filesystems}
 
-\subsection{Agent Environment And Build Workloads}
-OpenHands, SWE-agent, SWE-ReX, SWE-Factory-Gym, MEnvData-SWE, and SWE-rebench
-V2 provide repository repair, Docker-backed environment construction, and
-build/test oracles~\cite{openhands_sdk_repo,swe_agent_repo,swe_rex_repo,swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}.
-These systems motivate the environment/cache transition in this proposal. The
-paper's boundary is narrower because it asks whether the path-view part of a
-selected transition can be implemented as policy-only name resolution while the
-source system or lower filesystem continues to own environment construction,
-command execution, and data-path behavior. These workloads supply environment
-and build oracles, while \namei contributes the name-resolution policy boundary
-under those oracles.
+Wrapfs~\cite{wrapfs}, Bento~\cite{bento}, and custom filesystems demonstrate
+broader filesystem-extension boundaries. They can implement richer behavior and,
+in Bento's case, reduce the risk of in-kernel filesystem development. They are
+the RQ3 ownership comparison point because the developer still owns filesystem
+methods, storage semantics, or framework-specific filesystem behavior. These
+mechanisms remain the appropriate implementation boundary when the workload
+needs custom file operations, synthetic contents, persistence, or richer
+semantics.
+
+DeltaFS, IndexFS, and TableFS show that full metadata services and specialized
+filesystems are valuable when the problem is metadata distribution, indexing,
+or storage layout~\cite{deltafs_sc21,indexfs,tablefs}. They are not the main
+workload baselines for \namei, but they clarify the boundary because such
+workloads require a metadata service or full filesystem when the oracle needs
+distributed metadata or a new filesystem object model.
+
+\subsection{Namespace Construction}
+
+Bind mounts, projected volumes, symlink forests, copy trees, and OverlayFS are
+practical ways to present alternate views~\cite{kubernetes_projected_volumes,linux_overlayfs}.
+They preserve ordinary kernel filesystem behavior, but express policy by
+constructing or updating namespace state. \namei asks when the policy can stay
+at lookup and directory-enumeration time instead of materializing a view before
+the transition completes.
+
+\subsection{Access Control And Observation Hooks}
+
+Landlock, BPF LSM programs, and fanotify show that Linux already exposes
+specialized hooks around filesystem access and events~\cite{linux_landlock,linux_bpf_lsm,linux_fanotify}.
+Among neighboring mechanisms, these hooks sit between materialized namespace
+construction and \namei. They can run verified policy in the kernel, but their
+natural role is to deny, mediate, or observe operations. \namei selects which
+existing object a name denotes during resolution and then returns control to the
+ordinary VFS and lower filesystem. Access-control denial remains outside the
+current action set because the primary claim is name-resolution selection and
+visibility.
+
+\subsection{Source Workload Systems}
+
+Agent filesystems are closest to our workloads, but they are workload sources
+rather than direct cost baselines~\cite{agentfs_repo,branchfs_repo,sandlock_repo,yolofs_repo}.
+They show that agent workspaces need branch, sandbox, staging, and
+snapshot-like views, while their implementations also own behavior beyond
+\namei's boundary.
+For agent workloads, custom or stackable filesystem ownership provides the RQ3
+responsibility comparison, while FUSE remains the RQ2 cost comparison. \namei applies when the
+same source oracle can be satisfied by changing path visibility or object
+selection while leaving the rest of that ownership with the source system or
+lower filesystem.
+
+Environment and cache systems provide a second workload source, not a filesystem
+mechanism baseline. SWE-Factory-Gym, MEnvData-SWE, and SWE-rebench V2 provide
+build/test oracles for environment state and cache reuse
+policies~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}. Agent
+runtimes and service/config systems similarly motivate workload state. Their
+runtime orchestration, environment synthesis, projected-volume materialization,
+and reload behavior remain outside \namei's mechanism claim.

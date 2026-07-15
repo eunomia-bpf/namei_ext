@@ -1,0 +1,175 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+\subsection{Research Questions}
+
+The evaluation is organized around three research questions. Source
+characterization selects workloads and source oracles, and same-oracle
+comparisons plus boundary evidence answer the RQs.
+The unit of evidence is a complete source-oracle matrix, not a catalog of
+one-off baselines or mechanism smoke tests.
+
+\begin{description}
+\item[RQ1] Can a narrow VFS name-resolution extension express real
+state-dependent path-view policies without taking over filesystem semantics?
+\item[RQ2] What is the cost of putting programmable policy on the VFS
+name-resolution path compared with a feature-equivalent FUSE policy
+implementation?
+\item[RQ3] Does \namei provide a narrower verifier-bounded, fail-closed
+ownership boundary than building a custom or stackable filesystem when the
+needed policy is only name resolution?
+\end{description}
+
+\subsection{Experimental Setup}
+
+All \namei mechanism runs execute in KVM~\cite{linux_kvm} with the modified
+kernel and the real \code{cgroup/namei_ext} attach path. Make targets own
+workload execution, comparison construction, result collection, and report
+generation. Each run records the machine, kernel, image, policy, workload
+inputs, stdout/stderr, dmesg, per-operation lookup/readdir events, and
+comparison-specific setup observations.
+
+Correctness gates every row. A source oracle is the correctness condition
+extracted from the original source system. A same-oracle mechanism comparison
+requires the executed \namei and feature-equivalent FUSE rows to pass that same
+condition, not weaker mechanism-specific tests. RQ3 boundary accounts use the
+same source oracle to compare responsibilities and containment rather than to
+claim an executed custom/stackable correctness row. Reproduced or replayed
+source oracles can become evaluation rows. Source inspection and paper-derived
+evidence remain context unless they are backed by a real KVM oracle.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabular}{@{}L{0.18\linewidth}L{0.26\linewidth}L{0.2\linewidth}L{0.24\linewidth}@{}}
+\hline
+Experiment & Source oracle & \namei row & Required comparisons \\
+\hline
+Agent workspace lifecycle & complete AgentFS-derived branch/checkpoint, COW,
+whiteout, symlink, and final-tree behavior & full KVM
+\code{cgroup/namei_ext} run over the complete fixed workspace lifecycle,
+attributing only lookup/readdir decisions to \namei &
+feature-equivalent FUSE policy for RQ2, plus source-system and custom/stackable
+ownership boundary account for RQ3 \\
+Environment/cache transition & MEnvData-SWE and SWE-Factory-Gym build/test
+rows with hit, miss, stale, corrupt, and epoch-update states & full KVM
+\code{cgroup/namei_ext} run over the fixed cache-state machine, with
+file-object evidence requiring final-file target selection &
+feature-equivalent FUSE cache-policy view for RQ2, plus source-native and
+custom/stackable cache ownership boundary account for RQ3 \\
+Service/config transition & concrete source oracle only when lookup-time
+object selection changes service-visible behavior & evaluated only if a source
+oracle requires lookup-time object selection & FUSE and boundary comparisons
+only for an included source oracle \\
+\hline
+\end{tabular}
+\caption{Complete experiment shape. The evaluation has two primary matrices.
+Service/config is evaluated only if a source oracle requires
+lookup-time object selection.}
+\label{tab:experiment-shape}
+\end{table}
+
+\paragraph{Measurement protocol.}
+For each final reported run, the artifact records hardware and kernel
+configuration, kernel commit, KVM image digest, filesystem configuration, run
+count, warmup rule, confidence-interval method, cache-hot/cache-cold protocol,
+feature-equivalent FUSE implementation, and custom or stackable filesystem
+boundary account for each reportable workload.
+
+\subsection{RQ1: Expressiveness And Sufficiency}
+
+RQ1 asks whether the VFS boundary can express path-view transitions extracted
+from source oracles while preserving lower-filesystem semantics. A reportable
+workload must run the complete source lifecycle or fixed replay needed by its
+oracle, while \namei evidence is limited to lookup and readdir effects.
+Runtime orchestration, storage state, synthetic contents, write handling, and
+source-system lifecycle behavior remain delegated to the source system or
+lower filesystem.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabular}{@{}L{0.2\linewidth}L{0.24\linewidth}L{0.22\linewidth}L{0.24\linewidth}@{}}
+\hline
+Source/state & Path operation/effect & Oracle & Delegated behavior/boundary \\
+\hline
+AgentFS-derived workspace branch/checkpoint~\cite{agentfs_repo} & lookup/readdir select or hide branch-visible lower objects during the lifecycle & final tree, lookup/readdir coherence, lower-filesystem permissions/writes & complete lifecycle run with COW, checkpoint, sandbox orchestration, and writes kept with the source runtime or lower filesystem \\
+Environment/cache epoch~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo} & lookup selects verified local or canonical fallback, or hides stale/corrupt local objects as reported by source cache metadata/validation & source build/test result plus stale/corrupt non-use & representative workload with cache population, content validation, and build/test execution kept with source/lower filesystem, with final-file target support required for file-object selection \\
+Service/config epoch~\cite{kubernetes_projected_volumes,kubernetes_configmaps,kubernetes_secrets} & lookup selects epoch object at stable service path & service/source oracle for lookup-time object choice & included when a concrete oracle is chosen, with reload protocol and data path outside the hook \\
+\hline
+\end{tabular}
+\caption{Workload evidence contract. Only the path operation/effect column is
+\namei evidence, and delegated behavior remains outside the extension
+boundary.}
+\label{tab:workload-evidence}
+\end{table}
+
+Each representative workload must pass its source oracle in KVM before
+inclusion, preserve lower-filesystem permission/write/data-path behavior,
+exercise lookup/readdir coherence, and record an operation-weighted trace.
+
+\subsection{RQ2: Cost Versus FUSE}
+
+RQ2 compares \namei with a feature-equivalent FUSE policy service under the same
+source oracle, isolating the request-path cost of moving the same decision out
+of VFS name resolution. For each final reported workload, the FUSE row must
+implement the same source policy and pass the same oracle before any overhead
+is interpreted. Non-name-resolution lifecycle
+behavior is delegated identically in both rows, so the comparison isolates the
+placement of the lookup/readdir policy rather than giving either mechanism a
+different runtime.
+
+The reported metrics are pass-through and action-specific \namei overhead,
+lookup/open/stat/access/exec/readdir latency, cache-hot and cache-cold behavior,
+macro workload runtime, operation-weighted invocation rate, matched action mix,
+and FUSE daemon/request-path cost. No-hook and pass-through controls separate
+fixed hook cost from policy cost. The same-oracle FUSE rows show the cost of
+placing equivalent policy in a filesystem service.
+
+\subsection{RQ3: Safety And Boundary Versus Custom Or Stackable Filesystems}
+
+RQ3 asks whether verifier-bounded policy plus kernel validation gives \namei a
+narrower verifier-bounded, fail-closed ownership boundary than writing a custom
+or stackable filesystem for policies that only need name resolution. Here,
+policy-output safety and containment mean that the eBPF verifier bounds policy
+execution, the kernel validates names, action types, target identifiers, and
+selection scope, malformed decisions fail closed, and lower filesystems still
+enforce permissions, data operations, writes, and persistence. The claim is not
+that \namei proves full filesystem correctness or replaces mechanisms needed
+for richer semantics. The comparison is not whether custom filesystems are
+expressive. Instead, it asks which filesystem responsibilities the developer
+must implement or operate for the same source oracle.
+
+The boundary account records same-oracle KVM pass/fail, preserved
+lower-filesystem permissions and writes, malformed or unsupported decision
+containment through \code{cgroup/namei_ext}, filesystem methods and storage
+semantics the developer must implement, privileged code surface, policy code
+size, state responsibility, and whether the source policy needs behavior beyond
+name resolution. Custom or stackable filesystems place policy in filesystem
+methods, while \namei keeps policy in verified eBPF and leaves data, write, and
+persistence semantics with the lower filesystem.
+
+RQ3 supports a narrower verifier-bounded, fail-closed ownership boundary only
+if the same oracle passes, invalid decisions fail visibly through the real
+attachment path, and the comparison shows that a custom or stackable filesystem
+would own filesystem methods, daemon state, storage semantics, or data-path
+behavior that \namei leaves to the VFS and lower filesystem.
+
+For the Agent workspace matrix, the boundary account compares the complete
+source lifecycle's name-resolution decisions with AgentFS, BranchFS, YoloFS,
+and custom or stackable filesystem ownership. For the environment/cache matrix,
+it compares the cache-state name-resolution policy with the source-native
+environment mechanism, feature-equivalent FUSE ownership, and any custom or
+stackable filesystem responsibility needed to own cache metadata, stale/corrupt
+state, or data-path behavior.
+
+\subsection{Interpretation Scope}
+
+Rows that require final-file target selection, including environment/cache
+file-object evidence, are outside the evidence reported here until that support
+exists. Service/config is included only when a concrete lookup-time source
+oracle exists. RQ answers come from reviewed KVM source-oracle runs,
+feature-equivalent FUSE comparisons, and ownership-boundary evidence.
+Materialized namespace mechanisms, eBPF LSM hooks, and native production
+mechanisms remain related work and background context unless a selected source
+workload makes one of them part of the source behavior being evaluated.

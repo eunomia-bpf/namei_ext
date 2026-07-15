@@ -1,0 +1,32 @@
+\section{Background}
+\label{sec:background}
+
+\subsection{VFS Name Resolution}
+
+The Linux VFS resolves a pathname by walking directory components, consulting
+directory entries and inodes, and then dispatching ordinary file operations to
+the selected filesystem~\cite{linux_vfs_docs,linux_path_lookup}. Lookup selects
+the object on which later file semantics operate, while the VFS and lower
+filesystem retain permission checks, reads and writes, page-cache behavior,
+persistence, and consistency. \namei uses this separation to change path-view
+selection during lookup and readdir without replacing later file operations.
+
+\subsection{Programmable Kernel Policy}
+
+eBPF lets the kernel run verified, bounded programs at explicit attachment
+points~\cite{linux_bpf_docs,linux_bpf_verifier}. The \code{sched_ext} scheduler class is a useful precedent because it
+lets BPF choose scheduling policy while the kernel retains scheduler
+machinery~\cite{linux_sched_ext}. \namei uses the same policy-versus-ownership
+separation for VFS name resolution. BPF supplies a bounded path-view decision,
+and the kernel retains the machinery that owns filesystem objects. The analogy
+concerns the ownership split rather than the scheduler interface.
+
+\subsection{Namespace Construction And Filesystem Services}
+
+Linux already offers mechanisms for alternate filesystem views. Bind mounts,
+OverlayFS, projected volumes, and copied trees construct or materialize a
+namespace before the application uses it~\cite{linux_mount,linux_overlayfs,kubernetes_projected_volumes}.
+FUSE and stackable or custom filesystems provide a broader programmable
+filesystem boundary, often by placing a service or filesystem implementation on
+the operation path~\cite{linux_fuse,wrapfs,bento}. These mechanisms define the neighboring
+boundaries for the path-view policy studied in the rest of the paper.

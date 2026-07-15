@@ -1,0 +1,138 @@
+\section{Motivation And Workloads}
+\label{sec:workload-characterization}
+
+A VFS name-resolution extension targets a narrow workload pattern in which the
+source system changes which existing object a pathname should select, but the
+operation does not need a new filesystem object model.
+The source-system evidence below identifies that pattern and separates it from
+the broader behavior that should remain with agent runtimes, environment
+builders, services, FUSE filesystems, or custom filesystems.
+
+\subsection{State-Dependent Path Views}
+
+We call a transition a state-dependent path view when a system state change
+alters which existing object a pathname denotes, or whether the object is
+visible, while ordinary lower-filesystem semantics remain unchanged. This
+definition is intentionally narrower than "programmable filesystem." It
+excludes synthetic file contents, custom metadata persistence, distributed
+directory indexing, data-path mediation, write-conflict resolution, and
+cross-path transactional snapshots.
+
+Within this definition, the transition is the workload state change, the policy
+is the eBPF decision logic, and the action is the bounded result that the kernel
+validates for lookup or directory enumeration.
+
+The distinction matters because the natural implementation boundary changes.
+If the system needs synthetic contents or custom metadata persistence, a FUSE
+service, custom filesystem, metadata service, or application/runtime mechanism
+is the right boundary. If the state change only affects lookup or directory
+visibility, a VFS name-resolution policy can be enough. We call the remaining
+source-system behavior non-name-resolution responsibilities.
+
+\subsection{Workload-Selection Evidence}
+
+Public systems provide different kinds of evidence: reproduced runs, selected
+replays, source inspection, and paper-derived oracles. We use them to choose
+representative KVM workloads and to state each oracle's limits, not as a
+separate contribution.
+
+A source oracle is the correctness condition extracted from the original source
+system. A same-oracle KVM run applies that condition unchanged to \namei and its
+comparison rows.
+
+The first source family is agent/workspace state. AgentFS is the primary source
+because its public implementation exposes workspace lifecycle traces
+from which path-selection and visibility oracles can be extracted~\cite{agentfs_repo}.
+BranchFS, Sandlock, and YoloFS provide neighboring branch, sandbox, staging,
+and stackable-filesystem context rather than separate evaluation
+workloads~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
+
+The second source family is environment/cache state. SWE-Factory-Gym or
+MEnvData-SWE are source systems because their public artifacts provide
+Docker-backed build/test oracles~\cite{swe_factory_repo,menvagent_repo}.
+SWE-rebench V2 supplies broader benchmark context~\cite{swe_rebench_v2_repo}.
+These sources are useful only when the oracle can be reduced to selecting or
+hiding existing cache or environment objects while the source evaluator keeps
+build/test semantics.
+
+Service/config sources remain conditional. Projected configuration, secret,
+certificate, or fixture views motivate the problem, but a service/config
+workload belongs in the evaluation only when the source behavior depends on
+lookup-time object selection rather than projected-volume materialization or
+service reload alone~\cite{kubernetes_projected_volumes}.
+
+Because each evidence source supports claims at different strengths, only
+reproduced source behavior can define a final KVM workload oracle. Source
+inspection can motivate workload shape, and paper-derived behavior can define a
+boundary to test, but the evaluation reports only rows that map to a concrete
+same-oracle KVM run.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabular}{@{}L{0.2\linewidth}L{0.25\linewidth}L{0.25\linewidth}L{0.2\linewidth}@{}}
+\hline
+Example & State and operation & \namei action and delegated behavior & Oracle \\
+\hline
+Agent workspace lifecycle & branch or checkpoint state changes lookup and
+readdir under a workspace path & select or hide existing lower objects while
+the source runtime keeps COW, checkpoint, sandbox, writes, and lifecycle
+orchestration & final tree, lookup/readdir coherence, and preserved
+lower-filesystem permissions \\
+Environment/cache transition & cache epoch marks a local object hit, miss,
+stale, corrupt, or behind an epoch update & select verified local or canonical
+fallback, or hide a stale/corrupt local object while cache population, build/test
+execution, and content validation stay outside the hook & source build/test
+result and stale/corrupt non-use \\
+\hline
+\end{tabular}
+\caption{Representative state-dependent path-view examples. The \namei
+evidence is the lookup/readdir action, and non-name-resolution behavior remains
+with the source runtime or lower filesystem.}
+\label{tab:path-view-examples}
+\end{table}
+
+Three design constraints follow from the source systems. First, each workload
+carries its own state, such as a branch identifier, checkpoint, cache epoch,
+environment epoch, service epoch, or secret epoch. Policy therefore must run at
+the affected lookup or directory-enumeration operation and remain scoped per
+workload.
+
+Second, the path-view portion of each source system is narrower than the full
+system. Many rows also include runtime orchestration, service reload,
+synthetic contents, or storage semantics that remain separate responsibilities.
+The narrower path-view scope implies that the kernel and lower filesystem must
+keep data, permission, and persistence ownership.
+
+Third, directory visibility and lookup selection appear together in the source
+oracles. Lookup and readdir therefore need one coherent decision contract.
+
+Together, these source-system observations set the paper's comparison rule:
+(1) source behavior supplies the oracle, (2) feature-equivalent FUSE supplies
+the direct programmable-policy cost comparison, and (3) custom or stackable
+filesystems define the broader safety and ownership boundary. Materialized
+namespace mechanisms remain related-work and background comparisons rather than
+the central experiment. The same rule drives
+the design requirements in Section~\ref{sec:design} and the RQ-organized
+evaluation in Section~\ref{sec:evaluation}.
+
+\subsection{Selected Workloads}
+
+This evidence filter leaves two primary representative workloads. One workload
+derives from a complete AgentFS-style workspace lifecycle whose
+name-resolution decisions select or hide branch-visible objects while COW,
+checkpoint, sandbox, and write behavior remain responsibilities of the source
+runtime.
+
+The second workload is an environment/cache transition that chooses existing
+verified local or canonical objects, and can select regenerated objects only
+after the source evaluator has materialized them. It hides stale or corrupt
+local objects while the source evaluator and lower filesystem keep cache
+population and build/test semantics. This workload exercises file-object cache
+choices, which require final-file target selection.
+
+A workload becomes reportable only after a reviewed KVM same-oracle run.
+Service/config is included only when a concrete source oracle depends on
+lookup-time object selection. These workloads instantiate the boundary studied
+by the paper: policy at lookup and directory enumeration, with
+non-name-resolution behavior left to the source system or lower filesystem.

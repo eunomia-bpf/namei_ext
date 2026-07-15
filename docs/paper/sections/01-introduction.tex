@@ -1,75 +1,100 @@
 \section{Introduction}
 
-Agent-workspace and environment/cache workflows create short-lived branches,
-checkpoints, cache epochs, and validation states while invoking unmodified
-build and test tools. These workflows are common in agent runtimes, repository
-repair systems, and environment-construction benchmarks because they need to
-reuse ordinary tools while changing the state those tools should see.
+Modern systems increasingly construct task-specific filesystem views around
+ordinary tools. Agents branch, fork, checkpoint, hide side effects, and run
+build or test commands over repository
+workspaces~\cite{agentfs_repo,branchfs_repo,yolofs_repo}. Environment systems
+validate repositories against generated Docker state, cache epochs, and verified
+local artifacts~\cite{docker_overview,swe_factory_repo,menvagent_repo,swe_rebench_v2_repo},
+while services consume projected configuration, secrets, certificates, or
+fixtures as operational state changes~\cite{kubernetes_projected_volumes,kubernetes_configmaps,kubernetes_secrets}.
 
-The state transition becomes a filesystem problem when ordinary pathnames
-continue to name objects from the wrong state. After a workspace transition, a
-path bound to the previous state can cause a tool to validate the wrong
-revision. A path bound to shared state can direct writes into the parent
-workspace. After a cache-epoch change, a path bound to an old cache object can
-feed stale inputs into a build.
+However, these views make pathname binding a correctness boundary. Binding a
+name to the wrong lower object can validate the wrong revision, leak a write
+into a parent workspace, feed stale cache input into a build, or expose the
+wrong service configuration. In many of these cases, the needed behavior is not
+a new file format, storage service, or custom file operation. The needed
+behavior chooses which existing object a name denotes, or whether that object is
+visible.
 
-The root cause is a mismatch in pathname-to-object binding or visibility for
-the current state, not a need to replace lower filesystem read/write semantics.
-For write-leak cases, the relevant decision is the open/create resolution that
-selects the branch object or branch parent before the write occurs. After that
-selection, the lower filesystem still owns write semantics.
+The root cause is a boundary mismatch in today's filesystem extension points.
+Workload state changes the right pathname-to-object relation at lookup or
+directory-enumeration time, but ordinary file data, writes, permissions,
+page-cache behavior, persistence, and consistency should remain with the lower
+filesystem. A mechanism that acts before lookup must materialize or update a
+view, while a mechanism that owns lookup as a filesystem service usually owns
+more filesystem behavior than this subproblem needs.
 
-Existing mechanisms cover this need at different ownership boundaries. FUSE can
-present a dynamic view, but it makes a filesystem service own the view boundary.
-Bind mounts, projected volumes, symlink forests, and OverlayFS can construct a
-namespace, but the namespace must be created or updated as state changes.
-Stackable filesystems can interpose beneath applications, but they own
-filesystem methods and object handling~\cite{linux_fuse,kubernetes_projected_volumes,linux_overlayfs,wrapfs}.
-The unresolved mismatch is the need to change only pathname-to-object bindings
-or visibility while leaving ordinary filesystem ownership and semantics
-unchanged.
+Existing mechanisms bracket this lookup-time selection problem. Namespace
+mechanisms such as bind mounts, OverlayFS, projected volumes, and copied trees
+construct or materialize a namespace before the application uses
+it~\cite{linux_mount,linux_overlayfs,kubernetes_projected_volumes}.
+eBPF LSM hooks can attach verified access-control policy to security
+decisions~\cite{linux_bpf_lsm},
+but they are not an object-selection boundary. FUSE, stackable filesystems,
+custom filesystems, and metadata services can compute richer views, but they
+cross into a broader filesystem boundary~\cite{linux_fuse,wrapfs,bento,deltafs_sc21,indexfs,tablefs}.
+They may be the right mechanism when the oracle needs synthetic contents,
+custom metadata, data-path mediation, or runtime orchestration, but they are
+broader than lookup-time name-resolution policy.
 
-These cases define state-transition path views, which are source-system
-transitions where state changes affect only object selection or visibility. The
-key insight is not that pathname lookup can choose objects. Existing
-filesystems and namespace mechanisms already do that. The useful separation is
-between state-dependent object selection, namespace materialization, and
-filesystem-service ownership when the lower filesystem continues to own data,
-writes, permissions, persistence, and consistency.
+We argue that the missing narrow systems boundary is policy at VFS name
+resolution, between access-control hooks and filesystem-service ownership. We
+call the recurring subproblem a state-dependent path view, a workload-state
+change that chooses which existing lower object a pathname denotes or whether
+that object is visible. VFS name resolution is the point where
+pathname-to-object selection and directory visibility are decided. The insight
+is to separate that policy from filesystem ownership by letting a bounded
+policy choose path-view actions at lookup and readdir time, then returning to
+ordinary VFS and lower-filesystem semantics.
 
-\namei realizes this separation as a policy-only object-selection boundary
-inside VFS name resolution. A policy is an eBPF program attached through the
-real \code{cgroup/namei_ext} path in the modified kernel. The kernel exposes one
-decision function because lookup and directory enumeration share the same
-contract. Given an event, pathname context, and policy state, the policy chooses
-the visible lower path or visibility action while leaving the VFS object model
-and lower filesystem semantics intact. Unlike a stackable or passthrough filesystem, the
-policy does not implement filesystem methods, own VFS objects, run a filesystem
-server, or materialize a namespace tree.
+Making that separation practical creates three technical challenges. First, the
+policy must run at the lookup and directory-enumeration operations that decide
+the visible object, not in a separate namespace-construction phase. Second, the
+policy output must be bounded and kernel-validated so the lower filesystem keeps
+permissions, writes, data, page cache, persistence, and consistency. Third, the
+same correctness condition must be usable to compare this boundary with a
+feature-equivalent FUSE policy service and with the broader ownership required
+by custom or stackable filesystems.
 
-The claim is deliberately falsifiable. The evaluation begins with two upstream
-transitions, one AgentFS-derived workspace transition and one
-SWE-Factory-Gym-derived environment/cache transition. It classifies each
-transition's oracle-relevant filesystem effects before any \namei
-implementation is counted as boundary evidence. A transition that requires
-workload-specific read/write/setattr interposition, synthetic contents, or
-cross-path transactions is reported outside the boundary rather than counted as
-\namei evidence. Same-oracle baselines then support only practical value and
-cost claims.
+We present \namei as a \code{sched_ext}-style extension point for the VFS.
+eBPF chooses name-resolution policy, while the kernel keeps the VFS mechanisms
+that own objects and execute filesystem semantics~\cite{linux_sched_ext}. One
+eBPF decision function receives lookup and directory-enumeration events,
+returns bounded pass, redirect, hide, or \code{SELECT_TARGET} actions over
+kernel-registered lower paths, and relies on kernel validation before ordinary
+VFS execution resumes.
+The policy does not implement file operations, allocate dentries or inodes, run
+a filesystem daemon, or materialize a namespace tree. Together, these choices
+answer the three challenges. The hook is placed at name resolution, the action
+space is bounded and validated, and the mechanism preserves the same lower
+objects used by the FUSE rows and referenced in the
+custom/stackable-filesystem boundary account.
 
-The paper makes three planned contributions.
-\begin{enumerate}
-\item A state-transition path-view model that classifies source-system state
-transitions into pathname-to-object selection, visibility, lower-filesystem
-behavior, and out-of-model effects (Sections~\ref{sec:workload-characterization}
-and~\ref{sec:design}).
-\item \namei, a VFS name-resolution prototype that realizes classified
-in-model effects with one eBPF decision interface for lookup and directory
-enumeration, without implementing filesystem methods or owning VFS objects
-(Sections~\ref{sec:design} and~\ref{sec:implementation}).
-\item A correctness-first KVM evaluation plan for two examined upstream
-transitions, measuring oracle correctness, operation-weighted lookup/readdir
-policy events, and setup/update/runtime behavior against source-system,
-distinct standalone FUSE, and materialized baselines
-(Section~\ref{sec:evaluation}).
-\end{enumerate}
+We evaluate whether this ownership split is sufficient for source-derived
+path-view policies, cheaper than feature-equivalent FUSE placement, and more
+contained than broader filesystem ownership. RQ1 asks whether KVM workloads pass
+the same correctness conditions while preserving lower-filesystem semantics.
+RQ2 compares the same policies with feature-equivalent FUSE implementations.
+RQ3 asks whether verifier-bounded policy and kernel validation provide a
+narrower, fail-closed ownership boundary than custom or stackable filesystems.
+The primary workload families are Agent workspace lifecycle and
+environment/cache transition, and service/config remains motivating scope unless
+a concrete source-system correctness condition depends on lookup-time object
+selection.
+
+The paper's primary contribution is the design and Linux implementation of
+\namei as one systems boundary: a \code{sched_ext}-style VFS extension point
+that places bounded policy at lookup and directory enumeration while preserving
+VFS and lower-filesystem ownership. The paper makes three concrete
+contributions:
+\begin{itemize}
+\item the boundary design and policy contract for lookup and readdir
+(Section~\ref{sec:design});
+\item a modified-Linux prototype with one eBPF decision function, the real
+\code{cgroup/namei_ext} attachment path, and kernel validation for bounded
+actions (Section~\ref{sec:implementation}); and
+\item an evaluation that holds workload correctness fixed while comparing
+\namei with feature-equivalent FUSE and recording which responsibilities would
+move into custom or stackable filesystems (Section~\ref{sec:evaluation}).
+\end{itemize}

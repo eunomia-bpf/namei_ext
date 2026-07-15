@@ -1,0 +1,19 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Implications}
+
+\namei treats VFS name resolution as a policy boundary rather than as a new
+filesystem. The evaluation tests whether this boundary lets policy move into a
+narrow, verifier-bounded hook without forcing the
+developer to own a daemon, a namespace materializer, or a filesystem
+implementation.
+
+\subsection{Extension Path}
+
+The same boundary also defines future extensions. Final-file target selection
+and synthetic aliases require additional kernel support, while synthetic
+contents, custom metadata persistence, distributed indexing, and cross-path
+transactions remain filesystem or runtime responsibilities. \namei is intended
+only for workloads whose correctness oracle is path selection or visibility over
+existing lower objects.

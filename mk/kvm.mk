@@ -1,5 +1,19 @@
 PHASE1_RESULT_DIR ?= $(RESULT_ROOT)/phase1/$(RUN_ID)
-POLICY_LOAD_OBJECTS ?= $(sort $(wildcard $(BUILD_ROOT)/bpf/*.bpf.o))
+POLICY_LOAD_OBJECTS ?= $(BUILD_ROOT)/bpf/hide_secret.bpf.o $(BUILD_ROOT)/bpf/pass_only.bpf.o $(BUILD_ROOT)/bpf/redirect_alias.bpf.o $(BUILD_ROOT)/bpf/select_portal.bpf.o
+AGENT_WORKSPACE_RESULT_DIR ?= $(RESULT_ROOT)/experiments/agent-workspace/$(RUN_ID)
+AGENT_WORKSPACE_PREFLIGHT_JSON ?= $(AGENT_WORKSPACE_RESULT_DIR)/agent-workspace-preflight.jsonl
+AGENT_WORKSPACE_MATRIX_RESULT_DIR ?= $(RESULT_ROOT)/experiments/agent-workspace-matrix/$(RUN_ID)
+AGENT_WORKSPACE_MATRIX_JSON ?= $(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/agent-workspace-matrix.jsonl
+AGENT_WORKSPACE_MATRIX_INPUTS ?= $(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/agent-workspace-matrix-inputs.sha256
+AGENT_WORKSPACE_MATRIX_COMMAND ?= $(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/agent-workspace-matrix-command.txt
+AGENT_WORKSPACE_MATRIX_STDOUT ?= $(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/stdout-agent-workspace-matrix.log
+AGENT_WORKSPACE_MATRIX_STDERR ?= $(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/stderr-agent-workspace-matrix.log
+AGENT_WORKSPACE_POLICY ?= $(BUILD_ROOT)/bpf/agent_workspace_view.bpf.o
+AGENT_WORKSPACE_POLICY_SOURCE ?= $(ROOT_DIR)/bpf/policies/agent_workspace_view.bpf.c
+AGENT_WORKSPACE_RUNNER ?= $(BUILD_ROOT)/agent-workspace/namei_ext_agent_workspace
+AGENT_WORKSPACE_RUNNER_SOURCE ?= $(ROOT_DIR)/tests/agent_workspace/namei_ext_agent_workspace.c
+AGENT_WORKSPACE_FUSE_RUNNER ?= $(BUILD_ROOT)/agent-workspace/namei_ext_agent_workspace_fuse
+AGENT_WORKSPACE_FUSE_RUNNER_SOURCE ?= $(ROOT_DIR)/tests/agent_workspace/namei_ext_agent_workspace_fuse.c
 BUILD_GRAPH_POLICY ?= $(BUILD_ROOT)/bpf/build_graph_view.bpf.o
 SANDBOX_FIXTURE_POLICY ?= $(BUILD_ROOT)/bpf/sandbox_fixture_view.bpf.o
 CHECKPOINT_RESTORE_POLICY ?= $(BUILD_ROOT)/bpf/checkpoint_restore_view.bpf.o
@@ -192,7 +206,7 @@ W4_CCACHE_MATERIALIZED_BASELINE_INPUTS ?= $(PHASE1_RESULT_DIR)/w4-ccache-materia
 W4_CCACHE_MATERIALIZED_BASELINE_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-ccache-materialized-baseline-work
 W4_CCACHE_MATERIALIZED_BASELINE_SAMPLES ?= 2
 
-.PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-build-macrobench kvm-w1-build-baseline-macrobench kvm-w1-branch-probes kvm-w1-build-epoch-counterfactual kvm-w2-oracle kvm-w2-nginx-real kvm-w2-nginx-real-trace kvm-w2-nginx-macrobench kvm-w2-nginx-baseline-macrobench kvm-w2-fixture-epoch-counterfactual kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w3-redis-policy-macrobench kvm-w3-redis-baseline-macrobench kvm-w3-checkpoint-epoch-counterfactual kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-cache-epoch-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-materialized-baseline-macrobench kvm-w4-ccache-bulk-fuse-baseline-macrobench kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-policy-macrobench kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual kvm-w4-ccache-rule-macrobench kvm-w4-ccache-materialized-baseline-macrobench kvm-functional kvm-bench kvm-eval-osdi-baselines __phase1_guest_smoke __phase1_guest_policy_load __phase1_guest_policy_semantic __phase1_guest_w1_oracle __phase1_guest_w1_build_replay __phase1_guest_w1_release_build_replay __phase1_guest_w1_build_macrobench __phase1_guest_w1_build_baseline_macrobench __phase1_guest_w1_branch_probes __phase1_guest_w1_build_epoch_counterfactual __phase1_guest_w2_oracle __phase1_guest_w2_nginx_real __phase1_guest_w2_nginx_real_trace __phase1_guest_w2_nginx_macrobench __phase1_guest_w2_nginx_baseline_macrobench __phase1_guest_w2_fixture_epoch_counterfactual __phase1_guest_w3_oracle __phase1_guest_w3_redis_replay __phase1_guest_w3_redis_table_replay __phase1_guest_w3_redis_counterfactual __phase1_guest_w3_redis_policy_macrobench __phase1_guest_w3_redis_baseline_macrobench __phase1_guest_w3_checkpoint_epoch_counterfactual __phase1_guest_w4_oracle __phase1_guest_w4_cache_content __phase1_guest_w4_cache_table_content __phase1_guest_w4_cache_transition_counterfactual __phase1_guest_w4_cache_epoch_counterfactual __phase1_guest_w4_ccache_real __phase1_guest_w4_ccache_trace __phase1_guest_w4_ccache_policy_bridge __phase1_guest_w4_ccache_bulk_trace __phase1_guest_w4_ccache_bulk_policy_bridge __phase1_guest_w4_ccache_bulk_materialized_baseline_macrobench __phase1_guest_w4_ccache_bulk_fuse_baseline_macrobench __phase1_guest_w4_ccache_bulk_policy_compile __phase1_guest_w4_ccache_bulk_native_compile __phase1_guest_w4_ccache_bulk_fuse_compile __phase1_guest_w4_ccache_bulk_policy_macrobench __phase1_guest_w4_ccache_policy_compile __phase1_guest_w4_ccache_parent_compile __phase1_guest_w4_ccache_table_compile __phase1_guest_w4_ccache_release_counterfactual __phase1_guest_w4_ccache_rule_macrobench __phase1_guest_w4_ccache_materialized_baseline_macrobench __phase1_guest_functional __phase1_guest_bench __eval_osdi_guest_baselines
+.PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-build-macrobench kvm-w1-build-baseline-macrobench kvm-w1-branch-probes kvm-w1-build-epoch-counterfactual kvm-w2-oracle kvm-w2-nginx-real kvm-w2-nginx-real-trace kvm-w2-nginx-macrobench kvm-w2-nginx-baseline-macrobench kvm-w2-fixture-epoch-counterfactual kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w3-redis-policy-macrobench kvm-w3-redis-baseline-macrobench kvm-w3-checkpoint-epoch-counterfactual kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-cache-epoch-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-materialized-baseline-macrobench kvm-w4-ccache-bulk-fuse-baseline-macrobench kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-policy-macrobench kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual kvm-w4-ccache-rule-macrobench kvm-w4-ccache-materialized-baseline-macrobench kvm-agent-workspace-preflight kvm-agent-workspace-matrix kvm-functional kvm-bench kvm-eval-osdi-baselines __phase1_guest_smoke __phase1_guest_policy_load __phase1_guest_policy_semantic __phase1_guest_w1_oracle __phase1_guest_w1_build_replay __phase1_guest_w1_release_build_replay __phase1_guest_w1_build_macrobench __phase1_guest_w1_build_baseline_macrobench __phase1_guest_w1_branch_probes __phase1_guest_w1_build_epoch_counterfactual __phase1_guest_w2_oracle __phase1_guest_w2_nginx_real __phase1_guest_w2_nginx_real_trace __phase1_guest_w2_nginx_macrobench __phase1_guest_w2_nginx_baseline_macrobench __phase1_guest_w2_fixture_epoch_counterfactual __phase1_guest_w3_oracle __phase1_guest_w3_redis_replay __phase1_guest_w3_redis_table_replay __phase1_guest_w3_redis_counterfactual __phase1_guest_w3_redis_policy_macrobench __phase1_guest_w3_redis_baseline_macrobench __phase1_guest_w3_checkpoint_epoch_counterfactual __phase1_guest_w4_oracle __phase1_guest_w4_cache_content __phase1_guest_w4_cache_table_content __phase1_guest_w4_cache_transition_counterfactual __phase1_guest_w4_cache_epoch_counterfactual __phase1_guest_w4_ccache_real __phase1_guest_w4_ccache_trace __phase1_guest_w4_ccache_policy_bridge __phase1_guest_w4_ccache_bulk_trace __phase1_guest_w4_ccache_bulk_policy_bridge __phase1_guest_w4_ccache_bulk_materialized_baseline_macrobench __phase1_guest_w4_ccache_bulk_fuse_baseline_macrobench __phase1_guest_w4_ccache_bulk_policy_compile __phase1_guest_w4_ccache_bulk_native_compile __phase1_guest_w4_ccache_bulk_fuse_compile __phase1_guest_w4_ccache_bulk_policy_macrobench __phase1_guest_w4_ccache_policy_compile __phase1_guest_w4_ccache_parent_compile __phase1_guest_w4_ccache_table_compile __phase1_guest_w4_ccache_release_counterfactual __phase1_guest_w4_ccache_rule_macrobench __phase1_guest_w4_ccache_materialized_baseline_macrobench __experiment_agent_workspace_preflight __experiment_agent_workspace_matrix __phase1_guest_functional __phase1_guest_bench __eval_osdi_guest_baselines
 
 kvm-smoke: $(KERNEL_IMAGE)
 	install -d "$(PHASE1_RESULT_DIR)"
@@ -239,6 +253,66 @@ __phase1_guest_policy_semantic:
 	"$(BUILD_ROOT)/policy-semantic/namei_ext_policy_semantic" "$(PHASE1_RESULT_DIR)/policy-semantic.jsonl" /sys/fs/cgroup "$(BUILD_GRAPH_POLICY)" "$(SANDBOX_FIXTURE_POLICY)" "$(CHECKPOINT_RESTORE_POLICY)" "$(CACHE_LOCALITY_POLICY)"
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-policy-semantic.log"
 	printf '{"event":"policy-semantic-done","run_id":"%s"}\n' "$(RUN_ID)" >>"$(PHASE1_RESULT_DIR)/policy-semantic.jsonl"
+
+kvm-agent-workspace-preflight: $(KERNEL_IMAGE) bpf agent-workspace
+	install -d "$(AGENT_WORKSPACE_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __experiment_agent_workspace_preflight RUN_ID=$(RUN_ID)"
+
+__experiment_agent_workspace_preflight:
+	install -d "$(AGENT_WORKSPACE_RESULT_DIR)"
+	printf '{"event":"agent-workspace-preflight-start","run_id":"%s","result_level":"kvm_agent_workspace_dependency_preflight","policy":"agent_workspace_view.bpf.c"}\n' "$(RUN_ID)" >"$(AGENT_WORKSPACE_PREFLIGHT_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	"$(AGENT_WORKSPACE_RUNNER)" "$(AGENT_WORKSPACE_POLICY)" "$(AGENT_WORKSPACE_PREFLIGHT_JSON)" /sys/fs/cgroup
+	"$(AGENT_WORKSPACE_FUSE_RUNNER)" "$(AGENT_WORKSPACE_PREFLIGHT_JSON)"
+	dmesg >"$(AGENT_WORKSPACE_RESULT_DIR)/dmesg-agent-workspace-preflight.log"
+	printf '{"event":"agent-workspace-preflight-done","run_id":"%s","result_level":"kvm_agent_workspace_dependency_preflight"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_PREFLIGHT_JSON)"
+
+kvm-agent-workspace-matrix: $(KERNEL_IMAGE) bpf agent-workspace
+	install -d "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __experiment_agent_workspace_matrix RUN_ID=$(RUN_ID)"
+
+__experiment_agent_workspace_matrix:
+	install -d "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)"
+	: >"$(AGENT_WORKSPACE_MATRIX_STDOUT)"
+	: >"$(AGENT_WORKSPACE_MATRIX_STDERR)"
+	printf 'make -C %s __experiment_agent_workspace_matrix RUN_ID=%s\n' "$(ROOT_DIR)" "$(RUN_ID)" >"$(AGENT_WORKSPACE_MATRIX_COMMAND)"
+	printf 'AGENT_WORKSPACE_POLICY=%s\nAGENT_WORKSPACE_RUNNER=%s\nAGENT_WORKSPACE_FUSE_RUNNER=%s\nKERNEL_IMAGE=%s\nKERNEL_BUILD_DIR=%s\n' "$(AGENT_WORKSPACE_POLICY)" "$(AGENT_WORKSPACE_RUNNER)" "$(AGENT_WORKSPACE_FUSE_RUNNER)" "$(KERNEL_IMAGE)" "$(KERNEL_BUILD_DIR)" >>"$(AGENT_WORKSPACE_MATRIX_COMMAND)"
+	printf '{"event":"agent-workspace-matrix-start","run_id":"%s","result_level":"kvm_agent_workspace_lifecycle_matrix","policy":"agent_workspace_view.bpf.c"}\n' "$(RUN_ID)" >"$(AGENT_WORKSPACE_MATRIX_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	cp "$(KERNEL_BUILD_DIR)/.config" "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/kernel.config"
+	uname -a >"$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/uname.txt"
+	cat /proc/version >"$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/proc-version.txt"
+	cat /proc/cmdline >"$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/kernel-cmdline.txt"
+	sha256sum "$(KERNEL_IMAGE)" "$(KERNEL_BUILD_DIR)/.config" "$(AGENT_WORKSPACE_POLICY)" "$(AGENT_WORKSPACE_POLICY_SOURCE)" "$(AGENT_WORKSPACE_RUNNER)" "$(AGENT_WORKSPACE_RUNNER_SOURCE)" "$(AGENT_WORKSPACE_FUSE_RUNNER)" "$(AGENT_WORKSPACE_FUSE_RUNNER_SOURCE)" "$(ROOT_DIR)/Makefile" "$(ROOT_DIR)/mk/kvm.mk" "$(ROOT_DIR)/docs/tmp/2026-07-13-agent-workspace-complete-experiment-plan.md" >"$(AGENT_WORKSPACE_MATRIX_INPUTS)"
+	printf '{"event":"agent-workspace-provenance","run_id":"%s","result_level":"kvm_agent_workspace_lifecycle_matrix","command_file":"agent-workspace-matrix-command.txt","input_sha256_file":"agent-workspace-matrix-inputs.sha256","kernel_config":"kernel.config","stdout_file":"stdout-agent-workspace-matrix.log","stderr_file":"stderr-agent-workspace-matrix.log"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"
+	"$(AGENT_WORKSPACE_RUNNER)" --matrix "$(AGENT_WORKSPACE_POLICY)" "$(AGENT_WORKSPACE_MATRIX_JSON)" /sys/fs/cgroup >>"$(AGENT_WORKSPACE_MATRIX_STDOUT)" 2>>"$(AGENT_WORKSPACE_MATRIX_STDERR)"
+	"$(AGENT_WORKSPACE_FUSE_RUNNER)" --matrix "$(AGENT_WORKSPACE_MATRIX_JSON)" >>"$(AGENT_WORKSPACE_MATRIX_STDOUT)" 2>>"$(AGENT_WORKSPACE_MATRIX_STDERR)"
+	printf '{"event":"agent-workspace-boundary","run_id":"%s","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"namei_ext","source_oracle":"AgentFS-derived bash/git workspace lifecycle","owned_methods":"lookup_policy,readdir_policy","daemon_state":"none","metadata_state":"target registry only","data_write_path_owner":"lower_filesystem","privileged_code_surface":"verified eBPF policy plus kernel validation","invalid_policy_containment":"unregistered target fails closed to ENOENT in this matrix","owns_filesystem_methods":false,"requires_daemon":false,"policy_verified":true,"lower_fs_owns_data_path":true,"detail":"bounded eBPF name-resolution policy; kernel and lower filesystem own VFS objects, methods, writes, and data path"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"
+	printf '{"event":"agent-workspace-boundary","run_id":"%s","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"feature_equivalent_fuse","source_oracle":"AgentFS-derived bash/git workspace lifecycle","owned_methods":"getattr,readdir,open,create,read,write,readlink,unlink,rename,truncate","daemon_state":"FUSE policy daemon and shared epoch state","metadata_state":"daemon-managed path translation and hidden-name state","data_write_path_owner":"FUSE request path over lower files","privileged_code_surface":"userspace filesystem daemon plus kernel FUSE interface","invalid_policy_containment":"daemon must implement path validation and failure behavior","owns_filesystem_methods":true,"requires_daemon":true,"policy_verified":false,"lower_fs_owns_data_path":false,"detail":"feature-equivalent FUSE policy filesystem implements filesystem operations for the same oracle"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"
+	printf '{"event":"agent-workspace-boundary","run_id":"%s","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"custom_or_stackable_fs","source_oracle":"AgentFS/BranchFS/YoloFS-style workspace lifecycle","owned_methods":"lookup,readdir,create,unlink,rename,open_read_write_or_stackable_forwarding","daemon_state":"none for in-kernel stackable FS, runtime state for source services","metadata_state":"COW,checkpoint,whiteout,audit,cache-invalidation metadata","data_write_path_owner":"custom or stackable filesystem boundary when it owns COW/write semantics","privileged_code_surface":"kernel filesystem or stackable filesystem implementation","invalid_policy_containment":"implementation-specific validation across owned methods","owns_filesystem_methods":true,"requires_daemon":false,"policy_verified":false,"lower_fs_owns_data_path":false,"detail":"source-backed boundary evidence: broader filesystem designs own method, metadata, and failure surface beyond name-resolution policy"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"
+	if jq -e 'select(.pass == false)' "$(AGENT_WORKSPACE_MATRIX_JSON)" >/dev/null; then exit 1; fi
+	dmesg >"$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/dmesg-agent-workspace-matrix.log"
+	test -s "$(AGENT_WORKSPACE_MATRIX_COMMAND)"
+	test -s "$(AGENT_WORKSPACE_MATRIX_INPUTS)"
+	test -s "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/kernel.config"
+	test -e "$(AGENT_WORKSPACE_MATRIX_STDOUT)"
+	test -e "$(AGENT_WORKSPACE_MATRIX_STDERR)"
+	jq -e 'select(.event == "agent-workspace-provenance")' "$(AGENT_WORKSPACE_MATRIX_JSON)" >/dev/null
+	for case in setup_source_dirs agentfs_source_trace_declared nohook_base_main nohook_upper_main nohook_base_deleted_visible nohook_base_readdir nohook_parent_lists_ws policy_parent_lists_ws base_epoch_main base_epoch_src_app base_epoch_git_head upper_epoch_main upper_epoch_src_app upper_epoch_git_head upper_generated_negative_before_write upper_epoch_write upper_generated_visible agentfs_cached_negative_before_create agentfs_cached_negative_create agentfs_cached_negative_visible agentfs_rename_generated_to_renamed agentfs_rename_generated_old_absent agentfs_rename_generated_new_visible agentfs_rename_restored_generated agentfs_unlink_cached_created agentfs_unlink_cached_absent final_tree_manifest invalid_unregistered_target_contained agent_workspace_matrix_summary fuse_setup_source_dirs fuse_agentfs_source_trace_declared fuse_nohook_base_main fuse_nohook_upper_main fuse_nohook_base_deleted_visible fuse_nohook_base_readdir fuse_options_recorded fuse_parent_lists_ws fuse_base_epoch_main fuse_base_epoch_src_app fuse_base_epoch_git_head fuse_upper_epoch_main fuse_upper_epoch_src_app fuse_upper_epoch_git_head fuse_upper_generated_negative_before_write fuse_upper_epoch_write fuse_upper_generated_visible fuse_agentfs_cached_negative_before_create fuse_agentfs_cached_negative_create fuse_agentfs_cached_negative_visible fuse_agentfs_rename_generated_to_renamed fuse_agentfs_rename_generated_old_absent fuse_agentfs_rename_generated_new_visible fuse_agentfs_rename_restored_generated fuse_agentfs_unlink_cached_created fuse_agentfs_unlink_cached_absent fuse_final_tree_manifest fuse_agent_workspace_matrix_summary; do \
+		jq -e --arg case "$$case" 'select((.case == $$case or .manifest == $$case) and .pass == true)' "$(AGENT_WORKSPACE_MATRIX_JSON)" >/dev/null; \
+	done
+	for metric in nohook_stat_base_main_ns nohook_readdir_base_ns namei_ext_stat_main_ns namei_ext_readdir_ws_ns fuse_nohook_stat_base_main_ns fuse_nohook_readdir_base_ns fuse_stat_main_ns fuse_readdir_ws_ns; do \
+		jq -e --arg metric "$$metric" 'select(.event == "agent-workspace-metric" and .metric == $$metric and .pass == true and .value >= 0)' "$(AGENT_WORKSPACE_MATRIX_JSON)" >/dev/null; \
+	done
+	for mechanism in namei_ext feature_equivalent_fuse custom_or_stackable_fs; do \
+		jq -e --arg mechanism "$$mechanism" 'select(.event == "agent-workspace-boundary" and .mechanism == $$mechanism)' "$(AGENT_WORKSPACE_MATRIX_JSON)" >/dev/null; \
+	done
+	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/dmesg-agent-workspace-matrix.log" >/dev/null
+	printf '{"event":"agent-workspace-matrix-done","run_id":"%s","result_level":"kvm_agent_workspace_lifecycle_matrix"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"
 
 kvm-w1-oracle: $(KERNEL_IMAGE) bpf w1-oracle workload-w1-oracle-entries workload-w1-build-output-oracle
 	install -d "$(PHASE1_RESULT_DIR)"
@@ -1863,7 +1937,7 @@ __phase1_guest_functional:
 	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
 	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
 	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
-	"$(BUILD_ROOT)/functional/namei_ext_functional" "$(BUILD_ROOT)/bpf/redirect_alias.bpf.o" "$(PHASE1_RESULT_DIR)/functional.jsonl" /sys/fs/cgroup
+	"$(BUILD_ROOT)/functional/namei_ext_functional" "$(BUILD_ROOT)/bpf/redirect_alias.bpf.o" "$(PHASE1_RESULT_DIR)/functional.jsonl" /sys/fs/cgroup "$(BUILD_ROOT)/bpf/hide_secret.bpf.o" "$(BUILD_ROOT)/bpf/select_portal.bpf.o"
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-functional.log"
 	printf '{"event":"functional-done","run_id":"%s"}\n' "$(RUN_ID)" >>"$(PHASE1_RESULT_DIR)/functional.jsonl"
 

@@ -14,6 +14,8 @@ typedef unsigned long long __u64;
 
 #define BPF_NAMEI_EXT_PASS 0
 #define BPF_NAMEI_EXT_REDIRECT 1
+#define BPF_NAMEI_EXT_HIDE 2
+#define BPF_NAMEI_EXT_SELECT_TARGET 3
 
 struct bpf_namei_ext_ctx {
 	__u32 event;
@@ -23,7 +25,7 @@ struct bpf_namei_ext_ctx {
 	__u64 cgroup_id;
 	__u8 name[BPF_NAMEI_EXT_NAME_MAX];
 	__u32 redirect_name_len;
-	__u32 reserved;
+	__u32 target_id;
 	__u8 redirect_name[BPF_NAMEI_EXT_NAME_MAX];
 	__u64 parent_dev;
 	__u64 parent_ino;

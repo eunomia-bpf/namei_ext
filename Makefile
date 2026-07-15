@@ -15,25 +15,53 @@ endif
 
 include $(ROOT_DIR)/configs/kvm/x86_64.mk
 include $(ROOT_DIR)/configs/benchmarks/phase1.mk
-include $(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/kvm.mk
+
+LEGACY_DIAGNOSTIC_GOALS := \
+	phase1-legacy-diagnostics provenance report \
+	table-% w1-% workloads workload-% \
+	eval-osdi-% kvm-eval-osdi-% \
+	kvm-w1-% kvm-w2-% kvm-w3-% kvm-w4-%
+ifneq ($(strip $(filter $(LEGACY_DIAGNOSTIC_GOALS),$(MAKECMDGOALS))),)
+ENABLE_LEGACY_DIAGNOSTICS := 1
+endif
+ENABLE_LEGACY_DIAGNOSTICS ?= 0
+
+ifeq ($(ENABLE_LEGACY_DIAGNOSTICS),1)
+include $(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk
 include $(ROOT_DIR)/mk/table_budget.mk
 include $(ROOT_DIR)/mk/report.mk
 include $(ROOT_DIR)/mk/workload.mk
 include $(ROOT_DIR)/mk/eval_osdi.mk
+endif
 
 .DEFAULT_GOAL := phase1
 
-.PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional policy-load policy-semantic table-conformance table-budget w1-oracle kvm-w1-build-macrobench kvm-w1-build-baseline-macrobench kvm-w1-build-epoch-counterfactual kvm-w2-nginx-baseline-macrobench kvm-w2-fixture-epoch-counterfactual kvm-w3-redis-policy-macrobench kvm-w3-redis-baseline-macrobench kvm-w3-checkpoint-epoch-counterfactual kvm-w4-cache-transition-counterfactual kvm-w4-cache-epoch-counterfactual kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-materialized-baseline-macrobench kvm-w4-ccache-bulk-fuse-baseline-macrobench kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-policy-macrobench kvm-w4-ccache-rule-macrobench kvm-w4-ccache-materialized-baseline-macrobench eval-osdi-smoke eval-osdi-policy-family-ledger eval-osdi-policy-family eval-osdi-baselines eval-osdi-macrobench-ledger eval-osdi-macrobench eval-osdi-workload-macrobench-ledger eval-osdi-workload-macrobench eval-osdi-c4-lookup-readdir-ledger eval-osdi-c4-lookup-readdir eval-osdi-claim-verdict-ledger eval-osdi-w1-build-workload-macrobench-ledger eval-osdi-w1-build-workload-macrobench eval-osdi-w2-nginx-workload-macrobench-ledger eval-osdi-w2-nginx-workload-macrobench eval-osdi-w3-redis-workload-macrobench-ledger eval-osdi-w3-redis-workload-macrobench eval-osdi-w4-ccache-workload-macrobench-ledger eval-osdi-w4-ccache-workload-macrobench eval-osdi-performance-tail eval-osdi-performance-ledger eval-osdi-performance-comparison eval-osdi-performance-tool-redirect-ledger eval-osdi-c3-residual-diagnostic-ledger eval-osdi-c5-rusage-nohook-ledger eval-osdi-c7-artifact-audit-ledger eval-osdi-performance eval-osdi-paper eval-osdi-paper-report help clean clean-results
-.NOTPARALLEL: phase1
+.PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional \
+	policy-load policy-semantic agent-workspace \
+	experiments experiment-agent-workspace experiment-env-cache \
+	phase1-legacy-diagnostics table-conformance w1-oracle \
+	help clean clean-results
+.NOTPARALLEL: phase1 experiments
 
 all: phase1
 
-phase1: phase1-smoke kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-branch-probes kvm-w2-oracle kvm-w2-nginx-real kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual table-budget kvm-functional kvm-bench docker-smoke report
+phase1: phase1-smoke kvm-policy-load kvm-functional
 
-phase1-smoke: check-prereqs abi bpf functional bench policy-load policy-semantic table-conformance w1-oracle kernel-objects kvm-smoke
+phase1-smoke: check-prereqs abi bpf functional bench policy-load policy-semantic kernel-objects kvm-smoke
+
+experiments: experiment-agent-workspace experiment-env-cache
+
+experiment-agent-workspace: kvm-agent-workspace-matrix
+
+experiment-env-cache:
+	@printf '%s\n' 'The full environment/cache transition matrix is not implemented yet.' >&2
+	@printf '%s\n' 'Required cells: namei_ext KVM, feature-equivalent FUSE, native source evaluator control, stale/corrupt/update states, raw result review.' >&2
+	@false
+
+phase1-legacy-diagnostics: phase1-smoke table-conformance w1-oracle kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-branch-probes kvm-w2-oracle kvm-w2-nginx-real kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual table-budget kvm-bench docker-smoke report
 
 check-prereqs:
 	command -v make >/dev/null
@@ -69,10 +97,27 @@ table-conformance: bpf
 w1-oracle:
 	$(MAKE) -C "$(ROOT_DIR)/tests/w1_oracle" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
+agent-workspace:
+	$(MAKE) -C "$(ROOT_DIR)/tests/agent_workspace" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+
 help:
 	@printf '%s\n' 'Targets:'
-	@printf '%s\n' '  make phase1          run the current Phase 1 smoke flow and write a report'
-	@printf '%s\n' '  make phase1-smoke    check tools, compile touched kernel objects, boot KVM smoke'
+	@printf '%s\n' ''
+	@printf '%s\n' 'Current validation:'
+	@printf '%s\n' '  make phase1          run current prototype validation: host checks, KVM smoke, policy load, functional KVM'
+	@printf '%s\n' '  make phase1-smoke    check tools, build userspace/BPF, compile touched kernel objects, boot KVM smoke'
+	@printf '%s\n' ''
+	@printf '%s\n' 'Current experiment lifecycle:'
+	@printf '%s\n' '  make experiments'
+	@printf '%s\n' '                       run current integrated experiment targets; fails until all matrices exist'
+	@printf '%s\n' '  make experiment-agent-workspace'
+	@printf '%s\n' '                       run the Agent workspace lifecycle matrix and preserve raw KVM/FUSE results'
+	@printf '%s\n' '  make experiment-env-cache'
+	@printf '%s\n' '                       target the environment/cache matrix; currently fails with required cells'
+	@printf '%s\n' '  make kvm-agent-workspace-preflight'
+	@printf '%s\n' '                       boot KVM and run the Agent workspace dependency preflight'
+	@printf '%s\n' ''
+	@printf '%s\n' 'Build and component checks:'
 	@printf '%s\n' '  make kernel-config   build the committed x86_64 Phase 1 kernel config'
 	@printf '%s\n' '  make kernel-objects  compile fs/namei.o fs/readdir.o fs/namei_ext.o'
 	@printf '%s\n' '  make kernel          build the Phase 1 bzImage'
@@ -81,94 +126,24 @@ help:
 	@printf '%s\n' '  make kvm-smoke       boot the modified kernel and run guest smoke'
 	@printf '%s\n' '  make kvm-policy-load boot the modified kernel and load/attach all BPF policies'
 	@printf '%s\n' '  make kvm-policy-semantic boot the modified kernel and check policy-family semantics'
-	@printf '%s\n' '  make kvm-w1-oracle  boot the modified kernel and validate W1 trace-derived path oracle'
-	@printf '%s\n' '  make kvm-w1-build-replay boot the modified kernel and validate W1 policy build replay witness'
-	@printf '%s\n' '  make kvm-w1-release-build-replay boot the modified kernel and validate W1 policy release binary replay witness'
-	@printf '%s\n' '  make kvm-w1-build-macrobench boot the modified kernel and write W1 setup/update PoC rows'
-	@printf '%s\n' '  make kvm-w1-build-baseline-macrobench boot the modified kernel and write W1 build feature-equivalent baseline rows'
-	@printf '%s\n' '  make kvm-w1-build-epoch-counterfactual boot the modified kernel and run W1 build-epoch/table-update C8 counterfactual'
-	@printf '%s\n' '  make kvm-w1-branch-probes boot the modified kernel and validate W1 poison/negative branch probes'
-	@printf '%s\n' '  make kvm-w2-oracle  boot the modified kernel and validate W2 fixture path oracle'
-	@printf '%s\n' '  make kvm-w2-nginx-real boot the modified kernel and run real nginx endpoint health oracle'
-	@printf '%s\n' '  make kvm-w2-nginx-macrobench boot the modified kernel and write W2 nginx setup/update PoC rows'
-	@printf '%s\n' '  make kvm-w2-nginx-baseline-macrobench boot the modified kernel and write W2 nginx feature-equivalent baseline rows'
-	@printf '%s\n' '  make kvm-w2-fixture-epoch-counterfactual boot the modified kernel and run W2 fixture-epoch/table-update C8 counterfactual'
-	@printf '%s\n' '  make kvm-w3-oracle  boot the modified kernel and validate W3 checkpoint path oracle'
-	@printf '%s\n' '  make kvm-w3-redis-replay boot the modified kernel and run Redis checkpoint replay witness'
-	@printf '%s\n' '  make kvm-w3-redis-table-replay boot the modified kernel and run the same Redis replay through table_redirect'
-	@printf '%s\n' '  make kvm-w3-redis-counterfactual boot the modified kernel and write W3 table-only counterfactual accounting'
-	@printf '%s\n' '  make kvm-w3-redis-policy-macrobench boot the modified kernel and write W3 Redis policy setup/update rows'
-	@printf '%s\n' '  make kvm-w3-redis-baseline-macrobench boot the modified kernel and write W3 Redis materialized/FUSE baseline rows'
-	@printf '%s\n' '  make kvm-w3-checkpoint-epoch-counterfactual boot the modified kernel and run W3 epoch/table-update C8 counterfactual'
-	@printf '%s\n' '  make kvm-w4-oracle  boot the modified kernel and validate W4 cache path oracle'
-	@printf '%s\n' '  make kvm-w4-cache-content boot the modified kernel and validate W4 cache content oracle'
-	@printf '%s\n' '  make kvm-w4-cache-table-content boot the modified kernel and run W4 cache content through table_redirect'
-	@printf '%s\n' '  make kvm-w4-cache-transition-counterfactual boot the modified kernel and run W4 stale/corrupt/update transition counterfactual'
-	@printf '%s\n' '  make kvm-w4-cache-epoch-counterfactual boot the modified kernel and run W4 cache-epoch/table-update C8 counterfactual'
-	@printf '%s\n' '  make kvm-w4-ccache-real boot the modified kernel and run real ccache transition witness'
-	@printf '%s\n' '  make kvm-w4-ccache-trace boot the modified kernel and trace real ccache cache-path file ops'
-	@printf '%s\n' '  make kvm-w4-ccache-policy-bridge boot the modified kernel and validate trace-derived ccache cache objects through policy'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-trace boot the modified kernel and trace multi-source real ccache cache-path ops'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-policy-bridge boot the modified kernel and validate bulk trace-derived cache objects through policy'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-materialized-baseline-macrobench boot the modified kernel and write W4 bulk materialized cache baseline rows'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-fuse-baseline-macrobench boot the modified kernel and write W4 bulk FUSE cache baseline rows'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-policy-compile boot the modified kernel and run bulk ccache hot compiles through attached cache policy'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-native-compile boot the modified kernel and run bulk native ccache hot-compile baseline rows'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-fuse-compile boot the modified kernel and run bulk ccache hot compiles through FUSE baseline'
-	@printf '%s\n' '  make kvm-w4-ccache-bulk-policy-macrobench boot the modified kernel and write W4 bulk policy setup/update rows'
-	@printf '%s\n' '  make kvm-w4-ccache-policy-compile boot the modified kernel and run real ccache hot compiles through attached cache policy'
-	@printf '%s\n' '  make kvm-w4-ccache-parent-compile boot the modified kernel and run ccache hot compiles through parent-scoped cache policy'
-	@printf '%s\n' '  make kvm-w4-ccache-table-compile boot the modified kernel and run the same ccache witness through table_redirect'
-	@printf '%s\n' '  make kvm-w4-ccache-release-counterfactual boot the modified kernel and write W4 release-level counterfactual accounting'
-	@printf '%s\n' '  make kvm-w4-ccache-rule-macrobench boot the modified kernel and write W4 ccache rule setup/update rows'
-	@printf '%s\n' '  make kvm-w4-ccache-materialized-baseline-macrobench boot the modified kernel and write W4 materialized cache baseline rows'
 	@printf '%s\n' '  make kvm-functional  boot the modified kernel and run functional tests'
 	@printf '%s\n' '  make kvm-bench       boot the modified kernel and run microbenchmarks'
-	@printf '%s\n' '  make kvm-eval-osdi-baselines boot the modified kernel and run external baseline smoke rows'
 	@printf '%s\n' '  make abi             build and run ABI layout checks'
 	@printf '%s\n' '  make bpf             build BPF component outputs'
-	@printf '%s\n' '  make table-conformance check table_redirect source/object conformance'
-	@printf '%s\n' '  make table-budget    write non-C8 table-only raw accounting from KVM oracle results'
-	@printf '%s\n' '  make w1-oracle       build W1 trace-derived path oracle runner'
 	@printf '%s\n' '  make functional      build functional-test component outputs'
 	@printf '%s\n' '  make bench           build benchmark component outputs'
-	@printf '%s\n' '  make report          write the current smoke report'
-	@printf '%s\n' '  make workloads       fetch fixed sources, build/trace W1 real workloads, and write provenance'
-	@printf '%s\n' '  make eval-osdi-workload-macrobench-ledger derive W1-W4 C2 workload inventory from current artifacts'
-	@printf '%s\n' '  make eval-osdi-claim-verdict-ledger derive C1-C8 paper claim verdicts from current ledgers'
-	@printf '%s\n' '  make eval-osdi-w3-redis-workload-macrobench-ledger derive W3 Redis policy/materialized/FUSE workload macrobench ledger'
-	@printf '%s\n' '  make workload-build-graph generate W1 source traces and trace-witness manifests'
-	@printf '%s\n' '  make workload-w1-build-output-oracle verify W1 host real-build output hashes'
-	@printf '%s\n' '  make workload-w1-oracle-entries generate W1 trace-derived oracle TSV'
-	@printf '%s\n' '  make workload-w2-oracle-entries generate W2 fixture oracle TSV'
-	@printf '%s\n' '  make workload-w3-oracle-entries generate W3 checkpoint oracle TSV'
-	@printf '%s\n' '  make workload-w3-podman-criu-capability audit host Podman/CRIU checkpoint capability'
-	@printf '%s\n' '  make workload-w4-oracle-entries generate W4 cache oracle TSV'
-	@printf '%s\n' '  make eval-osdi-smoke run Phase 1 and write the current OSDI evidence ledger'
-	@printf '%s\n' '  make eval-osdi-policy-family-ledger write B12 ledger from an existing Phase 1 root'
-	@printf '%s\n' '  make eval-osdi-policy-family hard-gate B12 policy-family release qualification'
-	@printf '%s\n' '  make eval-osdi-baselines boot KVM and write external baseline smoke ledger'
-	@printf '%s\n' '  make eval-osdi-workload-macrobench hard-gate W1-W4 C2 workload macrobench qualification'
-	@printf '%s\n' '  make eval-osdi-c4-lookup-readdir-ledger derive the W1-W4 C4 lookup/readdir matrix from KVM oracles'
-	@printf '%s\n' '  make eval-osdi-w1-build-workload-macrobench-ledger write W1 build workload comparison ledger'
-	@printf '%s\n' '  make eval-osdi-w1-build-workload-macrobench hard-gate W1 build workload comparison qualification'
-	@printf '%s\n' '  make eval-osdi-w2-nginx-workload-macrobench-ledger write W2 C2 partial workload comparison ledger'
-	@printf '%s\n' '  make eval-osdi-w2-nginx-workload-macrobench hard-gate W2 C2 workload comparison qualification'
-	@printf '%s\n' '  make eval-osdi-w4-ccache-workload-macrobench-ledger write W4 ccache workload comparison ledger'
-	@printf '%s\n' '  make eval-osdi-w4-ccache-workload-macrobench hard-gate W4 ccache workload comparison qualification'
-	@printf '%s\n' '  make eval-osdi-performance-tail write percentile/CI artifact from KVM bench_latency rows'
-	@printf '%s\n' '  make eval-osdi-performance-ledger write B2/B8 performance ledger from a Phase 1 root'
-	@printf '%s\n' '  make eval-osdi-performance-comparison write B2/B8 performance ratio and claim-verdict ledger'
-	@printf '%s\n' '  make eval-osdi-performance-tool-redirect-ledger write scoped C3 tool-redirect performance verdict'
-	@printf '%s\n' '  make eval-osdi-c3-residual-diagnostic-ledger diagnose full-suite C3/FUSE baseline residual blockers'
-	@printf '%s\n' '  make eval-osdi-c5-rusage-nohook-ledger diagnose C5 pass-only residual with rusage/no-hook rows'
-	@printf '%s\n' '  make eval-osdi-c7-artifact-audit-ledger audit paper artifacts and reproducibility blockers'
-	@printf '%s\n' '  make eval-osdi-performance hard-gate release performance/baseline qualification'
-	@printf '%s\n' '  make eval-osdi-paper run the current release-evaluation hard gates'
-	@printf '%s\n' '  make eval-osdi-paper-report write the release report after hard gates pass'
+	@printf '%s\n' ''
+	@printf '%s\n' 'Archived legacy diagnostics:'
+	@printf '%s\n' '  ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics'
+	@printf '%s\n' '                       run archived W1-W4/table diagnostic flow; not current paper experiments'
+	@printf '%s\n' '  ENABLE_LEGACY_DIAGNOSTICS=1 make report'
+	@printf '%s\n' '                       write the archived legacy diagnostic report after phase1-legacy-diagnostics'
+	@printf '%s\n' '  ENABLE_LEGACY_DIAGNOSTICS=1 make workloads'
+	@printf '%s\n' '                       archived workload provenance helpers; not current paper experiments'
+	@printf '%s\n' ''
+	@printf '%s\n' 'Cleanup:'
 	@printf '%s\n' '  make clean           remove build/cache outputs, keep results'
 	@printf '%s\n' '  make clean-results   remove Phase 1 results'
-	@printf '%s\n' '  make workload-clean-results remove workload provenance and run results'
 
 clean: kernel-clean docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/abi" BUILD_ROOT="$(BUILD_ROOT)" clean
@@ -179,7 +154,8 @@ clean: kernel-clean docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_semantic" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/table_conformance" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/w1_oracle" BUILD_ROOT="$(BUILD_ROOT)" clean
-	$(MAKE) workload-clean
+	$(MAKE) -C "$(ROOT_DIR)/tests/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean
+	rm -rf "$(BUILD_ROOT)/workloads" "$(CACHE_ROOT)/workloads"
 	rm -rf "$(BUILD_ROOT)"
 
 clean-results:

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 
+#define _GNU_SOURCE
+
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <dirent.h>
@@ -236,6 +238,109 @@ static int expect_readdir(const char *path, FILE *out)
 	}
 	emit_case(out, "readdir_view", false, 0, "unexpected directory view");
 	return -1;
+}
+
+static int expect_readdir_hidden(const char *path, FILE *out)
+{
+	bool saw_native = false;
+	bool saw_secret = false;
+	bool saw_backing = false;
+	struct dirent *de;
+	DIR *dir;
+
+	errno = 0;
+	dir = opendir(path);
+	if (!dir) {
+		emit_case(out, "hide_readdir_open", false, errno,
+			  "opendir failed");
+		return -1;
+	}
+
+	while ((de = readdir(dir))) {
+		if (!strcmp(de->d_name, "native"))
+			saw_native = true;
+		if (!strcmp(de->d_name, "secret"))
+			saw_secret = true;
+		if (!strcmp(de->d_name, "tool.real"))
+			saw_backing = true;
+	}
+	if (errno) {
+		emit_case(out, "hide_readdir_scan", false, errno,
+			  "readdir failed");
+		closedir(dir);
+		return -1;
+	}
+	closedir(dir);
+
+	if (saw_native && !saw_secret && saw_backing) {
+		emit_case(out, "hide_readdir_view", true, 0,
+			  "native and backing listed, secret hidden");
+		return 0;
+	}
+	emit_case(out, "hide_readdir_view", false, 0,
+		  "unexpected hidden directory view");
+	return -1;
+}
+
+static int expect_select_readdir(const char *path, FILE *out)
+{
+	bool saw_payload = false;
+	struct dirent *de;
+	DIR *dir;
+
+	errno = 0;
+	dir = opendir(path);
+	if (!dir) {
+		emit_case(out, "select_readdir_open", false, errno,
+			  "opendir selected target failed");
+		return -1;
+	}
+
+	while ((de = readdir(dir))) {
+		if (!strcmp(de->d_name, "payload"))
+			saw_payload = true;
+	}
+	if (errno) {
+		emit_case(out, "select_readdir_scan", false, errno,
+			  "readdir selected target failed");
+		closedir(dir);
+		return -1;
+	}
+	closedir(dir);
+
+	if (saw_payload) {
+		emit_case(out, "select_readdir_view", true, 0,
+			  "selected target directory entries visible");
+		return 0;
+	}
+	emit_case(out, "select_readdir_view", false, 0,
+		  "selected target payload not listed");
+	return -1;
+}
+
+static int clear_targets(FILE *out, const char *name)
+{
+	const char clear_cmd[] = "clear\n";
+	int register_fd;
+	ssize_t nwritten;
+
+	register_fd = open("/sys/kernel/debug/namei_ext/register_target",
+			   O_WRONLY | O_CLOEXEC);
+	if (register_fd < 0) {
+		emit_case(out, name, false, errno, "open target registry failed");
+		return -1;
+	}
+
+	nwritten = write(register_fd, clear_cmd, strlen(clear_cmd));
+	if (nwritten != (ssize_t)strlen(clear_cmd)) {
+		emit_case(out, name, false, errno, "target clear failed");
+		close(register_fd);
+		return -1;
+	}
+
+	close(register_fd);
+	emit_case(out, name, true, 0, "target registry cleared");
+	return 0;
 }
 
 static unsigned long long ptr_to_u64(const void *ptr)
@@ -485,6 +590,8 @@ static int destroy_policy(struct attached_policy *policy)
 int main(int argc, char **argv)
 {
 	const char *cgroup_path = "/sys/fs/cgroup";
+	const char *hide_obj_path = NULL;
+	const char *select_obj_path = NULL;
 	struct attached_policy policy = {
 		.cgroup_fd = -1,
 		.prog_fd = -1,
@@ -493,19 +600,32 @@ int main(int argc, char **argv)
 	char native[PATH_MAX];
 	char alias[PATH_MAX];
 	char backing[PATH_MAX];
+	char secret[PATH_MAX];
+	char visible[PATH_MAX];
+	char portal[PATH_MAX];
+	char portal_payload[PATH_MAX];
+	char target_dir[PATH_MAX];
+	char target_payload[PATH_MAX];
 	FILE *out;
 	int fails = 0;
 	int setup_fails = 0;
 	int setup_errno = 0;
 	int err;
 
-	if (argc < 3 || argc > 4) {
-		fprintf(stderr, "usage: %s POLICY_BPF_O RESULT_JSONL [CGROUP]\n",
+	if (argc < 3 || argc > 6) {
+		fprintf(stderr,
+			"usage: %s REDIRECT_POLICY_BPF_O RESULT_JSONL [CGROUP] [HIDE_POLICY_BPF_O] [SELECT_POLICY_BPF_O]\n",
 			argv[0]);
 		return 2;
 	}
-	if (argc == 4)
+	if (argc >= 4)
 		cgroup_path = argv[3];
+	if (argc == 5)
+		hide_obj_path = argv[4];
+	if (argc == 6) {
+		hide_obj_path = argv[4];
+		select_obj_path = argv[5];
+	}
 
 	out = fopen(argv[2], "a");
 	if (!out) {
@@ -524,6 +644,13 @@ int main(int argc, char **argv)
 	snprintf(native, sizeof(native), "%s/native", root);
 	snprintf(alias, sizeof(alias), "%s/tool", root);
 	snprintf(backing, sizeof(backing), "%s/tool.real", root);
+	snprintf(secret, sizeof(secret), "%s/secret", root);
+	snprintf(visible, sizeof(visible), "%s/visible", root);
+	snprintf(portal, sizeof(portal), "%s/visible/portal", root);
+	snprintf(portal_payload, sizeof(portal_payload),
+		 "%s/visible/portal/payload", root);
+	snprintf(target_dir, sizeof(target_dir), "%s/target", root);
+	snprintf(target_payload, sizeof(target_payload), "%s/target/payload", root);
 
 	err = write_file(native, "native\n");
 	if (err) {
@@ -531,6 +658,11 @@ int main(int argc, char **argv)
 		setup_fails++;
 	}
 	err = write_file(backing, "real-tool\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
+	err = write_file(secret, "secret\n");
 	if (err) {
 		setup_errno = -err;
 		setup_fails++;
@@ -543,16 +675,159 @@ int main(int argc, char **argv)
 		setup_errno = errno;
 		setup_fails++;
 	}
+	if (mkdir(visible, 0755)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
+	if (mkdir(target_dir, 0755)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
+	err = write_file(target_payload, "selected\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
 	if (setup_fails) {
 		fails += setup_fails;
 		emit_case(out, "setup_files", false, setup_errno,
 			  "file setup failed");
 		goto cleanup;
 	}
-	emit_case(out, "setup_files", true, 0, "native and backing files created");
+	emit_case(out, "setup_files", true, 0,
+		  "native, backing, and secret files created");
 
 	fails += !!expect_stat("alias_before_attach", alias, ENOENT, out);
 	fails += !!expect_stat("backing_before_attach", backing, 0, out);
+	fails += !!expect_stat("secret_before_attach", secret, 0, out);
+	fails += !!expect_stat("select_portal_before_attach", portal_payload,
+			       ENOENT, out);
+
+	if (hide_obj_path) {
+		if (load_and_attach(hide_obj_path, cgroup_path, &policy)) {
+			emit_case(out, "attach_hide_policy", false, errno,
+				  "load or attach failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "attach_hide_policy", true, 0,
+			  "hide policy attached");
+
+		fails += !!expect_stat("hide_native_stat", native, 0, out);
+		fails += !!expect_open("hide_native_open", native, 0, out);
+		fails += !!expect_stat("hide_secret_stat", secret, ENOENT,
+				       out);
+		fails += !!expect_open("hide_secret_open", secret, ENOENT,
+				       out);
+		fails += !!expect_access("hide_secret_access", secret, F_OK,
+					 ENOENT, out);
+		fails += !!expect_stat("hide_backing_stat", backing, 0, out);
+		fails += !!expect_readdir_hidden(root, out);
+
+		err = destroy_policy(&policy);
+		if (err) {
+			emit_case(out, "detach_hide_policy", false, -err,
+				  "hide policy detach failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "detach_hide_policy", true, 0,
+			  "hide policy detached");
+		fails += !!expect_stat("secret_after_hide_detach", secret, 0,
+				       out);
+	}
+
+	if (select_obj_path) {
+		char register_buf[64];
+		int register_fd;
+		int target_fd;
+		ssize_t nwritten;
+
+		target_fd = open(target_dir, O_PATH | O_DIRECTORY | O_CLOEXEC);
+		if (target_fd < 0) {
+			emit_case(out, "select_open_target_fd", false, errno,
+				  "open target O_PATH failed");
+			fails++;
+			goto cleanup;
+		}
+		register_fd = open("/sys/kernel/debug/namei_ext/register_target",
+				   O_WRONLY | O_CLOEXEC);
+		if (register_fd < 0) {
+			emit_case(out, "select_open_register", false, errno,
+				  "open target registry failed");
+			close(target_fd);
+			fails++;
+			goto cleanup;
+		}
+		snprintf(register_buf, sizeof(register_buf), "1 %d\n",
+			 target_fd);
+		nwritten = write(register_fd, register_buf,
+				 strlen(register_buf));
+		if (nwritten != (ssize_t)strlen(register_buf)) {
+			emit_case(out, "select_register_target", false, errno,
+				  "target registration failed");
+			close(register_fd);
+			close(target_fd);
+			fails++;
+			goto cleanup;
+		}
+		close(register_fd);
+		close(target_fd);
+		emit_case(out, "select_register_target", true, 0,
+			  "target directory registered");
+
+		if (load_and_attach(select_obj_path, cgroup_path, &policy)) {
+			emit_case(out, "attach_select_policy", false, errno,
+				  "load or attach failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "attach_select_policy", true, 0,
+			  "select policy attached");
+
+		fails += !!expect_stat("select_portal_final_stat", portal,
+				       0, out);
+		fails += !!expect_select_readdir(portal, out);
+		fails += !!expect_stat("select_portal_payload_stat",
+				       portal_payload, 0, out);
+		fails += !!expect_open("select_portal_payload_open",
+				       portal_payload, 0, out);
+		fails += !!expect_read_file("select_portal_payload_read",
+					    portal_payload, "selected\n", out);
+
+		err = destroy_policy(&policy);
+		if (err) {
+			emit_case(out, "detach_select_policy", false, -err,
+				  "select policy detach failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "detach_select_policy", true, 0,
+			  "select policy detached");
+		fails += !!expect_stat("select_portal_after_detach",
+				       portal_payload, ENOENT, out);
+
+		fails += !!clear_targets(out, "select_clear_targets");
+		if (load_and_attach(select_obj_path, cgroup_path, &policy)) {
+			emit_case(out, "attach_select_policy_after_clear", false,
+				  errno, "load or attach failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "attach_select_policy_after_clear", true, 0,
+			  "select policy attached after target clear");
+		fails += !!expect_stat("select_unregistered_after_clear",
+				       portal_payload, ENOENT, out);
+		err = destroy_policy(&policy);
+		if (err) {
+			emit_case(out, "detach_select_policy_after_clear", false,
+				  -err, "select policy detach failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "detach_select_policy_after_clear", true, 0,
+			  "select policy detached after target clear");
+	}
 
 	if (load_and_attach(argv[1], cgroup_path, &policy)) {
 		emit_case(out, "attach_policy", false, errno,
@@ -591,6 +866,10 @@ cleanup:
 	}
 	unlink(native);
 	unlink(backing);
+	unlink(secret);
+	unlink(target_payload);
+	rmdir(visible);
+	rmdir(target_dir);
 	rmdir(root);
 	emit_case(out, "functional_summary", fails == 0, fails,
 		  fails ? "functional failures" : "functional passed");

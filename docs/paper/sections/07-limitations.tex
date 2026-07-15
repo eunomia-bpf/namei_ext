@@ -1,21 +1,26 @@
-\section{Limitations}
-\label{sec:limitations}
+\section{Discussion}
+\label{sec:discussion}
 
-The boundary-validity claim covers two examined upstream transitions after KVM
-correctness and lower-filesystem-behavior checks pass. Operation-weighted traces and
-same-oracle baselines support practical value and cost claims. Broader
-family-level claims require additional classified transitions.
+\subsection{Implications}
 
-This artifact excludes mechanisms that require ownership beyond
-object selection and visibility. Precomputed maps, FUSE, agent filesystems, and
-metadata services remain valid mechanisms outside that scope. The artifact
-also excludes synthetic file contents, custom metadata persistence, distributed
-directory indexing, and write-conflict resolution. It also excludes data-path
-mediation, storage layout, agent orchestration, cross-path transactional
-snapshots, atomic multi-object commits, and consistency beyond selecting
-existing lower objects.
+The broader lesson is that narrow programmable hooks help when applications
+vary policy but the kernel should retain mechanism ownership. \namei applies
+that lesson to VFS name resolution rather than to a new filesystem. For
+\namei, the retained mechanism is VFS path walking and lower-filesystem object
+semantics. The \namei boundary is useful only when the correctness condition is
+pathname-to-object selection or directory visibility over existing objects.
 
-Source systems whose code, images, evaluators, or private benchmark submodules
-are unavailable can motivate workload design or provide related-work context,
-but they cannot count as KVM transition evidence until their relevant oracle is
-source-derived, runnable, and recorded with raw results.
+FUSE, stackable filesystems, and custom filesystems remain the appropriate implementation boundary
+when a workload needs filesystem-service features such as synthetic contents,
+persistent custom metadata, data-path mediation, write-conflict resolution,
+distributed metadata, or cross-path transactions. \namei is intended to avoid
+that boundary only for the subset of policies whose effect is visible during
+lookup or directory enumeration.
+
+\subsection{Extension Path}
+
+The same boundary also defines future extensions. Synthetic aliases require
+additional kernel support, while synthetic contents, custom metadata
+persistence, distributed indexing, and cross-path transactions remain filesystem
+or runtime responsibilities. \namei is intended only for workloads whose
+correctness oracle is path selection or visibility over existing lower objects.

@@ -30,6 +30,10 @@ _Static_assert(BPF_NAMEI_EXT_PASS == 0,
 	       "BPF_NAMEI_EXT_PASS enum value changed");
 _Static_assert(BPF_NAMEI_EXT_REDIRECT == 1,
 	       "BPF_NAMEI_EXT_REDIRECT enum value changed");
+_Static_assert(BPF_NAMEI_EXT_HIDE == 2,
+	       "BPF_NAMEI_EXT_HIDE enum value changed");
+_Static_assert(BPF_NAMEI_EXT_SELECT_TARGET == 3,
+	       "BPF_NAMEI_EXT_SELECT_TARGET enum value changed");
 
 _Static_assert(offsetof(struct bpf_namei_ext_ctx, event) == 0,
 	       "event offset changed");
@@ -45,8 +49,8 @@ _Static_assert(offsetof(struct bpf_namei_ext_ctx, name) == 24,
 	       "name offset changed");
 _Static_assert(offsetof(struct bpf_namei_ext_ctx, redirect_name_len) == 88,
 	       "redirect_name_len offset changed");
-_Static_assert(offsetof(struct bpf_namei_ext_ctx, reserved) == 92,
-	       "reserved offset changed");
+_Static_assert(offsetof(struct bpf_namei_ext_ctx, target_id) == 92,
+	       "target_id offset changed");
 _Static_assert(offsetof(struct bpf_namei_ext_ctx, redirect_name) == 96,
 	       "redirect_name offset changed");
 _Static_assert(offsetof(struct bpf_namei_ext_ctx, parent_dev) == 160,
@@ -96,7 +100,7 @@ int main(void)
 	       "\"pass\":true,\"ctx_size\":%zu,\"name_offset\":%zu,"
 	       "\"redirect_name_offset\":%zu,\"name_max\":%u,"
 	       "\"parent_dev_offset\":%zu,\"parent_ino_offset\":%zu,"
-	       "\"detail\":\"PASS/REDIRECT enum values and ctx layout match Phase 1 ABI\"}\n",
+	       "\"detail\":\"PASS/REDIRECT/HIDE/SELECT_TARGET enum values and ctx layout match Phase 1 ABI\"}\n",
 	       ABI_HEADER, sizeof(struct bpf_namei_ext_ctx),
 	       offsetof(struct bpf_namei_ext_ctx, name),
 	       offsetof(struct bpf_namei_ext_ctx, redirect_name),

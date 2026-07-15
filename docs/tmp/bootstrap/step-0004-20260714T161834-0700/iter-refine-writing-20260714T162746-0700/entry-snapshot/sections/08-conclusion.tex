@@ -1,0 +1,14 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+\namei frames state-dependent path views as a systems boundary problem in which
+pathname policy is programmable while filesystem ownership remains with the VFS
+and lower filesystem. The abstraction occupies the space between namespace
+materialization and full programmable filesystems, following the same
+policy-versus-ownership split used by \code{sched_ext}. The design and
+prototype show how this boundary can be exposed as one bounded eBPF decision
+function for lookup and directory enumeration. The evaluation uses
+source-derived Agent workspace oracles and treats environment/cache as a
+primary target, with file-object evidence gated on final-file target selection,
+to test expressiveness, placement cost versus feature-equivalent FUSE, and
+ownership boundary versus custom or stackable filesystems.

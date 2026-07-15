@@ -1,0 +1,65 @@
+\documentclass[10pt]{article}
+
+\usepackage[UTF8]{ctex}
+\usepackage[margin=1in]{geometry}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{xspace}
+\setlength{\emergencystretch}{3em}
+\AtBeginDocument{\sloppy}
+
+\newcommand{\namei}{\textsc{namei\_ext}\xspace}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\file}[1]{\path{#1}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{\namei: A \code{sched_ext}-Style Extension Point for VFS Name Resolution}
+\author{Anonymous}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Modern agent, build, and service systems increasingly construct task-specific
+filesystem views around ordinary tools. The risk is binding a pathname to the
+wrong lower object, which can corrupt an agent workspace, reuse stale build
+state, or expose an unintended service configuration. The root cause is a
+boundary mismatch in which workload state changes pathname-to-object selection
+during name resolution, while permissions, data operations, writes,
+persistence, and consistency should remain lower-filesystem responsibilities.
+Existing
+mechanisms either materialize a namespace before lookup, mediate access through
+security hooks, or cross into broader FUSE, stackable, or custom filesystem
+ownership. We argue that the missing narrow boundary is policy at VFS name
+resolution, where pathname-to-object selection and directory visibility are
+decided. Realizing this boundary is hard because policy must run at lookup and
+readdir, return bounded kernel-validated actions, and remain comparable under
+the same correctness condition against FUSE and broader filesystem boundaries.
+\namei implements this boundary as a \code{sched_ext}-style VFS extension point in which
+eBPF chooses bounded lookup and directory-enumeration policy while the kernel
+retains filesystem ownership. The Linux prototype implements one
+\code{cgroup/namei_ext} decision function and kernel validation for bounded
+pass, redirect, hide, and registered directory-target selection actions. We
+evaluate this boundary with source-derived agent/workspace and environment/cache
+workloads, while service/config remains conditional unless a concrete
+lookup-time oracle is admitted. Reviewed KVM runs provide the RQ1 correctness,
+RQ2 FUSE-overhead, and RQ3 boundary evidence.
+\end{abstract}
+
+\input{sections/01-introduction}
+\input{sections/02-background}
+\input{sections/02-motivation}
+\input{sections/03-design}
+\input{sections/04-implementation}
+\input{sections/05-evaluation}
+\input{sections/07-limitations}
+\input{sections/06-related-work}
+\input{sections/08-conclusion}
+
+{\small
+\bibliographystyle{plain}
+\bibliography{refs}
+}
+
+\end{document}

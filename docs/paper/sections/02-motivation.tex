@@ -1,65 +1,133 @@
-\section{Workload Characterization}
+\section{Motivation And Workloads}
 \label{sec:workload-characterization}
 
-\subsection{Source Transitions}
+A VFS name-resolution extension targets a narrow workload pattern in which the
+source system changes which existing object a pathname should select, but the
+operation does not need a new filesystem object model.
+The source-system evidence below identifies that pattern and separates it from
+the broader behavior that should remain with agent runtimes, environment
+builders, services, FUSE filesystems, or custom filesystems.
 
-Agent-workspace and environment/cache systems expose short-lived state
-transitions that are visible through ordinary pathnames. Agent systems create
-branches, copy-on-write sandboxes, and checkpoint-like workspace states.
-Environment systems validate builds against cache epochs and generated
-environment state.
+\subsection{State-Dependent Path Views}
 
-For these transitions, choosing a broader mechanism changes more than name
-resolution. A FUSE agent
-filesystem can implement a dynamic view, but it also owns a filesystem service
-boundary. A materialized namespace can present the correct files, but it must
-construct or update that namespace as state changes. A stackable filesystem can
-interpose beneath applications, but it implements filesystem methods. These are
-valid mechanisms and important baselines. The question is when the upstream
-transition and oracle require only policy over name resolution.
+Under this definition, a transition qualifies when a system state change alters
+which existing object a pathname denotes, or whether the object is visible,
+while ordinary lower-filesystem semantics remain unchanged. The definition is
+intentionally narrower than "programmable filesystem." It
+excludes synthetic file contents, custom metadata persistence, distributed
+directory indexing, data-path mediation, write-conflict resolution, and
+cross-path transactional snapshots.
+
+Within this definition, the transition is the workload state change, the policy
+is the eBPF decision logic, and the action is the bounded result that the kernel
+validates for lookup or directory enumeration.
+
+The distinction matters because the natural implementation boundary changes.
+If the system needs synthetic contents or custom metadata persistence, a FUSE
+service, custom filesystem, metadata service, or application/runtime mechanism
+is the appropriate implementation boundary. If the state change only affects
+lookup or directory visibility, a VFS name-resolution policy can express the
+relevant policy. The remaining source-system behavior stays outside name
+resolution.
 
 \subsection{Workload Sources}
 
-Table~\ref{tab:transition-characterization} records the source, oracle,
-policy-controlled effects, preserved lower-filesystem checks, and companion
-motivation for each transition. A row supports the claim only if the chosen
-transition fits the object-selection-and-visibility boundary with its own
-oracle.
+We use source systems to choose workloads and correctness conditions, not as
+separate contributions. We call each extracted correctness condition a source
+oracle. A same-oracle KVM run applies that condition unchanged to \namei and its
+comparison rows.
+
+The first source family is agent/workspace state. AgentFS is the primary source
+because its public implementation exposes workspace lifecycle traces
+from which path-selection and visibility oracles can be extracted~\cite{agentfs_repo}.
+BranchFS, Sandlock, and YoloFS provide neighboring branch, sandbox, staging,
+and stackable-filesystem context rather than separate evaluation
+workloads~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
+
+The second source family is environment/cache state. SWE-Factory-Gym or
+MEnvData-SWE are source systems because their public artifacts provide
+Docker-backed build/test oracles~\cite{swe_factory_repo,menvagent_repo}.
+SWE-rebench V2 supplies broader benchmark context~\cite{swe_rebench_v2_repo}.
+These sources are useful only when the oracle can be reduced to selecting or
+hiding existing cache or environment objects while the source evaluator keeps
+build/test semantics.
+
+Service/config sources remain conditional. Projected configuration, secret,
+certificate, or fixture views motivate the problem, but a service/config
+workload belongs in the evaluation only when the source behavior depends on
+lookup-time object selection rather than projected-volume materialization or
+service reload alone~\cite{kubernetes_projected_volumes}.
+
+Only source behavior tied to a concrete same-oracle KVM run becomes final
+evaluation evidence. Source inspection and paper-derived behavior motivate
+workload shape and boundary comparisons.
 
 \begin{table}[t]
 \centering
-\small
-\begin{tabular}{@{}p{0.15\linewidth}p{0.17\linewidth}p{0.19\linewidth}p{0.18\linewidth}p{0.17\linewidth}@{}}
+\scriptsize
+\begin{tabular}{@{}L{0.2\linewidth}L{0.25\linewidth}L{0.25\linewidth}L{0.2\linewidth}@{}}
 \hline
-Selected source & Oracle source & Policy-controlled effects & Preserved lower-FS checks & Companion motivation \\
+Example & State and operation & \namei action and delegated behavior & Oracle \\
 \hline
-AgentFS workspace transition & AgentFS lifecycle oracle & object selection and visibility & branch-object writes and permissions & BranchFS, Sandlock, YoloFS \\
-SWE-Factory-Gym cache transition & SWE-Factory-Gym build/test oracle & cache-object selection and visibility & lower-FS reads and cache-object identity & MEnvData-SWE, SWE-rebench V2 \\
+Agent workspace lifecycle & branch or checkpoint state changes lookup and
+readdir under a workspace path & select or hide existing lower objects while
+the source runtime keeps COW, checkpoint, sandbox, writes, and lifecycle
+orchestration & final tree, lookup/readdir coherence, and preserved
+lower-filesystem permissions \\
+Environment/cache transition & cache epoch marks a local object hit, miss,
+stale, corrupt, or behind an epoch update & select verified local or canonical
+fallback, or hide a stale/corrupt local object while cache population, build/test
+execution, and content validation stay outside the hook & source build/test
+result and stale/corrupt non-use \\
 \hline
 \end{tabular}
-\caption{Source-derived transition characterization. Rows summarize the source and oracle fields that the KVM evaluation instantiates for the two selected transitions.}
-\label{tab:transition-characterization}
+\caption{Representative state-dependent path-view examples. The \namei
+evidence is the lookup/readdir action, and non-name-resolution behavior remains
+with the source runtime or lower filesystem.}
+\label{tab:path-view-examples}
 \end{table}
 
-The first selected transition is derived from AgentFS~\cite{agentfs_repo}.
-BranchFS, Sandlock, and YoloFS motivate nearby agent-workspace behavior but do
-not define the oracle for this row~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
-The trace creates or forks a workspace state, opens a path whose parent
-state also contains that name, performs a write through the workspace path,
-changes to a checkpoint or sibling state, and then checks that lookup and
-directory enumeration expose the expected branch object and hide stale entries.
-The write itself remains a lower-filesystem write after open/create path
-resolution has selected the branch object. This trace contributes evidence only
-when the source oracle is expressible as lookup/readdir-time selection or
-hiding of existing lower objects.
+Three design constraints follow from the source systems. First, each workload
+carries its own state, such as a branch identifier, checkpoint, cache epoch,
+environment epoch, service epoch, or secret epoch. Policy therefore must run at
+the affected lookup or directory-enumeration operation and remain scoped per
+workload.
 
-The second selected transition is an environment/cache transition from
-SWE-Factory-Gym~\cite{swe_factory_repo}. MEnvData-SWE and SWE-rebench V2
-motivate nearby Docker-backed environment behavior but do not define the oracle
-for this row~\cite{menvagent_repo,swe_rebench_v2_repo}.
-The trace begins at a cache epoch, resolves a hit to a verified local
-object, resolves a miss to canonical backing, marks a local object stale or
-corrupt, falls back to backing for that path, and then advances the epoch and
-checks that subsequent lookup selects the new valid object. If the selected
-oracle requires workload-specific file-content generation or custom write
-handling, it is out of model for this paper.
+Second, the path-view portion of each source system is narrower than the full
+system. Many rows also include runtime orchestration, service reload,
+synthetic contents, or storage semantics that remain separate responsibilities.
+The narrower path-view scope implies that the kernel and lower filesystem must
+keep data, permission, and persistence ownership.
+
+Third, directory visibility and lookup selection appear together in the source
+oracles. Lookup and readdir therefore need one coherent decision contract.
+
+Together, these source-system observations set the paper's comparison rule:
+(1) source behavior supplies the oracle, (2) feature-equivalent FUSE supplies
+the direct programmable-policy cost comparison, and (3) custom or stackable
+filesystems define the broader safety and ownership boundary. Materialized
+namespace mechanisms remain related-work and background comparisons rather than
+the central experiment. The same rule drives
+the design requirements in Section~\ref{sec:design} and the RQ-organized
+evaluation in Section~\ref{sec:evaluation}.
+
+\subsection{Selected Workloads}
+
+The selected workloads are two representative cases. One workload derives from
+an AgentFS source oracle whose
+name-resolution decisions select or hide branch-visible objects while COW,
+checkpoint, sandbox, and write behavior remain responsibilities of the source
+runtime.
+
+The second workload is an environment/cache transition that chooses existing
+verified local or canonical objects, and can select regenerated objects only
+after the source evaluator has materialized them. It hides stale or corrupt
+local objects while the source evaluator and lower filesystem keep cache
+population and build/test semantics. This workload exercises file-object cache
+choices through \code{SELECT_TARGET} over kernel-registered lower paths.
+
+A workload becomes reportable only after a reviewed KVM same-oracle run.
+Service/config is included only when a concrete source oracle depends on
+lookup-time object selection. These workloads instantiate the boundary studied
+by the paper, where policy runs at lookup and directory enumeration and
+non-name-resolution behavior stays with the source system or lower filesystem.

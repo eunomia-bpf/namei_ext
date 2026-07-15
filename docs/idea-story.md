@@ -1,192 +1,161 @@
-# Idea Story
+# Idea And Hypothesis History
 
-Last updated: 2026-07-10
-Stage at update: iter-refine-writing-idea and iter-refine-writing interleaved refinement in progress
-Source/command: `research-project-startup` skill layout, local source/reproduction records under `docs/tmp/`, related-work state in `docs/background-related-work.md`, and raw logs under `results/reproduction/`
-Completeness: partial; ready to drive the next KVM workload implementation, not ready for final paper claims
+Last updated: 2026-07-15
+Current phase: BUILD_AND_EVALUATE
+Current step root: `docs/tmp/bootstrap/step-0005-20260714T174151-0700/`
 
-## Current State
+## Current Frontier
 
-- Stage: runnable prototype plus workload-source selection.
-- Blocking gate: the paper needs a Make-owned KVM workload derived from real agent/workspace or environment/cache sources.
-- Next action: implement the AgentFS-derived AI agent workspace lifecycle workload first; use SWE-Factory-Gym or MEnvData-SWE for the environment/cache workload next, with SWE-rebench V2 as a broader companion source.
+BOOTSTRAP step 0005 is the current accepted frontier. The latest user
+instruction asked the project to return to BOOTSTRAP under the new skills and
+reorganize/improve the paper again. Step 0005 completed a full
+`iter-refine-writing` pass, restored meaning lost during compression, verified
+citations and the paper build, passed independent outer audit, and routed the
+project back to BUILD_AND_EVALUATE.
 
-## Downstream Document Index
+The frozen story is unchanged from the user's fixed direction:
+`namei_ext` is a `sched_ext`-style VFS name-resolution extension point between
+eBPF LSM and FUSE/custom filesystem ownership. The contribution is the design
+and Linux implementation of that extension point as one systems boundary. Agent
+workspace and environment/cache remain the primary workload families;
+service/config remains conditional; incomplete prototype evidence must not
+shrink the paper's hypothesis.
 
-| Doc | Role | Current status | Next required update |
-| --- | --- | --- | --- |
-| `docs/background-related-work.md` | novelty, closest work, baselines | present; newly consolidated | Keep source status current when new workload reproduction closes. |
-| `docs/design.md` | mechanism and artifact boundary | missing | Define the one-decision-function VFS name-resolution ABI and policy/lower-FS boundary. |
-| `docs/implementation.md` | prototype and runnable commands | missing | Document Make-owned KVM paths once the next source-derived workload is implemented. |
-| `docs/evaluation.md` | experiment plan, results, claim verdict | missing | Convert workload-source decisions into run matrix, oracles, baselines, and thresholds. |
+The previous completed re-entry and route are recorded in:
+`docs/tmp/bootstrap/step-0002-20260713T004618-0700/step-report.md`.
 
-## Intro P1: Problem And Stakes
+The accepted BOOTSTRAP re-entry, writing pass, and review route are recorded in
+`docs/tmp/bootstrap/step-0005-20260714T174151-0700/step-report.md`.
 
-Purpose: establish why state-transition path views matter now.
+## Initial Narrative
 
-Draft paragraph:
-Agent-workspace and environment/cache workflows create short-lived branches, checkpoints, cache epochs, and validation states while invoking unmodified build and test tools. After a workspace transition, a path bound to the previous state can cause a tool to validate the wrong revision; a path bound to shared state can direct writes into the parent workspace; after a cache-epoch change, a path bound to an old cache object can feed stale inputs into a build. These failures arise even when the underlying files and ordinary read/write semantics need not change: the wrong existing lower object is selected, or an object is visible when it should not be.
+Modern systems increasingly need per-workload filesystem views without wanting
+to implement a filesystem. Build systems, agent workspaces, service sandboxes,
+and environment/cache systems repeatedly change which existing object a
+pathname should denote, or whether that object should be visible, while leaving
+ordinary file data, writes, permissions, page-cache behavior, persistence, and
+consistency to an existing lower filesystem.
 
-Primary executable evidence: AgentFS-derived workspace lifecycle first; SWE-Factory-Gym or MEnvData-SWE environment/cache second.
+The existing design space has a missing middle. Bind mounts, OverlayFS,
+projected volumes, symlink forests, copies, and other materialized views
+preserve kernel filesystem semantics, but encode the view by constructing,
+layering, or updating namespace state outside each lookup. eBPF LSM can attach
+verified policy to security hooks, but its natural role is access-control
+mediation rather than changing which existing object a pathname denotes during
+VFS name resolution. FUSE and source-system agent filesystems are expressive,
+but place a filesystem service on the path and often own operation handling,
+caching, daemon availability, and correctness details. Custom or stackable
+filesystems can be expressive and fast, but ask the developer to own a broader
+filesystem interface.
 
-Motivating and related evidence: BranchFS, Sandlock, Redis AFS, Mirage, YoloFS, OpenHands SDK, Terminal-Bench, SWE-rebench V2, MEnv/DockSmith trajectories, DeltaFS, IndexFS, TableFS, and FUSE/custom-FS literature.
+`namei_ext` tests a different point between eBPF LSM and filesystem ownership:
+put a constrained eBPF policy at VFS name resolution, analogous to how
+`sched_ext` lets policy choose scheduling while the kernel retains scheduler
+machinery. The policy chooses bounded lookup and directory-enumeration actions;
+the kernel and lower filesystem continue to own VFS objects and ordinary file
+semantics.
 
-Completeness: plausible; one implemented trace unblocks implementation, while two KVM-validated upstream transitions are required to promote the paper claim.
+The central principle is:
 
-## Intro P2: Status Quo And Gap
+```text
+state-dependent pathname policy belongs at VFS name resolution;
+filesystem objects and data semantics remain with the kernel and lower FS.
+```
 
-Purpose: distinguish the project from FUSE, full filesystems, and static namespace construction.
+The intended contribution is the design and implementation of this narrow
+extension point plus a source-grounded evaluation showing where it is expressive
+enough, what it costs compared with feature-equivalent FUSE, and how its
+implementation boundary differs from custom or stackable filesystem ownership.
 
-Draft paragraph:
-Existing mechanisms cover this need at different ownership boundaries. FUSE and NFS-like designs can compute views dynamically and are appropriate when a system is prepared to serve filesystem operations and manage a daemon or server, caching behavior, and failure handling. Copies, bind mounts, symlink trees, and projected volumes encode the view during namespace construction or update. OverlayFS selects among layers during lookup, but exposes a fixed layer-and-whiteout model rather than general application-state-indexed selection. Custom and stackable filesystems are appropriate when new semantics justify implementing a broader filesystem interface. The unresolved mismatch is the need to change only pathname-to-object bindings or visibility while leaving ordinary filesystem ownership and semantics unchanged.
+## Current Research Questions
 
-Evidence/claim dependency: ExtFUSE, Bento, FUSE studies, DeltaFS, IndexFS, TableFS, Wrapfs, Kubernetes projected-volume style baselines, and our materialized/FUSE baseline rows.
+| RQ | Question | Evidence standard |
+| --- | --- | --- |
+| RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Representative source-derived workloads pass their correctness oracles through the real `cgroup/namei_ext` KVM attach path, with coherent lookup/readdir behavior and lower-filesystem permission/write/data-path preservation. |
+| RQ2 Cost / overhead versus FUSE | What is the cost of putting programmable policy on the VFS name-resolution path compared with a feature-equivalent FUSE policy implementation? | Same-oracle `namei_ext` and FUSE policy implementations, with correctness gating lookup/open/stat/access/exec/readdir latency, macro runtime, pass-through overhead, action overhead, and operation-weighted invocation traces. |
+| RQ3 Safety / boundary versus custom or stackable FS | Does `namei_ext` provide a narrower verifier-bounded, fail-closed ownership boundary than building a custom or stackable filesystem when the needed policy is only name resolution? | Ownership and containment evidence: filesystem methods owned, privileged code surface, daemon/state responsibility, verifier/kernel validation, invalid-policy handling, and lower-filesystem data/write preservation. |
 
-Completeness: good as framing; needs careful wording to avoid claiming mechanism exclusivity.
+## Contribution And Evidence Program Under BOOTSTRAP Pressure
 
-## Intro P3: Key Insight And Thesis
+Primary contribution: the design and implementation of `namei_ext`, a
+`sched_ext`-style VFS name-resolution extension point whose eBPF policy selects
+bounded lookup and directory-enumeration behavior while the kernel and lower
+filesystem retain VFS object and data-path ownership.
 
-Purpose: state the central idea.
+Evidence program:
 
-Draft paragraph:
-The key insight is not that pathname lookup can choose objects; existing filesystems and namespace mechanisms already do that. The insight is a missing decomposition for state-transition path views: state changes should affect only the binding from names to existing lower objects, or whether those objects are visible, while the lower filesystem continues to own data, writes, permissions, persistence, and consistency. Existing mechanisms can implement these behaviors, but they commonly couple object selection to namespace materialization or filesystem-service ownership. Agent workspace and environment/cache systems expose this pattern when branches, checkpoints, epochs, or validation results change what unmodified tools should see at ordinary pathnames. This class is defined from source-system state transitions and workload oracles before assigning a mechanism.
+1. Source-derived characterization of state-dependent path views in
+   agent/workspace, environment/cache, and service/config systems is workload
+   and oracle selection evidence, not a standalone contribution.
+2. A small set of complete, same-oracle experiments is organized around RQ1,
+   RQ2, and RQ3. FUSE is the central RQ2 comparison. Custom or stackable
+   filesystem ownership is the central RQ3 boundary comparison. Materialized
+   namespace mechanisms are related-work/background unless a renewed BOOTSTRAP
+   decision gives them a specific source-driven role.
 
-Evidence/claim dependency: source-derived workload traces must first identify state-transition path-view effects, then show that oracle-relevant behavior can be validated without workload-specific data-path interposition.
+## Hypothesis Frontier
 
-Completeness: thesis is clear; implementation evidence still pending for the first source-derived workload.
+| ID | Parent | Prediction | Falsifier | Evidence for/against | Status | Decisive next test | Reopen condition |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| H1 | root | A bounded VFS name-resolution policy can cover representative source-derived path-view transitions while lower FS semantics remain owned below. | The strongest source-derived agent workspace or environment/cache oracle requires synthetic contents, data-path mediation, write conflict resolution, or custom metadata persistence in the main path. | Current source surveys and prototype actions suggest plausible coverage; final same-oracle KVM evidence is missing. | Frozen for BUILD_AND_EVALUATE | Run Agent workspace lifecycle through same-oracle KVM/FUSE/RQ3 review. | If final admitted oracles show name resolution is not the right boundary. |
+| H2 | H1 | FUSE is the right cost comparison because it can implement equivalent policy but owns a filesystem daemon/request path. | A fair FUSE implementation cannot be made feature-equivalent for the admitted oracle, or another mechanism is a stronger direct cost opponent. | User fixed RQ2 to FUSE; FUSE literature and source systems support the comparison. | Frozen for BUILD_AND_EVALUATE | Run feature-equivalent FUSE rows for the admitted oracle before interpreting RQ2. | If a final admitted workload oracle makes FUSE non-comparable. |
+| H3 | H1 | Custom/stackable filesystems are the right safety/boundary comparison because they own broader filesystem methods than the policy requires. | The admitted workload requires broad filesystem ownership, making `namei_ext` the wrong abstraction. | Prior stackable/custom FS work supports the boundary distinction; workload-specific audit still needed. | Frozen for BUILD_AND_EVALUATE | Produce same-oracle RQ3 ownership and containment evidence after RQ1 correctness. | If the selected source behavior is not name-resolution policy. |
+| H4 | root | The paper is strongest with two deep workload families plus conditional service/config breadth, not a large catalog of weak comparisons. | Reviewers would reject coverage as too narrow even with deep same-oracle evidence, or service/config produces a strong lookup-time oracle. | User repeatedly rejected scattered weak baselines and table-only mainline. | Frozen for BUILD_AND_EVALUATE | Start with Agent workspace; keep environment/cache primary after required target-selection support. | If final review finds the two-family plan insufficient. |
 
-## Intro P4: Proposed Artifact Or Method
+## Claim Evolution
 
-Purpose: define `namei_ext`.
-
-Draft paragraph:
-`namei_ext` realizes this decomposition as a policy-only object-selection boundary inside VFS name resolution. A policy is an eBPF program attached through the real `cgroup/namei_ext` path in the modified kernel. The kernel exposes one decision function because lookup and directory enumeration share the same contract: given an event, pathname context, and policy state, choose the visible lower path or visibility action while leaving the VFS object model and lower filesystem semantics intact. Unlike a stackable or passthrough filesystem, the policy does not implement filesystem methods, own VFS objects, run a filesystem server, or materialize a namespace tree; it returns a path-resolution action before the kernel continues through the ordinary lower filesystem. It does not define a filesystem, a YAML policy language, or a replacement VFS object model.
-
-Evidence/claim dependency: kernel ABI/design docs, BPF policy examples, and KVM Phase 1 validation.
-
-Completeness: mechanism boundary is stable; design doc should be created.
-
-## Intro P5: Claims And Evaluation Promise
-
-Purpose: map claims to evidence.
-
-Draft paragraph:
-The evaluation should show that `namei_ext` can implement realistic state-transition path views with correctness first: one AgentFS-derived workspace transition and one environment/cache transition must pass their oracles before latency or overhead is interpreted. The first characterization must start from each upstream transition and its oracle, then classify each oracle-relevant filesystem effect as object selection, visibility, lower-filesystem behavior, or out-of-model behavior before any `namei_ext` implementation is counted as evidence. If the oracle requires out-of-model behavior, that transition cannot support C3; an in-model slice counts only when it has its own oracle-valid transition. The comparison is against natural mechanisms for the same oracle: source-system behavior where runnable, standalone FUSE only when distinct from the source system, and materialized copy/symlink/bind/Overlay/projected views. Operation-weighted lookup and readdir traces should record the workload-specific event mix, without requiring every transition to exercise both event types.
-
-Evidence/claim dependency: Make-owned KVM workload result, natural baseline result, operation-weighted trace, and correctness oracle.
-
-Completeness: evaluation promise is defined; next workload implementation is required.
-
-## Intro P6: Contributions, Scope, And Non-Goals
-
-Purpose: keep the paper defensible.
-
-Draft contribution list:
-1. A state-transition path-view model that classifies source-system state transitions into pathname-object selection, visibility, lower-filesystem behavior, and out-of-model effects (Model, Section 2).
-2. `namei_ext`, a VFS name-resolution prototype that realizes classified in-model effects with one eBPF decision interface for lookup and directory enumeration, without implementing filesystem methods or owning VFS objects (System, Sections 3-4).
-3. A correctness-first KVM evaluation of two examined upstream transitions, measuring oracle correctness, operation-weighted lookup/readdir policy events, and setup/update/runtime behavior against source-system, distinct standalone FUSE, and materialized baselines (Evaluation, Section 5).
-
-Status:
-Contribution 3 is a candidate until the two examined upstream transitions pass.
-
-Non-goals:
-The paper does not claim that competing mechanisms are impossible, that every candidate workload requires eBPF, or that `namei_ext` replaces agent filesystems, FUSE, or metadata services. Synthetic file contents, custom metadata persistence, distributed directory indexing, write-conflict resolution, data-path mediation, storage layout, agent orchestration, cross-path transactional snapshots, atomic multi-object commits, and consistency beyond selecting state-indexed existing lower objects remain outside the artifact boundary.
-
-Evidence/claim dependency: related-work map, workload-source catalog, and explicit negative/appendix rows.
-
-Completeness: wording guard is ready.
-
-## Supporting Research State
-
-### Problem Anchor
-
-- Pain: tools can validate the wrong revision, write into a parent workspace, or consume stale cache inputs when pathnames remain bound to objects from the wrong workspace, branch, or cache epoch.
-- Root cause: the workload's state unit, such as a workspace, branch, or cache epoch, changes only which existing objects names denote or expose, whereas common mechanisms couple that change either to constructing or updating a namespace representation or to a component serving a broader filesystem interface. This mismatch between workload state granularity and namespace ownership or update granularity is the structural cause.
-- Status quo gap: FUSE, custom filesystems, metadata services, and materialized views remain valid, but they take responsibility for broader filesystem service, metadata, daemon availability, or namespace-update work when a state transition only changes pathname-to-object binding or visibility.
-- Scope: target state-transition path views where the lower filesystem should retain file data, writes, permissions, persistence, and per-object consistency semantics.
-- Release gate: correctness oracle passes in KVM, operation-weighted lookup/readdir signal is recorded, and natural baselines are measured for the same oracle.
-
-### Why Now
-
-- Technical/scientific change: public agent-workspace and environment-construction systems now provide source code and executable correctness oracles for short-lived state transitions.
-- New deployment pressure or workload shift: agents and build systems frequently create, fork, checkpoint, evaluate, and discard filesystem views.
-- Why the question is newly measurable: existing mechanisms remain valid baselines; evaluation must establish when their additional service or namespace-update responsibilities are material.
-
-### Target Audience And Venue Bar
-
-Systems reviewers should see a precise kernel mechanism, real workload provenance, KVM validation, correctness-first evaluation, and fair comparisons against FUSE, full filesystem/source-system behavior, and materialized views.
-
-### Design Goals
-
-| Goal | Statement | Contribution | Evaluation mapping |
-| --- | --- | --- | --- |
-| G1 Path-view completeness | A source-derived transition is in scope only when its oracle-relevant behavior is completely expressible as lookup/readdir-time selection or hiding of existing lower objects. | C1, C3 | Classification starts from the upstream transition and oracle; any required open/read/write/setattr interposition or synthetic contents is marked out of model. A transition supports the paper claim only if its chosen oracle-relevant behavior has a complete in-model path-view slice; otherwise it becomes motivation or related work, not evaluation evidence. |
-| G2 Lower-FS ownership preservation | File data, metadata persistence, permissions, writeback, and per-object consistency remain with the lower filesystem; path-view freshness is checked by workload oracles. | C2, C3 | Boundary checks, permission/write behavior, lower-object consistency checks, freshness oracles, and no workload-specific data-path interposition. |
-| G3 Narrow programmable interface | One policy decision interface covers lookup and directory enumeration for classified in-model effects. | C2 | ABI tests plus policies loaded through the real `cgroup/namei_ext` attach path for source-derived transitions whose oracle-relevant effects pass G1; traces record the workload-specific lookup/readdir event mix without requiring both events in every transition. |
-| G4 Practical comparison boundary | Compare against natural source-system, distinct FUSE, native, and materialized mechanisms for the same correctness oracle. | C3 comparison subclaim | Per-transition baseline matrix recording same oracle, correctness parity, baseline type, whether it implements filesystem methods, whether it needs a daemon, whether it performs materialization writes, and setup/update/runtime measurements interpreted only after correctness passes. |
-
-### Method Thesis
-
-- Thesis sentence: state-transition path views separate pathname-to-object binding from filesystem ownership; `namei_ext` realizes that boundary while preserving lower-filesystem semantics.
-- Mechanism hypothesis: one BPF decision function over lookup and directory-enumeration events is sufficient for classified in-model effects from the source-derived transitions.
-- Why the mechanism should work: the relevant filesystem work is object selection before VFS object acquisition, not custom file data or persistence semantics.
-
-### Dominant Claim
-
-- Target claim after two KVM transitions pass: for one AgentFS-derived workspace transition and one environment/cache transition, classification identifies a complete oracle-relevant in-model path-view slice, and `namei_ext` implements that slice while the lower filesystem retains ordinary file semantics. Natural-baseline measurements then determine whether this avoids filesystem-service or namespace-update work for the same oracle.
-- Stretch opportunity: service reload/secret-rotation can become a third workload family only after an implemented oracle and natural baseline exist.
-- Evidence needed to promote the claim: two real upstream transitions beyond controlled fixtures, with KVM correctness, operation-weighted traces, and natural baseline comparisons; broader family-level claims require additional classified transitions.
-
-### Core Mechanism
-
-`namei_ext` hooks VFS name resolution, not file operations. Policies are eBPF programs under `bpf/policies/*.bpf.c`. The kernel retains VFS object ownership and lower-filesystem semantics.
-
-### Scope And Non-Goals
-
-In scope: lookup/readdir-time selection or hiding of existing lower objects, source-derived workspace/sandbox/cache transitions whose oracle-relevant effects are classified as state-transition path views, KVM validation, and natural baselines.
-
-Out of scope: synthetic file contents, custom metadata persistence, distributed directory indexing, write-conflict resolution, cross-path transactional snapshots, atomic multi-object commits, data-path mediation, new filesystem implementation, storage layout changes, YAML/JSON policy language, and proof that other mechanisms cannot handle a workload.
-
-### Claim Ledger
-
-| ID | Claim | Scope | Metric/evidence needed | Status |
+| Date | Ambitious target claim | Evidence status | Unresolved uncertainty | Next evidence program |
 | --- | --- | --- | --- | --- |
-| C1 Model | The two examined upstream transitions contain state-transition path-view effects. | One AgentFS-derived workspace transition and one environment/cache transition whose state changes alter pathname-to-object binding or visibility while lower FS owns data, writes, permissions, persistence, and consistency. | Upstream-transition classification plus oracle checks showing no workload-specific data-path interposition; out-of-model transitions become motivation or related work, not evaluation evidence. | pending KVM workload classification |
-| C2 System | `namei_ext` realizes the model without owning filesystem methods or VFS objects. | Modified-kernel VFS lookup/readdir path with one eBPF decision interface. | ABI/design doc, BPF policy examples, KVM attach validation, lower-FS ownership boundary checks. | proposed |
-| C3 Evidence | Two examined upstream transitions pass correctness oracles through the policy-only object-selection boundary. | AgentFS-derived workspace transition first; SWE-Factory-Gym or MEnvData-SWE environment/cache transition second. | KVM correctness, raw traces, natural baselines, operation-weighted policy events after transition classification, and the comparison subclaim that the mechanism separates object selection from namespace materialization and filesystem-service ownership for the same oracle. | next |
+| 2026-07-12 | `namei_ext` is a missing-middle VFS name-resolution policy boundary between eBPF LSM and FUSE/custom FS. | Literature/source grounding and prototype feasibility only; not final RQ evidence. | Whether the planned workload oracles and comparisons are strong enough for OSDI/SOSP. | BOOTSTRAP re-entry under the new skill, followed by renewed idea/literature/write/review gates before freeze. |
+| 2026-07-13 | `namei_ext` is a `sched_ext`-style VFS name-resolution extension point with RQ1 expressiveness, RQ2 feature-equivalent FUSE cost, and RQ3 custom/stackable FS boundary. | Renewed BOOTSTRAP EXPERIMENT, WRITE, and REVIEW gates passed; final RQ evidence is still pending. | Whether final same-oracle KVM matrices support the frozen claims. | BUILD_AND_EVALUATE starts with the complete Agent workspace matrix. |
+| 2026-07-13 | Same `sched_ext`-style VFS name-resolution story, but demoted from frozen contract to BOOTSTRAP candidate. | Latest user instruction explicitly re-entered BOOTSTRAP; BUILD_AND_EVALUATE Loop 001 result was supporting-only and Loop 002 remained incomplete. | Whether the candidate story should be strengthened, expanded, or frozen again under the new skill hierarchy. | BOOTSTRAP step 0002 pressures idea, literature, workload coverage, baseline families, and evaluation promise before any renewed BUILD_AND_EVALUATE route. |
+| 2026-07-13 | BOOTSTRAP candidate -> WRITE_GATE candidate | Step 0002 EXPERIMENT_GATE found no same-claim blocker, fixed RQ3 boundary schema, promoted the Experiment B candidate suite, and separated baselines from oracles/controls/boundary evidence. | Whether the paper draft expresses this contract without shrinking or overclaiming. | WRITE_GATE pressure on abstract, introduction, contribution framing, evaluation section, related work, and evidence boundaries. |
+| 2026-07-14 | WRITE_GATE candidate -> REVIEW_GATE candidate | A full `iter-refine-writing` pass rewrote the paper around the accepted contract and fixed evidence-boundary drift, especially RQ3 ownership wording and environment/cache final-file target gating. | Whether the step-level review accepts the writing gate and freezes the contract for renewed BUILD_AND_EVALUATE. | REVIEW_GATE independent outer audit and meta-review. |
+| 2026-07-14 | REVIEW_GATE candidate -> renewed BUILD_AND_EVALUATE freeze | Independent outer audit returned pass-with-fixes; root applied the must-fixes and verified compile/citation/grep checks. | Whether final same-oracle KVM matrices support the frozen claims. | BUILD_AND_EVALUATE starts with the complete Agent workspace lifecycle experiment; environment/cache remains primary after final-file target support. |
+| 2026-07-14 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP re-entry | User again instructed the project to return to BOOTSTRAP and reorganize/improve the paper under the new skills. | Whether the current paper and canonical documents still express the strongest user-fixed story without premature BUILD_AND_EVALUATE routing. | BOOTSTRAP step 0003 audits and cleans the paper/canonical frontier before any experiment continuation. |
+| 2026-07-14 | active BOOTSTRAP re-entry -> renewed BUILD_AND_EVALUATE freeze | Step 0003 cleanup and independent review found no blocking story or RQ defect after the root fixed stale routing text. | Whether final same-oracle KVM matrices support the frozen claims. | Resume BUILD_AND_EVALUATE with the complete Agent workspace lifecycle experiment. |
+| 2026-07-14 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP re-entry | The user repeated the instruction to return to BOOTSTRAP and reorganize/improve the paper under the new skills. | Whether the step-0003 freeze was premature relative to the renewed instruction and whether the paper/canonical docs still contain phase drift or evidence-promise ambiguity. | BOOTSTRAP step 0004 re-audits the paper/frontier and records cleanup before a new freeze decision. |
+| 2026-07-14 | active BOOTSTRAP re-entry -> renewed BUILD_AND_EVALUATE freeze | Step 0004 completed full writing, explicit RQ result slots, fresh outer audit, citation/build verification, and canonical cleanup with no must-fix findings. | Whether final same-oracle KVM matrices support the frozen claims. | BUILD_AND_EVALUATE starts with the complete Agent workspace lifecycle experiment, then environment/cache after final-file target support. |
+| 2026-07-15 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP REVIEW_GATE | The user explicitly asked again to return to BOOTSTRAP under the new skills and reorganize/improve the paper. Step 0005 completed the full writing pass, citation gate, meaning-preservation audit, and build verification without changing RQ meanings. | Whether the step-level REVIEW_GATE accepts the unchanged strong story and routes back to BUILD_AND_EVALUATE. | Outer audit and meta-review decide whether to freeze again or re-enter WRITE/EXPERIMENT. |
+| 2026-07-15 | active BOOTSTRAP REVIEW_GATE -> renewed BUILD_AND_EVALUATE freeze | Independent outer audit found no blocking direction defect, accepted the restored paper/frontier, and recommended routing to BUILD_AND_EVALUATE. | Whether final same-oracle KVM matrices support the frozen claims. | BUILD_AND_EVALUATE starts with the complete Agent workspace lifecycle experiment, then environment/cache after target-selection/source-oracle admission. |
 
-### Largest Plausible Claim
+## Rejected Or Dormant Paths
 
-- Paper thesis candidate: the two examined upstream transitions contain state-transition path-view effects, and `namei_ext` is a policy-only VFS boundary for those effects.
-- Why it would matter: it would let systems reuse the kernel and lower filesystem for ordinary file semantics while specializing only the pathname bindings and visibility decisions that turn state transitions into visible filesystem views.
-- Experiments needed: AgentFS-derived workspace lifecycle, environment/cache reuse, FUSE/source-system/materialized baselines, and overhead measurements; service reload/secret-rotation is stretch only.
-- Cheapest probe: implement the AgentFS-derived COW workspace lifecycle KVM workload.
-
-### Adjacent Idea Intake
-
-| Adjacent idea/source | What can be absorbed | How it could expand the paper | Risk |
+| Path | Why rejected/dormant | Raw evidence | Revisit trigger |
 | --- | --- | --- | --- |
-| AgentFS first; BranchFS/Sandlock/Redis AFS/Mirage/YoloFS as supporting evidence | AgentFS COW/FUSE/git/bash/cache-invalidation/whiteout oracle first; branch, checkpoint/fork, staging, hidden-side-effect, and multi-backend namespace oracles as motivation and baseline checks. | Strong AI agent workspace lifecycle workload. | Some systems are broader than path resolution; avoid claiming replacement or mixing all sources into one implementation target. |
-| SWE-rebench V2/SWE-Factory-Gym/MEnvData-SWE | Docker-backed repo build/test oracles. | Strong environment/cache workload. | Full environment generation may require LLM/API or broader image access. |
-| MEnvAgent/DockSmith/Multi-Docker-Eval | Environment scripts, trajectories, Docker/eval generation methodology. | Broader environment/cache task selection and operation traces. | Some artifacts are datasets/trajectories rather than executable systems. |
-| DeltaFS/IndexFS/TableFS | Metadata-service/full-filesystem workload shapes. | Appendix or related-work context. | Mainline drift into full FS comparison. |
+| Table-only or `table_redirect.bpf.c` as main novelty | User explicitly retired this line; proving static-table insufficiency no longer answers the intended paper. | Prior June diagnostics and current user log. | Only if the user explicitly reopens it as a separate paper question. |
+| Many weak baselines and scattered smoke tests | User requested few complete OSDI/SOSP-grade integrated experiments. | `docs/user-instruction.md` and prior drift audit. | If BOOTSTRAP review finds a specific additional baseline changes an RQ answer. |
+| Materialized namespace shootout as RQ3 | User fixed RQ3 toward custom/FUSE/stackable boundary and citation-based positioning for bind/Overlay/projected/copy/symlink. | Current user log and prior related-work survey. | If a selected source oracle makes a materialized mechanism the natural direct opponent. |
+| Negative-result story in the paper | User requested a more attractive positive story and warned against changing the hypothesis around flawed experiment design. | Current user log. | If a valid final result contradicts a frozen claim and must be scoped honestly. |
 
-### Expansion Agenda
+## Narrative Evolution
 
-| Expansion axis | Bigger experiment | Claim upside | Cost/risk | Probe |
-| --- | --- | --- | --- | --- |
-| Agent workspace | AgentFS-derived COW workspace lifecycle. | Makes the paper timely and real. | Needs trace extraction and KVM integration. | First workload is AgentFS-derived; Redis AFS, Mirage, BranchFS, Sandlock, YoloFS, OpenHands, SWE-agent, and SWE-ReX are supporting motivation, checklist, or baseline sources. |
-| Environment/cache | SWE-Factory-Gym or MEnvData-SWE stale/corrupt/update-window run, with SWE-rebench V2 as a companion source. | Best evidence for state-dependent path views. | Docker build variability and image access. | Pick one clean source-backed row family from the evidence inventory, then promote only if the KVM workload passes G1-G4. |
-| Service sandbox | nginx reload/update or PostgreSQL secret/config rotation. | Operational systems relevance. | Needs real reload/update trace. | Extend existing W2 fixture. |
+| Date | Before -> after | Reason and decisive evidence/instruction | Root disposition | Initial vs previous vs chosen comparison | Idea-audit report | Revisit condition |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-12 | Narrow/table-oriented story -> `sched_ext`-style VFS name-resolution extension point | User rejected table-only mainline and fixed the mechanism ladder and RQ shape. | Accepted as the candidate story for cycle-0 BOOTSTRAP. | Chosen story is stronger than the table-oriented version because it targets a systems boundary, not one diagnostic mechanism. | `docs/tmp/cycle-0000-20260712T202757-0700/00-bootstrap-idea/500-root-disposition-20260712T205136-0700.md` | Reopen if closest work collapses the boundary or source oracles require broader FS ownership. |
+| 2026-07-12 | BOOTSTRAP candidate -> frozen BUILD_AND_EVALUATE contract | Cycle-0 review accepted the story under the older report layout. | Accepted then, now historical. | It was faithful to then-current instructions but preceded the current explicit BOOTSTRAP re-entry instruction. | `docs/tmp/cycle-0000-20260712T202757-0700/step-report.md` | Superseded by current user instruction. |
+| 2026-07-13 | BUILD_AND_EVALUATE freeze -> active BOOTSTRAP re-entry | User explicitly asked to return to BOOTSTRAP under the new skills. | Accepted as a phase/routing change; scientific story remains candidate, not frozen. | Chosen state is more faithful to the new skill because BOOTSTRAP may still pressure story, RQs, workload coverage, and evidence promise before freeze. | `docs/tmp/bootstrap/step-0001-20260712T223808-0700/000-recovery-bootstrap-reentry-20260712T223808-0700.md` | Exit BOOTSTRAP only after the new hierarchy's EXPERIMENT, WRITE, and REVIEW gates accept a freeze. |
+| 2026-07-13 | active BOOTSTRAP re-entry -> renewed BUILD_AND_EVALUATE freeze | Current EXPERIMENT, WRITE, REVIEW, meta-review, and independent audit accepted the story with no must-fix before freeze. | Accepted; freeze the scientific contract and route to BUILD_AND_EVALUATE. | Chosen state is stronger and more faithful than the re-entry candidate because it was pressured against user intent, closest-work/baseline obligations, and full writing review under the new hierarchy. | `docs/tmp/bootstrap/step-0001-20260712T223808-0700/step-report.md` | Reopen only if final admitted evidence requires changing the problem, claim, RQs, baseline families, workload coverage, or evaluation promise; otherwise iterate implementation and protocol details. |
+| 2026-07-13 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP candidate | User again instructed the project to return to BOOTSTRAP under the new skills. | Accepted as a routing and contract-status change; no scientific claim is rejected yet. | Chosen state is more faithful than continuing Loop 002 because the latest instruction asks to re-pressure the story before implementation/evaluation continuation. | `docs/tmp/bootstrap/step-0002-20260713T004618-0700/000-recovery-bootstrap-reentry-20260713T004618-0700.md` | Exit BOOTSTRAP only after step 0002 completes EXPERIMENT, WRITE, and REVIEW gates and records a renewed freeze. |
+| 2026-07-13 | active BOOTSTRAP candidate -> WRITE_GATE candidate | Step 0002 EXPERIMENT_GATE passed after literature pressure, independent audit, and canonical fixes. | Accepted as a gate transition, not as a freeze. | Chosen state is stronger than the raw re-entry candidate because it now names FUSE-BPF/ExtFUSE pressure, RQ3 comparator schema, Experiment B suite, and evidence-role separation. | `docs/tmp/bootstrap/step-0002-20260713T004618-0700/01-experiment-gate/999-gate-report-20260713T012400-0700.md` | Continue WRITE_GATE; freeze only after WRITE and REVIEW gates pass. |
+| 2026-07-14 | WRITE_GATE candidate -> REVIEW_GATE candidate | Step 0002 WRITE_GATE completed all 12 writing rounds, citation verification, compile verification, and meaning-preservation audit. | Accepted as a gate transition, not as a freeze. | Chosen state is stronger than the previous candidate because the reader-facing paper now states the contribution as design plus implementation, organizes evaluation by the fixed RQs, removes the table-only novelty drift, and carries the final-file target qualifier for environment/cache evidence. | `docs/tmp/bootstrap/step-0002-20260713T004618-0700/02-write-gate/iter-refine-writing-20260714T143346-0700/2026-07-14-round-11-meaning-preservation.md` | Freeze only after REVIEW_GATE accepts the step direction and routing. |
+| 2026-07-14 | REVIEW_GATE candidate -> renewed BUILD_AND_EVALUATE freeze | Step 0002 outer audit accepted the direction after two must-fixes; root applied both fixes and verified the paper. | Accepted; freeze the scientific contract and route to BUILD_AND_EVALUATE. | Chosen state is stronger and more faithful than the re-entry candidate because it preserves the ambitious VFS extension-point story, keeps contribution as design plus implementation, and now gives the next phase a small complete experiment program instead of scattered baselines. | `docs/tmp/bootstrap/step-0002-20260713T004618-0700/outer-audit-20260714T154246-0700.md` | Reopen only if final admitted evidence requires changing the problem, claim, RQs, baseline families, workload coverage, or evaluation promise; otherwise iterate implementation and protocol details. |
+| 2026-07-14 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP re-entry | User's latest instruction explicitly says to return to BOOTSTRAP and reorganize/improve the paper. | Accepted as a phase/routing change; no scientific claim is rejected. | Chosen state is more faithful than continuing Experiment A protocol repair because the latest request is about paper/story convergence under the new skill hierarchy. | `docs/tmp/bootstrap/step-0003-20260714T155854-0700/step-report.md` | Exit BOOTSTRAP only after step 0003 records paper verification and review disposition. |
+| 2026-07-14 | active BOOTSTRAP re-entry -> renewed BUILD_AND_EVALUATE freeze | Step 0003 compiled the paper, fixed stale routing wording, and passed independent BOOTSTRAP review with no blocking must-fix findings. | Accepted; freeze the scientific contract and route back to BUILD_AND_EVALUATE. | Chosen state is stronger than the active re-entry because it preserves the step-0002 paper story while removing route drift and merging the contribution as design plus implementation. | `docs/tmp/bootstrap/step-0003-20260714T155854-0700/outer-audit-20260714T160549-0700.md` | Reopen only if final admitted evidence requires changing the problem, claim, RQs, baseline families, workload coverage, or evaluation promise; otherwise iterate implementation and protocol details. |
+| 2026-07-14 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP re-entry | The latest prompt repeats the BOOTSTRAP/paper-reorganization request after step 0003. | Accepted as a phase/routing change; no scientific claim is rejected. | Chosen state is more faithful than silently continuing BUILD_AND_EVALUATE because the user asked for paper convergence under the new skill hierarchy. | `docs/tmp/bootstrap/step-0004-20260714T161834-0700/step-report.md` | Exit only after step 0004 records verification and review disposition. |
+| 2026-07-14 | active BOOTSTRAP re-entry -> renewed BUILD_AND_EVALUATE freeze | Step 0004 addressed the initial audit must-fixes, completed all 12 writing rounds, verified citations/build, condensed state, and passed fresh independent audit. | Accepted; freeze the scientific contract and route back to BUILD_AND_EVALUATE. | Chosen state is stronger than the re-entry candidate because the paper now has explicit RQ result slots and the canonical docs no longer carry phase ambiguity. | `docs/tmp/bootstrap/step-0004-20260714T161834-0700/outer-audit-20260714T162658-0700.md` | Reopen only if final admitted evidence requires changing the problem, claim, RQs, baseline families, workload coverage, or evaluation promise; otherwise iterate implementation and protocol details. |
+| 2026-07-15 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP REVIEW_GATE | The latest prompt again asks for BOOTSTRAP re-entry and paper reorganization. Step 0005 did not change the idea; it corrected paper/frontier expression and restored lost evaluation-protocol meaning. | Pending REVIEW_GATE disposition. | Chosen state is more faithful than treating step 0004 as final because it honors the newest explicit BOOTSTRAP instruction without shrinking the hypothesis. | `docs/tmp/bootstrap/step-0005-20260714T174151-0700/step-report.md` | Exit only after step 0005 outer audit and meta-review accept the route. |
+| 2026-07-15 | active BOOTSTRAP REVIEW_GATE -> renewed BUILD_AND_EVALUATE freeze | Step 0005 passed independent outer audit with no Must-fix and routed back to BUILD_AND_EVALUATE. | Accepted; freeze the scientific contract and resume evidence work. | Chosen state is stronger than the active re-entry because the paper now preserves measurement protocol, RQ3 ownership fields, and workload/scope anchors while keeping the ambitious VFS extension-point story. | `docs/tmp/bootstrap/step-0005-20260714T174151-0700/outer-audit-20260715T021137-0700.md` | Reopen only if final admitted evidence requires changing the problem, claim, RQs, baseline families, workload coverage, or evaluation promise; otherwise iterate implementation and protocol details. |
 
-### Reviewer Attack Surface
+## Guardrails
 
-- "This is just FUSE": answer that the same behavior is expressible elsewhere, but those mechanisms couple object selection to daemon, filesystem-method, or materialization responsibilities; the evidence measures that boundary under the same oracle.
-- "This is just precomputed namespace state": answer by not claiming impossibility for alternatives; show source-derived transitions and natural baselines under the same oracle.
-- "The workloads are synthetic": answer with public source provenance and executable upstream oracles.
-- "You built a filesystem": answer by showing lower FS owns objects, data, writes, and permissions.
-
-### Open Questions
-
-- Should the first environment/cache implementation use SWE-rebench V2, SWE-Factory-Gym, or the newly passing MEnvData-SWE slice?
-- What is the minimum safe directory-enumeration policy needed for the first workload?
+- Do not claim only `namei_ext` or only eBPF can implement the selected
+  workloads.
+- Do not make table-only impossibility, static-table failure, or materialized
+  namespace shootouts the novelty line.
+- Do not let writing/review passes shrink the idea around currently easy
+  prototype evidence.
+- Do not treat source characterization, preflight runs, or unreviewed matrices
+  as final RQ evidence.
+- Do keep the paper focused on the strongest honest systems abstraction:
+  policy at VFS name resolution, lower filesystem semantics below.

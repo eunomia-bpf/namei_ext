@@ -1,0 +1,75 @@
+\section{Related Work}
+\label{sec:related-work}
+
+Related work falls along an ownership ladder. Namespace mechanisms construct
+views before lookup, access-control hooks mediate or observe operations near the
+VFS, \namei puts bounded object-selection policy in VFS name resolution, and
+FUSE, stackable filesystems, custom filesystems, and metadata services require
+broader filesystem-service or object-model ownership.
+
+\subsection{FUSE Policy Services}
+
+FUSE~\cite{linux_fuse}, FUSE passthrough~\cite{linux_fuse_passthrough},
+ExtFUSE~\cite{extfuse}, and FUSE-BPF~\cite{fuse_bpf_patch} demonstrate the
+value of placing filesystem policy in, or accelerating, a filesystem-service
+boundary. They are the direct context for RQ2 because they can implement the
+same path-view policy under the same source oracle, but keep the policy inside a
+FUSE or stackable-filesystem request path.
+
+\namei instead keeps oracle-relevant policy at VFS name resolution when the
+workload only needs path selection or visibility over existing objects.
+
+\subsection{Custom, Stackable, And Metadata-Service Filesystems}
+
+Wrapfs~\cite{wrapfs}, Bento~\cite{bento}, and custom filesystems demonstrate
+broader filesystem-extension boundaries. They can implement richer behavior and,
+in Bento's case, reduce the risk of in-kernel filesystem development. They are
+the direct context for RQ3 because the developer still owns filesystem methods,
+storage semantics, or framework-specific filesystem behavior. These mechanisms
+remain the right boundary when the workload needs custom file operations,
+synthetic contents, persistence, or richer semantics.
+
+DeltaFS, IndexFS, and TableFS show that full metadata services and specialized
+filesystems are valuable when the problem is metadata distribution, indexing,
+or storage layout~\cite{deltafs_sc21,indexfs,tablefs}. They are not the main
+workload baselines for \namei, but they clarify the boundary because such
+workloads require a metadata service or full filesystem when the oracle needs
+distributed metadata or a new filesystem object model.
+
+\subsection{Namespace Construction}
+
+Bind mounts, projected volumes, symlink forests, copy trees, and OverlayFS are
+practical ways to present alternate views~\cite{kubernetes_projected_volumes,linux_overlayfs}.
+They preserve ordinary kernel filesystem behavior, but express policy by
+constructing or updating namespace state. \namei asks when the policy can stay
+at lookup and directory-enumeration time instead of materializing a view before
+the transition completes.
+
+\subsection{Access Control And Observation Hooks}
+
+Landlock, BPF LSM programs, and fanotify show that Linux already exposes
+specialized hooks around filesystem access and events~\cite{linux_landlock,linux_bpf_lsm,linux_fanotify}.
+Among neighboring mechanisms, these hooks sit between materialized namespace
+construction and \namei. They can run verified policy in the kernel, but their
+natural role is to deny, mediate, or observe operations. \namei selects which
+existing object a name denotes during resolution and then returns control to the
+ordinary VFS and lower filesystem. Access-control denial remains outside the
+current action set because the primary claim is name-resolution selection and
+visibility.
+
+\subsection{Source Workload Systems}
+
+Agent filesystems are closest as workload sources, not direct cost
+baselines~\cite{agentfs_repo,branchfs_repo,sandlock_repo,yolofs_repo}. They
+show that agent workspaces need branch, sandbox, staging, and snapshot-like
+views, while their implementations also own behavior beyond \namei's boundary.
+Here, custom or stackable filesystem ownership provides the RQ3 boundary
+context, while FUSE remains the RQ2 cost comparison.
+\namei applies when the same source oracle can be satisfied by changing path
+visibility or object selection while leaving the rest of that ownership with the
+source system or lower filesystem. SWE-Factory-Gym, MEnvData-SWE, and
+SWE-rebench V2 provide environment/build-test oracles rather than filesystem
+mechanism baselines~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}.
+Agent runtimes and service/config systems similarly motivate workload state,
+but their runtime orchestration, environment synthesis, projected-volume
+materialization, and reload behavior remain outside \namei's mechanism claim.

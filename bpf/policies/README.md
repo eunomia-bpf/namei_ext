@@ -8,6 +8,13 @@ Phase 1 policy roles:
 - `pass_only.bpf.c`: attach/static-branch residual-overhead lower bound.
 - `redirect_alias.bpf.c`: minimal regression policy for lookup and readdir
   REDIRECT behavior.
+- `hide_secret.bpf.c`: minimal regression policy for lookup and readdir HIDE
+  behavior.
+- `select_portal.bpf.c`: minimal regression policy for intermediate
+  SELECT_TARGET behavior through a registered lower directory.
+- `agent_workspace_view.bpf.c`: Agent workspace dependency-preflight policy
+  for stable logical `ws` directory selection plus whiteout-style hiding. This
+  is a preflight policy, not the full Experiment A policy matrix.
 - `table_redirect.bpf.c`: exact-map diagnostic policy for workloads where a
   precomputed mapping is the relevant sanity check. It must stay limited to map
   lookup plus PASS/REDIRECT.

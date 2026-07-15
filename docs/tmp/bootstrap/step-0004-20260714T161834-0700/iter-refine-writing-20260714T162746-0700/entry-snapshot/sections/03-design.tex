@@ -1,0 +1,116 @@
+\section{Design}
+\label{sec:design}
+
+\subsection{System Overview}
+
+\namei places a programmable decision at the point where the VFS chooses the
+visible object for a pathname or directory entry. Four invariants organize the
+design: (1) policy runs only at lookup and directory enumeration, (2) policy
+returns bounded path-view actions over existing lower objects, (3) the kernel
+validates every action before ordinary VFS execution resumes, and (4) the lower
+filesystem retains permissions, file operations, data, writes, page cache,
+persistence, and consistency.
+
+Figure~\ref{fig:overview} shows the resulting flow. An application in a
+workload scope performs an ordinary lookup, open, stat, exec, or readdir. The
+VFS reaches the \namei decision point before committing to the visible object
+for the current component or directory entry. The eBPF policy returns a bounded
+path-view action, and ordinary VFS and lower-filesystem logic resumes after
+kernel validation.
+
+\begin{figure}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{c c c c c}
+\fbox{\begin{tabular}{c}workload\\cgroup\end{tabular}} &
+\begin{tabular}{c}$\longrightarrow$\\lookup/readdir\end{tabular} &
+\fbox{\begin{tabular}{c}VFS\\name resolution\end{tabular}} &
+\begin{tabular}{c}$\longrightarrow$\\event\end{tabular} &
+\fbox{\begin{tabular}{c}eBPF\\policy\end{tabular}} \\
+&&&& $\downarrow$ \\
+\fbox{\begin{tabular}{c}lower FS owns\\dentries, inodes, data, writes\end{tabular}} &
+\begin{tabular}{c}$\longleftarrow$\\ordinary VFS path\end{tabular} &
+\fbox{\begin{tabular}{c}kernel validates\\bounded action\end{tabular}} &
+\begin{tabular}{c}$\longleftarrow$\\pass/redirect/hide/select\end{tabular} &
+\fbox{\begin{tabular}{c}policy output\\no FS methods\end{tabular}}
+\end{tabular}
+\caption{\namei keeps policy at VFS name resolution. The policy chooses bounded
+path-view actions, while the kernel and lower filesystem continue to own
+filesystem objects and data semantics.}
+\label{fig:overview}
+\end{figure}
+
+\subsection{Name-Resolution Boundary Goals}
+
+Like \code{sched_ext}, \namei lets BPF choose policy while the kernel keeps the
+VFS mechanisms that own objects and execute filesystem semantics. The VFS and
+lower filesystem retain path walking, dentries, inodes, permissions, file
+operations, page cache, writes, persistence, and consistency.
+
+The design defines a small kernel extension for name-resolution policy while
+leaving full filesystem expressiveness to FUSE, stackable, or custom
+filesystems. Table~\ref{tab:req-design} maps the four design goals to the RQs.
+
+The current action set allows pass-through, replacement-component redirect,
+hide, and selection from kernel-registered lower targets. Access-control denial
+remains outside the current action set because \namei focuses on selecting or
+hiding existing objects during name resolution.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabular}{@{}p{0.19\linewidth}p{0.5\linewidth}p{0.17\linewidth}@{}}
+\hline
+Goal & Design choice & RQ \\
+\hline
+G1 Expressiveness & invoke one workload-scoped decision contract at lookup and directory-enumeration time & RQ1 \\
+G2 Lower-filesystem ownership & return only bounded actions over existing lower objects while keeping data, writes, permissions, page cache, and persistence below the hook & RQ1, RQ3 \\
+G3 Placement cost & run bounded policy at lookup/readdir instead of routing the same decision through a filesystem service & RQ2 \\
+G4 Fail-closed safety & use verified eBPF outputs plus kernel validation so malformed or unsupported decisions fail visibly & RQ3 \\
+\hline
+\end{tabular}
+\caption{Design-goal mapping. If an oracle needs synthetic contents, custom
+metadata, or data-path mediation, the effect belongs outside \namei's
+boundary.}
+\label{tab:req-design}
+\end{table}
+
+\subsection{Policy Model}
+
+The policy model follows directly from the workload-derived requirements
+because policy must (1) see lookup and directory-enumeration events, (2) carry
+workload state, (3) return only bounded path-view actions, and (4) let the
+kernel validate the result.
+
+Here, the transition is the workload state change, the policy is the eBPF
+decision logic, and the action is the bounded result validated by the kernel.
+
+The policy input contains operation context, the current component, parent
+context, and policy state. The policy state is workload-defined but not a
+filesystem object model. For the representative workloads, policy state is a
+branch or checkpoint identifier in an agent workspace, a cache or validation
+epoch in an environment run, or a configuration/secret epoch in a service.
+
+The output passes the lower lookup, redirects selection to a replacement
+component, hides a name from lookup and directory enumeration, or selects a
+registered target. Directory enumeration uses the same decision function so
+that aliases returned by readdir match the objects selected by lookup.
+
+The kernel checks the decision, preserves normal permission and
+lower-filesystem checks for the selected object, maintains ordinary VFS path
+resolution invariants, and fails invalid decisions visibly instead of falling
+back to a weaker policy.
+
+\subsection{Filesystem Ownership Boundary}
+
+\namei excludes filesystem ownership by leaving inode operations, file
+operations, dentry and inode allocation, synthetic contents, custom metadata,
+read/write mediation, distributed indexes, and cross-path transactions outside
+the hook.
+
+The name-resolution boundary helps only when the source transition can
+be expressed as lookup selection or directory visibility. When the oracle
+requires data-path mediation, synthetic content, custom metadata, or
+application-level orchestration, the transition remains motivation or related
+work rather than \namei evidence.

@@ -1,115 +1,195 @@
-\section{Evaluation Plan}
+\section{Evaluation}
 \label{sec:evaluation}
 
 \subsection{Research Questions}
 
-Four questions organize the correctness-first evaluation.
+The evaluation is organized around three research questions. Each answer is
+conditioned on a source oracle: the same workload behavior must be used for
+\namei, the feature-equivalent FUSE row, and the custom/stackable
+responsibility comparison.
+One-off mechanism checks, source surveys, and weak baselines do not answer an
+RQ by themselves.
 
 \begin{description}
-\item[RQ1] Do the two examined upstream transitions fit the
-object-selection-and-visibility boundary with their own oracles?
-\item[RQ2] Can \namei implement those slices through the real KVM
-\code{cgroup/namei_ext} path while preserving lower-filesystem behavior?
-\item[RQ3] Where do policy decisions occur in operation-weighted lookup and
-directory-enumeration traces?
-\item[RQ4] Under the same correctness oracle, how do source-system behavior,
-distinct standalone FUSE, and materialized views differ in daemon ownership,
-filesystem-method ownership, materialization writes, setup/update cost, and
-runtime cost?
+\item[RQ1] Can a narrow VFS name-resolution extension express real
+state-dependent path-view policies without taking over filesystem semantics?
+\item[RQ2] What is the cost of putting programmable policy on the VFS
+name-resolution path compared with a feature-equivalent FUSE policy
+implementation?
+\item[RQ3] Does \namei provide a narrower verifier-bounded, fail-closed
+ownership boundary than building a custom or stackable filesystem when the
+needed policy is only name resolution?
 \end{description}
 
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{p{0.12\linewidth}p{0.45\linewidth}p{0.31\linewidth}}
-\hline
-RQ & Evidence & Gate \\
-\hline
-RQ1 & Source-derived transition classification and oracle-relevant effect split & Fits the boundary or is rejected as out of model \\
-RQ2 & KVM run through the real \code{cgroup/namei_ext} attach path & Correct oracle and preserved lower-filesystem behavior \\
-RQ3 & Operation-weighted lookup/readdir trace & Recorded policy-event mix for the transition \\
-RQ4 & Source, FUSE, and materialized baselines checked against the same correctness oracle & Costs interpreted only after correctness parity \\
-\hline
-\end{tabular}
-\caption{Research questions and required evidence.}
-\label{tab:evaluation-map}
-\end{table}
+\subsection{Experimental Setup}
 
-\subsection{Workloads}
+All \namei mechanism runs execute in KVM~\cite{linux_kvm} with the modified
+kernel and the real \code{cgroup/namei_ext} attach path. Make targets own the
+run, attach the policy, collect raw artifacts, and fail on missing capability,
+verifier failure, syscall failure, or oracle failure. Each final row records the
+kernel commit, image identity, policy object, workload inputs, stdout/stderr,
+dmesg, per-operation lookup/readdir events, and comparison-specific setup
+observations.
+Operation-weighted metrics weight each policy action by its observed frequency
+in the workload trace.
 
-The evaluation instantiates the two rows in
-Table~\ref{tab:transition-characterization}: an AgentFS-derived workspace
-transition and a SWE-Factory-Gym-derived environment/cache transition. The
-AgentFS-derived row starts from a workspace lifecycle transition and records the
-source oracle, policy-controlled effects, and out-of-model exclusions. The
-environment/cache row starts from a Docker-backed transition and records the
-same fields.
+Each final reported run records the hardware and kernel configuration, KVM
+image identity, filesystem configuration, run count, warmup rule,
+confidence-interval method, cache-hot/cache-cold protocol, feature-equivalent
+FUSE implementation, and the custom or stackable filesystem boundary account for
+the workload.
 
-\subsection{Correctness Oracles}
+Correctness gates every number. A FUSE row is used for RQ2 only after it
+implements the same policy over the same source oracle. No-hook and
+lower-filesystem rows calibrate fixed hook and measurement cost. They are not
+competing baselines. RQ3 uses the same oracle to compare ownership and
+containment rather than to claim that a custom/stackable filesystem was
+reimplemented as an executed baseline.
 
-Each transition begins with source-derived classification. The input is the
-upstream transition and its oracle, not a preselected \namei implementation. If
-the oracle requires out-of-model behavior, the transition cannot support the
-boundary claim. If the transition fits the object-selection-and-visibility
-boundary with its own oracle, the KVM run must pass the same oracle before any
-latency or overhead number is interpreted.
+\subsection{RQ1: Expressiveness And Sufficiency}
 
-Table~\ref{tab:acceptance-matrix} makes the claims falsifiable. Both selected
-transitions must pass the source-oracle, in-model-slice, KVM-oracle, and
-boundary-check gates for the boundary-validity claim to hold. Baseline results
-support the practical value and cost claim only after those correctness gates
-pass. If either selected transition is out of model or fails the KVM oracle, the
-failure narrows the boundary claim to the transition that passed or becomes a
-reported negative result.
+RQ1 asks whether the VFS boundary can express path-view transitions extracted
+from source oracles while preserving lower-filesystem semantics. A reportable
+row must pass the source oracle through the real KVM attach path and show that
+\namei changed only lookup or directory visibility, while runtime orchestration,
+storage state, synthetic contents, writes, and data-path behavior remain with
+the source system or lower filesystem.
 
 \begin{table}[t]
 \centering
-\small
-\begin{tabular}{@{}p{0.22\linewidth}p{0.55\linewidth}p{0.13\linewidth}@{}}
+\scriptsize
+\begin{tabular}{@{}L{0.17\linewidth}L{0.27\linewidth}L{0.25\linewidth}L{0.21\linewidth}@{}}
 \hline
-Gate & Required evidence for each selected transition & Claim effect \\
+Workload & Source oracle & \namei evidence & Result evidence \\
 \hline
-Source oracle & Runnable source-derived oracle and state transition sequence & required \\
-In-model slice & Oracle-relevant effects are only object selection or visibility plus preserved lower-FS behavior & required \\
-KVM oracle & \namei pass through the real attach path with the same oracle & required \\
-Boundary checks & Lower-FS reads, writes, permissions, and object identity remain ordinary & required \\
-Baselines & Source/reference, standalone FUSE, and materialized-view comparison where applicable & required for cost claims \\
+Agent workspace lifecycle~\cite{agentfs_repo} & AgentFS-derived branch or
+checkpoint state selects or hides branch-visible objects. The oracle checks
+final tree state, whiteout/hide effects, symlink metadata, lookup/readdir
+coherence, and branch-visible state. & KVM \code{cgroup/namei_ext} policy
+selects or hides existing lower objects while the lower filesystem keeps
+permissions, writes, symlink metadata, file data, and ordinary directory
+operations. & \textbf{[Result]} pass/fail matrix, operation-weighted
+lookup/readdir trace, and preservation rows. \\
+Environment/cache transition~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo} &
+Cache epoch selects a verified local object, canonical fallback, or hides
+stale/corrupt local state. The oracle checks source build/test success and
+stale/corrupt non-use. & \namei selects existing verified local or canonical
+objects while cache population, content validation, build/test execution, and
+writes stay outside the hook. & \textbf{[Result]} cache-state matrix covering
+hit, miss, stale, corrupt, and epoch update states. \\
 \hline
 \end{tabular}
-\caption{Acceptance matrix for boundary-validity and cost claims.}
-\label{tab:acceptance-matrix}
+\caption{RQ1 answer table. A row becomes evidence only after the source-oracle
+run passes through the real KVM attach path and lower-filesystem semantics are
+preserved.}
+\label{tab:rq1-evidence}
 \end{table}
 
-\subsection{Baselines}
+The required RQ1 evidence is a reviewed KVM pass/fail matrix that preserves
+lookup/readdir coherence and lower-filesystem behavior for each admitted source
+oracle. A workload is outside \namei's boundary if the oracle needs synthetic
+contents, data-path mediation, write-conflict handling, or custom metadata
+ownership in the common path.
 
-Baseline roles are separated before comparison. The source system provides
-reference behavior and the oracle when runnable. A distinct standalone FUSE
-baseline represents the same policy behind a filesystem-service boundary.
-Materialized baselines represent precomputed namespace boundaries using copy,
-symlink, bind, Overlay, or projected views where applicable. These mechanisms
-remain valid baselines outside the policy-only boundary. The evaluation
-measures the ownership boundary each baseline chooses under the same oracle.
+\subsection{RQ2: Cost Versus FUSE}
 
-\subsection{Evaluation Setup}
+RQ2 isolates the placement cost of policy by comparing \namei with a
+feature-equivalent FUSE policy service under the same oracle. Non-name-resolution
+lifecycle behavior is delegated identically in both rows. RQ2 does not compare
+different runtimes. Instead, it compares placing the same lookup/readdir
+decision inside VFS name resolution with placing it in a FUSE request path.
 
-Host-only checks can catch build or formatting errors, but only KVM runs on the
-modified kernel validate the real policy path. The setup records kernel
-identity, policy identity, Docker or KVM image identity, workload commit,
-stdout/stderr, dmesg, and raw per-operation observations. Verifier output,
-syscall failures, dmesg, workload stdout/stderr, and per-operation observations
-are preserved under \file{results/}.
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabular}{@{}L{0.2\linewidth}L{0.26\linewidth}L{0.23\linewidth}L{0.21\linewidth}@{}}
+\hline
+Workload & Feature-equivalent FUSE comparison & Metrics & Result evidence \\
+\hline
+Agent workspace lifecycle & \namei policy in KVM versus a FUSE policy service
+that implements the same source oracle. & lookup, open, stat, access, exec, and
+readdir latency; macro lifecycle runtime; action mix; FUSE request-path cost &
+\textbf{[Result]} correctness-gated latency and macro-runtime table with
+confidence intervals and FUSE option record. \\
+Environment/cache transition & \namei cache policy in KVM versus a FUSE
+cache-policy service that implements the same cache-state oracle. & cache-hot
+and cache-cold lookup, open, stat, access, and readdir latency; build/test macro
+runtime; operation-weighted invocation rate & \textbf{[Result]}
+correctness-gated cache-state overhead table. \\
+\hline
+\end{tabular}
+\caption{RQ2 evidence table. FUSE numbers are interpreted only after the FUSE row
+implements the same source policy and passes the same source oracle.}
+\label{tab:rq2-evidence}
+\end{table}
 
-\subsection{Metrics}
+RQ2 interprets only correctness-gated rows with feature-equivalent FUSE
+implementations. The result compares lookup/readdir placement cost while keeping
+correctness and delegated runtime behavior fixed. A workload without a
+feature-equivalent FUSE row is not interpreted for RQ2.
+The required RQ2 evidence is a correctness-gated latency and macro-runtime table
+for the admitted source oracles, including pass-through overhead,
+action-specific overhead, cache-hot/cache-cold behavior, operation-weighted
+invocation rate, matched action mix, and FUSE daemon/request-path cost.
+Calibration rows are not treated as competing baselines.
 
-Correctness gates are source-oracle pass/fail, in-model classification, KVM
-oracle pass/fail, and preserved lower-filesystem behavior. Trace metrics record
-operation-weighted lookup and readdir policy events. Cost metrics include setup
-time, update time, runtime, and materialization writes. Boundary attributes
-record daemon requirements and whether a baseline implements filesystem
-methods.
+\subsection{RQ3: Ownership And Containment Boundary}
 
-\subsection{Results Skeleton}
+RQ3 compares ownership boundaries for the same oracle-relevant behavior. The
+question is not whether custom or stackable filesystems are expressive, because
+they are. The question is whether the workload needs that broader boundary when
+the policy effect is only name-resolution selection or visibility.
 
-After correctness parity, the evaluation reports classification verdicts, KVM
-oracle outcomes, lower-filesystem checks, operation-weighted event mixes, and
-same-oracle baseline costs.
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}L{0.14\linewidth}L{0.15\linewidth}L{0.16\linewidth}L{0.16\linewidth}L{0.17\linewidth}L{0.14\linewidth}@{}}
+\hline
+Source behavior & Oracle operation & \namei responsibility & Kernel/lower-FS responsibility & Custom/stackable responsibility & Fail-closed evidence \\
+\hline
+Agent workspace branch/checkpoint state & lookup and readdir select or hide
+branch-visible objects & eBPF returns bounded selection/visibility decisions &
+kernel validates targets and malformed outputs; lower FS owns data, writes,
+permissions, symlink metadata, and page-cache behavior & custom/stackable workspace FS would own or mediate
+lookup, readdir, create, unlink, rename, COW/checkpoint state, daemon state, and
+data-path behavior & \textbf{[Result]} invalid action, bad target, and
+malformed-name rejection on the real attach path \\
+Env/cache cache-state transition & lookup/open selects verified local
+or canonical objects, or hides stale/corrupt state & eBPF returns bounded object
+selection or visibility decisions & source evaluator owns cache population and
+validation; lower FS owns writes, data path, persistence, and page-cache behavior & custom/cache FS
+would own or mediate cache metadata, stale/corrupt state, open/read/write behavior, daemon
+state, and persistence decisions & \textbf{[Result]} invalid action, bad target,
+and malformed-name rejection on the real attach path \\
+\hline
+\end{tabular}
+\caption{RQ3 boundary table. The comparison is responsibility and containment for
+the same oracle-relevant behavior, not a claim that custom filesystems are less
+expressive.}
+\label{tab:rq3-evidence}
+\end{table}
+
+RQ3 is supported when the same-oracle rows pass, malformed decisions fail
+closed, and the responsibility comparison shows that a broader filesystem
+mechanism would own methods, daemon state, storage semantics, or data-path
+behavior that \namei leaves to VFS, the lower filesystem, or the source runtime.
+The required RQ3 evidence is a workload-specific ownership table tied to the
+admitted source oracles plus invalid-policy KVM rows on the real
+\code{cgroup/namei_ext} path. Per-source ownership rows must name owned
+filesystem methods, state responsibility, privileged code surface, and policy
+code size with source evidence.
+
+\subsection{Evaluation Scope}
+
+The main evaluation has two primary workload families, reported only after
+reviewed same-oracle KVM runs: Agent workspace and environment/cache. A row is
+interpreted only after the same source oracle passes for the compared
+mechanisms. Service/config remains motivating scope until a
+concrete source oracle depends on lookup-time object selection. Materialized
+namespace mechanisms, eBPF LSM hooks, and native production mechanisms remain
+related work and background unless a selected source workload makes one of them
+part of the source behavior being evaluated.
+This draft has not yet completed the reviewed KVM source-oracle rows, the
+correctness-gated \namei/FUSE latency and macro-runtime rows, or the
+workload-specific ownership and invalid-policy rows required to answer the RQs.

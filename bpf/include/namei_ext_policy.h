@@ -102,6 +102,8 @@ static __inline int namei_ext_apply_rule(struct bpf_namei_ext_ctx *ctx,
 {
 	if (!rule)
 		return BPF_NAMEI_EXT_PASS;
+	if (rule->action == BPF_NAMEI_EXT_HIDE)
+		return BPF_NAMEI_EXT_HIDE;
 	if (rule->action != BPF_NAMEI_EXT_REDIRECT)
 		return BPF_NAMEI_EXT_PASS;
 	namei_ext_set_redirect(ctx, rule->target, rule->target_len);

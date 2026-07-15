@@ -1,0 +1,81 @@
+\section{Implementation}
+\label{sec:implementation}
+
+The prototype maps the design onto a modified Linux kernel with a
+\code{cgroup/namei_ext} attachment point. Policies are eBPF programs under
+\file{bpf/policies/*.bpf.c}. The implementation consists of the VFS call
+sites, the BPF ABI, user-space policy attachment and map setup, and kernel-side
+validation for the supported action set.
+
+\subsection{Kernel Attachment}
+
+The lookup path calls the policy before the VFS commits to the lower object for
+the current component or final-component create/open path. Directory
+enumeration calls the same decision function for entries that may be exposed
+under an alias. Both call sites preserve the normal lower-filesystem path after
+the policy returns a validated decision, so the VFS still applies ordinary
+permission checks and file operations to the selected object.
+
+\subsection{BPF ABI}
+
+The kernel-facing ABI exposes one decision function. The context includes an
+event type, operation flags, the current component name, parent identity,
+policy-relevant identifiers, and bounded output fields for the selected
+path-view action. The current action set is \code{PASS}, \code{REDIRECT},
+\code{HIDE}, and \code{SELECT\_TARGET}. \code{REDIRECT} carries a bounded
+replacement component in \code{redirect_name}. \code{SELECT\_TARGET} carries an
+opaque \code{target_id} that indexes a kernel-held registered \code{struct
+path}. The policy cannot return arbitrary unbounded path strings or perform
+recursive path walks.
+
+The kernel validates action type, bounded names, target identity, and selection
+scope before continuing. Redirect decisions are validated for length and
+same-parent scope. Hide returns absence on lookup and suppresses the lower
+entry during directory enumeration.
+
+The current prototype supports registered target selection only for directory
+targets and does not implement final-file target selection.
+
+\subsection{Prototype Coverage}
+
+The prototype implements pass-through, validated same-parent
+replacement-component redirect, hide, and an initial registered directory-target
+selection path. The registered directory-target path supports intermediate directory
+components and final directory operations such as stat, \code{O\_DIRECTORY}
+open, and readdir over the selected lower directory.
+
+The prototype fails closed for create, non-directory final opens, final-file
+target selection, and synthetic parent-directory aliases.
+
+\subsection{Replacement-Component Validation And Permission Preservation}
+
+Workload setup configures the policy state that chooses replacement components.
+The prototype implements the redirect subset by copying a bounded
+\code{redirect_name} from the BPF output, validating its length, action, and
+same-parent scope, and then resuming the normal VFS path. The replacement
+component is not an
+arbitrary path string and does not trigger a recursive path walk. After
+validation, the normal VFS path continues, including permission checks and
+lower-filesystem file operations. Same-parent validation keeps \namei from
+becoming arbitrary path rewriting or a filesystem service.
+
+The implemented hide action uses the same decision point but does not allocate
+or synthesize filesystem objects. Lookup observes absence, and directory
+enumeration suppresses the lower entry for the active policy state.
+
+Registered directory-target selection adds kernel-owned object identity and lifetime
+validation before a policy can select a lower directory outside the visible
+parent.
+
+\subsection{Failure Handling}
+
+Unsupported actions, verifier failures, malformed decisions, syscall failures,
+and invalid lower selections are hard failures in the owning Make target. The
+implementation does not silently fall back to a weaker policy when validation
+fails. This fail-closed behavior is part of the safety boundary evaluated in
+RQ3.
+
+Phase 1 validation runs in KVM with the modified kernel and the real
+\code{cgroup/namei_ext} attach path. Host-only checks, object inspection, and
+bpftool-only smoke tests are diagnostics rather than validation for the paper's
+mechanism claims.
