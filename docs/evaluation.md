@@ -1,12 +1,16 @@
 # Evaluation Plan
 
-Last updated: 2026-07-15
+Last updated: 2026-07-18
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed full writing,
 citation, meaning-preservation, build checks, and independent outer audit.
 Historical KVM runs remain motivation, feasibility, or prototype evidence.
 Final RQ evidence still requires BUILD_AND_EVALUATE admission, full execution,
-and result review.
+and result review. The current workload plan is recorded in
+`docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md`: the two primary
+families are Agent workspace lifecycle and traditional build/cache. Service/config
+rotation and checkpoint/restart path remapping are conditional third-workload
+candidates, not replacements for build/cache.
 
 The frozen evaluation follows the current idea: `namei_ext` is a `sched_ext`-style
 VFS policy boundary for state-dependent path views, positioned in the sequence
@@ -69,8 +73,9 @@ The current comparator set is:
 | Workload | Concrete RQ3 comparators | Evidence required before freeze/result interpretation |
 | --- | --- | --- |
 | Agent workspace lifecycle | AgentFS FUSE/NFS workspace service; BranchFS FUSE branch/COW filesystem; YoloFS staging/snapshot/permission design; Mirage/Redis AFS only if their selected behavior enters the oracle; Bento/Wrapfs/ExtFUSE as filesystem-boundary literature. | A boundary table for the exact Agent workspace oracle listing owned operations such as lookup, readdir, create, unlink, rename, symlink, open/read/write where applicable; daemon/runtime state; COW/checkpoint/audit metadata; invalid-policy containment; lower-filesystem preservation. |
-| Environment/cache transition | Feature-equivalent FUSE cache/policy view; source-native SWE-Factory/MEnv/SWE-rebench environment mechanisms; Docker/Overlay/build-cache ownership only when used by the selected source row; custom/stackable filesystem literature as explanatory boundary context. | A boundary table for the fixed cache-state oracle listing cache-validity state, epoch metadata, stale/corrupt rejection, read/write/data-path ownership, source evaluator ownership, daemon/cache-service responsibilities, and invalid-policy containment. |
+| Traditional build/cache transition | Feature-equivalent FUSE cache/policy view; source-native build/cache mechanisms such as ccache, BuildKit cache-mount style workflows, and selected MEnv/SWE-Factory/SWE-rebench build/test rows used only as source oracles; custom/stackable filesystem literature as explanatory boundary context. | A boundary table for the fixed cache-state oracle listing cache-validity state, epoch metadata, stale/corrupt rejection, read/write/data-path ownership, source evaluator ownership, daemon/cache-service responsibilities, and invalid-policy containment. |
 | Service/config transition | Only after a concrete source oracle is admitted: feature-equivalent FUSE policy, native projected/config mechanism, and any custom service filesystem actually required by the source. | No RQ3 claim until the service/config source proves lookup-time object selection is the oracle-relevant behavior. |
+| Checkpoint/restart path remapping | Only after a concrete checkpoint/restart source oracle is admitted, such as DMTCP-style path virtualization or comparable restart workflows. | No RQ3 claim until restart success and reopened-file object selection are shown to depend on lookup-time path remapping. |
 
 ## Paper-Value Admission
 
@@ -96,8 +101,10 @@ admitted full runs pass result review:
 - `make experiment-agent-workspace` currently runs an Agent workspace prototype
   matrix and preserves raw KVM/FUSE outputs; its latest reviewed run is
   supporting-only and incomplete for final paper evidence.
-- `make experiment-env-cache` names the environment/cache transition matrix
-  and fails with its required cells until implemented.
+- `make experiment-env-cache` is the historical target name for the traditional
+  build/cache transition matrix and fails with its required cells until
+  implemented. A future cleanup may rename it, but the paper-facing workload is
+  traditional build/cache.
 - `make kvm-agent-workspace-preflight` remains the implemented dependency
   preflight; it is not a paper-result cell.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves old
@@ -105,15 +112,16 @@ admitted full runs pass result review:
 
 ## Frozen Complete Experiment Set
 
-The evaluation promise has two complete experiments and one conditional scope
-experiment. Each experiment still requires BUILD_AND_EVALUATE admission, full
+The evaluation promise has two complete experiments and conditional scope
+experiments. Each experiment still requires BUILD_AND_EVALUATE admission, full
 execution, and result review before it becomes final paper evidence:
 
 | Experiment | Role | Primary RQ | Paper-value admission | Main comparison |
 | --- | --- | --- | --- | --- |
 | A. Agent workspace lifecycle | headline | RQ1, with RQ2/RQ3 cells | Tests the central claim on the strongest source-backed agent filesystem/workspace setting. A positive result says the VFS name-resolution boundary can satisfy a real agent workspace oracle without filesystem ownership. | Feature-equivalent FUSE policy for overhead; source/custom/stackable ownership evidence for boundary. |
-| B. Environment/cache transition | decisive | RQ1 and RQ2, with RQ3 boundary evidence | Tests whether the idea extends beyond agent workspaces to build/test environment state, where cache epoch, stale, corrupt, and canonical-object choices matter. | Feature-equivalent FUSE cache/policy view; native source evaluator as correctness oracle. |
+| B. Traditional build/cache transition | decisive | RQ1 and RQ2, with RQ3 boundary evidence | Tests whether the idea extends beyond agent workspaces to traditional build/test cache state, where cache hit, miss, stale, corrupt, and epoch-update choices affect a real build/test oracle. MEnv/SWE-Factory/SWE-rebench rows may be used as build/test oracle sources, but the workload is not framed as an agent workload. | Feature-equivalent FUSE cache/policy view; native source evaluator as correctness oracle. |
 | C. Service/config transition | conditional supporting | RQ1 breadth, with RQ2/RQ3 if admitted | Included only after selecting a real service/config source whose oracle depends on lookup-time object selection. If the source only exercises projected-volume mechanics or app reload behavior, it stays related work. | Feature-equivalent FUSE policy when the source admits one; custom/stackable boundary evidence. |
+| D. Checkpoint/restart path remapping | conditional supporting | RQ1 breadth, with RQ2/RQ3 if admitted | Included only if the paper needs an OS-flavored traditional workload after build/cache and a concrete checkpoint/restart oracle is available. It must show restart success and reopened-file remapping through lookup-time object selection. | Feature-equivalent FUSE policy when feasible; DMTCP-style path-virtualization or custom/stackable boundary evidence. |
 
 ### Experiment A: Agent Workspace Lifecycle
 
@@ -211,20 +219,29 @@ dmesg, kernel and policy identity, and pass/fail oracle outputs under
 engagement, FUSE fairness, lower-filesystem preservation, and boundary evidence before
 any paper claim is made.
 
-### Experiment B: Environment/Cache Transition
+### Experiment B: Traditional Build/Cache Transition
 
-Hypothesis: `namei_ext` can express environment/cache object selection for
+Hypothesis: `namei_ext` can express traditional build/cache object selection for
 build/test workloads, including hit, miss, stale, corrupt, and update-epoch
-states, without changing the source evaluator or owning the data path.
+states, without changing the source evaluator or owning the data path. This is
+the main non-agent workload. Environment-construction datasets may provide
+build/test oracles, but Experiment B should be presented as traditional
+build/test plus cache path policy rather than as an agent workload.
 
 Detailed execution plan:
 `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md`.
+The non-agent workload update is recorded in
+`docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md`.
 
 Real assets: SWE-Factory-Gym, MEnvData-SWE, and SWE-rebench V2 provide source
 oracles with released Docker/eval suites and clean reproductions.
 DockSmith and Multi-Docker-Eval provide workload-shape evidence when their
 artifacts are incomplete, but they are not headline comparisons unless a concrete
 official evaluator path is available.
+Additional traditional assets may include Redis, nginx, PostgreSQL small
+build/test rows, `ccache` over a C/C++ project, and BuildKit cache-mount style
+workloads. These are admitted only when they expose the same fixed cache-state
+oracle and path-operation trace.
 
 Step 0002 selected the intended suite for later BUILD_AND_EVALUATE admission,
 subject only to documented KVM/Docker compatibility failures before policy
@@ -239,12 +256,21 @@ results are observed:
 | MEnvData-SWE | `cobalt-org__liquid-rust-403` | Rust row that closed a prior artifact gap. |
 | SWE-Factory-Gym | `pallets__click-2622` | Released Docker/eval row with resolved report. |
 
-Each admitted row must expose the same fixed state machine: hit, miss, stale,
-corrupt, and epoch update. If a row cannot produce a path-view manifest with
-source-evaluator path operations and stale/corrupt non-use evidence, it is
-dependency-only source reproduction, not an Experiment B paper-result row.
+Each admitted row must expose the same fixed state machine:
 
-This is one integrated environment/cache experiment. Individual ccache,
+```text
+hit          -> select verified local cache object
+miss         -> select canonical backing object
+stale        -> reject/hide local, fallback canonical
+corrupt      -> reject/hide local, fallback canonical
+epoch update -> switch selected backing/cache generation
+```
+
+If a row cannot produce a path-view manifest with source-evaluator path
+operations and stale/corrupt non-use evidence, it is dependency-only source
+reproduction, not an Experiment B paper-result row.
+
+This is one integrated traditional build/cache experiment. Individual ccache,
 BuildKit, Docker image, source-row, or trace replays are dependencies unless
 they are admitted into the same source-oracle matrix with `namei_ext`, a
 feature-equivalent FUSE policy, controls, boundary evidence, raw results, and a
@@ -255,7 +281,7 @@ Minimum complete matrix:
 | Run group | Role | Workload | System/method | Decision consequence |
 | --- | --- | --- | --- | --- |
 | preflight | dependency | one fixed clean source task with build/test oracle | `namei_ext` in KVM | Establishes runner, image, and trace path. |
-| main | proposed | pre-registered environment/cache workload suite selected before the run, covering at least hit/miss plus stale or corrupt rejection | `namei_ext` cache/path policy in KVM | Supports RQ1 only if the whole suite passes source oracles and state transitions are observed. |
+| main | proposed | pre-registered traditional build/cache workload suite selected before the run, covering at least hit/miss plus stale or corrupt rejection | `namei_ext` cache/path policy in KVM | Supports RQ1 only if the whole suite passes source oracles and state transitions are observed. |
 | main | FUSE comparison | same suite, same cache state machine, same oracle | feature-equivalent FUSE cache/policy view | Supports RQ2 if FUSE engages the same policy and receives equal information. |
 | control | source evaluator | same suite without path-view policy | native source evaluator / lower-filesystem setup | Confirms the oracle and task are valid; not used as a weak proposed-method win. |
 | boundary evidence | RQ3 comparison | required cache/path policy responsibilities | source-backed custom/stackable FS boundary evidence for the same policy | Shows whether a broader filesystem would own data path, metadata persistence, or cache semantics beyond object selection. |
@@ -285,6 +311,31 @@ Admission criteria:
   stays as RQ1/RQ3 supporting evidence only;
 - the run must use the same completion, raw-result, and result-review discipline
   as Experiments A and B.
+
+### Experiment D: Checkpoint/Restart Path Remapping
+
+This experiment is a conditional OS-flavored traditional workload, not part of
+the primary two-workload promise. It should run only if build/cache completes
+and the paper still needs traditional breadth.
+
+The source family is DMTCP-style path virtualization or a comparable
+checkpoint/restart workflow. The fixed policy shape is:
+
+```text
+checkpoint path state -> old absolute path maps to restored lower path
+migrated root         -> same app path selects new backing object
+missing/stale backing -> reject/fallback
+```
+
+Admission criteria:
+
+- restart success must depend on reopened-file path remapping;
+- missing or stale backing must fail closed rather than silently resolving to
+  the wrong object;
+- lower-FS metadata and data semantics must remain owned by the lower
+  filesystem;
+- a feature-equivalent FUSE policy must be feasible for RQ2, or the row remains
+  RQ1/RQ3 supporting evidence only.
 
 ## Measurements
 
@@ -339,6 +390,10 @@ Each main experiment has one strong role-specific comparison:
   comparisons, but they should not drive the central RQ structure.
 - Native build/cache or service mechanisms remain production-context
   comparisons when they are the mechanism operators would normally deploy.
+- Filebench, Postmark, fsbench, and TableFS/IndexFS/DeltaFS metadata workloads
+  are not primary RQ1 workloads. They may appear as RQ2 controls, appendix
+  metadata-operation context, or related work because they do not naturally
+  encode the state-dependent path-view policy tested by the main experiments.
 
 The experiments should be selected and engineered to support the hypothesis:
 `namei_ext` should pass the same oracle, preserve lower-filesystem semantics,

@@ -1,6 +1,6 @@
 # Background And Related Work
 
-Last updated: 2026-07-15
+Last updated: 2026-07-18
 Source/command: `research-literature-novelty` during BOOTSTRAP step
 `docs/tmp/bootstrap/step-0002-20260713T004618-0700/`; local PDF corpus in
 `docs/reference/`; source catalog in `docs/reference/CODE_SOURCES.md`; current
@@ -18,7 +18,7 @@ pressure and baseline obligations; it is not final RQ evidence.
 | 2026-07-13 | BOOTSTRAP step 0002: Linux `sched_ext`, BPF LSM, FUSE, FUSE passthrough, ExtFUSE, FUSE-BPF, fanotify primary docs/pages | Check same-mechanism and neighboring-hook risk. | `sched_ext` supports the analogy of BPF policy inside a kernel subsystem; BPF LSM and fanotify are security/mediation hooks; FUSE, FUSE passthrough, ExtFUSE, and FUSE-BPF remain filesystem/request-path or stacked-filesystem mechanisms. No same VFS name-resolution policy boundary found. |
 | 2026-07-13 | Bento, Wrapfs, DeltaFS, IndexFS, TableFS primary papers/pages and local PDFs | Check custom/stackable/metadata-service boundary. | These systems own broader filesystem or metadata-service interfaces. They support RQ3 boundary pressure but should not become main runnable baselines for the path-view claim. |
 | 2026-07-13 | BOOTSTRAP step 0002: AgentFS, BranchFS, YoloFS, Sandlock, Mirage, Redis AFS, ToolFS, agent-vfs, OpenHands, SWE-agent/SWE-ReX, SWE-MiniSandbox, AgentCgroup | Check agent/workspace source-system assets. | Strong source assets exist for branch/COW/checkpoint/sandbox/cache-invalidation/whiteout/symlink/workspace oracles. These are workload sources and boundary evidence, not proof that only `namei_ext` works. |
-| 2026-07-13 | BOOTSTRAP step 0002: SWE-Factory, MEnvAgent/MEnvData-SWE, SWE-rebench V2, DockSmith, Multi-Docker-Eval | Check environment/cache source assets. | Strong executable build/test oracles exist for environment/cache; DockSmith is mainly trajectory/methodology unless concrete evaluator paths are selected. |
+| 2026-07-13 | BOOTSTRAP step 0002: SWE-Factory, MEnvAgent/MEnvData-SWE, SWE-rebench V2, DockSmith, Multi-Docker-Eval | Check build/cache source assets. | Strong executable build/test oracles exist for the traditional build/cache workload; these sources are oracle inputs, not an agent-workload framing. DockSmith is mainly trajectory/methodology unless concrete evaluator paths are selected. |
 | 2026-07-13 | Kubernetes projected volumes, ConfigMaps, Secrets, OverlayFS, mount namespaces | Check service/config and materialized namespace context. | Projected/materialized mechanisms are important background. Service/config should remain conditional unless a lookup-time object-selection oracle is chosen. |
 
 ## PDF Corpus
@@ -29,7 +29,7 @@ pressure and baseline obligations; it is not final RQ evidence.
 | YoloFS | `docs/reference/arxiv2604.13536-yolofs.pdf` | local PDF plus public filesystem artifact checks | Agent filesystem safety methodology, staging/snapshot/permission oracles, stackable-FS context. |
 | Sandlock | `docs/reference/arxiv2605.26298-sandlock.pdf` | local PDF plus public repository/source checks | Agent sandbox and reversible filesystem effects source. |
 | SWE-agent/OpenHands/Terminal-Bench/AgentCgroup/SWE-MiniSandbox | `docs/reference/arxiv2511.03690-openhands-sdk.pdf`, `docs/reference/neurips2024-yang-swe-agent.pdf`, `docs/reference/arxiv2601.11868-terminal-bench.pdf`, `docs/reference/arxiv2602.09345-agentcgroup.pdf`, `docs/reference/arxiv2602.11210-swe-minisandbox.pdf` | local PDFs plus source reproduction records | Agent runtime/task/workspace oracles and operation traces. |
-| MEnvAgent, SWE-rebench V2, DockSmith, Multi-Docker-Eval | `docs/reference/arxiv2601.22859-menvagent.pdf`, `docs/reference/arxiv2602.23866-swe-rebench-v2.pdf`, `docs/reference/arxiv2602.00592-docksmith.pdf`, `docs/reference/arxiv2512.06915-multi-docker-eval.pdf` | local PDFs plus source reproduction records | Environment/cache workload sources. |
+| MEnvAgent, SWE-rebench V2, DockSmith, Multi-Docker-Eval | `docs/reference/arxiv2601.22859-menvagent.pdf`, `docs/reference/arxiv2602.23866-swe-rebench-v2.pdf`, `docs/reference/arxiv2602.00592-docksmith.pdf`, `docs/reference/arxiv2512.06915-multi-docker-eval.pdf` | local PDFs plus source reproduction records | Traditional build/cache oracle sources. |
 | FUSE/ExtFUSE/Bento/Wrapfs | `docs/reference/fast17-vangoor-to-fuse-or-not-to-fuse.pdf`, `docs/reference/atc19-bijlani-extfuse.pdf`, `docs/reference/fast21-miller-bento.pdf`, `docs/reference/usenix99-zadok-wrapfs-stackable-templates.pdf` | local PDFs plus primary pages | RQ2 and RQ3 comparison families. |
 | DeltaFS/IndexFS/TableFS | `docs/reference/sc21-zheng-deltafs.pdf`, `docs/reference/sc14-ren-indexfs.pdf`, `docs/reference/atc13-ren-tablefs.pdf` | local PDFs plus primary pages | Related-work boundary for metadata services and stacked metadata filesystems. |
 
@@ -38,7 +38,7 @@ pressure and baseline obligations; it is not final RQ evidence.
 | Claim | Closest prior work | Same-claim risk | Novelty delta | Baselines implied | Expansion opportunity |
 | --- | --- | --- | --- | --- | --- |
 | A narrow kernel hook can expose programmable path-view policy at VFS name resolution while the lower filesystem keeps data and object semantics. | `sched_ext`, BPF LSM, fanotify, FUSE/ExtFUSE, Wrapfs/Bento. | Medium. Nearby mechanisms exist, but they are scheduler policy, access control, userspace filesystem request handling, or filesystem implementation frameworks. | The proposed boundary is name-resolution object selection/visibility, not security mediation or filesystem method ownership. | RQ2: feature-equivalent FUSE. RQ3: custom/stackable FS boundary. | Frame as a missing middle between eBPF LSM and FUSE/custom FS, not as "tables fail" or "dynamic policy exists." |
-| Real agent/workspace and environment/cache systems expose source-derived path-view transitions worth evaluating. | AgentFS, BranchFS, YoloFS, Sandlock, Mirage, SWE systems, MEnv/SWE-Factory/SWE-rebench. | Low-to-medium. They motivate and sometimes implement broader filesystems/runtimes. | Use their oracles to test the narrower boundary instead of competing with the full source system. | Source oracle controls; no source inventory as final RQ evidence. | Use two deep families: Agent workspace and environment/cache; add service/config only if strong. |
+| Real agent/workspace and traditional build/cache systems expose source-derived path-view transitions worth evaluating. | AgentFS, BranchFS, YoloFS, Sandlock, Mirage, ccache/BuildKit-style build caches, SWE systems, MEnv/SWE-Factory/SWE-rebench. | Low-to-medium. They motivate and sometimes implement broader filesystems/runtimes. | Use their oracles to test the narrower boundary instead of competing with the full source system. | Source oracle controls; no source inventory as final RQ evidence. | Use two deep families: Agent workspace and traditional build/cache; add service/config or checkpoint/restart only if strong. |
 | A verified name-resolution policy can have lower boundary burden than custom or stackable FS when policy is only lookup/readdir selection. | Bento, Wrapfs, TableFS, DeltaFS, IndexFS, YoloFS/BranchFS. | Medium. Prior work values custom/stackable FS for broader semantics. | The novelty is narrower ownership, not replacing full filesystems. | Boundary accounting: methods owned, daemon/state, verifier constraints, invalid-policy containment. | Make RQ3 a same-oracle boundary audit after RQ1 correctness, not a prose-only related-work table. |
 
 ## Closest Work
@@ -52,7 +52,7 @@ pressure and baseline obligations; it is not final RQ evidence.
 | Bento and Wrapfs | Safer or easier ways to build kernel/stackable filesystems. | Rust kernel FS framework; stackable FS templates. | Filesystem implementations. | Same boundary question. | They still ask the developer to own filesystem methods. |
 | DeltaFS, IndexFS, TableFS | Metadata/index services and stacked metadata filesystems improve metadata scalability. | Distributed/stacked metadata systems. | HPC/local metadata workloads. | Same broad filesystem namespace area; different problem. | Useful non-goals and appendix context, not the main path-view workload. |
 | AgentFS, BranchFS, YoloFS, Sandlock, Mirage, Redis AFS, ToolFS, agent-vfs | Agent filesystems/sandboxes need COW, branch, snapshot, staging, permission, and workspace state. | FUSE/NFS/kernel module/runtime/filesystem/library systems. | Agent/workspace tests and benchmarks where available. | Same workload setting; broader mechanisms. | Best source oracles and boundary evidence for Experiment A. |
-| SWE-Factory, MEnvAgent, SWE-rebench V2, DockSmith | Environment construction and reuse are first-class SWE-agent workloads. | Docker/eval pipelines, datasets, trajectories. | Fail-to-pass and build/test oracles. | Same environment/cache setting; different mechanism. | Best source oracles for Experiment B. |
+| SWE-Factory, MEnvAgent, SWE-rebench V2, DockSmith | Environment construction and reuse provide real repository build/test oracles. | Docker/eval pipelines, datasets, trajectories. | Fail-to-pass and build/test oracles. | Same build/cache setting when framed as traditional build/test plus cache path policy; different mechanism. | Best source oracles for Experiment B, but Experiment B should be written as non-agent traditional build/cache. |
 
 ## Main Comparisons And Evidence Roles
 
@@ -71,7 +71,7 @@ so the evaluation does not drift into a long baseline catalog.
 | RQ/claim | Accepted paper/protocol citation | Official benchmark/dataset/software/test tool | Version/artifact | Real-world provenance | Reusable design | Required deviation or glue |
 | --- | --- | --- | --- | --- | --- | --- |
 | RQ1 Agent workspace | AgentFS/BranchFS/YoloFS/Sandlock/Mirage source systems | AgentFS tests, BranchFS quick benchmarks, Mirage FUSE/example tests, YoloFS public mounted e2e | See `docs/reference/CODE_SOURCES.md` | AI agent workspace filesystems and sandboxes | Branch/fork/checkpoint/COW/whiteout/symlink/cache-invalidation oracles | Thin KVM workload glue mapping selected oracle to `namei_ext` actions. |
-| RQ1/RQ2 Environment/cache | SWE-Factory, MEnvAgent, SWE-rebench V2 | Released Docker/eval rows and selected HF/sample rows | See dated reproduction records | Real repositories and executable tests | Hit/miss/stale/corrupt or environment-reuse state with build/test oracle | Need a fixed source-row suite and explicit cache-state transition harness. |
+| RQ1/RQ2 Traditional build/cache | ccache/BuildKit-style cache workloads; Redis/nginx/PostgreSQL small build/test rows; SWE-Factory, MEnvAgent, SWE-rebench V2 as build/test oracle sources | Released Docker/eval rows, selected HF/sample rows, and source-native build/test commands | See dated reproduction records and `docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md` | Real repositories and executable tests | Hit/miss/stale/corrupt/epoch-update state with build/test oracle | Need a fixed source-row suite and explicit cache-state transition harness. |
 | RQ2 FUSE overhead | FAST 2017 FUSE study; ExtFUSE; FUSE-BPF; kernel FUSE and FUSE passthrough docs | libfuse/project FUSE runner | Local runner plus official FUSE docs and closest-work records | Filesystem request path | Measure same-oracle FUSE, not generic FUSE weakness | Implement feature-equivalent policy cells and explain why FUSE-BPF/ExtFUSE remain related-work pressure rather than main baselines unless admitted by the final protocol. |
 | RQ3 Boundary | Bento, Wrapfs, ExtFUSE, DeltaFS/IndexFS/TableFS | Papers, repositories, filesystem method surfaces | Local PDFs and source links | Custom/stackable/filesystem-service systems | Account ownership rather than re-run entire FS papers | Produce workload-specific boundary table after final oracle selection. |
 
@@ -83,13 +83,14 @@ so the evaluation does not drift into a long baseline catalog.
 | Source/native behavior | Correctness oracle and input provenance, not a baseline win condition. | Medium. | Establish source behavior before interpreting `namei_ext` or FUSE. |
 | Custom/stackable FS boundary | Main RQ3 boundary evidence, usually citation/source-code based. | Medium. | Use workload-specific ownership tables; avoid full-system reimplementation unless needed. |
 | Materialized namespace mechanisms | Related-work/background unless a selected source oracle makes one a direct operator baseline. | Low-to-medium. | Do not reopen bind/Overlay/copy/symlink/table shootouts as the main story. |
+| Filebench/Postmark/fsbench metadata workloads | RQ2 control, appendix context, or related work only. | Low. | They measure generic metadata scalability or filesystem overhead, not source-derived state-dependent path-view policy. |
 
 ## Absorbable Ideas
 
 | Source/community | Idea to absorb | Claim expansion enabled | Experiment implication | Risk |
 | --- | --- | --- | --- | --- |
 | Agent filesystems | Branch, fork, checkpoint, COW, staging, whiteout, symlink, cache invalidation, final-tree oracle. | Strong Experiment A. | Fixed lifecycle matrix with lookup/readdir traces and lower-filesystem checks. | Some source effects require broader FS/runtime ownership. |
-| SWE/environment systems | Docker/eval row identity, fail-to-pass tests, environment reuse, build/test status. | Strong Experiment B. | Fixed suite with hit/miss/stale/corrupt/update states. | Cache policy must be real, not a synthetic ccache toy. |
+| Traditional build/cache systems | Redis/nginx/PostgreSQL build/test rows, ccache/BuildKit-style cache state, Docker/eval row identity, fail-to-pass tests, build/test status. | Strong Experiment B. | Fixed suite with hit/miss/stale/corrupt/epoch-update states. | Cache policy must be real and tied to a build/test oracle, not a synthetic metadata loop. |
 | Filesystem literature | FUSE request path, stackable method ownership, metadata-service responsibilities. | Stronger RQ2/RQ3. | Same-oracle FUSE plus boundary accounting. | Too many baselines can fragment the paper. |
 | Kubernetes/projected config | Service/config operational breadth. | Possible Experiment C. | Admit only with lookup-time object-selection oracle. | Otherwise it becomes weak breadth or app reload behavior. |
 
@@ -99,7 +100,7 @@ so the evaluation does not drift into a long baseline catalog.
 | --- | --- | --- | --- |
 | OS/filesystems | Core mechanism, baselines, safety boundary. | VFS, FUSE, stackable FS, eBPF, LSM, fanotify. | FUSE, ExtFUSE, Bento, Wrapfs, DeltaFS, IndexFS, TableFS. |
 | AI agents/SWE agents | Main workload pressure. | agent workspace, sandbox, SWE task, terminal task. | AgentFS, BranchFS, YoloFS, Sandlock, Mirage, OpenHands, SWE-agent, SWE-ReX, Terminal-Bench. |
-| Build/environment construction | Environment/cache pressure. | Docker eval, fail-to-pass, environment reuse, cache. | SWE-Factory, MEnvAgent, SWE-rebench V2, DockSmith, Multi-Docker-Eval. |
+| Build/environment construction | Traditional build/cache pressure. | Docker eval, fail-to-pass, environment reuse, ccache, BuildKit cache mount. | Redis/nginx/PostgreSQL build/test rows, SWE-Factory, MEnvAgent, SWE-rebench V2, DockSmith, Multi-Docker-Eval. |
 | Containers/orchestration | Service/config context. | projected volume, config map, secret, overlay, namespace. | Kubernetes projected volumes, OverlayFS, mount namespaces. |
 
 ## Venue Evaluation Patterns
@@ -122,11 +123,12 @@ ablations are admitted only when they change an RQ answer.
 
 ## Novelty Verdict
 
-- BOOTSTRAP step 0005 freeze verdict: the current story is frozen for
-  BUILD_AND_EVALUATE. It includes ExtFUSE/FUSE-BPF as closest mechanism
-  pressure; keeps Agent workspace and environment/cache as complete experiments;
-  keeps service/config conditional; and keeps table/materialized-view
-  diagnostics out of the novelty line.
+- BOOTSTRAP step 0005 freeze verdict, updated by the 2026-07-18 workload plan:
+  the current story is frozen for BUILD_AND_EVALUATE. It includes
+  ExtFUSE/FUSE-BPF as closest mechanism pressure; keeps Agent workspace and
+  traditional build/cache as complete experiments; keeps service/config and
+  checkpoint/restart conditional; and keeps table/materialized-view diagnostics
+  out of the novelty line.
 - Overall same-claim risk: medium. The surrounding systems are close and
   important, but the checked primary source families do not already claim a
   narrow BPF-controlled VFS name-resolution policy boundary that preserves
@@ -140,18 +142,21 @@ ablations are admitted only when they change an RQ answer.
   do not treat source characterization or prototype matrices as final RQ
   evidence.
 - Larger claim opportunities: two deep source-derived families, Agent workspace
-  and environment/cache, are stronger than a large list of weak baselines.
-  Service/config can strengthen breadth only if it has a real lookup-time
-  source oracle.
+  and traditional build/cache, are stronger than a large list of weak baselines.
+  Service/config or checkpoint/restart can strengthen breadth only if they have
+  real lookup-time source oracles.
 - Main evidence roles: feature-equivalent FUSE is the RQ2 baseline;
   source/native behavior is the RQ1 correctness oracle; custom/stackable
   ownership tables are RQ3 boundary evidence; lower-filesystem/no-hook runs are
   controls for overhead attribution.
 - Experimental precedents and external assets: AgentFS/BranchFS/YoloFS/Mirage
-  for workspace lifecycle; SWE-Factory/MEnv/SWE-rebench for environment/cache;
-  ExtFUSE/FUSE/Bento/Wrapfs for comparison discipline.
+  for workspace lifecycle; Redis/nginx/PostgreSQL, ccache/BuildKit-style
+  workloads, and SWE-Factory/MEnv/SWE-rebench build/test rows for traditional
+  build/cache; ExtFUSE/FUSE/Bento/Wrapfs for comparison discipline.
 - Next action: BUILD_AND_EVALUATE should run the complete Agent workspace
   matrix with feature-equivalent FUSE for RQ2 and custom/stackable filesystem
-  ownership evidence for RQ3. Experiment B follows after path-view admission
-  and the required target-selection support; service/config remains conditional
-  on a concrete lookup-time source oracle.
+  ownership evidence for RQ3, or start the traditional build/cache preflight if
+  the immediate goal is non-agent evidence. Experiment B follows the fixed
+  hit/miss/stale/corrupt/epoch-update state machine after path-view admission
+  and required target-selection support; service/config and checkpoint/restart
+  remain conditional on concrete lookup-time source oracles.

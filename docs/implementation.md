@@ -1,6 +1,6 @@
 # Implementation
 
-Last updated: 2026-07-15
+Last updated: 2026-07-18
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed the latest paper
 reorganization pass and independent outer audit. Implementation artifacts below
@@ -35,8 +35,8 @@ entrypoints, and archived diagnostics:
 - `make experiment-agent-workspace` currently runs an Agent workspace prototype
   matrix and preserves raw KVM/FUSE outputs; its latest reviewed run is
   supporting-only and incomplete for final paper evidence.
-- `make experiment-env-cache` is the environment/cache matrix entrypoint. It
-  currently fails with the required cells.
+- `make experiment-env-cache` is the historical target name for the traditional
+  build/cache matrix entrypoint. It currently fails with the required cells.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves the
   archived W1-W4/table diagnostic flow for provenance and debugging; it is not
   the current paper experiment route.
@@ -65,16 +65,19 @@ BUILD_AND_EVALUATE phase:
 1. Headline AgentFS-derived workspace lifecycle with source-derived oracle,
    operation-weighted lookup/readdir trace, feature-equivalent FUSE comparison,
    lower-filesystem semantic checks, and custom/stackable-FS boundary evidence.
-2. Decisive environment/cache transition from SWE-Factory-Gym, MEnvData-SWE, or
-   SWE-rebench V2, with a fixed source-row set, stale/corrupt/update or
-   environment-reuse behavior, feature-equivalent FUSE comparison, and raw
-   result review. This remains part of the strong hypothesis; the current
-   prototype's lack of final-file target selection is an implementation gap to
-   close before the row can be admitted, not a reason to shrink the paper. The
-   concrete plan is
-   `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md`.
-3. Conditional service/config transition only after a real source oracle is
-   selected where lookup-time object selection affects service-visible behavior.
+2. Decisive traditional build/cache transition, using Redis/nginx/PostgreSQL,
+   ccache/BuildKit-style workloads, or MEnv/SWE-Factory/SWE-rebench rows as
+   sources of real build/test oracles. The fixed state machine is hit, miss,
+   stale, corrupt, and epoch update, with feature-equivalent FUSE comparison
+   and raw result review. This remains part of the strong hypothesis; the
+   current prototype's lack of final-file target selection is an implementation
+   gap to close before the row can be admitted, not a reason to shrink the
+   paper. The concrete plans are
+   `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md` and
+   `docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md`.
+3. Conditional service/config transition or checkpoint/restart path remapping
+   only after a real source oracle is selected where lookup-time object
+   selection affects service-visible behavior.
 
 Older diagnostic-comparison records are retained only as archived provenance.
 Future implementation work follows the complete experiments above. Smoke

@@ -26,8 +26,8 @@ direction and should not compete with the skill-compatible canonical docs.
 - A policy is an eBPF program under `bpf/policies/*.bpf.c`; no YAML/JSON policy
   language owns project semantics.
 - The next claim-moving implementation should be Make-owned and KVM-validated,
-  using real source-backed agent workspace, environment/cache, or service/config
-  workload evidence.
+  using real source-backed agent workspace or traditional build/cache workload
+  evidence. Service/config and checkpoint/restart remain conditional.
 
 Historical detailed design text is recoverable through Git history and dated
 records under `docs/tmp/`.

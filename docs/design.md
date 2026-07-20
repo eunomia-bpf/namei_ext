@@ -1,6 +1,6 @@
 # Design
 
-Last updated: 2026-07-15
+Last updated: 2026-07-18
 Current status: frozen BUILD_AND_EVALUATE contract after BOOTSTRAP step 0005 in
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/step-report.md`.
 
@@ -72,7 +72,7 @@ real KVM attach path:
 | Design obligation | Required evidence |
 | --- | --- |
 | The hook is a VFS name-resolution extension point, not a filesystem. | Workloads pass source oracles while lower-filesystem permissions, data path, writes, page cache, persistence, and file methods remain lower-filesystem owned. |
-| eBPF policy is expressive enough for path views. | Agent workspace and environment/cache experiments exercise state-dependent lookup/readdir transitions with operation-weighted traces and coherent directory visibility. |
+| eBPF policy is expressive enough for path views. | Agent workspace and traditional build/cache experiments exercise state-dependent lookup/readdir/open/stat transitions with operation-weighted traces and coherent directory visibility. |
 | eBPF LSM is the neighboring security hook, not the same abstraction. | Related-work/design comparison shows LSM mediates access while `namei_ext` changes bounded pathname-to-object selection during resolution. |
 | FUSE is the closest programmable-policy cost comparison. | Feature-equivalent FUSE policies run the same source oracle and policy state machine before cost numbers are interpreted. |
 | Custom/stackable filesystems own a broader boundary. | RQ3 evidence accounts for required filesystem methods, daemon or privileged code surface, state ownership, invalid-policy containment, and data/write-path responsibilities. |

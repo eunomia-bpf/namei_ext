@@ -78,10 +78,11 @@ the same correctness conditions while preserving lower-filesystem semantics.
 RQ2 compares the same policies with feature-equivalent FUSE implementations.
 RQ3 asks whether verifier-bounded policy and kernel validation provide a
 narrower, fail-closed ownership boundary than custom or stackable filesystems.
-The primary workload families are Agent workspace lifecycle and
-environment/cache transition, and service/config remains motivating scope unless
-a concrete source-system correctness condition depends on lookup-time object
-selection.
+The primary workload families are Agent workspace lifecycle and traditional
+build/cache transition. Build/environment datasets may supply real repository
+build/test oracles, but the second workload is not framed as an agent workload.
+Service/config remains motivating scope unless a concrete source-system
+correctness condition depends on lookup-time object selection.
 
 The paper's primary contribution is the design and Linux implementation of
 \namei as one systems boundary: a \code{sched_ext}-style VFS extension point

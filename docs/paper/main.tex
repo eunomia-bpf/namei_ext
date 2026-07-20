@@ -39,10 +39,10 @@ same correctness condition against FUSE and broader filesystem boundaries.
 One \code{cgroup/namei_ext} decision function lets eBPF choose pass, redirect,
 hide, and \code{SELECT_TARGET} actions over kernel-registered lower paths while
 the kernel retains filesystem ownership. The evaluation uses source-derived
-agent/workspace and environment/cache correctness conditions to compare \namei
-with feature-equivalent FUSE and to identify which filesystem responsibilities
-remain outside the hook. Service/config remains conditional on an admitted
-lookup-time oracle.
+agent/workspace and traditional build/cache correctness conditions to compare
+\namei with feature-equivalent FUSE and to identify which filesystem
+responsibilities remain outside the hook. Service/config remains conditional on
+an admitted lookup-time oracle.
 \end{abstract}
 
 \input{sections/01-introduction}

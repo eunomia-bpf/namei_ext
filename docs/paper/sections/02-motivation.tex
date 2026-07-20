@@ -44,12 +44,14 @@ BranchFS, Sandlock, and YoloFS provide neighboring branch, sandbox, staging,
 and stackable-filesystem context rather than separate evaluation
 workloads~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
 
-The second source family is environment/cache state. SWE-Factory-Gym or
-MEnvData-SWE are source systems because their public artifacts provide
-Docker-backed build/test oracles~\cite{swe_factory_repo,menvagent_repo}.
-SWE-rebench V2 supplies broader benchmark context~\cite{swe_rebench_v2_repo}.
+The second source family is traditional build/cache state. Redis, nginx,
+PostgreSQL, ccache-style builds, BuildKit cache-mount-style workloads, and
+Docker-backed benchmark rows can provide real build/test oracles. In the
+current plan, SWE-Factory-Gym and MEnvData-SWE are useful because their public
+artifacts provide reproducible repository build/test oracles, while SWE-rebench
+V2 supplies broader benchmark context~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}.
 These sources are useful only when the oracle can be reduced to selecting or
-hiding existing cache or environment objects while the source evaluator keeps
+hiding existing cache or backing objects while the source evaluator keeps
 build/test semantics.
 
 Service/config sources remain conditional. Projected configuration, secret,
@@ -74,11 +76,11 @@ readdir under a workspace path & select or hide existing lower objects while
 the source runtime keeps COW, checkpoint, sandbox, writes, and lifecycle
 orchestration & final tree, lookup/readdir coherence, and preserved
 lower-filesystem permissions \\
-Environment/cache transition & cache epoch marks a local object hit, miss,
-stale, corrupt, or behind an epoch update & select verified local or canonical
-fallback, or hide a stale/corrupt local object while cache population, build/test
-execution, and content validation stay outside the hook & source build/test
-result and stale/corrupt non-use \\
+Traditional build/cache transition & cache epoch marks a local object hit,
+miss, stale, corrupt, or behind an epoch update & select verified local or
+canonical fallback, or hide a stale/corrupt local object while cache population,
+build/test execution, and content validation stay outside the hook & source
+build/test result and stale/corrupt non-use \\
 \hline
 \end{tabular}
 \caption{Representative state-dependent path-view examples. The \namei
@@ -89,7 +91,7 @@ with the source runtime or lower filesystem.}
 
 Three design constraints follow from the source systems. First, each workload
 carries its own state, such as a branch identifier, checkpoint, cache epoch,
-environment epoch, service epoch, or secret epoch. Policy therefore must run at
+build generation, service epoch, or secret epoch. Policy therefore must run at
 the affected lookup or directory-enumeration operation and remain scoped per
 workload.
 
@@ -119,12 +121,12 @@ name-resolution decisions select or hide branch-visible objects while COW,
 checkpoint, sandbox, and write behavior remain responsibilities of the source
 runtime.
 
-The second workload is an environment/cache transition that chooses existing
-verified local or canonical objects, and can select regenerated objects only
-after the source evaluator has materialized them. It hides stale or corrupt
-local objects while the source evaluator and lower filesystem keep cache
-population and build/test semantics. This workload exercises file-object cache
-choices through \code{SELECT_TARGET} over kernel-registered lower paths.
+The second workload is a traditional build/cache transition that chooses
+existing verified local or canonical objects, and can select regenerated
+objects only after the source evaluator has materialized them. It hides stale
+or corrupt local objects while the source evaluator and lower filesystem keep
+cache population and build/test semantics. This workload exercises file-object
+cache choices through \code{SELECT_TARGET} over kernel-registered lower paths.
 
 A workload becomes reportable only after a reviewed KVM same-oracle run.
 Service/config is included only when a concrete source oracle depends on

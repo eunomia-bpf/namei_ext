@@ -1,7 +1,7 @@
 # Current Evaluation Plan
 
 Status: current routing entry.
-Last updated: 2026-07-13.
+Last updated: 2026-07-18.
 
 This file is only a routing entry for the active evaluation direction. The
 current idea is that `namei_ext` is a `sched_ext`-style VFS extension point for
@@ -17,7 +17,7 @@ custom or stackable filesystem ownership.
 | Paper idea, claim scope, non-goals, and next action | `docs/idea-story.md` |
 | Current evaluation protocol and RQs | `docs/evaluation.md` |
 | Headline Agent workspace complete experiment plan | `docs/tmp/2026-07-13-agent-workspace-complete-experiment-plan.md` |
-| Decisive environment/cache complete experiment plan | `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md` |
+| Decisive traditional build/cache complete experiment plan | `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md` plus `docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md` |
 | Paper evaluation section | `docs/paper/sections/05-evaluation.tex` |
 | Related work and workload-source verdicts | `docs/background-related-work.md` |
 | Source repositories, datasets, artifacts, and evidence links | `docs/reference/CODE_SOURCES.md` |
@@ -37,24 +37,35 @@ of scattered workload/comparison snippets:
    `docs/tmp/2026-07-13-agent-workspace-complete-experiment-plan.md`; a
    redirect-only preflight is not a paper-result substitute for the full
    workload.
-2. Decisive complete experiment: environment/cache transition from
-   SWE-Factory-Gym, MEnvData-SWE, or SWE-rebench V2, with a pre-registered
-   environment/cache workload suite, stale/corrupt/update or environment-reuse
-   state, unchanged source evaluator, feature-equivalent FUSE policy, and
-   result review. The detailed plan is
-   `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md`;
-   individual cache, Docker, or source-row replays are dependencies unless they
-   are part of this same-oracle matrix.
+2. Decisive complete experiment: traditional build/cache transition. This is
+   not an agent workload. It uses Redis/nginx/PostgreSQL, ccache, BuildKit
+   cache-mount style workloads, or MEnv/SWE-Factory/SWE-rebench rows as sources
+   of real build/test oracles. The fixed state machine is hit, miss, stale,
+   corrupt, and epoch update; the run needs unchanged source evaluator behavior,
+   feature-equivalent FUSE, operation-weighted path traces, and result review.
+   The detailed plans are
+   `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md` and
+   `docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md`; individual
+   cache, Docker, or source-row replays are dependencies unless they are part of
+   this same-oracle matrix.
 3. Conditional supporting experiment: service/config transition only after a
    real source oracle is selected where lookup-time object selection affects
    service-visible behavior.
-4. Related-work/background context: bind/Overlay/projected/copy/symlink
+4. Conditional supporting experiment: checkpoint/restart path remapping only
+   after build/cache if the paper still needs an OS-flavored traditional
+   workload and a concrete restart/path-virtualization oracle is available.
+5. Related-work/background context: bind/Overlay/projected/copy/symlink
    materialization, eBPF LSM access-control hooks, native production mechanisms,
    and metadata-service systems. Cite or classify these unless they directly
    change one of the admitted experiments under the same oracle.
-5. Non-results: smoke tests, source reproduction, runner setup, object-file
+6. Non-results: smoke tests, source reproduction, runner setup, object-file
    inspection, host-only checks, weak comparisons, and partial rows. These may
    support preflight or provenance but do not count as paper experiments.
+
+Filebench, Postmark, fsbench, TableFS, IndexFS, and DeltaFS metadata workloads
+are not primary RQ1 workloads. They may be overhead controls, appendix context,
+or related work, but they do not naturally test source-derived
+state-dependent path-view policy.
 
 Each admitted experiment must follow the `research-experiment-design` discipline:
 paper-value admission, proposal, plan review, real preflight, full run, result

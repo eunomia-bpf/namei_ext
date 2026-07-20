@@ -20,9 +20,9 @@ Current research direction:
 - `namei_ext` is a `sched_ext`-style VFS extension point: eBPF chooses bounded
   lookup/readdir path-view policy while the kernel and lower filesystem retain
   filesystem ownership.
-- The active workload route is AI agent workspace lifecycle,
-  environment/cache transition, and service/config transition for a
-  representative full-paper evaluation.
+- The active workload route is AI agent workspace lifecycle and traditional
+  build/cache transition for the representative full-paper evaluation.
+  Service/config and checkpoint/restart path remapping remain conditional.
 - Discarded diagnostic rows are provenance only, not current work items.
 - DeltaFS, IndexFS, and TableFS are related-work or appendix workload-shape
   sources, not the main next experiments.
