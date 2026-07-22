@@ -68,8 +68,10 @@ final tree state, whiteout/hide effects, symlink metadata, lookup/readdir
 coherence, and branch-visible state. & KVM \code{cgroup/namei_ext} policy
 selects or hides existing lower objects while the lower filesystem keeps
 permissions, writes, symlink metadata, file data, and ordinary directory
-operations. & \textbf{[Result]} pass/fail matrix, operation-weighted
-lookup/readdir trace, and preservation rows. \\
+operations. & 3/3 KVM runs passed the fixed trace and final-tree oracle with
+zero failed rows. Each run observed 2,581 lookups, 903 readdir decisions, 419
+selections, and both lookup/readdir hides; direct checks placed create, rename,
+and unlink mutations only in the selected lower tree. \\
 Traditional build/cache transition~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo} &
 Cache epoch selects a verified local object, canonical fallback, or hides
 stale/corrupt local state. The oracle checks source build/test success and
@@ -192,6 +194,8 @@ selection. Materialized
 namespace mechanisms, eBPF LSM hooks, and native production mechanisms remain
 related work and background unless a selected source workload makes one of them
 part of the source behavior being evaluated.
-This draft has not yet completed the reviewed KVM source-oracle rows, the
-correctness-gated \namei/FUSE latency and macro-runtime rows, or the
-workload-specific ownership and invalid-policy rows required to answer the RQs.
+This draft has completed the reviewed Agent-workspace RQ1 row for the fixed
+AgentFS-derived path-view slice. The independent traditional build/cache row,
+the correctness-gated \namei/FUSE latency and macro-runtime rows, and the
+workload-specific ownership and invalid-policy rows remain incomplete; the
+paper therefore does not yet claim complete answers to RQ1--RQ3.

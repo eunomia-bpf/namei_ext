@@ -923,6 +923,7 @@ static int expect_fuse_counter(FILE *out, struct fuse_workspace_state *state,
 int main(int argc, char **argv)
 {
 	const char *result_path;
+	const char *source_trace_path = NULL;
 	char root[] = "/tmp/namei-ext-agent-workspace-fuse-XXXXXX";
 	char mountpoint[PATH_MAX];
 	char base[PATH_MAX];
@@ -934,18 +935,21 @@ int main(int argc, char **argv)
 	char logical_generated[PATH_MAX];
 	char logical_renamed[PATH_MAX];
 	char logical_cached_negative[PATH_MAX];
+	char logical_tool[PATH_MAX];
 	char base_main[PATH_MAX];
 	char base_deleted[PATH_MAX];
 	char base_link[PATH_MAX];
 	char base_generated[PATH_MAX];
 	char base_renamed[PATH_MAX];
 	char base_cached_negative[PATH_MAX];
+	char base_tool[PATH_MAX];
 	char upper_main[PATH_MAX];
 	char upper_deleted[PATH_MAX];
 	char upper_link[PATH_MAX];
 	char upper_generated[PATH_MAX];
 	char upper_renamed[PATH_MAX];
 	char upper_cached_negative[PATH_MAX];
+	char upper_tool[PATH_MAX];
 	char logical_src_app[PATH_MAX];
 	char logical_git_head[PATH_MAX];
 	char base_src[PATH_MAX];
@@ -971,11 +975,19 @@ int main(int argc, char **argv)
 		argi++;
 	}
 
-	if (argc - argi != 1) {
-		fprintf(stderr, "usage: %s [--matrix] RESULT_JSONL\n", argv[0]);
+	if (argc - argi < 1 || argc - argi > 2) {
+		fprintf(stderr,
+			"usage: %s [--matrix] RESULT_JSONL [SOURCE_TRACE]\n",
+			argv[0]);
 		return 2;
 	}
 	result_path = argv[argi];
+	if (argc - argi == 2)
+		source_trace_path = argv[argi + 1];
+	if (matrix_mode && !source_trace_path) {
+		fprintf(stderr, "matrix mode requires SOURCE_TRACE\n");
+		return 2;
+	}
 
 	out = fopen(result_path, "a");
 	if (!out) {
@@ -1005,6 +1017,8 @@ int main(int argc, char **argv)
 		     "ws/renamed.txt") ||
 	    set_path(logical_cached_negative, sizeof(logical_cached_negative),
 		     mountpoint, "ws/cached-negative.txt") ||
+	    set_path(logical_tool, sizeof(logical_tool), mountpoint,
+		     "ws/tool.sh") ||
 	    set_path(base_main, sizeof(base_main), base, "main.txt") ||
 	    set_path(base_deleted, sizeof(base_deleted), base, "deleted.txt") ||
 	    set_path(base_link, sizeof(base_link), base, "link.txt") ||
@@ -1013,6 +1027,7 @@ int main(int argc, char **argv)
 	    set_path(base_renamed, sizeof(base_renamed), base, "renamed.txt") ||
 	    set_path(base_cached_negative, sizeof(base_cached_negative), base,
 		     "cached-negative.txt") ||
+	    set_path(base_tool, sizeof(base_tool), base, "tool.sh") ||
 	    set_path(upper_main, sizeof(upper_main), upper, "main.txt") ||
 	    set_path(upper_deleted, sizeof(upper_deleted), upper,
 		     "deleted.txt") ||
@@ -1023,6 +1038,7 @@ int main(int argc, char **argv)
 		     "renamed.txt") ||
 	    set_path(upper_cached_negative, sizeof(upper_cached_negative),
 		     upper, "cached-negative.txt") ||
+	    set_path(upper_tool, sizeof(upper_tool), upper, "tool.sh") ||
 	    set_path(logical_src_app, sizeof(logical_src_app), mountpoint,
 		     "ws/src/app.txt") ||
 	    set_path(logical_git_head, sizeof(logical_git_head), mountpoint,
@@ -1060,13 +1076,21 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "fuse_setup_source_dirs", true, 0,
 		  "source-like src and .git directories created");
-	emit_case(out, "fuse_agentfs_source_trace_declared", true, 0,
-		  "AgentFS-derived bash/git workspace trace: branch .git HEAD, edited src/app, whiteout, symlink, create, rename, unlink, cached-negative invalidation");
+	if (matrix_mode) {
+		fails += !!expect_source_trace(out,
+					       "fuse_agentfs_source_trace_artifact",
+					       source_trace_path);
+		emit_case(out, "fuse_agentfs_source_trace_replayed",
+			  fails == 0, fails,
+			  "AgentFS-derived trace replayed as .git/src, whiteout, symlink, create, rename, unlink, and cached-negative oracle rows");
+	}
 
 	if (write_file(base_main, "base-main\n") ||
 	    write_file(base_deleted, "base-deleted\n") ||
 	    write_file(upper_main, "upper-main\n") ||
 	    write_file(upper_deleted, "upper-deleted\n") ||
+	    write_file(base_tool, "#!/bin/sh\nexit 0\n") ||
+	    write_file(upper_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(base_src_app, "base-app\n") ||
 	    write_file(upper_src_app, "agent-edited-app\n") ||
 	    write_file(base_git_head, "ref: refs/heads/main\n") ||
@@ -1078,6 +1102,14 @@ int main(int argc, char **argv)
 		fails++;
 		goto cleanup;
 	}
+	if (chmod(base_tool, 0755) || chmod(upper_tool, 0755)) {
+		emit_case(out, "fuse_setup_executable_tools", false, errno,
+			  "chmod executable tool failed");
+		fails++;
+		goto cleanup;
+	}
+	emit_case(out, "fuse_setup_executable_tools", true, 0,
+		  "base and upper executable tool files created");
 	emit_case(out, "fuse_setup_files", true, 0,
 		  "base and upper workspace files created");
 
@@ -1174,6 +1206,10 @@ int main(int argc, char **argv)
 				     "fuse_upper_generated_negative_before_write",
 				     logical_generated, ENOENT);
 
+	{
+		unsigned long long macro_start = nsec_now();
+		unsigned long long macro_elapsed;
+
 	err = write_file(logical_generated, "generated-in-upper\n");
 	if (err) {
 		emit_case(out, "fuse_upper_epoch_write", false, -err,
@@ -1240,10 +1276,21 @@ int main(int argc, char **argv)
 					     "fuse_agentfs_unlink_cached_absent",
 					     logical_cached_negative, ENOENT);
 	}
+		macro_elapsed = nsec_now() - macro_start;
+		emit_metric(out, "fuse_macro_lifecycle_ns", macro_elapsed,
+			    fails == 0, "ns",
+			    "source lifecycle create/rename/unlink macro measured");
+	}
 	fails += !!expect_final_manifest(out, logical_main, logical_deleted,
 					 logical_generated, base_generated);
 	fails += !!measure_stat_latency(out, "fuse_stat_main_ns",
 					logical_main, 0, 100);
+	fails += !!measure_open_latency(out, "fuse_open_main_ns",
+					logical_main, 100);
+	fails += !!measure_access_latency(out, "fuse_access_main_ns",
+					  logical_main, R_OK, 100);
+	fails += !!measure_exec_latency(out, "fuse_exec_tool_ns",
+					logical_tool, 20);
 	fails += !!measure_readdir_latency(out, "fuse_readdir_ws_ns",
 					   logical_root, 50);
 
@@ -1291,6 +1338,7 @@ cleanup:
 	unlink(base_generated);
 	unlink(base_renamed);
 	unlink(base_cached_negative);
+	unlink(base_tool);
 	unlink(base_src_app);
 	unlink(base_git_head);
 	unlink(upper_main);
@@ -1299,6 +1347,7 @@ cleanup:
 	unlink(upper_generated);
 	unlink(upper_renamed);
 	unlink(upper_cached_negative);
+	unlink(upper_tool);
 	unlink(upper_src_app);
 	unlink(upper_git_head);
 	rmdir(base_src);

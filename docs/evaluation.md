@@ -1,6 +1,6 @@
 # Evaluation Plan
 
-Last updated: 2026-07-18
+Last updated: 2026-07-21
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed full writing,
 citation, meaning-preservation, build checks, and independent outer audit.
@@ -200,6 +200,29 @@ protocol evidence only. It does not close the source-oracle gap; final
 Experiment A still requires AgentFS-derived rename, unlink, cached-negative
 creation, bash/git command-sequence or trace evidence, source-tied RQ3 boundary
 rows, and broader invalid-policy containment.
+
+Fresh admitted RQ1 Agent-workspace execution is complete and independently
+reviewed. The repaired target binds the same fixed
+AgentFS-derived trace to both implementations and has three terminal formal
+KVM runs:
+
+- `results/experiments/agent-workspace-matrix/20260722T020120Z-rq1run1/`
+- `results/experiments/agent-workspace-matrix/20260722T020210Z-rq1run2/`
+- `results/experiments/agent-workspace-matrix/20260722T020245Z-rq1run3/`
+
+Each raw JSONL has 1,176 records, zero failed records, successful
+`namei_ext` and FUSE same-oracle summaries, successful source-trace
+artifact/replay gates for both implementations, 16 recorded measurements, and
+a terminal completion record. Stderr is empty and the dmesg failure-signature
+gate passes in all three runs. The RQ1 correctness rows cover epoch selection,
+whiteout lookup/readdir coherence, `.git` and source visibility, symlink and
+executable behavior, cached-negative creation, rename, unlink, final-tree
+state, lower-tree non-materialization, and unregistered-target containment.
+The independent result review classifies the run set as completed, the scoped
+hypothesis as supported, and its research value as headline evidence for the
+Agent-workspace family. It closes that RQ1 subproblem, but not the still-open
+traditional build/cache family, and does not authorize RQ2 timing or RQ3
+ownership claims.
 
 Minimum complete matrix:
 
