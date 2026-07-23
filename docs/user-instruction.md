@@ -1,3 +1,43 @@
+## Current Effective Instructions (2026-07-23)
+
+- Treat `namei_ext` as a `sched_ext`-style VFS name-resolution extension
+  point positioned between eBPF LSM and FUSE/custom filesystem ownership. The
+  central contribution is the design plus Linux implementation of this systems
+  boundary, not a table mechanism or a BPF filesystem.
+- The strongest story is positive and systems-facing: many real workloads need
+  programmable path views while preserving lower-filesystem semantics. Do not
+  shrink the hypothesis around incomplete prototype evidence unless a valid
+  final result makes the hypothesis impossible.
+- RQ1 asks whether the narrow name-resolution boundary is expressive/sufficient
+  for real source-derived path-view policies. RQ2 compares cost and overhead
+  against feature-equivalent FUSE. RQ3 compares safety and ownership boundary
+  against custom or stackable filesystems; bind, Overlay, projected volumes,
+  copy/symlink/materialized views are background or cited mechanisms unless a
+  selected source oracle makes one load-bearing.
+- Stop making table-only insufficiency the main novelty line. Static table,
+  table redirect, materialized namespace, and other non-programmable mechanisms
+  may remain archived diagnostics or background, but they should not drive the
+  main experiment plan.
+- Experiments must be complete integrated matrices, not scattered smoke tests
+  or a long list of weak baselines. Prefer one strong same-oracle comparison:
+  feature-equivalent FUSE for RQ2, native/source behavior as oracle/control,
+  and custom/stackable filesystem ownership evidence for RQ3.
+- Current primary workload families are Agent workspace lifecycle and
+  traditional build/cache. Service/config rotation and checkpoint/restart path
+  remapping are conditional breadth workloads only after a concrete source
+  oracle is admitted.
+- For build/cache, use traditional Redis/nginx/ccache-style workloads and make
+  the exact covered cache state explicit. If a release run covers only
+  verified hot-cache hits, say that; stale, corrupt, miss, and epoch-switch rows
+  require their own real same-oracle cells before becoming claims.
+- For LPC/upstream-facing work, prioritize a practical use case, a runnable
+  Make/KVM command, raw results, dmesg/kernel provenance, and a small boundary
+  argument that explains why this belongs at VFS name resolution rather than in
+  eBPF LSM or a userspace/full filesystem daemon.
+- Do not edit the current skills. Use them only when they materially help the
+  requested phase; do not let skill-driven process replace the user's latest
+  scientific direction or add unnecessary constraints.
+
 你觉得这个论文的 idea 和 novelty 是什么? 合适吗? 有价值吗
 
 多类真实 workload 需要 eBPF policy logic, 现有的扩展文件系统的方案要么不安全, 要么不 expressive, 要么性能不好. 我们尝试找到一个平衡点. A general programmable filesystem abstraction 是这样的. 接下来实验应该怎么做?

@@ -21,6 +21,7 @@ include $(ROOT_DIR)/mk/kvm.mk
 
 LEGACY_DIAGNOSTIC_GOALS := \
 	phase1-legacy-diagnostics provenance report \
+	experiment-env-cache kvm-build-cache-matrix \
 	table-% w1-% workloads workload-% \
 	eval-osdi-% kvm-eval-osdi-% \
 	kvm-w1-% kvm-w2-% kvm-w3-% kvm-w4-%
@@ -56,10 +57,7 @@ experiments: experiment-agent-workspace experiment-env-cache
 
 experiment-agent-workspace: kvm-agent-workspace-matrix
 
-experiment-env-cache:
-	@printf '%s\n' 'The full environment/cache transition matrix is not implemented yet.' >&2
-	@printf '%s\n' 'Required cells: namei_ext KVM, feature-equivalent FUSE, native source evaluator control, stale/corrupt/update states, raw result review.' >&2
-	@false
+experiment-env-cache: kvm-build-cache-matrix
 
 phase1-legacy-diagnostics: phase1-smoke table-conformance w1-oracle kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-branch-probes kvm-w2-oracle kvm-w2-nginx-real kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual table-budget kvm-bench docker-smoke report
 
@@ -113,7 +111,7 @@ help:
 	@printf '%s\n' '  make experiment-agent-workspace'
 	@printf '%s\n' '                       run the Agent workspace lifecycle matrix and preserve raw KVM/FUSE results'
 	@printf '%s\n' '  make experiment-env-cache'
-	@printf '%s\n' '                       target the environment/cache matrix; currently fails with required cells'
+	@printf '%s\n' '                       run the traditional Redis/nginx ccache build-cache matrix with namei_ext, native, and FUSE rows'
 	@printf '%s\n' '  make kvm-agent-workspace-preflight'
 	@printf '%s\n' '                       boot KVM and run the Agent workspace dependency preflight'
 	@printf '%s\n' ''

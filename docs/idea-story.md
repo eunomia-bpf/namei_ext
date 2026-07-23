@@ -1,6 +1,6 @@
 # Idea And Hypothesis History
 
-Last updated: 2026-07-18
+Last updated: 2026-07-23
 Current phase: BUILD_AND_EVALUATE
 Current step root: `docs/tmp/bootstrap/step-0005-20260714T174151-0700/`
 
@@ -21,6 +21,13 @@ and Linux implementation of that extension point as one systems boundary. Agent
 workspace and traditional build/cache are the primary workload families.
 Service/config and checkpoint/restart path remapping remain conditional;
 incomplete prototype evidence must not shrink the paper's hypothesis.
+
+The 2026-07-23 build/cache release run adds the first completed traditional
+non-agent result row: Redis/nginx ccache verified-hot-cache compiles pass under
+the real KVM `cgroup/namei_ext` attach path, native hot-ccache control, and a
+feature-equivalent FUSE cache-view baseline. This is valid scoped RQ1/RQ2
+evidence and an LPC/upstream motivation packet. It does not yet close the
+broader miss/stale/corrupt/epoch cache-state claim.
 
 The previous completed re-entry and route are recorded in:
 `docs/tmp/bootstrap/step-0002-20260713T004618-0700/step-report.md`.
@@ -100,8 +107,8 @@ Evidence program:
 
 | ID | Parent | Prediction | Falsifier | Evidence for/against | Status | Decisive next test | Reopen condition |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| H1 | root | A bounded VFS name-resolution policy can cover representative source-derived path-view transitions while lower FS semantics remain owned below. | The strongest source-derived agent workspace or traditional build/cache oracle requires synthetic contents, data-path mediation, write conflict resolution, or custom metadata persistence in the main path. | Current source surveys and prototype actions suggest plausible coverage; final same-oracle KVM evidence is missing. | Frozen for BUILD_AND_EVALUATE | Run Agent workspace lifecycle or traditional build/cache through same-oracle KVM/FUSE/RQ3 review. | If final admitted oracles show name resolution is not the right boundary. |
-| H2 | H1 | FUSE is the right cost comparison because it can implement equivalent policy but owns a filesystem daemon/request path. | A fair FUSE implementation cannot be made feature-equivalent for the admitted oracle, or another mechanism is a stronger direct cost opponent. | User fixed RQ2 to FUSE; FUSE literature and source systems support the comparison. | Frozen for BUILD_AND_EVALUATE | Run feature-equivalent FUSE rows for the admitted oracle before interpreting RQ2. | If a final admitted workload oracle makes FUSE non-comparable. |
+| H1 | root | A bounded VFS name-resolution policy can cover representative source-derived path-view transitions while lower FS semantics remain owned below. | The strongest source-derived agent workspace or traditional build/cache oracle requires synthetic contents, data-path mediation, write conflict resolution, or custom metadata persistence in the main path. | Agent workspace RQ1 rows passed earlier; the 2026-07-23 Redis/nginx ccache release row now supports the verified-hot-cache traditional subset. Full build/cache state-machine evidence remains open. | Frozen for BUILD_AND_EVALUATE | Extend traditional build/cache to real miss/stale/corrupt/epoch cells only if the broader state-machine claim remains paper-load-bearing. | If final admitted oracles show name resolution is not the right boundary. |
+| H2 | H1 | FUSE is the right cost comparison because it can implement equivalent policy but owns a filesystem daemon/request path. | A fair FUSE implementation cannot be made feature-equivalent for the admitted oracle, or another mechanism is a stronger direct cost opponent. | User fixed RQ2 to FUSE; the 2026-07-23 build/cache release row has a feature-equivalent FUSE compile-through baseline for the same output oracle. | Frozen for BUILD_AND_EVALUATE | Add uncertainty modeling and additional state cells before making broad performance claims. | If a final admitted workload oracle makes FUSE non-comparable. |
 | H3 | H1 | Custom/stackable filesystems are the right safety/boundary comparison because they own broader filesystem methods than the policy requires. | The admitted workload requires broad filesystem ownership, making `namei_ext` the wrong abstraction. | Prior stackable/custom FS work supports the boundary distinction; workload-specific audit still needed. | Frozen for BUILD_AND_EVALUATE | Produce same-oracle RQ3 ownership and containment evidence after RQ1 correctness. | If the selected source behavior is not name-resolution policy. |
 | H4 | root | The paper is strongest with two deep workload families plus conditional service/config or checkpoint/restart breadth, not a large catalog of weak comparisons. | Reviewers would reject coverage as too narrow even with deep same-oracle evidence, or service/config/checkpoint produces a strong lookup-time oracle. | User repeatedly rejected scattered weak baselines, table-only mainline, and Filebench/Postmark as primary workloads. | Frozen for BUILD_AND_EVALUATE | Start with Agent workspace or traditional build/cache; keep build/cache primary after required target-selection support. | If final review finds the two-family plan insufficient. |
 
@@ -121,6 +128,7 @@ Evidence program:
 | 2026-07-14 | active BOOTSTRAP re-entry -> renewed BUILD_AND_EVALUATE freeze | Step 0004 completed full writing, explicit RQ result slots, fresh outer audit, citation/build verification, and canonical cleanup with no must-fix findings. | Whether final same-oracle KVM matrices support the frozen claims. | BUILD_AND_EVALUATE starts with the complete Agent workspace lifecycle experiment, then environment/cache after final-file target support. |
 | 2026-07-15 | renewed BUILD_AND_EVALUATE freeze -> active BOOTSTRAP REVIEW_GATE | The user explicitly asked again to return to BOOTSTRAP under the new skills and reorganize/improve the paper. Step 0005 completed the full writing pass, citation gate, meaning-preservation audit, and build verification without changing RQ meanings. | Whether the step-level REVIEW_GATE accepts the unchanged strong story and routes back to BUILD_AND_EVALUATE. | Outer audit and meta-review decide whether to freeze again or re-enter WRITE/EXPERIMENT. |
 | 2026-07-15 | active BOOTSTRAP REVIEW_GATE -> renewed BUILD_AND_EVALUATE freeze | Independent outer audit found no blocking direction defect, accepted the restored paper/frontier, and recommended routing to BUILD_AND_EVALUATE. | Whether final same-oracle KVM matrices support the frozen claims. | BUILD_AND_EVALUATE starts with the complete Agent workspace lifecycle experiment, then environment/cache after target-selection/source-oracle admission. |
+| 2026-07-23 | Same `sched_ext`-style VFS name-resolution story, now with an upstream-facing traditional build/cache evidence packet. | `make experiment-env-cache BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-release-v1` passed in KVM with `namei_ext`, native hot ccache, and feature-equivalent FUSE rows; all 400 compile jobs per mechanism matched output hashes. | Whether the broader build/cache state machine needs real miss/stale/corrupt/epoch compile rows for the target venue, and how much timing uncertainty is needed for the RQ2 claim. | Use the release row for scoped non-agent RQ1/RQ2 and LPC motivation; run state cells only if they remain load-bearing. |
 
 ## Rejected Or Dormant Paths
 

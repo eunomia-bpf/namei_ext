@@ -1,0 +1,5 @@
+000ef9145829d3b99aa84e26ecb076b4a8a93c42c711981a555dea69c42738ea  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-source-manifest.tsv
+b86e3e0b6af44222cae6c2495658b73998815cfb4beaa69beee0b675be93bccd  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-trace-ccache.version
+9cbcd41c9492f2188db6a3fae935c7211b826b655fed03b41259cfdd22725da4  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-trace-strace.version
+7e0a3e1c50c00db381939840416d3911828ebe89ef9992fb330cb682cdad77d6  /home/yunwei37/workspace/namei_ext/docs/tmp/2026-06-16-w4-bulk-ccache-workload-design.md
+c2380eebb4fabfaca4fa2f832bdc80e449abf144619dd5225aefeaf2805c72d2  /home/yunwei37/workspace/namei_ext/mk/kvm.mk

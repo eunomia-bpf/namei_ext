@@ -1,12 +1,12 @@
 # Evaluation Plan
 
-Last updated: 2026-07-21
+Last updated: 2026-07-23
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed full writing,
 citation, meaning-preservation, build checks, and independent outer audit.
 Historical KVM runs remain motivation, feasibility, or prototype evidence.
-Final RQ evidence still requires BUILD_AND_EVALUATE admission, full execution,
-and result review. The current workload plan is recorded in
+Final RQ evidence is accumulated only after BUILD_AND_EVALUATE admission, full
+execution, and result review. The current workload plan is recorded in
 `docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md`: the two primary
 families are Agent workspace lifecycle and traditional build/cache. Service/config
 rotation and checkpoint/restart path remapping are conditional third-workload
@@ -101,10 +101,11 @@ admitted full runs pass result review:
 - `make experiment-agent-workspace` currently runs an Agent workspace prototype
   matrix and preserves raw KVM/FUSE outputs; its latest reviewed run is
   supporting-only and incomplete for final paper evidence.
-- `make experiment-env-cache` is the historical target name for the traditional
-  build/cache transition matrix and fails with its required cells until
-  implemented. A future cleanup may rename it, but the paper-facing workload is
-  traditional build/cache.
+- `make experiment-env-cache` now runs the traditional Redis/nginx ccache
+  build/cache matrix through KVM with `namei_ext`, native hot-ccache control,
+  and feature-equivalent FUSE rows. The current implementation covers the
+  verified hot-cache compile path, not every cache-state label in the broader
+  design scope.
 - `make kvm-agent-workspace-preflight` remains the implemented dependency
   preflight; it is not a paper-result cell.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves old
@@ -266,6 +267,45 @@ build/test rows, `ccache` over a C/C++ project, and BuildKit cache-mount style
 workloads. These are admitted only when they expose the same fixed cache-state
 oracle and path-operation trace.
 
+Current release result: `make experiment-env-cache
+BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-release-v1` completed in
+KVM and preserved raw results under
+`results/experiments/build-cache/20260723T-build-cache-release-v1/`. The run is
+the first completed paper-facing Experiment B row for the traditional
+build/cache family. It covers the real verified hot-cache ccache path over
+Redis/nginx source rows; it does not yet cover real miss, stale, corrupt, or
+epoch-switch compile cells.
+
+The terminal summary row reports:
+
+| Metric | `namei_ext` | Native hot ccache control | Feature-equivalent FUSE |
+| --- | ---: | ---: | ---: |
+| Samples | 20 | 20 | 20 |
+| Compile jobs | 400 | 400 | 400 |
+| Output hash matches | 400 | 400 | 400 |
+| Total compile time ns | 152,263,433,153 | 157,443,184,178 | 267,748,534,960 |
+| Average ns/job | 380,658,582.9 | 393,607,960.4 | 669,371,337.4 |
+| Cache path file ops | 8,000 | 8,000 | 6,000 |
+| Cache object ops | 3,200 | 3,200 | 3,200 |
+| Redirected or direct cache hits | 800 redirected objects | 400 direct hits | 400 direct hits |
+
+Derived ratios for this run are `FUSE/namei_ext = 1.758x` by total compile
+time and `native/namei_ext = 1.034x`. These are release-run observations, not
+yet a statistically modeled performance claim. The correctness interpretation
+is stronger than the timing interpretation: all three rows pass the same output
+object oracle, the `namei_ext` row executes the attached
+`cache_locality_view.bpf.c` policy through the real `cgroup/namei_ext` attach
+path, and the FUSE row completes the same compile-through cache-view oracle
+with 20 FUSE mounts.
+
+The upstream/LPC-facing value of this row is that a real build-cache use case
+can be expressed as VFS name-resolution policy while ccache and the lower
+filesystem keep data and write semantics. The matched FUSE row demonstrates
+the same behavior through a filesystem-daemon boundary that owns
+`getattr/readdir/open/read/release` handling and mount lifecycle. The current
+boundary evidence therefore supports an implementation-scope argument even
+before the full stale/corrupt/epoch state machine is complete.
+
 Step 0002 selected the intended suite for later BUILD_AND_EVALUATE admission,
 subject only to documented KVM/Docker compatibility failures before policy
 results are observed:
@@ -315,6 +355,12 @@ output/test oracle status, stale/corrupt rejection evidence, cache-state transit
 operation-weighted lookup/readdir traces, macro runtime, and per-operation
 latency/overhead. Partial row replay, image setup, or trace inspection alone is
 dependency work, not an experiment result.
+
+Current status after the 2026-07-23 release run: the verified hot-cache compile
+subset is completed and useful for RQ1/RQ2 mechanism evidence and LPC/upstream
+motivation. The broader state-machine claim remains open until real miss,
+stale, corrupt, and epoch-switch compile cells are admitted and run under the
+same oracle for both `namei_ext` and FUSE.
 
 ### Experiment C: Service/Config Transition
 

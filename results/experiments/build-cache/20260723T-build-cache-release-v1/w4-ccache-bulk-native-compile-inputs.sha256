@@ -1,0 +1,12 @@
+4adc150b7c483796e3a828fc2a8c8da498ae42533d7e9dcd7f4b4d9f6c16f281  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-trace.jsonl
+621e3d39d6756a5bccbc4dde974835b6b6fef46e55217f2d094bd603cecceacb  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-trace-inputs.sha256
+0bd6ffb91a3e7f6a82871c1eaa9c0033b29613be476a67195e5f866dd391b0ae  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-trace-artifacts.sha256
+000ef9145829d3b99aa84e26ecb076b4a8a93c42c711981a555dea69c42738ea  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-source-manifest.tsv
+17c3353ec773c43a8748329c47f6167bb9c20666645c737783660ad2cb988eeb  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-policy-bridge.jsonl
+acd1f42ca8f26f3f679a0aca7b1d18acf14f452b8b0f56f4fb62b9acb0d19b57  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-policy-bridge-trace-objects.txt
+ce668d4db7ec6cea193d9cc303b6c06b714a534503a36b245fee0434974c0c83  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-policy-bridge-entries.tsv
+3fbf6362f3e836ee1c6ec25a23583b0c354824b0ef95e2df5e08bcb93fb7d111  /home/yunwei37/workspace/namei_ext/tests/w1_oracle/namei_ext_w1_oracle.c
+0a5164660847b2b10952cb9fbfef34333b127441133cebaff13831835f32d47f  /home/yunwei37/workspace/namei_ext/.build/w1-oracle/namei_ext_w1_oracle
+b86e3e0b6af44222cae6c2495658b73998815cfb4beaa69beee0b675be93bccd  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-release-v1/w4-ccache-bulk-native-compile-ccache.version
+e86d8065c3963ba1dd0c0cd61b41165e6d12c72d40d807476c7ad0c7c9760e4c  /home/yunwei37/workspace/namei_ext/docs/tmp/2026-06-16-w4-bulk-native-ccache-baseline-implementation.md
+c2380eebb4fabfaca4fa2f832bdc80e449abf144619dd5225aefeaf2805c72d2  /home/yunwei37/workspace/namei_ext/mk/kvm.mk

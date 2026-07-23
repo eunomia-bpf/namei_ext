@@ -1,0 +1,7 @@
+make -C /home/yunwei37/workspace/namei_ext __experiment_build_cache_matrix RUN_ID=20260723T-build-cache-release-v1 BUILD_CACHE_SAMPLES=20
+CACHE_LOCALITY_POLICY=/home/yunwei37/workspace/namei_ext/.build/bpf/cache_locality_view.bpf.o
+W4_ORACLE_RUNNER=/home/yunwei37/workspace/namei_ext/.build/w1-oracle/namei_ext_w1_oracle
+REDIS_BUILD_SRC=/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260723T-build-cache-release-v1/w1-redis-build/src
+NGINX_BUILD_SRC=/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260723T-build-cache-release-v1/w1-nginx-build/src
+KERNEL_IMAGE=/home/yunwei37/workspace/namei_ext/.build/kernel/arch/x86/boot/bzImage
+KERNEL_BUILD_DIR=/home/yunwei37/workspace/namei_ext/.build/kernel

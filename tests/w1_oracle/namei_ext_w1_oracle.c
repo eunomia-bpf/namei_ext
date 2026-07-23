@@ -13763,6 +13763,7 @@ static int run_ccache_policy_compile(
 	bool attached_optrace_collected = false;
 	bool output_hash_match = true;
 	bool bulk_policy_compile = source_manifest && source_manifest[0];
+	__u64 compile_ns = 0;
 	int exit_code = -1;
 	int failures = 0;
 	int ret;
@@ -14203,10 +14204,18 @@ static int run_ccache_policy_compile(
 				continue;
 			}
 
-			ret = run_ccache_source_compile(
-			    &sources[source_idx], redis_build_src, nginx_build_src,
-			    redis_output, stdout_path, stderr_path, redis_trace_path,
-			    &exit_code);
+			{
+				__u64 start_ns = monotonic_ns();
+
+				ret = run_ccache_source_compile(
+					&sources[source_idx], redis_build_src,
+					nginx_build_src, redis_output, stdout_path,
+					stderr_path, redis_trace_path, &exit_code);
+				__u64 end_ns = monotonic_ns();
+
+				if (end_ns >= start_ns)
+					compile_ns += end_ns - start_ns;
+			}
 			if (ret || exit_code) {
 				emit_ccache_policy_compile_case(
 				    out, "bulk_policy_compile", false,
@@ -14317,10 +14326,18 @@ static int run_ccache_policy_compile(
 			    work_dir, NULL, NULL, NULL);
 			failures++;
 		} else {
-			ret = run_ccache_redis_compile(
-			    redis_src, redis_build_src, redis_output,
-			    stdout_path, stderr_path, redis_trace_path,
-			    &exit_code);
+			{
+				__u64 start_ns = monotonic_ns();
+
+				ret = run_ccache_redis_compile(
+					redis_src, redis_build_src, redis_output,
+					stdout_path, stderr_path, redis_trace_path,
+					&exit_code);
+				__u64 end_ns = monotonic_ns();
+
+				if (end_ns >= start_ns)
+					compile_ns += end_ns - start_ns;
+			}
 			if (ret || exit_code) {
 				emit_ccache_policy_compile_case(
 				    out, "redis_policy_compile", false,
@@ -14352,10 +14369,18 @@ static int run_ccache_policy_compile(
 			    work_dir, NULL, NULL, NULL);
 			failures++;
 		} else {
-			ret = run_ccache_nginx_compile(
-			    nginx_src, nginx_build_src, nginx_output,
-			    stdout_path, stderr_path, nginx_trace_path,
-			    &exit_code);
+			{
+				__u64 start_ns = monotonic_ns();
+
+				ret = run_ccache_nginx_compile(
+					nginx_src, nginx_build_src, nginx_output,
+					stdout_path, stderr_path, nginx_trace_path,
+					&exit_code);
+				__u64 end_ns = monotonic_ns();
+
+				if (end_ns >= start_ns)
+					compile_ns += end_ns - start_ns;
+			}
 			if (ret || exit_code) {
 				emit_ccache_policy_compile_case(
 				    out, "nginx_policy_compile", false,
@@ -14518,6 +14543,8 @@ ccache_policy_compile_done:
 		"\"ccache_compile_policy_executed\":true,"
 		"\"kvm_validated\":true,"
 		"\"output_hash_match\":%s,"
+		"\"compile_ns\":%llu,"
+		"\"compile_ns_avg\":%.17g,"
 		"\"policy_redirected_cache_objects\":%zu,"
 		"\"redis_trace_objects\":%zu,"
 		"\"nginx_trace_objects\":%zu,"
@@ -14543,7 +14570,12 @@ ccache_policy_compile_done:
 		"\"qualified_for_c8\":false,\"detail\":",
 		bulk_policy_compile ? "true" : "false", nr_sources,
 		attached_compile_jobs, attached_compile_output_matches,
-		output_hash_match ? "true" : "false", nr_entries, redis_entries,
+		output_hash_match ? "true" : "false",
+		(unsigned long long)compile_ns,
+		attached_compile_jobs ?
+			(double)compile_ns / (double)attached_compile_jobs :
+			0.0,
+		nr_entries, redis_entries,
 		nginx_entries, failures ? "false" : "true", failures,
 		ccache_compile_table_baseline && !failures ? "true" : "false",
 		ccache_compile_table_baseline ? "true" : "false",

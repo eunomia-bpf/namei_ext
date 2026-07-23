@@ -1,0 +1,14 @@
+20aed4a9a59d35049595973fe74588b9cd415c667ee3a172969e79adfbdc2468  /home/yunwei37/workspace/namei_ext/.build/kernel/arch/x86/boot/bzImage
+795600e0ac577a3917dc7784a514c14df671b2456c2b4157e5472806c26678e5  /home/yunwei37/workspace/namei_ext/.build/kernel/.config
+809b56865aef06d4476e286ac132377de93c41ae2007175c926ae87c3f126c57  /home/yunwei37/workspace/namei_ext/.build/bpf/cache_locality_view.bpf.o
+38bf224f1d934aeb28f66061e5cdfccd1ec246931d272233689f18e2998f05b4  /home/yunwei37/workspace/namei_ext/bpf/policies/cache_locality_view.bpf.c
+0a5164660847b2b10952cb9fbfef34333b127441133cebaff13831835f32d47f  /home/yunwei37/workspace/namei_ext/.build/w1-oracle/namei_ext_w1_oracle
+3fbf6362f3e836ee1c6ec25a23583b0c354824b0ef95e2df5e08bcb93fb7d111  /home/yunwei37/workspace/namei_ext/tests/w1_oracle/namei_ext_w1_oracle.c
+51261bca8307526bf94b8d1b4a22570e2c2c9719f849427c2e538c9ae288b795  /home/yunwei37/workspace/namei_ext/docs/tmp/2026-07-23-build-cache-experiment-b-plan.md
+8d7bc4bd9c4f3905df061649de4608baaf10976fb3bd0cbe7260b58aec6f7443  /home/yunwei37/workspace/namei_ext/Makefile
+c2380eebb4fabfaca4fa2f832bdc80e449abf144619dd5225aefeaf2805c72d2  /home/yunwei37/workspace/namei_ext/mk/kvm.mk
+4adc150b7c483796e3a828fc2a8c8da498ae42533d7e9dcd7f4b4d9f6c16f281  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-release-v1/w4-ccache-bulk-trace.jsonl
+17c3353ec773c43a8748329c47f6167bb9c20666645c737783660ad2cb988eeb  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-release-v1/w4-ccache-bulk-policy-bridge.jsonl
+9ce519c0818907f9a7f588456090f90ade442a3203e0d63ac96d4138777ec9ce  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-release-v1/w4-ccache-bulk-policy-compile.jsonl
+dd86e1d98441ed7db794e649ea1ae21ec07de5ef824b8ec6f68e5466bd5a8832  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-release-v1/w4-ccache-bulk-native-compile.jsonl
+e7cc4f823fde464525e35abf844db4fbe636092a258760426c012649fa50bceb  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-release-v1/w4-ccache-bulk-fuse-compile.jsonl
