@@ -903,3 +903,367 @@
   year = {2013},
   howpublished = {\url{https://www.usenix.org/conference/atc13/technical-sessions/presentation/ren}}
 }
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/fast24-cho-rfuse.pdf
+% ABSTRACT: RFUSE modernizes FUSE communication with per-core ring buffers and
+%   reports scalability close to in-kernel filesystems on high-performance
+%   devices.
+% USED_FOR: RQ2 FUSE fairness pressure.
+@inproceedings{rfuse_fast24,
+  author = {Cho, Kyu-Jin and Choi, Jaewon and Kwon, Hyungjoon and Kim, Jin-Soo},
+  title = {{RFUSE}: Modernizing Userspace Filesystem Framework through Scalable {Kernel-Userspace} Communication},
+  booktitle = {22nd USENIX Conference on File and Storage Technologies (FAST 24)},
+  year = {2024},
+  isbn = {978-1-939133-38-0},
+  address = {Santa Clara, CA},
+  pages = {141--157},
+  url = {https://www.usenix.org/conference/fast24/presentation/cho},
+  publisher = {USENIX Association},
+  month = feb
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/fast26-wang-cofs.pdf
+% ABSTRACT: CoFS is an extended-FUSE filesystem for fast container startup that
+%   accelerates fixed read-only container-image lookup with build-time metadata
+%   and kernel-side data caching.
+% USED_FOR: RQ2 FUSE fairness and traditional container/build-cache context.
+@inproceedings{cofs_fast26,
+  author = {Wang, Li and Du, Jinxu and Yang, Yang and Wu, Qingbo and Liu, Tao and Wu, Haoze},
+  title = {{CoFS}: A Filesystem for Fast Container Startup},
+  booktitle = {24th USENIX Conference on File and Storage Technologies (FAST 26)},
+  year = {2026},
+  isbn = {978-1-939133-53-3},
+  address = {Santa Clara, CA},
+  pages = {415--423},
+  url = {https://www.usenix.org/conference/fast26/presentation/wang-li},
+  publisher = {USENIX Association},
+  month = feb
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/arxiv2503.18191-distfuse.pdf
+% ABSTRACT: DFUSE explores FUSE-based distributed filesystems with
+%   kernel cache use and consistency mechanisms.
+% USED_FOR: RQ2 FUSE optimization context.
+@misc{distfuse_arxiv25,
+  author = {Li, Haoyu and Fu, Jingkai and Li, Qing and Hsu, Windsor and Cidon, Asaf},
+  title = {{DFUSE}: Strongly Consistent {Write-Back} Kernel Caching for Distributed Userspace File Systems},
+  howpublished = {arXiv:2503.18191},
+  year = {2025},
+  url = {https://arxiv.org/abs/2503.18191}
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-kim-oxbow.pdf
+% ABSTRACT: Oxbow composes kernel, userspace, and storage-device filesystem
+%   components with shared metadata and split journaling.
+% USED_FOR: RQ3 full/multi-component filesystem boundary.
+@inproceedings{oxbow_osdi26,
+  author = {Kim, Jongyul and Lee, Jaehwan and Koo, Inhoe and Liu, Peizhe and Zhang, Jiyuan and Ahn, Junho and Xu, Tianyin and Kwon, Youngjin},
+  title = {Oxbow: A Coordinated Architecture for {Multi-Component} File Systems},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {1425--1442},
+  url = {https://www.usenix.org/conference/osdi26/presentation/kim-jongyul},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-ahn-delfs.pdf
+% ABSTRACT: DeLFS is a decentralized log-structured Linux filesystem for
+%   manycore scalability.
+% USED_FOR: RQ3 full filesystem ownership boundary.
+@inproceedings{delfs_osdi26,
+  author = {Ahn, Taehwan and Yu, Chanhyeong and Lee, Sangjin and Son, Yongseok},
+  title = {{DeLFS}: A Decentralized {Log-Structured} File System for Manycores},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {793--807},
+  url = {https://www.usenix.org/conference/osdi26/presentation/ahn},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/nsdi26-xu-falconfs.pdf
+% ABSTRACT: FalconFS is a distributed filesystem for deep-learning pipelines
+%   with server-side path resolution, hybrid metadata indexing, and lazy
+%   namespace replication.
+% USED_FOR: RQ3 distributed filesystem boundary and AI data-pipeline context.
+@inproceedings{falconfs_nsdi26,
+  author = {Xu, Jingwei and Kang, Junbin and Dong, Mingkai and Liu, Mingyu and Zhang, Lu and Guo, Shaohong and Qiu, Ziyan and You, Mingzhen and Tian, Ziyi and Yu, Anqi and Ding, Tianhong and Hu, Xinwei and Chen, Haibo},
+  title = {{FalconFS}: Distributed File System for {Large-Scale} Deep Learning Pipeline},
+  booktitle = {23rd USENIX Symposium on Networked Systems Design and Implementation (NSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-54-0},
+  address = {Renton, WA},
+  pages = {431--447},
+  url = {https://www.usenix.org/conference/nsdi26/presentation/xu},
+  publisher = {USENIX Association},
+  month = may
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/fast26-liu-specfs.pdf
+% ABSTRACT: SYSSPEC uses specification-guided LLM generation to build and
+%   evolve a concurrent filesystem, SPECFS.
+% USED_FOR: RQ3 full filesystem implementation boundary.
+@inproceedings{specfs_fast26,
+  author = {Liu, Qingyuan and Zou, Mo and Zhang, Hengbin and Du, Dong and Xia, Yubin and Chen, Haibo},
+  title = {Sharpen the Spec, Cut the Code: A Case for Generative File System with {SYSSPEC}},
+  booktitle = {24th USENIX Conference on File and Storage Technologies (FAST 26)},
+  year = {2026},
+  isbn = {978-1-939133-53-3},
+  address = {Santa Clara, CA},
+  pages = {291--311},
+  url = {https://www.usenix.org/conference/fast26/presentation/liu-qingyuan},
+  publisher = {USENIX Association},
+  month = feb
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/arxiv2410.08618-switchfs.pdf
+% ABSTRACT: SwitchFS delays distributed metadata updates with in-network
+%   coordination while preserving synchronous metadata semantics.
+% USED_FOR: RQ3 distributed metadata-service boundary.
+@misc{switchfs_eurosys26,
+  author = {Xu, Jingwei and Dong, Mingkai and Tian, Qiulin and Tian, Ziyi and Xin, Tong and Chen, Haibo},
+  title = {{SwitchFS}: Asynchronous Metadata Updates for Distributed Filesystems with {In-Network} Coordination},
+  howpublished = {EuroSys 2026; arXiv:2410.08618},
+  year = {2026},
+  url = {https://arxiv.org/abs/2410.08618}
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: not downloaded; ACM PDF returned HTTP 403 in standalone refresh.
+% ABSTRACT: MesaFS is an I/O-efficient metadata service for distributed
+%   filesystems.
+% USED_FOR: RQ3 distributed metadata-service boundary.
+@inproceedings{mesafs_eurosys26,
+  author = {Guo, Hao and Shu, Jiwu and Lu, Youyou},
+  title = {{MesaFS}: An {I/O-Efficient} Metadata Service for Distributed File Systems},
+  booktitle = {Proceedings of the 21st European Conference on Computer Systems (EuroSys 26)},
+  year = {2026},
+  doi = {10.1145/3767295.3803573},
+  url = {https://dl.acm.org/doi/10.1145/3767295.3803573}
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi22-zhong-xrp.pdf
+% ABSTRACT: XRP executes eBPF storage functions at an NVMe-driver hook while
+%   preserving filesystem semantics by propagating kernel state.
+% USED_FOR: Closest BPF-for-storage but not name-resolution precedent.
+@inproceedings{xrp_osdi22,
+  author = {Zhong, Yuhong and Li, Haoyu and Wu, Yu Jian and Zarkadas, Ioannis and Tao, Jeffrey and Mesterhazy, Evan and Makris, Michael and Yang, Junfeng and Tai, Amy and Stutsman, Ryan and Cidon, Asaf},
+  title = {{XRP}: {In-Kernel} Storage Functions with {eBPF}},
+  booktitle = {16th USENIX Symposium on Operating Systems Design and Implementation (OSDI 22)},
+  year = {2022},
+  isbn = {978-1-939133-28-1},
+  address = {Carlsbad, CA},
+  pages = {375--393},
+  url = {https://www.usenix.org/conference/osdi22/presentation/zhong},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-zhang-vbpf.pdf
+% ABSTRACT: vBPF virtualizes eBPF with late binding, runtime attribution, and
+%   state isolation for multi-tenant coexistence.
+% USED_FOR: eBPF extension-neighborhood context.
+@inproceedings{vbpf_osdi26,
+  author = {Zhang, Jing and Song, Xiaguannan and Du, Dong and Xia, Yubin and Zang, Binyu and Chen, Haibo},
+  title = {Virtualizing {eBPF} with {Late-Binding}},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {2127--2148},
+  url = {https://www.usenix.org/conference/osdi26/presentation/zhang-jing},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-carin-peer.pdf
+% ABSTRACT: PeeR makes latency-critical eBPF programs preemptable and
+%   schedulable, reducing p99 latency on service workloads.
+% USED_FOR: RQ2 tail-latency and policy-complexity context.
+@inproceedings{peer_osdi26,
+  author = {Carin, Jeremy and Holmes, Ben and Wang, Weiyang and Bhardwaj, Ankit and Ghobadi, Manya},
+  title = {{PeeR}: {First-Class} Scheduling for {Latency-Critical} {eBPF} Applications},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {2465--2482},
+  url = {https://www.usenix.org/conference/osdi26/presentation/carin},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/nsdi26-patel-krakenguard.pdf
+% ABSTRACT: KRAKENGUARD enforces fine-grained constraints on eBPF bytecode at
+%   load time using symbolic execution.
+% USED_FOR: eBPF safety/isolation context.
+@inproceedings{krakenguard_nsdi26,
+  author = {Patel, Jainil and Buhl-Nielsen, Lucas Graeff and Ghosn, Adrien and Kogias, Marios},
+  title = {{KRAKENGUARD}: Towards {Fine-Grained} {eBPF} Isolation},
+  booktitle = {23rd USENIX Symposium on Networked Systems Design and Implementation (NSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-54-0},
+  address = {Renton, WA},
+  pages = {2685--2704},
+  url = {https://www.usenix.org/conference/nsdi26/presentation/patel},
+  publisher = {USENIX Association},
+  month = may
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi25-zheng-bpftime-eim.pdf
+% ABSTRACT: bpftime/EIM applies eBPF-style verification, MPK, and dynamic
+%   binary rewriting to userspace application extensions.
+% USED_FOR: Adjacent extension-interface precedent.
+@inproceedings{bpftime_eim_osdi25,
+  author = {Zheng, Yusheng and Yu, Tong and Yang, Yiwei and Hu, Yanpeng and Lai, Xiaozheng and Williams, Dan and Quinn, Andi},
+  title = {Extending Applications Safely and Efficiently},
+  booktitle = {19th USENIX Symposium on Operating Systems Design and Implementation (OSDI 25)},
+  year = {2025},
+  isbn = {978-1-939133-47-2},
+  address = {Boston, MA},
+  pages = {557--574},
+  url = {https://www.usenix.org/conference/osdi25/presentation/zheng-yusheng},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-chen-xkernel.pdf
+% ABSTRACT: Xkernel exposes a safe programmable interface for in-situ tuning of
+%   kernel performance constants.
+% USED_FOR: Adjacent kernel programmability context.
+@inproceedings{xkernel_osdi26,
+  author = {Chen, Zhongjie and Zhang, Wentao and Tang, Yulong and Shu, Ran and Ren, Fengyuan and Xu, Tianyin and Liu, Jing},
+  title = {Xkernel: Principled Performance Tunability of Operating System Kernels},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {547--565},
+  url = {https://www.usenix.org/conference/osdi26/presentation/chen-zhongjie},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-jiang-usec.pdf
+% ABSTRACT: USEC is a demand-driven MAC framework with simpler policy
+%   configuration and LSM-compatible enforcement.
+% USED_FOR: Access-control neighbor; not object-selection mechanism.
+@inproceedings{usec_osdi26,
+  author = {Jiang, Yu and Liu, Wenhuan and Ma, Fuchen and Shen, Yuheng and Chen, Yuanliang and Zhang, Lei and Li, He and Zhang, Quan and Zhou, Chijin},
+  title = {{USEC}: A {User-Requirement-Driven} Mandatory Access Control Framework for Operating Systems (Operational Systems)},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {191--206},
+  url = {https://www.usenix.org/conference/osdi26/presentation/jiang-yu},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-chaudhry-murakkab.pdf
+% ABSTRACT: Murakkab orchestrates agentic workflows across models, tools, and
+%   hardware while optimizing SLO, cost, energy, and GPU usage.
+% USED_FOR: Agentic workload context only.
+@inproceedings{murakkab_osdi26,
+  author = {Chaudhry, Gohar Irfan and Choukse, Esha and Qiu, Haoran and Goiri, Inigo and Fonseca, Rodrigo and Belay, Adam and Bianchini, Ricardo},
+  title = {Murakkab: {Resource-Efficient} Agentic Workflow Orchestration in Cloud Platforms},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {567--587},
+  url = {https://www.usenix.org/conference/osdi26/presentation/chaudhry},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/arxiv2605.07161-sregym.pdf
+% ABSTRACT: SREGym is an open-source live SRE-agent benchmark with cloud-native
+%   stacks, fault injection, and executable oracles.
+% USED_FOR: Agentic workload realism context.
+@misc{sregym_arxiv26,
+  author = {Clark, Jackson and Su, Yiming and Pial, Saad Mohammad Rafid and Tian, Yifang and Gniedziejko, Lily and Jacobsen, Hans-Arno and Chen, Yinfang and Xu, Tianyin},
+  title = {{SREGym}: A Live Benchmark for {AI} {SRE} Agents with {High-Fidelity} Failure Scenarios},
+  howpublished = {arXiv:2605.07161},
+  year = {2026},
+  url = {https://arxiv.org/abs/2605.07161}
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-chen-llm-data-pipeline.pdf
+% ABSTRACT: This operational systems paper analyzes production LLM pre-training
+%   data pipeline bottlenecks and storage/cache optimizations.
+% USED_FOR: Traditional data/cache pipeline context.
+@inproceedings{llm_data_pipeline_osdi26,
+  author = {Chen, Luofan and Wang, Chenhan and Zhang, Weidong and Chi, Jinxin and Zhang, Hequan and Wang, Zanbo and Wang, Chenyuan and Luo, Lishu and Wu, Sijin and Hu, Junqi and Wang, Jun and Chen, Cheng and Huang, Lixin and Zhao, Liyang and Tian, Yong and Guo, Jun and Bai, Youhui and Xiao, Wencong and Chen, Kang and Li, Cheng},
+  title = {Teaching the Old Dog New Tricks: Building Efficient Data Pipelines for {Large-Scale} {LLM} {Pre-Training} (Operational Systems)},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {349--365},
+  url = {https://www.usenix.org/conference/osdi26/presentation/chen-luofan},
+  publisher = {USENIX Association},
+  month = jul
+}
+
+% VERIFIED: 2026-07-23
+% REAL: yes
+% PDF: docs/reference/osdi26-holmes-spice.pdf
+% ABSTRACT: Spice adds process snapshot and restore support for near-warm
+%   serverless cold starts.
+% USED_FOR: Conditional checkpoint/restore workload context.
+@inproceedings{spice_osdi26,
+  author = {Holmes, Ben and Dinis, Baltasar and Honcharuk, Lana and Belay, Adam and Fried, Joshua},
+  title = {Rethinking Process Snapshots for {Near-Warm} Serverless Cold Starts},
+  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+  year = {2026},
+  isbn = {978-1-939133-55-7},
+  address = {Seattle, WA},
+  pages = {2007--2025},
+  url = {https://www.usenix.org/conference/osdi26/presentation/holmes},
+  publisher = {USENIX Association},
+  month = jul
+}

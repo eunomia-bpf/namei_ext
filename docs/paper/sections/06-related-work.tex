@@ -12,11 +12,15 @@ metadata services require broader filesystem-service or object-model ownership.
 FUSE~\cite{linux_fuse}, FUSE passthrough~\cite{linux_fuse_passthrough},
 ExtFUSE~\cite{extfuse}, and FUSE-BPF~\cite{fuse_bpf_patch} demonstrate the
 value of placing filesystem policy in, or accelerating, a filesystem-service
-boundary. They are the RQ2 baseline family because they can implement the same
-path-view policy under the same source oracle while keeping policy in a FUSE
-request path. \namei instead keeps policy needed by the source oracle at VFS
-name resolution when the workload only needs path selection or visibility over
-existing objects.
+boundary. RFUSE, CoFS, and DFUSE further show that this boundary can be
+optimized or specialized with scalable kernel-userspace communication, fixed
+container-image lookup structures, and distributed-cache consistency
+support~\cite{rfuse_fast24,cofs_fast26,distfuse_arxiv25}. These systems make
+FUSE the RQ2 baseline family, not a strawman: a fair comparison must implement
+the same path-view policy under the same source oracle and justify the FUSE
+caching/passthrough configuration. \namei instead keeps policy needed by the
+source oracle at VFS name resolution when the workload only needs path
+selection or visibility over existing objects.
 
 \subsection{Custom, Stackable, And Metadata-Service Filesystems}
 
@@ -31,10 +35,16 @@ semantics.
 
 DeltaFS, IndexFS, and TableFS show that full metadata services and specialized
 filesystems are valuable when the problem is metadata distribution, indexing,
-or storage layout~\cite{deltafs_sc21,indexfs,tablefs}. They are not the main
-workload baselines for \namei, but they clarify the boundary because such
-workloads require a metadata service or full filesystem when the oracle needs
-distributed metadata or a new filesystem object model.
+or storage layout~\cite{deltafs_sc21,indexfs,tablefs}. Recent systems reinforce
+the same boundary: Oxbow coordinates kernel, userspace, and device components;
+DeLFS builds a decentralized kernel filesystem; FalconFS moves path resolution
+and metadata indexing into a distributed filesystem service; SwitchFS and
+MesaFS target distributed metadata updates; and SYSSPEC/SpecFS generates a
+complete filesystem from specifications~\cite{oxbow_osdi26,delfs_osdi26,falconfs_nsdi26,switchfs_eurosys26,mesafs_eurosys26,specfs_fast26}.
+They are not the main workload baselines for \namei, but they clarify the
+boundary because such workloads require a metadata service or full filesystem
+when the oracle needs distributed metadata, data-path ownership, persistence,
+or a new filesystem object model.
 
 \subsection{Namespace Construction}
 
@@ -55,7 +65,14 @@ natural role is to deny, mediate, or observe operations. \namei selects which
 existing object a name denotes during resolution and then returns control to the
 ordinary VFS and lower filesystem. Access-control denial remains outside the
 current action set because the primary claim is name-resolution selection and
-visibility.
+visibility. USEC is a recent access-control neighbor with an LSM-compatible
+mandatory-access-control design~\cite{usec_osdi26}; XRP, vBPF, PeeR,
+KRAKENGUARD, Xkernel, and bpftime/EIM are adjacent programmability work on
+storage-function hooks, eBPF virtualization, eBPF scheduling, eBPF isolation,
+kernel tunability, and userspace extension safety~\cite{xrp_osdi22,vbpf_osdi26,peer_osdi26,krakenguard_nsdi26,xkernel_osdi26,bpftime_eim_osdi25}.
+They help set safety and overhead expectations for programmable kernel
+extensions, but they do not provide a VFS name-resolution object-selection
+boundary.
 
 \subsection{Source Workload Systems}
 
@@ -73,7 +90,11 @@ lower filesystem.
 Environment and cache systems provide a second workload source, not a filesystem
 mechanism baseline. SWE-Factory-Gym, MEnvData-SWE, and SWE-rebench V2 provide
 build/test oracles for environment state and cache reuse
-policies~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}. Agent
-runtimes and service/config systems similarly motivate workload state. Their
-runtime orchestration, environment synthesis, projected-volume materialization,
-and reload behavior remain outside \namei's mechanism claim.
+policies~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}. CoFS and
+large-scale LLM data-pipeline work add contemporary evidence that build,
+container, and data-cache paths matter to real systems~\cite{cofs_fast26,llm_data_pipeline_osdi26}.
+Agentic systems such as Murakkab and SREGym show that modern agents run through
+multi-step tool, workflow, and live-environment oracles~\cite{murakkab_osdi26,sregym_arxiv26}.
+These sources motivate workload state and oracle selection. Their runtime
+orchestration, environment synthesis, projected-volume materialization, and
+reload behavior remain outside \namei's mechanism claim.
