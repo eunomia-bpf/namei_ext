@@ -12,7 +12,8 @@ traditional Redis/nginx ccache build/cache workload with feature-equivalent
 FUSE comparison. The 2026-07-24 standalone release closes real compiler-output
 coverage for the epoch-switch row, and a one-sample integrated
 `experiment-env-cache` smoke confirms packaging. Real miss/stale/corrupt
-rejection compile cells remain open.
+release cells remain open, but one-sample BFS probes now pass for stale-local
+fallback and corrupt-hidden non-use under the same Redis/nginx ccache oracle.
 
 ## Current Story
 
@@ -33,8 +34,8 @@ is programmable, while the subsystem machinery remains in the kernel.
 
 | RQ | Current form | Current status |
 | --- | --- | --- |
-| RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Agent workspace RQ1 rows are complete. Build/cache verified-hot-cache compile and real epoch-switch compile rows are complete. Miss/stale/corrupt compile rows remain open. |
-| RQ2 Cost / overhead versus FUSE | What is the cost of putting programmable policy on the VFS name-resolution path compared with feature-equivalent FUSE? | Build/cache has same-oracle FUSE comparisons for hot-cache compile, trace-derived state selection, and real compile epoch switch. Timing is release-run evidence, not a broad FUSE claim. |
+| RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Agent workspace RQ1 rows are complete. Build/cache verified-hot-cache compile and real epoch-switch compile rows are complete. One-sample stale-local and corrupt-hidden fallback probes pass. Miss and release-scale stale/corrupt compile rows remain open. |
+| RQ2 Cost / overhead versus FUSE | What is the cost of putting programmable policy on the VFS name-resolution path compared with feature-equivalent FUSE? | Build/cache has same-oracle FUSE comparisons for hot-cache compile, trace-derived state selection, real compile epoch switch, and one-sample stale/corrupt-hidden BFS probes. Timing is release-run or probe evidence, not a broad FUSE claim. |
 | RQ3 Safety / boundary versus custom or stackable FS | Does `namei_ext` provide a narrower verifier-bounded, fail-closed ownership boundary than building a custom or stackable filesystem when the needed behavior is only name resolution? | Boundary framing is documented. Upstream-quality selftests, API documentation, and hook-point safety review are still missing. |
 
 ## Latest Build/Cache Evidence
@@ -180,6 +181,65 @@ Claim boundary: this is an integrated packaging smoke, not a 20-sample
 integrated release and not a new paper result. It shows the standalone
 epoch-switch evidence can be included in the build/cache matrix machinery.
 
+### Bad-Local Fallback BFS Probes
+
+Implementation record:
+
+```text
+docs/tmp/2026-07-24-bad-local-fallback-probe-implementation.md
+```
+
+Stale command:
+
+```sh
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-stale-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=stale \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+```
+
+Raw root:
+
+```text
+results/phase1/20260724T-bad-local-stale-smoke-v1/
+```
+
+Corrupt-hidden command:
+
+```sh
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-corrupt-hidden-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=corrupt-hidden \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+```
+
+Raw root:
+
+```text
+results/phase1/20260724T-bad-local-corrupt-hidden-smoke-v1/
+```
+
+Summary:
+
+| Mode | Metric | `namei_ext` | Feature-equivalent FUSE |
+| --- | --- | ---: | ---: |
+| stale | Compile jobs / output matches | 20 / 20 | 20 / 20 |
+| stale | Direct cache hits | 20 | 20 |
+| stale | Bad-local objects | 40 | 40 |
+| stale | Bad-local non-use checks | 80 / 80 passed | 80 / 80 passed |
+| stale | Compile ns | 7,838,229,684 | 13,627,383,025 |
+| corrupt-hidden | Compile jobs / output matches | 20 / 20 | 20 / 20 |
+| corrupt-hidden | Direct cache hits | 20 | 20 |
+| corrupt-hidden | Bad-local objects | 40 | 40 |
+| corrupt-hidden | Bad-local non-use checks | 80 / 80 passed | 80 / 80 passed |
+| corrupt-hidden | Compile ns | 7,982,902,246 | 13,235,264,639 |
+
+Claim boundary: these are one-sample BFS probes. They support promoting
+stale-local fallback and corrupt-hidden non-use to a release-scale same-oracle
+row, but they do not yet close the full miss/stale/corrupt/epoch real compile
+state machine. In particular, `corrupt-hidden` is not an explicit
+selected-corrupt reject plus natural ccache retry result.
+
 ## Agent Workspace Evidence
 
 Formal KVM RQ1 runs:
@@ -208,6 +268,9 @@ does not by itself settle final RQ2 timing or RQ3 upstream safety.
   native hot ccache and feature-equivalent FUSE.
 - The build/cache real compile epoch-switch row passes 20 samples for both
   `namei_ext` and FUSE, with all epoch outputs matching the hot-object oracle.
+- The stale-local and corrupt-hidden build/cache BFS probes pass one KVM sample
+  each for both `namei_ext` and FUSE, with bad-local non-use evidence and
+  output-object equality.
 - The FUSE rows are the main RQ2 comparator. Native ccache is an oracle/control,
   not the main baseline.
 - `namei_ext` keeps ccache and the lower filesystem responsible for data path,
@@ -216,7 +279,8 @@ does not by itself settle final RQ2 timing or RQ3 upstream safety.
 ## What We Must Not Claim Yet
 
 - Do not claim the full real compile miss/stale/corrupt/epoch state machine is
-  closed. Only hot-cache compile and epoch-switch compile are closed.
+  closed. Hot-cache compile and epoch-switch compile are release-scale closed;
+  stale-local and corrupt-hidden fallback are one-sample BFS evidence only.
 - Do not claim broad superiority over all FUSE variants. Optimized FUSE,
   passthrough, and recent FUSE systems are related mechanism pressure.
 - Do not claim upstream readiness without selftests, concise ABI documentation,
@@ -286,6 +350,7 @@ Local references:
 - `docs/reference/CODE_SOURCES.md`
 - `docs/tmp/2026-07-24-build-cache-real-compile-epoch-plan.md`
 - `docs/tmp/2026-07-24-build-cache-real-compile-epoch-implementation.md`
+- `docs/tmp/2026-07-24-bad-local-fallback-probe-implementation.md`
 - `docs/tmp/2026-07-24-lpc-proposal-and-upstream-reference.md`
 - `docs/tmp/2026-07-24-bfs-experiment-slate.md`
 - `docs/tmp/2026-07-24-stale-corrupt-fallback-probe-design.md`
@@ -296,7 +361,7 @@ Local references:
 2. Prepare an upstream RFC note with the hook/API, safety model, and selftest
    plan.
 3. Add kernel selftests and a smaller KVM demo target.
-4. Implement and run real compile stale and corrupt rejection probes under
-   the same `namei_ext` versus feature-equivalent FUSE oracle.
-5. Decide whether to run a 20-sample integrated `experiment-env-cache` release
-   only after stale/corrupt BFS probes show which path has highest paper value.
+4. Decide whether to promote the stale/corrupt-hidden bad-local fallback probe
+   to a 20-sample combined same-oracle run and result review.
+5. Keep the real compile miss cell and explicit selected-corrupt reject/retry
+   as separate candidates; do not expand baselines before this decision.

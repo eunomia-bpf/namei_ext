@@ -1,6 +1,6 @@
 # Evaluation Plan
 
-Last updated: 2026-07-23
+Last updated: 2026-07-24
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed full writing,
 citation, meaning-preservation, build checks, and independent outer audit.
@@ -106,8 +106,10 @@ admitted full runs pass result review:
   feature-equivalent FUSE rows, a trace-derived policy/FUSE state row, and an
   integrated real compiler-output epoch-switch row. The integrated path has
   passed a one-sample smoke; the current 20-sample epoch-switch evidence remains
-  the standalone KVM release. The current implementation still does not cover
-  real compiler-output miss, stale, or corrupt rejection cells.
+  the standalone KVM release. A separate bad-local fallback KVM target has
+  passed one-sample stale-local and corrupt-hidden probes. The current
+  implementation still does not cover a real compiler-output miss release cell
+  or explicit selected-corrupt reject followed by natural ccache retry.
 - `make kvm-agent-workspace-preflight` remains the implemented dependency
   preflight; it is not a paper-result cell.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves old
@@ -388,9 +390,42 @@ results/experiments/build-cache/20260724T-build-cache-bfs-integrated-smoke-v1/
 This run passed with one `build-cache-matrix-summary`, one done row, zero failed
 rows, and a clean dmesg gate. It validates packaging and summary integration,
 not a new paper-result repetition count. Per the BFS plan in
-`docs/tmp/2026-07-24-bfs-experiment-slate.md`, the next work should probe stale
-and corrupt fallback cells before spending budget on a 20-sample integrated
-release.
+`docs/tmp/2026-07-24-bfs-experiment-slate.md`, this smoke should not by itself
+trigger a 20-sample integrated release before adjacent BFS branches are checked.
+
+The stale and corrupt-hidden BFS probes have now been checked with the
+standalone bad-local fallback target:
+
+```sh
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-stale-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=stale \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-corrupt-hidden-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=corrupt-hidden \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+```
+
+Raw roots:
+
+```text
+results/phase1/20260724T-bad-local-stale-smoke-v1/
+results/phase1/20260724T-bad-local-corrupt-hidden-smoke-v1/
+```
+
+Both modes passed in KVM for `namei_ext` and feature-equivalent FUSE. Each mode
+ran 20 Redis/nginx ccache compile jobs per system, matched all 20 output
+objects to the hot-cache oracle, recorded 40 bad local objects per system,
+passed 80/80 bad-local non-use checks per system, and passed the dmesg gate.
+The implementation record is
+`docs/tmp/2026-07-24-bad-local-fallback-probe-implementation.md`.
+
+These are BFS probes, not release-scale paper results. They support promoting a
+combined stale/corrupt-hidden row, but they do not claim an explicit
+selected-corrupt reject followed by natural ccache retry and they do not close
+the real compile miss cell.
 
 The upstream/LPC-facing value of this row is that a real build-cache use case
 can be expressed as VFS name-resolution policy while ccache and the lower
@@ -398,7 +433,8 @@ filesystem keep data and write semantics. The matched FUSE row demonstrates
 the same behavior through a filesystem-daemon boundary that owns
 `getattr/readdir/open/read/release` handling and mount lifecycle. The current
 boundary evidence therefore supports an implementation-scope argument even
-before the full real compile stale/corrupt/epoch state machine is complete.
+before the full real compile miss/stale/corrupt/epoch state machine is complete
+at release scale.
 
 Step 0002 selected the intended suite for later BUILD_AND_EVALUATE admission,
 subject only to documented KVM/Docker compatibility failures before policy
@@ -453,9 +489,11 @@ dependency work, not an experiment result.
 Current status after the 2026-07-23 build/cache release run and the
 2026-07-24 epoch-switch release run: the verified hot-cache compile subset and
 the real compile epoch-switch subset are completed and useful for RQ1/RQ2
-mechanism evidence and LPC/upstream motivation. The broader state-machine claim
-remains open until real miss, stale, and corrupt rejection compile cells are
-admitted and run under the same oracle for both `namei_ext` and FUSE.
+mechanism evidence and LPC/upstream motivation. One-sample stale-local and
+corrupt-hidden fallback probes passed and are now the strongest next BFS branch
+to promote. The broader state-machine claim remains open until real miss and
+release-scale stale/corrupt fallback compile cells are admitted and run under
+the same oracle for both `namei_ext` and FUSE.
 
 ### Experiment C: Service/Config Transition
 

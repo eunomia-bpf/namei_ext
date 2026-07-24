@@ -21360,7 +21360,858 @@ static int run_w4_ccache_bulk_compile_epoch_switch(
 		out, samples, &totals,
 		totals.failures ?
 			"W4 ccache real compile epoch-switch row failed" :
-			"W4 ccache real compile epoch-switch row passed for namei_ext and feature-equivalent FUSE");
+			   "W4 ccache real compile epoch-switch row passed for namei_ext and feature-equivalent FUSE");
+	return totals.failures ? 1 : 0;
+}
+
+enum w4_ccache_bad_local_mode {
+	W4_CCACHE_BAD_LOCAL_STALE,
+	W4_CCACHE_BAD_LOCAL_CORRUPT_HIDDEN,
+};
+
+struct w4_ccache_bad_local_totals {
+	int policy_rows;
+	int fuse_rows;
+	int failures;
+	size_t source_count;
+	size_t object_count;
+	size_t policy_jobs;
+	size_t policy_matches;
+	size_t policy_cache_path_ops;
+	size_t policy_cache_object_ops;
+	size_t fuse_jobs;
+	size_t fuse_matches;
+	size_t fuse_cache_path_ops;
+	size_t fuse_cache_object_ops;
+	unsigned long long policy_compile_ns;
+	unsigned long long fuse_compile_ns;
+	unsigned long long policy_direct_hit;
+	unsigned long long fuse_direct_hit;
+	unsigned long long policy_setup_writes;
+	unsigned long long fuse_setup_writes;
+	unsigned long long fuse_mounts;
+	size_t policy_bad_local_objects;
+	size_t policy_nonuse_checks;
+	size_t policy_nonuse_passes;
+	size_t fuse_bad_local_objects;
+	size_t fuse_nonuse_checks;
+	size_t fuse_nonuse_passes;
+};
+
+static const char *w4_ccache_bad_local_mode_name(
+	enum w4_ccache_bad_local_mode mode)
+{
+	return mode == W4_CCACHE_BAD_LOCAL_CORRUPT_HIDDEN ? "corrupt-hidden" :
+							    "stale";
+}
+
+static int parse_w4_ccache_bad_local_mode(
+	const char *name, enum w4_ccache_bad_local_mode *mode)
+{
+	if (!strcmp(name, "stale")) {
+		*mode = W4_CCACHE_BAD_LOCAL_STALE;
+		return 0;
+	}
+	if (!strcmp(name, "corrupt-hidden")) {
+		*mode = W4_CCACHE_BAD_LOCAL_CORRUPT_HIDDEN;
+		return 0;
+	}
+	return -EINVAL;
+}
+
+static __u32 w4_ccache_bad_local_cache_state(
+	enum w4_ccache_bad_local_mode mode)
+{
+	return mode == W4_CCACHE_BAD_LOCAL_CORRUPT_HIDDEN ?
+		       CACHE_STATE_CORRUPT :
+		       CACHE_STATE_STALE;
+}
+
+static const char *w4_ccache_bad_local_text(
+	enum w4_ccache_bad_local_mode mode)
+{
+	return mode == W4_CCACHE_BAD_LOCAL_CORRUPT_HIDDEN ?
+		       W4_CACHE_CORRUPT_REJECT :
+		       W4_CACHE_STALE_LOCAL;
+}
+
+static int prepare_ccache_bad_local_entry(
+	struct oracle_entry *entry, const char *trace_cache_dir,
+	const char *cache_dir, char *canonical, size_t canonical_size,
+	enum w4_ccache_bad_local_mode mode, bool keep_visible_good)
+{
+	char mapped_path[PATH_MAX];
+	char local_path[PATH_MAX];
+	char canonical_path[PATH_MAX];
+	char parent_dir[PATH_MAX];
+	struct stat st;
+	const char *rel;
+	char *base;
+	char *slash;
+	int ret;
+
+	if (!path_under_dir(entry->original, trace_cache_dir, &rel))
+		return -EINVAL;
+	if (!has_suffix(entry->shadow, ".local"))
+		return -EINVAL;
+	ret = set_path(mapped_path, sizeof(mapped_path), cache_dir, rel);
+	if (ret)
+		return ret;
+	slash = strrchr(mapped_path, '/');
+	if (!slash || slash == mapped_path)
+		return -EINVAL;
+	base = slash + 1;
+	if (strcmp(base, entry->visible))
+		return -EINVAL;
+	*slash = 0;
+	ret = copy_string(parent_dir, sizeof(parent_dir), mapped_path);
+	*slash = '/';
+	if (ret)
+		return ret;
+	ret = w4_ccache_epoch_canonical_name(canonical, canonical_size,
+					     entry->visible);
+	if (ret)
+		return ret;
+	ret = set_path(local_path, sizeof(local_path), parent_dir,
+		       entry->shadow);
+	if (!ret)
+		ret = set_path(canonical_path, sizeof(canonical_path),
+			       parent_dir, canonical);
+	if (ret)
+		return ret;
+	if (stat(mapped_path, &st))
+		return -errno;
+	if (!S_ISREG(st.st_mode))
+		return -EINVAL;
+	if (!lstat(local_path, &st) || !lstat(canonical_path, &st))
+		return -EEXIST;
+	if (errno != ENOENT)
+		return -errno;
+	ret = copy_file(mapped_path, canonical_path);
+	if (!ret)
+		ret = write_text_file(local_path, w4_ccache_bad_local_text(mode));
+	if (!ret && !keep_visible_good && unlink(mapped_path))
+		ret = -errno;
+	if (ret)
+		return ret;
+	return copy_string(entry->dir, sizeof(entry->dir), parent_dir);
+}
+
+static int prepare_ccache_bad_local_entries(
+	struct oracle_entry *entries, size_t nr_entries,
+	const char *trace_cache_dir, const char *cache_dir,
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1],
+	enum w4_ccache_bad_local_mode mode, bool keep_visible_good,
+	unsigned long long *backing_writes)
+{
+	size_t i;
+
+	*backing_writes = 0;
+	for (i = 0; i < nr_entries; i++) {
+		int ret = prepare_ccache_bad_local_entry(
+			&entries[i], trace_cache_dir, cache_dir,
+			canonical_names[i], NAMEI_EXT_NAME_MAX + 1, mode,
+			keep_visible_good);
+
+		if (ret)
+			return ret;
+		*backing_writes += 2;
+	}
+	return 0;
+}
+
+static int populate_w4_ccache_bad_local_policy_rules(
+	struct attached_policy *policy, __u64 cgroup_id,
+	const struct oracle_entry *entries,
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1],
+	size_t nr_entries, enum w4_ccache_bad_local_mode mode,
+	unsigned long long *writes)
+{
+	__u32 state = w4_ccache_bad_local_cache_state(mode);
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < nr_entries; i++) {
+		int ret;
+
+		ret = update_cache_rule(policy, cgroup_id,
+					BPF_NAMEI_EXT_LOOKUP, entries[i].dir,
+					entries[i].visible, canonical_names[i],
+					i + 1, state,
+					entries[i].original_sha256);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_rule(policy, cgroup_id,
+					BPF_NAMEI_EXT_READDIR,
+					entries[i].dir, entries[i].shadow,
+					entries[i].visible, i + 1, state,
+					entries[i].original_sha256);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_rule(policy, cgroup_id,
+					BPF_NAMEI_EXT_READDIR,
+					entries[i].dir, canonical_names[i],
+					entries[i].visible, i + 1, state,
+					entries[i].original_sha256);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int w4_ccache_bad_local_policy_nonuse_checks(
+	const struct oracle_entry *entries,
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1],
+	size_t nr_entries, size_t *bad_local_objects, size_t *checks,
+	size_t *passes)
+{
+	char visible_path[PATH_MAX];
+	char local_path[PATH_MAX];
+	char canonical_path[PATH_MAX];
+	size_t i;
+	int failures = 0;
+
+	*bad_local_objects = 0;
+	*checks = 0;
+	*passes = 0;
+	for (i = 0; i < nr_entries; i++) {
+		struct stat st;
+		int ret;
+
+		ret = set_path(visible_path, sizeof(visible_path),
+			       entries[i].dir, entries[i].visible);
+		if (!ret)
+			ret = set_path(local_path, sizeof(local_path),
+				       entries[i].dir, entries[i].shadow);
+		if (!ret)
+			ret = set_path(canonical_path, sizeof(canonical_path),
+				       entries[i].dir, canonical_names[i]);
+		if (ret) {
+			failures++;
+			continue;
+		}
+		if (lstat(local_path, &st) || lstat(canonical_path, &st)) {
+			failures++;
+			continue;
+		}
+		(*bad_local_objects)++;
+		*checks += 2;
+		if (!compare_files(visible_path, canonical_path))
+			(*passes)++;
+		else
+			failures++;
+		if (compare_files(visible_path, local_path))
+			(*passes)++;
+		else
+			failures++;
+	}
+	return failures;
+}
+
+static int w4_ccache_bad_local_fuse_nonuse_checks(
+	const struct w4_fuse_mount *mount, const struct oracle_entry *entries,
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1],
+	size_t nr_entries, size_t *bad_local_objects, size_t *checks,
+	size_t *passes)
+{
+	char visible_path[PATH_MAX];
+	char local_path[PATH_MAX];
+	char canonical_path[PATH_MAX];
+	size_t i;
+	int failures = 0;
+
+	*bad_local_objects = 0;
+	*checks = 0;
+	*passes = 0;
+	for (i = 0; i < nr_entries; i++) {
+		struct stat st;
+		int ret;
+
+		ret = set_path(visible_path, sizeof(visible_path),
+			       entries[i].dir, entries[i].visible);
+		if (!ret)
+			ret = w4_fuse_entry_backing_path(
+				mount, &entries[i], entries[i].shadow,
+				local_path, sizeof(local_path));
+		if (!ret)
+			ret = w4_fuse_entry_backing_path(
+				mount, &entries[i], canonical_names[i],
+				canonical_path, sizeof(canonical_path));
+		if (ret) {
+			failures++;
+			continue;
+		}
+		if (lstat(local_path, &st) || lstat(canonical_path, &st)) {
+			failures++;
+			continue;
+		}
+		(*bad_local_objects)++;
+		*checks += 2;
+		if (!compare_files(visible_path, canonical_path))
+			(*passes)++;
+		else
+			failures++;
+		if (compare_files(visible_path, local_path))
+			(*passes)++;
+		else
+			failures++;
+	}
+	return failures;
+}
+
+static void emit_w4_ccache_bad_local_sample(
+	FILE *out, int sample, const char *system, bool fuse_baseline,
+	enum w4_ccache_bad_local_mode mode, bool pass, int failures,
+	size_t source_count, size_t object_count,
+	const struct w4_ccache_epoch_compile_round *round,
+	unsigned long long setup_writes, unsigned long long fuse_mounts,
+	size_t bad_local_objects, size_t nonuse_checks, size_t nonuse_passes,
+	const char *detail)
+{
+	fputs("{\"event\":\"w4-ccache-bulk-bad-local-fallback-sample\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_ccache_bulk_bad_local_fallback.v1\","
+	      "\"result_level\":\"kvm_real_ccache_bulk_bad_local_fallback\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-ccache-bulk-redis-nginx\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fputs("\"mode\":", out);
+	fprint_json_string(out, w4_ccache_bad_local_mode_name(mode));
+	fputs(",\"row_kind\":", out);
+	fprint_json_string(out, fuse_baseline ? "external_baseline" :
+						  "proposed_system");
+	fputs(",\"system\":", out);
+	fprint_json_string(out, system);
+	if (fuse_baseline)
+		fputs(",\"baseline\":\"fuse_cache_view\"", out);
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"failures\":%d,"
+		"\"source_manifest_count\":%zu,"
+		"\"cache_objects\":%zu,"
+		"\"compile_jobs\":%zu,"
+		"\"compile_output_matches\":%zu,"
+		"\"compile_ns\":%llu,"
+		"\"cache_path_file_ops\":%zu,"
+		"\"cache_object_ops\":%zu,"
+		"\"direct_cache_hit\":%llu,"
+		"\"setup_writes\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"bad_local_objects\":%zu,"
+		"\"bad_local_nonuse_checks\":%zu,"
+		"\"bad_local_nonuse_passes\":%zu,"
+		"\"bad_local_nonuse_oracle\":%s,"
+		"\"real_ccache_run\":true,"
+		"\"lookup_time_fallback\":true,"
+		"\"policy_executed\":%s,"
+		"\"ccache_compile_policy_executed\":%s,"
+		"\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"bfs_probe\":true,"
+		"\"complete_miss_stale_corrupt_compile_state_machine\":false,"
+		"\"release_gate_pass\":false,"
+		"\"detail\":",
+		sample, pass ? "true" : "false", failures, source_count,
+		object_count, round->compile_jobs, round->output_matches,
+		round->compile_ns, round->cache_path_ops,
+		round->cache_object_ops,
+		fuse_baseline ? round->ccache_log_direct_hit :
+				round->direct_cache_hit,
+		setup_writes, fuse_mounts, bad_local_objects, nonuse_checks,
+		nonuse_passes,
+		(nonuse_checks > 0 && nonuse_checks == nonuse_passes) ?
+			"true" :
+			"false",
+		fuse_baseline ? "false" : "true",
+		fuse_baseline ? "false" : "true",
+		fuse_baseline ? "true" : "false");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w4_ccache_bad_local_summary(
+	FILE *out, int samples, enum w4_ccache_bad_local_mode mode,
+	const struct w4_ccache_bad_local_totals *totals, const char *detail)
+{
+	bool policy_pass = totals->policy_rows == samples &&
+			   totals->policy_jobs == totals->policy_matches &&
+			   totals->policy_jobs ==
+				   (size_t)samples * totals->source_count &&
+			   totals->policy_direct_hit >=
+				   (unsigned long long)samples *
+					   totals->source_count &&
+			   totals->policy_bad_local_objects >=
+				   (size_t)samples * totals->object_count &&
+			   totals->policy_nonuse_checks > 0 &&
+			   totals->policy_nonuse_checks ==
+				   totals->policy_nonuse_passes;
+	bool fuse_pass = totals->fuse_rows == samples &&
+			 totals->fuse_jobs == totals->fuse_matches &&
+			 totals->fuse_jobs ==
+				 (size_t)samples * totals->source_count &&
+			 totals->fuse_direct_hit >=
+				 (unsigned long long)samples *
+					 totals->source_count &&
+			 totals->fuse_mounts == (unsigned long long)samples &&
+			 totals->fuse_bad_local_objects >=
+				 (size_t)samples * totals->object_count &&
+			 totals->fuse_nonuse_checks > 0 &&
+			 totals->fuse_nonuse_checks ==
+				 totals->fuse_nonuse_passes;
+	bool pass = totals->failures == 0 && policy_pass && fuse_pass;
+
+	fputs("{\"event\":\"w4-ccache-bulk-bad-local-fallback-summary\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_ccache_bulk_bad_local_fallback.v1\","
+	      "\"result_level\":\"kvm_real_ccache_bulk_bad_local_fallback\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-ccache-bulk-redis-nginx\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fputs("\"mode\":", out);
+	fprint_json_string(out, w4_ccache_bad_local_mode_name(mode));
+	fprintf(out,
+		",\"samples\":%d,"
+		"\"systems\":2,"
+		"\"pass\":%s,"
+		"\"failures\":%d,"
+		"\"source_manifest_count\":%zu,"
+		"\"cache_objects\":%zu,"
+		"\"namei_ext\":{\"system\":\"cache_locality_policy\","
+		"\"pass\":%s,"
+		"\"rows\":%d,"
+		"\"compile_jobs\":%zu,"
+		"\"compile_output_matches\":%zu,"
+		"\"compile_ns\":%llu,"
+		"\"cache_path_file_ops\":%zu,"
+		"\"cache_object_ops\":%zu,"
+		"\"direct_cache_hit\":%llu,"
+		"\"setup_writes\":%llu,"
+		"\"bad_local_objects\":%zu,"
+		"\"bad_local_nonuse_checks\":%zu,"
+		"\"bad_local_nonuse_passes\":%zu,"
+		"\"policy_executed\":true},"
+		"\"fuse_baseline\":{\"system\":\"fuse_cache_view\","
+		"\"pass\":%s,"
+		"\"rows\":%d,"
+		"\"compile_jobs\":%zu,"
+		"\"compile_output_matches\":%zu,"
+		"\"compile_ns\":%llu,"
+		"\"cache_path_file_ops\":%zu,"
+		"\"cache_object_ops\":%zu,"
+		"\"direct_cache_hit\":%llu,"
+		"\"setup_writes\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"bad_local_objects\":%zu,"
+		"\"bad_local_nonuse_checks\":%zu,"
+		"\"bad_local_nonuse_passes\":%zu,"
+		"\"feature_equivalent_baseline\":true},"
+		"\"real_ccache_run\":true,"
+		"\"lookup_time_fallback\":true,"
+		"\"stale_cell_probe\":%s,"
+		"\"corrupt_hidden_cell_probe\":%s,"
+		"\"policy_executed\":true,"
+		"\"feature_equivalent_fuse\":true,"
+		"\"kvm_validated\":true,"
+		"\"bfs_probe\":true,"
+		"\"complete_miss_stale_corrupt_compile_state_machine\":false,"
+		"\"release_gate_pass\":false,"
+		"\"detail\":",
+		samples, pass ? "true" : "false", totals->failures,
+		totals->source_count, totals->object_count,
+		policy_pass ? "true" : "false", totals->policy_rows,
+		totals->policy_jobs, totals->policy_matches,
+		totals->policy_compile_ns, totals->policy_cache_path_ops,
+		totals->policy_cache_object_ops, totals->policy_direct_hit,
+		totals->policy_setup_writes, totals->policy_bad_local_objects,
+		totals->policy_nonuse_checks, totals->policy_nonuse_passes,
+		fuse_pass ? "true" : "false", totals->fuse_rows,
+		totals->fuse_jobs, totals->fuse_matches,
+		totals->fuse_compile_ns, totals->fuse_cache_path_ops,
+		totals->fuse_cache_object_ops, totals->fuse_direct_hit,
+		totals->fuse_setup_writes, totals->fuse_mounts,
+		totals->fuse_bad_local_objects, totals->fuse_nonuse_checks,
+		totals->fuse_nonuse_passes,
+		mode == W4_CCACHE_BAD_LOCAL_STALE ? "true" : "false",
+		mode == W4_CCACHE_BAD_LOCAL_CORRUPT_HIDDEN ? "true" :
+							     "false");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void add_w4_ccache_bad_local_policy_totals(
+	struct w4_ccache_bad_local_totals *totals,
+	const struct w4_ccache_epoch_compile_round *round,
+	unsigned long long setup_writes, size_t bad_local_objects,
+	size_t nonuse_checks, size_t nonuse_passes)
+{
+	totals->policy_rows++;
+	totals->policy_jobs += round->compile_jobs;
+	totals->policy_matches += round->output_matches;
+	totals->policy_compile_ns += round->compile_ns;
+	totals->policy_cache_path_ops += round->cache_path_ops;
+	totals->policy_cache_object_ops += round->cache_object_ops;
+	totals->policy_direct_hit += round->direct_cache_hit;
+	totals->policy_setup_writes += setup_writes;
+	totals->policy_bad_local_objects += bad_local_objects;
+	totals->policy_nonuse_checks += nonuse_checks;
+	totals->policy_nonuse_passes += nonuse_passes;
+}
+
+static void add_w4_ccache_bad_local_fuse_totals(
+	struct w4_ccache_bad_local_totals *totals,
+	const struct w4_ccache_epoch_compile_round *round,
+	unsigned long long setup_writes, unsigned long long fuse_mounts,
+	size_t bad_local_objects, size_t nonuse_checks, size_t nonuse_passes)
+{
+	totals->fuse_rows++;
+	totals->fuse_jobs += round->compile_jobs;
+	totals->fuse_matches += round->output_matches;
+	totals->fuse_compile_ns += round->compile_ns;
+	totals->fuse_cache_path_ops += round->cache_path_ops;
+	totals->fuse_cache_object_ops += round->cache_object_ops;
+	totals->fuse_direct_hit += round->ccache_log_direct_hit;
+	totals->fuse_setup_writes += setup_writes;
+	totals->fuse_mounts += fuse_mounts;
+	totals->fuse_bad_local_objects += bad_local_objects;
+	totals->fuse_nonuse_checks += nonuse_checks;
+	totals->fuse_nonuse_passes += nonuse_passes;
+}
+
+static int run_one_w4_ccache_bad_local_policy_sample(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *work_dir, int sample, const char *trace_cache_dir,
+	const struct oracle_entry *input_entries, size_t nr_entries,
+	const struct w4_ccache_source *sources, size_t nr_sources,
+	const char *redis_build_src, const char *nginx_build_src,
+	const char *baseline_hot_dir, const char *policy_obj,
+	enum w4_ccache_bad_local_mode mode,
+	struct w4_ccache_bad_local_totals *totals)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1];
+	struct w4_ccache_epoch_compile_round round;
+	char sample_dir[PATH_MAX];
+	char sample_cache_dir[PATH_MAX];
+	char stats_path[PATH_MAX];
+	char copy_label[64];
+	unsigned long long backing_writes = 0;
+	unsigned long long rule_writes = 0;
+	unsigned long long setup_writes = 0;
+	size_t bad_local_objects = 0;
+	size_t nonuse_checks = 0;
+	size_t nonuse_passes = 0;
+	int failures = 0;
+	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(canonical_names, 0, sizeof(canonical_names));
+	memset(&round, 0, sizeof(round));
+	memcpy(entries, input_entries, sizeof(entries[0]) * nr_entries);
+
+	ret = snprintf(sample_dir, sizeof(sample_dir),
+		       "%s/bad-local-policy-%s-sample-%03d", work_dir,
+		       w4_ccache_bad_local_mode_name(mode), sample);
+	if (ret < 0)
+		ret = -errno;
+	else if ((size_t)ret >= sizeof(sample_dir))
+		ret = -ENAMETOOLONG;
+	else
+		ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(sample_cache_dir, sizeof(sample_cache_dir),
+			       sample_dir, "ccache");
+	if (!ret)
+		ret = set_path(stats_path, sizeof(stats_path), sample_dir,
+			       "ccache-policy-bad-local-stats.txt");
+	if (!ret) {
+		ret = snprintf(copy_label, sizeof(copy_label),
+			       "bad-local-policy-cache-copy-%03d", sample);
+		if (ret < 0)
+			ret = -errno;
+		else if ((size_t)ret >= sizeof(copy_label))
+			ret = -ENAMETOOLONG;
+		else
+			ret = 0;
+	}
+	if (!ret)
+		ret = copy_tree_for_w1_sample(trace_cache_dir, sample_cache_dir,
+					      sample_dir, copy_label);
+	if (!ret)
+		ret = prepare_ccache_bad_local_entries(
+			entries, nr_entries, trace_cache_dir, sample_cache_dir,
+			canonical_names, mode, false, &backing_writes);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_CACHE_LOCALITY,
+				  "cache_locality", &policy);
+	if (!ret)
+		ret = populate_w4_ccache_bad_local_policy_rules(
+			&policy, cgroup_id, entries, canonical_names, nr_entries,
+			mode, &rule_writes);
+	if (!ret)
+		setup_writes = backing_writes + rule_writes;
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	if (ret) {
+		failures++;
+		goto out_emit;
+	}
+
+	failures += w4_ccache_bad_local_policy_nonuse_checks(
+		entries, canonical_names, nr_entries, &bad_local_objects,
+		&nonuse_checks, &nonuse_passes);
+	unsetenv("CCACHE_READONLY");
+	unsetenv("CCACHE_READONLY_DIRECT");
+	unsetenv("CCACHE_NOSTATS");
+	unsetenv("CCACHE_TEMPDIR");
+	unsetenv("CCACHE_LOGFILE");
+	if (setenv("CCACHE_DIR", sample_cache_dir, 1)) {
+		failures++;
+		goto out_destroy;
+	}
+	failures += run_w4_ccache_epoch_compile_round(
+		sample_dir, sample_cache_dir, "policy-bad-local",
+		".policy-bad-local.o", ".policy-bad-local.stdout",
+		".policy-bad-local.stderr", ".policy-bad-local.strace.log",
+		entries, nr_entries, sources, nr_sources, redis_build_src,
+		nginx_build_src, baseline_hot_dir, stats_path, NULL, true,
+		&round);
+
+out_destroy:
+	ret = destroy_policy(&policy);
+	if (ret)
+		failures++;
+	goto out_emit;
+
+out_emit:
+	if (policy.obj || policy.cgroup_fd >= 0 || policy.prog_fd >= 0)
+		destroy_policy(&policy);
+	add_w4_ccache_bad_local_policy_totals(
+		totals, &round, setup_writes, bad_local_objects,
+		nonuse_checks, nonuse_passes);
+	totals->failures += failures;
+	emit_w4_ccache_bad_local_sample(
+		out, sample, "cache_locality_policy", false, mode,
+		failures == 0, failures, nr_sources, nr_entries, &round,
+		setup_writes, 0, bad_local_objects, nonuse_checks,
+		nonuse_passes,
+		failures ? "namei_ext bad-local fallback compile probe failed" :
+			   "namei_ext bad-local fallback compile probe passed");
+	return failures ? 1 : 0;
+}
+
+static int run_one_w4_ccache_bad_local_fuse_sample(
+	FILE *out, const char *work_dir, int sample, const char *trace_cache_dir,
+	const struct oracle_entry *input_entries, size_t nr_entries,
+	const struct w4_ccache_source *sources, size_t nr_sources,
+	const char *redis_build_src, const char *nginx_build_src,
+	const char *baseline_hot_dir, enum w4_ccache_bad_local_mode mode,
+	struct w4_ccache_bad_local_totals *totals)
+{
+	struct w4_fuse_mount fuse_mount = {};
+	struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1];
+	struct w4_ccache_epoch_compile_round round;
+	char sample_dir[PATH_MAX];
+	char sample_cache_dir[PATH_MAX];
+	char tmp_dir[PATH_MAX];
+	char log_path[PATH_MAX];
+	char ready_rel[PATH_MAX];
+	char copy_label[64];
+	unsigned long long backing_writes = 0;
+	unsigned long long fuse_mounts = 0;
+	size_t bad_local_objects = 0;
+	size_t nonuse_checks = 0;
+	size_t nonuse_passes = 0;
+	int failures = 0;
+	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(canonical_names, 0, sizeof(canonical_names));
+	memset(&round, 0, sizeof(round));
+	memcpy(entries, input_entries, sizeof(entries[0]) * nr_entries);
+
+	ret = snprintf(sample_dir, sizeof(sample_dir),
+		       "%s/bad-local-fuse-%s-sample-%03d", work_dir,
+		       w4_ccache_bad_local_mode_name(mode), sample);
+	if (ret < 0)
+		ret = -errno;
+	else if ((size_t)ret >= sizeof(sample_dir))
+		ret = -ENAMETOOLONG;
+	else
+		ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(sample_cache_dir, sizeof(sample_cache_dir),
+			       sample_dir, "ccache");
+	if (!ret)
+		ret = set_path(tmp_dir, sizeof(tmp_dir), sample_dir,
+			       "ccache-tmp");
+	if (!ret)
+		ret = set_path(log_path, sizeof(log_path), sample_dir,
+			       "ccache-fuse-bad-local.log");
+	if (!ret) {
+		ret = snprintf(copy_label, sizeof(copy_label),
+			       "bad-local-fuse-cache-copy-%03d", sample);
+		if (ret < 0)
+			ret = -errno;
+		else if ((size_t)ret >= sizeof(copy_label))
+			ret = -ENAMETOOLONG;
+		else
+			ret = 0;
+	}
+	if (!ret)
+		ret = copy_tree_for_w1_sample(trace_cache_dir, sample_cache_dir,
+					      sample_dir, copy_label);
+	if (!ret)
+		ret = prepare_ccache_bad_local_entries(
+			entries, nr_entries, trace_cache_dir, sample_cache_dir,
+			canonical_names, mode, true, &backing_writes);
+	if (!ret)
+		ret = mkdir_if_missing(tmp_dir);
+	if (!ret)
+		ret = ccache_original_relative(trace_cache_dir, &entries[0],
+					       ready_rel, sizeof(ready_rel));
+	if (!ret)
+		ret = setup_w4_fuse_passthrough_cache_view(
+			sample_cache_dir, ready_rel, &fuse_mounts, &fuse_mount);
+	if (ret) {
+		failures++;
+		goto out_emit;
+	}
+
+	failures += w4_ccache_bad_local_fuse_nonuse_checks(
+		&fuse_mount, entries, canonical_names, nr_entries,
+		&bad_local_objects, &nonuse_checks, &nonuse_passes);
+	if (setenv("CCACHE_DIR", sample_cache_dir, 1) ||
+	    setenv("CCACHE_READONLY", "1", 1) ||
+	    setenv("CCACHE_READONLY_DIRECT", "1", 1) ||
+	    setenv("CCACHE_NOSTATS", "1", 1) ||
+	    setenv("CCACHE_TEMPDIR", tmp_dir, 1) ||
+	    setenv("CCACHE_LOGFILE", log_path, 1)) {
+		failures++;
+		goto out_unmount;
+	}
+	failures += run_w4_ccache_epoch_compile_round(
+		sample_dir, sample_cache_dir, "fuse-bad-local",
+		".fuse-bad-local.o", ".fuse-bad-local.stdout",
+		".fuse-bad-local.stderr", ".fuse-bad-local.strace.log",
+		entries, nr_entries, sources, nr_sources, redis_build_src,
+		nginx_build_src, baseline_hot_dir, NULL, log_path, true,
+		&round);
+
+out_unmount:
+	ret = unmount_w4_fuse(&fuse_mount);
+	if (ret)
+		failures++;
+out_emit:
+	if (fuse_mount.active)
+		unmount_w4_fuse(&fuse_mount);
+	add_w4_ccache_bad_local_fuse_totals(
+		totals, &round, backing_writes, fuse_mounts,
+		bad_local_objects, nonuse_checks, nonuse_passes);
+	totals->failures += failures;
+	emit_w4_ccache_bad_local_sample(
+		out, sample, "fuse_cache_view", true, mode, failures == 0,
+		failures, nr_sources, nr_entries, &round, backing_writes,
+		fuse_mounts, bad_local_objects, nonuse_checks,
+		nonuse_passes,
+		failures ? "FUSE bad-local fallback compile probe failed" :
+			   "FUSE bad-local fallback compile probe passed");
+	return failures ? 1 : 0;
+}
+
+static int run_w4_ccache_bulk_bad_local_fallback(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	const char *trace_cache_dir, const char *entries_tsv,
+	const char *source_manifest, const char *redis_build_src,
+	const char *nginx_build_src, const char *baseline_hot_dir,
+	const char *policy_obj, enum w4_ccache_bad_local_mode mode)
+{
+	static struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	static struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES];
+	struct w4_ccache_bad_local_totals totals = {};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	size_t nr_entries = 0;
+	size_t nr_sources = 0;
+	int sample;
+	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(sources, 0, sizeof(sources));
+	if (samples <= 0) {
+		totals.failures = 1;
+		emit_w4_ccache_bad_local_summary(
+			out, samples, mode, &totals,
+			"sample count must be positive");
+		return 1;
+	}
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		totals.failures = 1;
+		emit_w4_ccache_bad_local_summary(
+			out, samples, mode, &totals,
+			"failed to create W4 bad-local fallback workdir");
+		return 1;
+	}
+	if (access(trace_cache_dir, R_OK | X_OK) || access(entries_tsv, R_OK) ||
+	    access(source_manifest, R_OK) ||
+	    access(redis_build_src, R_OK | X_OK) ||
+	    access(nginx_build_src, R_OK | X_OK) ||
+	    access(baseline_hot_dir, R_OK | X_OK) ||
+	    access(policy_obj, R_OK)) {
+		totals.failures = 1;
+		emit_w4_ccache_bad_local_summary(
+			out, samples, mode, &totals,
+			"W4 bad-local fallback inputs are not readable");
+		return 1;
+	}
+	ret = read_entries(entries_tsv, entries, &nr_entries);
+	if (!ret)
+		ret = read_w4_ccache_sources(source_manifest, sources,
+					     &nr_sources);
+	if (!ret)
+		ret = current_cgroup_path(cgroup_mount, current_cgroup,
+					  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret || !nr_entries || !nr_sources) {
+		totals.failures = 1;
+		totals.source_count = nr_sources;
+		totals.object_count = nr_entries;
+		emit_w4_ccache_bad_local_summary(
+			out, samples, mode, &totals,
+			"failed to read W4 bad-local fallback inputs");
+		return 1;
+	}
+	totals.source_count = nr_sources;
+	totals.object_count = nr_entries;
+
+	for (sample = 0; sample < samples; sample++) {
+		run_one_w4_ccache_bad_local_policy_sample(
+			out, current_cgroup, current_cgroup_id, work_dir,
+			sample, trace_cache_dir, entries, nr_entries, sources,
+			nr_sources, redis_build_src, nginx_build_src,
+			baseline_hot_dir, policy_obj, mode, &totals);
+		run_one_w4_ccache_bad_local_fuse_sample(
+			out, work_dir, sample, trace_cache_dir, entries,
+			nr_entries, sources, nr_sources, redis_build_src,
+			nginx_build_src, baseline_hot_dir, mode, &totals);
+	}
+
+	emit_w4_ccache_bad_local_summary(
+		out, samples, mode, &totals,
+		totals.failures ?
+			"W4 ccache bad-local fallback BFS probe failed" :
+			"W4 ccache bad-local fallback BFS probe passed for namei_ext and feature-equivalent FUSE");
 	return totals.failures ? 1 : 0;
 }
 
@@ -23179,6 +24030,36 @@ int main(int argc, char **argv)
 		return ret ? 1 : 0;
 	}
 
+	if (argc == 14 &&
+	    !strcmp(argv[1], "--ccache-bulk-bad-local-fallback")) {
+		enum w4_ccache_bad_local_mode mode;
+		char *end = NULL;
+		long samples;
+
+		if (parse_w4_ccache_bad_local_mode(argv[13], &mode)) {
+			fprintf(stderr, "invalid bad-local mode: %s\n",
+				argv[13]);
+			return 2;
+		}
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w4_ccache_bulk_bad_local_fallback(
+			out, argv[3], (int)samples, argv[5], argv[6],
+			argv[7], argv[8], argv[9], argv[10], argv[11],
+			argv[12], mode);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
 	if (argc == 16 && !strcmp(argv[1], "--ccache-parent-compile")) {
 		out = fopen(argv[2], "a");
 		if (!out) {
@@ -23332,6 +24213,7 @@ int main(int argc, char **argv)
 				"       %s --ccache-bulk-native-compile OUT_JSONL SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR\n"
 				"       %s --ccache-bulk-fuse-compile OUT_JSONL SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR\n"
 				"       --ccache-bulk-compile-epoch-switch OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR CACHE_POLICY\n"
+				"       %s --ccache-bulk-bad-local-fallback OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR CACHE_POLICY MODE\n"
 					"       %s --ccache-policy-compile OUT_JSONL CGROUP_MOUNT WORK_DIR CACHE_DIR TRACE_CACHE_DIR ENTRIES_TSV REDIS_SRC REDIS_BUILD_SRC NGINX_SRC NGINX_BUILD_SRC REDIS_BASELINE_OBJ NGINX_BASELINE_OBJ CACHE_POLICY STATS_PATH\n"
 					"       %s --ccache-parent-compile OUT_JSONL CGROUP_MOUNT WORK_DIR CACHE_DIR TRACE_CACHE_DIR ENTRIES_TSV REDIS_SRC REDIS_BUILD_SRC NGINX_SRC NGINX_BUILD_SRC REDIS_BASELINE_OBJ NGINX_BASELINE_OBJ CACHE_POLICY STATS_PATH\n"
 					"       %s --ccache-table-compile OUT_JSONL CGROUP_MOUNT WORK_DIR CACHE_DIR TRACE_CACHE_DIR ENTRIES_TSV REDIS_SRC REDIS_BUILD_SRC NGINX_SRC NGINX_BUILD_SRC REDIS_BASELINE_OBJ NGINX_BASELINE_OBJ TABLE_POLICY STATS_PATH\n"
@@ -23340,6 +24222,7 @@ int main(int argc, char **argv)
 					"       %s --sandbox-nginx-baseline-macrobench OUT_JSONL WORK_DIR SAMPLES NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES BASELINES\n"
 					"       %s --sandbox-nginx-macrobench OUT_JSONL CGROUP_MOUNT WORK_DIR SAMPLES NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES SANDBOX_POLICY\n"
 					"       %s --sandbox-nginx-smoke OUT_JSONL CGROUP_MOUNT WORK_DIR NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES SANDBOX_POLICY\n",
+				argv[0],
 				argv[0],
 				argv[0],
 				argv[0],

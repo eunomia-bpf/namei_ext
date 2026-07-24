@@ -1,7 +1,7 @@
 # Stale And Corrupt Fallback Probe Design
 
 Date: 2026-07-24
-Status: BFS Round 1 candidate design, not yet implemented
+Status: BFS Round 1 implemented; one-sample stale and corrupt-hidden KVM probes passed
 
 ## Purpose
 
@@ -151,10 +151,10 @@ Do not create a new top-level experiment family. Add one Make-owned KVM target
 only if the stale/corrupt runner cannot be expressed as an option of the current
 W4 oracle binary.
 
-Preferred runner shape:
+Implemented runner shape:
 
 ```text
---ccache-bulk-compile-bad-local-fallback \
+--ccache-bulk-bad-local-fallback \
   OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV \
   SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR \
   CACHE_POLICY MODE
@@ -177,13 +177,122 @@ The target should preserve raw observations only:
 - ccache stats/logs;
 - dmesg.
 
+The Make-owned target is:
+
+```sh
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=<run-id> \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=<stale|corrupt-hidden> \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+```
+
+Implementation record:
+
+```text
+docs/tmp/2026-07-24-bad-local-fallback-probe-implementation.md
+```
+
+## BFS Round 1 Results
+
+Both probes ran through KVM, the real `cgroup/namei_ext` attach path, the same
+Redis/nginx ccache source manifest, and a feature-equivalent FUSE row.
+
+### Stale
+
+Command:
+
+```sh
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-stale-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=stale \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+```
+
+Raw root:
+
+```text
+results/phase1/20260724T-bad-local-stale-smoke-v1/
+```
+
+Summary:
+
+| Metric | `namei_ext` | Feature-equivalent FUSE |
+| --- | ---: | ---: |
+| Samples | 1 | 1 |
+| Compile jobs | 20 | 20 |
+| Output matches | 20 | 20 |
+| Direct cache hits | 20 | 20 |
+| Cache objects | 40 | 40 |
+| Bad-local non-use checks | 80 | 80 |
+| Bad-local non-use passes | 80 | 80 |
+| Compile ns | 7,838,229,684 | 13,627,383,025 |
+| Setup writes | 200 | 80 |
+| FUSE mounts | 0 | 1 |
+
+The summary row has `pass=true`, `failures=0`,
+`lookup_time_fallback=true`, `bfs_probe=true`, and
+`complete_miss_stale_corrupt_compile_state_machine=false`.
+
+### Corrupt Hidden
+
+Command:
+
+```sh
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-corrupt-hidden-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=corrupt-hidden \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+```
+
+Raw root:
+
+```text
+results/phase1/20260724T-bad-local-corrupt-hidden-smoke-v1/
+```
+
+Summary:
+
+| Metric | `namei_ext` | Feature-equivalent FUSE |
+| --- | ---: | ---: |
+| Samples | 1 | 1 |
+| Compile jobs | 20 | 20 |
+| Output matches | 20 | 20 |
+| Direct cache hits | 20 | 20 |
+| Cache objects | 40 | 40 |
+| Bad-local non-use checks | 80 | 80 |
+| Bad-local non-use passes | 80 | 80 |
+| Compile ns | 7,982,902,246 | 13,235,264,639 |
+| Setup writes | 200 | 80 |
+| FUSE mounts | 0 | 1 |
+
+The summary row has `pass=true`, `failures=0`,
+`lookup_time_fallback=true`, `bfs_probe=true`, and
+`complete_miss_stale_corrupt_compile_state_machine=false`.
+
+## Result Interpretation
+
+Round 1 supports promoting stale-local fallback and corrupt-hidden non-use to a
+larger same-oracle run. It is stronger than a synthetic policy smoke because it
+uses real ccache compile jobs and output-object equality against the hot-cache
+oracle.
+
+It still does not close the entire build/cache state machine. The remaining
+limits are:
+
+- the probes are one-sample BFS evidence, not release-scale paper evidence;
+- corrupt-hidden proves non-use of a corrupt local object, not explicit
+  selected-corrupt reject followed by natural ccache retry;
+- the real compile miss cell remains separate;
+- result review has not yet classified the probe as final paper evidence.
+
 ## BFS Decision Rule
 
 Run one-sample stale and corrupt-hidden probes before deciding which path gets
-full implementation depth.
+full implementation depth. This condition is now satisfied.
 
-- If stale passes and corrupt-hidden passes: implement a combined
-  stale/corrupt fallback row and then run result review.
+- If stale passes and corrupt-hidden passes: implement or promote a combined
+  stale/corrupt fallback row and then run result review. This is now the next
+  build/cache branch to consider for release-scale depth.
 - If stale passes but corrupt-hidden fails: stale becomes the next deep path;
   corrupt is recorded as a separate boundary and revisited only if needed.
 - If both fail because ccache does not exercise the object path: try Candidate D

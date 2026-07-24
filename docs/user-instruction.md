@@ -1,4 +1,4 @@
-## Current Effective Instructions (2026-07-23)
+## Current Effective Instructions (2026-07-24)
 
 - Treat `namei_ext` as a `sched_ext`-style VFS name-resolution extension
   point positioned between eBPF LSM and FUSE/custom filesystem ownership. The
@@ -22,6 +22,11 @@
   or a long list of weak baselines. Prefer one strong same-oracle comparison:
   feature-equivalent FUSE for RQ2, native/source behavior as oracle/control,
   and custom/stackable filesystem ownership evidence for RQ3.
+- Search experiment directions breadth-first before deepening one path: run a
+  bounded set of small real probes across plausible high-value branches, then
+  promote the strongest branch to release-scale evidence. Do not spend a full
+  run budget polishing one candidate before adjacent candidates have been
+  checked.
 - Current primary workload families are Agent workspace lifecycle and
   traditional build/cache. Service/config rotation and checkpoint/restart path
   remapping are conditional breadth workloads only after a concrete source

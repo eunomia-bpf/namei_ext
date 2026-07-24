@@ -1,7 +1,7 @@
 # BFS Experiment Slate After Epoch-Switch Release
 
 Date: 2026-07-24
-Status: strategy correction after user feedback; Candidate A smoke passed
+Status: strategy correction after user feedback; Candidates A, B, and C smoke passed
 
 ## Correction
 
@@ -41,8 +41,9 @@ Already valid:
 Still open:
 
 - real compile miss cell;
-- real compile stale reject/fallback cell;
-- real compile corrupt reject/fallback cell;
+- release-scale real compile stale reject/fallback cell;
+- release-scale real compile corrupt-hidden fallback cell;
+- explicit selected-corrupt reject plus natural fallback, if needed;
 - integrated `make experiment-env-cache` package containing the epoch-switch
   row;
 - upstream-facing selftests and small demo.
@@ -52,8 +53,8 @@ Still open:
 | Candidate | Type | Smallest real probe | Oracle | Main comparison | What a positive result unlocks | Stop condition |
 | --- | --- | --- | --- | --- | --- | --- |
 | A. Integrated package | Packaging/integration | `make experiment-env-cache BUILD_CACHE_SAMPLES=1` after adding epoch-switch to the matrix | Existing hot-cache, trace-state, native/FUSE, and epoch-switch gates all pass in one result root | Existing feature-equivalent FUSE rows | Removes reviewer objection that epoch-switch is a standalone side result | Stop after 1-sample smoke; do not run a 20-sample release until BFS chooses this path |
-| B. Stale-local fallback | Build/cache state | Create stale local backing objects plus correct canonical objects; policy must hide/reject local and select canonical during real compile | Output hash matches hot oracle; bad local hash is not used; direct-hit evidence and cache-object ops cover sources | Feature-equivalent FUSE cache view with the same stale local/canonical backing | Strongest missing state-cell evidence; closes more of Experiment B without changing workload | Stop if ccache cannot be forced to exercise the selected object path under the oracle |
-| C. Corrupt-local fallback | Build/cache state | Same as stale, but corrupt local objects with invalid payload while canonical remains correct | Compile succeeds; output matches hot oracle; corrupt object hash is never observed as output/input-selected backing | Feature-equivalent FUSE | Strong fail-closed story: bad local state is rejected while lower FS/data semantics remain external | Stop if corruption causes ccache to bypass object lookup rather than exercise policy |
+| B. Stale-local fallback | Build/cache state | Create stale local backing objects plus correct canonical objects; policy must hide/reject local and select canonical during real compile | Output hash matches hot oracle; bad local hash is not used; direct-hit evidence and cache-object ops cover sources | Feature-equivalent FUSE cache view with the same stale local/canonical backing | Strongest missing state-cell evidence; closes more of Experiment B without changing workload | One-sample KVM smoke passed; stop before release scale until B/C are compared |
+| C. Corrupt-local fallback | Build/cache state | Same as stale, but corrupt local objects with invalid payload while canonical remains correct | Compile succeeds; output matches hot oracle; corrupt object hash is never observed as output/input-selected backing | Feature-equivalent FUSE | Strong fail-closed story: bad local state is rejected while lower FS/data semantics remain external | One-sample corrupt-hidden KVM smoke passed; explicit reject/fallback remains separate |
 | D. Local miss to canonical hit | Build/cache state | Remove verified local objects before compile and select canonical backing as fallback | Output matches hot oracle; local object absent; canonical object selected; direct-hit evidence covers sources | Feature-equivalent FUSE | Clarifies whether "miss" can be represented as local-view miss with canonical cache hit | Stop if semantics collapse into the already-proven epoch2 row without a distinguishable oracle |
 | E. Upstream minimal selftest/demo | Upstream readiness | Add a tiny KVM/selftest-style demo for pass/hide/select/readdir/invalid decision | Selftest passes; invalid policy fails closed; lower-FS permission/write behavior preserved | No FUSE baseline; this is not RQ2 | Makes LPC/RFC discussion credible independent of workload size | Stop before broad selftest suite; only prove the proposed ABI skeleton is testable |
 | F. Service/config lookup-time selection | Breadth workload | Tiny nginx or Redis config/cert epoch where lookup-time object selection changes `nginx -t` or service-visible behavior | Good config passes; bad staged config is hidden/fallback; rollback restores behavior | Feature-equivalent FUSE if admitted | Tests whether a third non-agent workload is worth pursuing | Stop if behavior is merely projected-volume/materialization or app reload, not lookup-time selection |
@@ -66,7 +67,7 @@ Run or prepare probes in this order:
    not a new research direction.
 2. Candidate B and C as the highest-value build/cache BFS branches. They target
    the missing stale/corrupt cells directly and keep the strongest current
-   workload.
+   workload. Both one-sample probes have now passed.
 3. Candidate E in parallel or immediately after B/C if upstream discussion is
    the next deadline pressure.
 4. Candidate F only if B/C are blocked or reviewers demand a third workload
@@ -96,7 +97,7 @@ is wired into `__experiment_build_cache_matrix`, and the final matrix summary
 now has a `real_compile_epoch_switch_row` field. This passed a Make parse-only
 check and a one-sample integrated KVM smoke.
 
-The next concrete action is a one-sample integrated smoke:
+Candidate A concrete action was a one-sample integrated smoke:
 
 ```sh
 make experiment-env-cache \
@@ -120,5 +121,32 @@ standalone-result objection for the epoch-switch row at smoke scale, but it is
 not a new paper result and does not justify running a 20-sample integrated
 release before trying B/C.
 
-Next action: prepare the smallest real stale-local and corrupt-local fallback
-probes, then choose which one deserves implementation depth.
+Candidate B and C implementation:
+
+```text
+docs/tmp/2026-07-24-bad-local-fallback-probe-implementation.md
+```
+
+Commands:
+
+```sh
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-stale-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=stale \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+
+make kvm-w4-ccache-bulk-bad-local-fallback \
+  RUN_ID=20260724T-bad-local-corrupt-hidden-smoke-v1 \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE=corrupt-hidden \
+  W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES=1
+```
+
+Both passed. Each mode ran 20 Redis/nginx ccache compile jobs through
+`namei_ext`, 20 through feature-equivalent FUSE, matched all output objects to
+the hot-cache oracle, recorded 40 bad local objects per row, passed 80/80
+bad-local non-use checks per row, and passed the dmesg gate.
+
+Candidate B/C interpretation: the BFS branch is worth promoting. The next
+high-value action is either a 20-sample combined stale/corrupt fallback run, or
+admission/review of this row before integrating it into `experiment-env-cache`.
+Do not run an unrelated baseline expansion first.
