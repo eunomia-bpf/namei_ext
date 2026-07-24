@@ -9,9 +9,10 @@ Repository: `/home/yunwei37/workspace/namei_ext`
 point between bind/Overlay/materialization, eBPF LSM, and FUSE/custom
 filesystems. The strongest current evidence is Agent workspace RQ1 plus a
 traditional Redis/nginx ccache build/cache workload with feature-equivalent
-FUSE comparison. The new 2026-07-24 result closes real compiler-output coverage
-for the epoch-switch row, while real miss/stale/corrupt rejection compile cells
-remain open.
+FUSE comparison. The 2026-07-24 standalone release closes real compiler-output
+coverage for the epoch-switch row, and a one-sample integrated
+`experiment-env-cache` smoke confirms packaging. Real miss/stale/corrupt
+rejection compile cells remain open.
 
 ## Current Story
 
@@ -151,6 +152,34 @@ oracle covers epoch-switch object selection for both `namei_ext` and
 feature-equivalent FUSE. It still cannot say that real compile miss, stale, or
 corrupt rejection cells are complete.
 
+### Integrated Build/Cache Smoke
+
+Command:
+
+```sh
+make experiment-env-cache \
+  BUILD_CACHE_SAMPLES=1 \
+  RUN_ID=20260724T-build-cache-bfs-integrated-smoke-v1
+```
+
+Raw root:
+
+```text
+results/experiments/build-cache/20260724T-build-cache-bfs-integrated-smoke-v1/
+```
+
+Status:
+
+- one `build-cache-matrix-summary`;
+- one done row;
+- zero failed rows;
+- clean dmesg gate;
+- summary includes `real_compile_epoch_switch_row`.
+
+Claim boundary: this is an integrated packaging smoke, not a 20-sample
+integrated release and not a new paper result. It shows the standalone
+epoch-switch evidence can be included in the build/cache matrix machinery.
+
 ## Agent Workspace Evidence
 
 Formal KVM RQ1 runs:
@@ -258,6 +287,8 @@ Local references:
 - `docs/tmp/2026-07-24-build-cache-real-compile-epoch-plan.md`
 - `docs/tmp/2026-07-24-build-cache-real-compile-epoch-implementation.md`
 - `docs/tmp/2026-07-24-lpc-proposal-and-upstream-reference.md`
+- `docs/tmp/2026-07-24-bfs-experiment-slate.md`
+- `docs/tmp/2026-07-24-stale-corrupt-fallback-probe-design.md`
 
 ## Immediate Next Work
 
@@ -265,7 +296,7 @@ Local references:
 2. Prepare an upstream RFC note with the hook/API, safety model, and selftest
    plan.
 3. Add kernel selftests and a smaller KVM demo target.
-4. Fold the real compile epoch-switch row into `make experiment-env-cache` if
-   the paper needs one integrated build/cache result root.
-5. Implement and run real compile miss, stale, and corrupt rejection cells under
+4. Implement and run real compile stale and corrupt rejection probes under
    the same `namei_ext` versus feature-equivalent FUSE oracle.
+5. Decide whether to run a 20-sample integrated `experiment-env-cache` release
+   only after stale/corrupt BFS probes show which path has highest paper value.

@@ -1,7 +1,7 @@
 # Build/Cache Real Compile Epoch-Switch Implementation
 
 Date: 2026-07-24
-Status: implemented; KVM smoke and 20-sample release run passed
+Status: implemented; standalone KVM release and integrated smoke passed
 
 ## Motivation
 
@@ -220,10 +220,36 @@ Experiment B still cannot say:
 - `namei_ext` is broadly faster than all FUSE designs;
 - upstream safety is settled without selftests and hook-point review.
 
+## Integrated Matrix Smoke
+
+After the 20-sample standalone release, the epoch-switch row was folded into
+`make experiment-env-cache` as a packaging/integration candidate. The integrated
+matrix now copies the epoch-switch raw JSONL, input SHA, output SHA, and dmesg
+artifacts into the build-cache result root and adds a
+`real_compile_epoch_switch_row` field to `build-cache-matrix-summary`.
+
+Integrated smoke command:
+
+```sh
+make experiment-env-cache \
+  BUILD_CACHE_SAMPLES=1 \
+  RUN_ID=20260724T-build-cache-bfs-integrated-smoke-v1
+```
+
+Result root:
+
+```text
+results/experiments/build-cache/20260724T-build-cache-bfs-integrated-smoke-v1/
+```
+
+Result: passed with one build-cache matrix summary, one done row, zero failed
+rows, and clean dmesg gate. This validates the integrated packaging path at
+smoke scale. It is not a 20-sample integrated paper result.
+
 ## Remaining Risks
 
-- The standalone target is implemented and validated; it is not yet folded into
-  `make experiment-env-cache`.
+- The integrated `make experiment-env-cache` path has passed one-sample smoke,
+  but it has not been rerun as a 20-sample integrated release.
 - The broad build/cache state-machine claim still needs real miss, stale, and
   corrupt rejection compile cells.
 - The upstream version needs a much smaller demo and kernel selftests.

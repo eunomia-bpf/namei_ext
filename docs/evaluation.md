@@ -103,11 +103,11 @@ admitted full runs pass result review:
   supporting-only and incomplete for final paper evidence.
 - `make experiment-env-cache` now runs the traditional Redis/nginx ccache
   build/cache matrix through KVM with `namei_ext`, native hot-ccache control,
-  feature-equivalent FUSE rows, and a trace-derived policy/FUSE state row. A
-  standalone KVM release target additionally covers real compiler-output
-  epoch-switch selection for the same Redis/nginx ccache workload. The current
-  implementation still does not cover real compiler-output miss, stale, or
-  corrupt rejection cells.
+  feature-equivalent FUSE rows, a trace-derived policy/FUSE state row, and an
+  integrated real compiler-output epoch-switch row. The integrated path has
+  passed a one-sample smoke; the current 20-sample epoch-switch evidence remains
+  the standalone KVM release. The current implementation still does not cover
+  real compiler-output miss, stale, or corrupt rejection cells.
 - `make kvm-agent-workspace-preflight` remains the implemented dependency
   preflight; it is not a paper-result cell.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves old
@@ -369,6 +369,28 @@ epoch compile time. This timing ratio is still a release-run observation, not a
 broad FUSE performance claim. The correctness interpretation is the main claim:
 real Redis/nginx compiler output now covers the epoch-switch row for both
 `namei_ext` and feature-equivalent FUSE.
+
+The epoch-switch row has also been folded into the integrated build/cache
+matrix at smoke scale:
+
+```sh
+make experiment-env-cache \
+  BUILD_CACHE_SAMPLES=1 \
+  RUN_ID=20260724T-build-cache-bfs-integrated-smoke-v1
+```
+
+Raw root:
+
+```text
+results/experiments/build-cache/20260724T-build-cache-bfs-integrated-smoke-v1/
+```
+
+This run passed with one `build-cache-matrix-summary`, one done row, zero failed
+rows, and a clean dmesg gate. It validates packaging and summary integration,
+not a new paper-result repetition count. Per the BFS plan in
+`docs/tmp/2026-07-24-bfs-experiment-slate.md`, the next work should probe stale
+and corrupt fallback cells before spending budget on a 20-sample integrated
+release.
 
 The upstream/LPC-facing value of this row is that a real build-cache use case
 can be expressed as VFS name-resolution policy while ccache and the lower
