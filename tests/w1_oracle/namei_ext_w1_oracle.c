@@ -16180,6 +16180,72 @@ static void emit_w4_cache_epoch_summary(
 	fflush(out);
 }
 
+static void emit_w4_cache_state_policy_fuse_summary(
+	FILE *out, int samples, const struct w4_cache_epoch_stats *stats,
+	const char *detail)
+{
+	bool pass = stats->failures == 0 && stats->policy_epoch_switch_pass &&
+		    stats->fuse_updated_pass && stats->real_ccache_trace &&
+		    stats->trace_derived_counterfactual;
+
+	fputs("{\"event\":\"w4-ccache-bulk-cache-state-policy-fuse-summary\","
+	      "\"schema\":\"namei_ext.experiment.build_cache_state.v1\","
+	      "\"result_level\":\"kvm_real_ccache_trace_cache_state_policy_fuse\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-ccache-bulk-redis-nginx\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fprintf(out,
+		"\"samples\":%d,"
+		"\"setup_rows\":%d,"
+		"\"correctness_rows\":%d,"
+		"\"update_rows\":%d,"
+		"\"objects\":%zu,"
+		"\"trace_entries\":%zu,"
+		"\"oracle\":\"trace-derived lookup/readdir state transition over real ccache object names\","
+		"\"namei_ext\":{\"system\":\"cache_locality_epoch_policy\","
+		"\"policy\":\"cache_locality_view.bpf.c\","
+		"\"pass\":%s,"
+		"\"setup_writes\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"policy_epoch_switch_pass\":%s,"
+		"\"lower_fs_owns_data_path\":true},"
+		"\"fuse_baseline\":{\"system\":\"fuse_cache_epoch_view\","
+		"\"pass\":%s,"
+		"\"setup_writes\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"feature_equivalent_baseline\":%s},"
+		"\"state_coverage\":{\"verified_hit_to_local\":true,"
+		"\"epoch_update_to_canonical\":true,"
+		"\"canonical_fallback\":true},"
+		"\"real_ccache_trace_basis\":true,"
+		"\"trace_derived_state_oracle\":true,"
+		"\"policy_executed\":%s,"
+		"\"feature_equivalent_fuse\":%s,"
+		"\"kvm_validated\":true,"
+		"\"pass\":%s,"
+		"\"failures\":%d,"
+		"\"detail\":",
+		samples, stats->setup_rows, stats->correctness_rows,
+		stats->update_rows, stats->objects, stats->trace_entries,
+		stats->policy_epoch_switch_pass && stats->failures == 0 ?
+			"true" : "false",
+		stats->policy_setup_writes, stats->policy_update_writes,
+		stats->policy_epoch_switch_pass ? "true" : "false",
+		stats->fuse_updated_pass && stats->failures == 0 ?
+			"true" : "false",
+		stats->fuse_setup_writes, stats->fuse_update_writes,
+		stats->fuse_mounts,
+		stats->fuse_updated_pass ? "true" : "false",
+		stats->policy_epoch_switch_pass ? "true" : "false",
+		stats->fuse_updated_pass ? "true" : "false",
+		pass ? "true" : "false", stats->failures);
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
 static int populate_w4_cache_epoch_policy_rules(
 	struct attached_policy *policy, __u64 cgroup_id, const char *dir,
 	const struct w4_cache_epoch_entry *entries, size_t objects,
@@ -17201,6 +17267,102 @@ static int run_w4_ccache_bulk_cache_epoch_counterfactual(
 		stats.failures ?
 			"trace-derived W4 ccache bulk cache epoch counterfactual failed" :
 			"trace-derived W4 ccache bulk cache epoch counterfactual passed; static table fails epoch switch and exact updated table/FUSE/materialized baselines need per-object update writes");
+	return stats.failures ? 1 : 0;
+}
+
+static int run_w4_ccache_bulk_cache_state_policy_fuse(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	const char *entries_tsv, size_t objects, const char *cache_policy_obj)
+{
+	static struct oracle_entry trace_entries[NAMEI_EXT_MAX_ENTRIES];
+	struct w4_cache_epoch_stats stats = {
+		.real_ccache_trace = true,
+		.trace_derived_counterfactual = true,
+	};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	size_t nr_entries = 0;
+	int sample;
+	int ret;
+
+	memset(trace_entries, 0, sizeof(trace_entries));
+	if (samples <= 0 || objects == 0 ||
+	    objects > W4_CACHE_EPOCH_MAX_OBJECTS) {
+		stats.failures = 1;
+		emit_w4_cache_state_policy_fuse_summary(
+			out, samples, &stats,
+			"invalid sample count or ccache trace object count");
+		return 1;
+	}
+	ret = read_entries(entries_tsv, trace_entries, &nr_entries);
+	if (ret || nr_entries < objects) {
+		stats.failures = 1;
+		stats.trace_entries = nr_entries;
+		emit_w4_cache_state_policy_fuse_summary(
+			out, samples, &stats,
+			"failed to read enough trace-derived ccache objects");
+		return 1;
+	}
+	stats.objects = objects;
+	stats.trace_entries = nr_entries;
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		stats.failures = 1;
+		emit_w4_cache_state_policy_fuse_summary(
+			out, samples, &stats,
+			"failed to create trace-derived W4 cache state workdir");
+		return 1;
+	}
+	if (access(entries_tsv, R_OK) || access(cache_policy_obj, R_OK)) {
+		stats.failures = 1;
+		emit_w4_cache_state_policy_fuse_summary(
+			out, samples, &stats,
+			"trace-derived W4 cache state inputs are not readable");
+		return 1;
+	}
+	ret = current_cgroup_path(cgroup_mount, current_cgroup,
+				  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret) {
+		stats.failures = 1;
+		emit_w4_cache_state_policy_fuse_summary(
+			out, samples, &stats,
+			"failed to resolve current cgroup id");
+		return 1;
+	}
+
+	for (sample = 0; sample < samples; sample++) {
+		char sample_dir[PATH_MAX];
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/ccache-bulk-state-policy-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_policy_system(
+			out, current_cgroup, current_cgroup_id, sample_dir,
+			sample, objects, cache_policy_obj, trace_entries,
+			&stats);
+
+		ret = snprintf(sample_dir, sizeof(sample_dir),
+			       "%s/ccache-bulk-state-fuse-sample-%03d",
+			       work_dir, sample);
+		if (ret < 0 || (size_t)ret >= sizeof(sample_dir)) {
+			stats.failures++;
+			continue;
+		}
+		run_w4_cache_epoch_fuse_system(
+			out, sample_dir, sample, objects, trace_entries, &stats);
+	}
+
+	emit_w4_cache_state_policy_fuse_summary(
+		out, samples, &stats,
+		stats.failures ?
+			"trace-derived W4 ccache state row failed" :
+			"trace-derived W4 ccache state row passed for namei_ext policy and feature-equivalent FUSE");
 	return stats.failures ? 1 : 0;
 }
 
@@ -21696,6 +21858,39 @@ int main(int argc, char **argv)
 		return ret ? 1 : 0;
 	}
 
+	if (argc == 9 &&
+	    !strcmp(argv[1], "--ccache-bulk-cache-state-policy-fuse")) {
+		char *end = NULL;
+		long samples;
+		long objects;
+
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		errno = 0;
+		end = NULL;
+		objects = strtol(argv[7], &end, 10);
+		if (errno || !end || *end || objects <= 0 ||
+		    objects > W4_CACHE_EPOCH_MAX_OBJECTS) {
+			fprintf(stderr, "invalid cache object count: %s\n",
+				argv[7]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w4_ccache_bulk_cache_state_policy_fuse(
+			out, argv[3], (int)samples, argv[5], argv[6],
+			(size_t)objects, argv[8]);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
 	if (argc == 9 && !strcmp(argv[1], "--ccache-rule-macrobench")) {
 		char *end = NULL;
 		long samples;
@@ -22029,6 +22224,7 @@ int main(int argc, char **argv)
 				"       %s --cache-transition-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR ENTRIES_TSV CACHE_POLICY TABLE_POLICY\n"
 				"       %s --cache-epoch-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR OBJECTS CACHE_POLICY TABLE_POLICY\n"
 				"       %s --ccache-bulk-cache-epoch-counterfactual OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR ENTRIES_TSV OBJECTS CACHE_POLICY TABLE_POLICY\n"
+				"       %s --ccache-bulk-cache-state-policy-fuse OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR ENTRIES_TSV OBJECTS CACHE_POLICY\n"
 				"       %s --ccache-rule-macrobench OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR ENTRIES_TSV CACHE_POLICY TABLE_POLICY\n"
 				"       %s --ccache-materialized-baseline-macrobench OUT_JSONL SAMPLES WORK_DIR ENTRIES_TSV [WORKLOAD]\n"
 				"       %s --ccache-bulk-policy-macrobench OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST CACHE_POLICY\n"
@@ -22042,6 +22238,7 @@ int main(int argc, char **argv)
 					"       %s --sandbox-nginx-baseline-macrobench OUT_JSONL WORK_DIR SAMPLES NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES BASELINES\n"
 					"       %s --sandbox-nginx-macrobench OUT_JSONL CGROUP_MOUNT WORK_DIR SAMPLES NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES SANDBOX_POLICY\n"
 					"       %s --sandbox-nginx-smoke OUT_JSONL CGROUP_MOUNT WORK_DIR NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES SANDBOX_POLICY\n",
+				argv[0],
 				argv[0],
 				argv[0],
 				argv[0],

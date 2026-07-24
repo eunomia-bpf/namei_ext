@@ -116,20 +116,28 @@ unregistered-target containment.
 Release command:
 
 ```sh
-make experiment-env-cache BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-release-v1
+make experiment-env-cache BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-state-release-v1
 ```
 
 The release row runs Redis/nginx source compiles through ccache and compares
-`namei_ext`, native hot ccache, and a feature-equivalent FUSE cache view.
+`namei_ext`, native hot ccache, and a feature-equivalent FUSE cache view. The
+same matrix also includes a trace-derived policy/FUSE state row over real
+ccache object names.
 
 | Metric | `namei_ext` | Native hot ccache | Feature-equivalent FUSE |
 | --- | ---: | ---: | ---: |
 | Samples | 20 | 20 | 20 |
 | Compile jobs | 400 | 400 | 400 |
 | Output hash matches | 400 | 400 | 400 |
-| Total compile ns | 152,263,433,153 | 157,443,184,178 | 267,748,534,960 |
-| Average ns/job | 380,658,582.9 | 393,607,960.4 | 669,371,337.4 |
+| Total compile ns | 145,877,006,283 | 137,824,038,806 | 317,994,708,330 |
+| Average ns/job | 364,692,515.7 | 344,560,097.0 | 794,986,770.8 |
 | Cache object ops | 3,200 | 3,200 | 3,200 |
+
+The state row passes 20 samples over 16 ccache-derived object names per sample:
+`namei_ext` switches from verified-local to canonical epoch selection with 20
+session updates, while the feature-equivalent FUSE row uses 20 mounts and 320
+backing updates. This is lookup/readdir state evidence, not a claim that real
+compiler execution has covered miss/stale/corrupt/epoch-switch.
 
 The matched FUSE row completes the same output oracle but owns a userspace
 filesystem-service boundary with `getattr/readdir/open/read/release` handling
@@ -139,8 +147,9 @@ path while ccache and the lower filesystem keep data/write semantics.
 
 ## Known Limits
 
-- The build/cache release row covers verified hot-cache object selection, not
-  the full miss/stale/corrupt/epoch state machine.
+- The build/cache release row covers verified hot-cache compiler output and a
+  trace-derived lookup/readdir state row. It does not yet cover real compiler
+  execution for miss/stale/corrupt/epoch-switch.
 - The current FUSE comparison is feature-equivalent for the tested oracle, but
   broad performance claims must account for FUSE optimizations and passthrough.
 - The prototype needs kernel selftests, API docs, and explicit locking/RCU
@@ -212,11 +221,11 @@ For a 45-minute track talk:
 - Build/cache plan:
   `docs/tmp/2026-07-23-build-cache-experiment-b-plan.md`
 - Build/cache result report:
-  `docs/tmp/2026-07-23-build-cache-lpc-result-report.md`
+  `docs/tmp/2026-07-23-build-cache-state-row-result-report.md`
 - Build/cache raw root:
-  `results/experiments/build-cache/20260723T-build-cache-release-v1/`
+  `results/experiments/build-cache/20260723T-build-cache-state-release-v1/`
 - Current commit with raw result:
-  `ce87d81 Add build cache experiment matrix`
+  latest `main` commit containing the state-row release package
 
 ## References
 

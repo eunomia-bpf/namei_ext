@@ -1,0 +1,13 @@
+c915dbbff41b51ccf05629185c42b9e63cea098eaa46de4c42f5ba4cdc90d58c  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-trace.jsonl
+055f5c8a783de70d8b5abccf59dd179eef1431d81d187b68bb4538aee2a9d43a  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-trace-inputs.sha256
+7df4dd0a374ba9c3835bf2c81067027d141544c8aec8ef228a86a2f8218d9646  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-trace-artifacts.sha256
+d36decd6c67583c415af77b6e8d25f0ca17c3cbc13f8c6819fca54f05df0b962  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge.jsonl
+c95dd52fd13b6d7134a7a3655a731c59207cbc043a9603cf36794c6076b02250  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge-inputs.sha256
+018b09a769cf1903721ad90bd66e4dd015eee62c291a850f80efe1760dfc9c24  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge-trace-objects.txt
+c3527d6372bc1b5d1e319a535212fa27dc6654c058a6b84e7a96a69fdd8e8dca  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge-entries.tsv
+38bf224f1d934aeb28f66061e5cdfccd1ec246931d272233689f18e2998f05b4  /home/yunwei37/workspace/namei_ext/bpf/policies/cache_locality_view.bpf.c
+809b56865aef06d4476e286ac132377de93c41ae2007175c926ae87c3f126c57  /home/yunwei37/workspace/namei_ext/.build/bpf/cache_locality_view.bpf.o
+4e14416a848e7fb2b36481bfb5b635feed4b16165970d5ed8992916122e776e5  /home/yunwei37/workspace/namei_ext/tests/w1_oracle/namei_ext_w1_oracle.c
+5ff9f3272e02001fec9eb20400fc1e808458b3e0b17eb6e1c70c7528eb34450e  /home/yunwei37/workspace/namei_ext/.build/w1-oracle/namei_ext_w1_oracle
+51261bca8307526bf94b8d1b4a22570e2c2c9719f849427c2e538c9ae288b795  /home/yunwei37/workspace/namei_ext/docs/tmp/2026-07-23-build-cache-experiment-b-plan.md
+0cea149935efa5377523fcae4b35279a8ae6811ee3037d3087eb6035b538244f  /home/yunwei37/workspace/namei_ext/mk/kvm.mk

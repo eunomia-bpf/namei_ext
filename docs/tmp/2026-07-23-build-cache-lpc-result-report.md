@@ -5,6 +5,13 @@ Run ID: `20260723T-build-cache-release-v1`
 Raw root: `results/experiments/build-cache/20260723T-build-cache-release-v1/`
 Plan: `docs/tmp/2026-07-23-build-cache-experiment-b-plan.md`
 
+> Superseded current-result note, 2026-07-23: the current build/cache result
+> package is now
+> `results/experiments/build-cache/20260723T-build-cache-state-release-v1/`,
+> reported in
+> `docs/tmp/2026-07-23-build-cache-state-row-result-report.md`. This file
+> remains the historical hot-cache-only release report.
+
 ## Motivation
 
 The immediate goal was to turn Experiment B from a planned traditional

@@ -11,9 +11,11 @@ draft. This is not a complete related-work survey.
 | Current status report | `docs/tmp/2026-07-23-current-state-lpc-status.md` | Canonical snapshot of what is complete and what remains open. |
 | LPC proposal draft | `docs/tmp/2026-07-23-lpc-proposal-namei-ext.md` | Upstream discussion draft. |
 | Build/cache experiment plan | `docs/tmp/2026-07-23-build-cache-experiment-b-plan.md` | Scoped Experiment B plan for verified-hot-cache release row. |
-| Build/cache result report | `docs/tmp/2026-07-23-build-cache-lpc-result-report.md` | Result review and LPC interpretation for the release run. |
-| Build/cache raw result root | `results/experiments/build-cache/20260723T-build-cache-release-v1/` | Raw JSONL, hashes, dmesg, stdout/stderr, kernel provenance. |
-| Build/cache terminal summary | `results/experiments/build-cache/20260723T-build-cache-release-v1/build-cache-matrix.jsonl` | `namei_ext`/native/FUSE correctness and timing summary. |
+| Build/cache state-row implementation record | `docs/tmp/2026-07-23-build-cache-state-row-implementation.md` | Implementation record for adding the policy/FUSE state row to the matrix. |
+| Build/cache current result report | `docs/tmp/2026-07-23-build-cache-state-row-result-report.md` | Result review and LPC interpretation for the current release run. |
+| Build/cache historical hot-cache report | `docs/tmp/2026-07-23-build-cache-lpc-result-report.md` | Historical hot-cache-only release report, superseded by the state-row run. |
+| Build/cache raw result root | `results/experiments/build-cache/20260723T-build-cache-state-release-v1/` | Raw JSONL, hashes, dmesg, stdout/stderr, kernel provenance. |
+| Build/cache terminal summary | `results/experiments/build-cache/20260723T-build-cache-state-release-v1/build-cache-matrix.jsonl` | `namei_ext`/native/FUSE correctness and timing summary plus trace-derived state row. |
 | Agent workspace formal runs | `results/experiments/agent-workspace-matrix/20260722T020120Z-rq1run1/`, `results/experiments/agent-workspace-matrix/20260722T020210Z-rq1run2/`, `results/experiments/agent-workspace-matrix/20260722T020245Z-rq1run3/` | RQ1 source-trace evidence for Agent workspace behavior. |
 
 ## Venue And Format References
@@ -59,7 +61,7 @@ draft. This is not a complete related-work survey.
 | FUSE is the strongest RQ2 comparison because it can implement the same policy with a filesystem daemon. | Kernel FUSE and libfuse docs. | Build/cache has a feature-equivalent FUSE row with the same output oracle. |
 | Broad FUSE performance claims require acknowledging optimized FUSE. | FUSE passthrough documentation. | Current run reports release-run timing only; no broad superiority claim. |
 | Materialized namespace mechanisms are related mechanisms, not the central baseline. | OverlayFS documentation plus local user-instruction file. | Current docs keep Overlay/materialization as background unless a source oracle makes it load-bearing. |
-| Real build/cache workload evidence exists. | ccache manual plus local build/cache raw root. | Redis/nginx ccache verified-hot-cache row passes under `namei_ext`, native, and FUSE. |
+| Real build/cache workload evidence exists. | ccache manual plus local build/cache raw root. | Redis/nginx ccache verified-hot-cache row passes under `namei_ext`, native, and FUSE; the same matrix now includes a trace-derived policy/FUSE state row. |
 
 ## Packet To Send Upstream
 
@@ -69,10 +71,10 @@ Send the upstream packet in this order:
    `docs/tmp/2026-07-23-lpc-proposal-namei-ext.md`.
 2. The local current-state report:
    `docs/tmp/2026-07-23-current-state-lpc-status.md`.
-3. The build/cache result report:
-   `docs/tmp/2026-07-23-build-cache-lpc-result-report.md`.
+3. The build/cache current result report:
+   `docs/tmp/2026-07-23-build-cache-state-row-result-report.md`.
 4. The raw-result pointer:
-   `results/experiments/build-cache/20260723T-build-cache-release-v1/`.
+   `results/experiments/build-cache/20260723T-build-cache-state-release-v1/`.
 5. The latest `main` commit containing the current proposal/status packet.
 6. External references:
    - LPC CFP: https://lpc.events/event/20/abstracts/

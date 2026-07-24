@@ -1,0 +1,15 @@
+20aed4a9a59d35049595973fe74588b9cd415c667ee3a172969e79adfbdc2468  /home/yunwei37/workspace/namei_ext/.build/kernel/arch/x86/boot/bzImage
+795600e0ac577a3917dc7784a514c14df671b2456c2b4157e5472806c26678e5  /home/yunwei37/workspace/namei_ext/.build/kernel/.config
+809b56865aef06d4476e286ac132377de93c41ae2007175c926ae87c3f126c57  /home/yunwei37/workspace/namei_ext/.build/bpf/cache_locality_view.bpf.o
+38bf224f1d934aeb28f66061e5cdfccd1ec246931d272233689f18e2998f05b4  /home/yunwei37/workspace/namei_ext/bpf/policies/cache_locality_view.bpf.c
+5ff9f3272e02001fec9eb20400fc1e808458b3e0b17eb6e1c70c7528eb34450e  /home/yunwei37/workspace/namei_ext/.build/w1-oracle/namei_ext_w1_oracle
+4e14416a848e7fb2b36481bfb5b635feed4b16165970d5ed8992916122e776e5  /home/yunwei37/workspace/namei_ext/tests/w1_oracle/namei_ext_w1_oracle.c
+51261bca8307526bf94b8d1b4a22570e2c2c9719f849427c2e538c9ae288b795  /home/yunwei37/workspace/namei_ext/docs/tmp/2026-07-23-build-cache-experiment-b-plan.md
+8d7bc4bd9c4f3905df061649de4608baaf10976fb3bd0cbe7260b58aec6f7443  /home/yunwei37/workspace/namei_ext/Makefile
+0cea149935efa5377523fcae4b35279a8ae6811ee3037d3087eb6035b538244f  /home/yunwei37/workspace/namei_ext/mk/kvm.mk
+c915dbbff41b51ccf05629185c42b9e63cea098eaa46de4c42f5ba4cdc90d58c  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-state-release-v1/w4-ccache-bulk-trace.jsonl
+d36decd6c67583c415af77b6e8d25f0ca17c3cbc13f8c6819fca54f05df0b962  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge.jsonl
+6388194d90e219972c6a3e7ce777905b752536570b98025ce13ea5b513a78149  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-state-release-v1/w4-ccache-bulk-cache-state-policy-fuse.jsonl
+62e10e6ebe83ff54b9fa05d30aaa97c59b8d911cac32b5c892d9fe0e8309d782  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-compile.jsonl
+492e32576961c83547cd6b07e44d93c0dbaa62144c76865bc9066cab203bbc9d  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-state-release-v1/w4-ccache-bulk-native-compile.jsonl
+2bbf407047779600fdc6c2d77ec1b1030302e0d273a13f366583ca8fa8730e6e  /home/yunwei37/workspace/namei_ext/results/experiments/build-cache/20260723T-build-cache-state-release-v1/w4-ccache-bulk-fuse-compile.jsonl

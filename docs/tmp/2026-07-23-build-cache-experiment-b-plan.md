@@ -8,7 +8,10 @@
   with a feature-equivalent FUSE policy implementation.
 - Specific uncertainty tested here: whether the traditional ccache build/cache
   workload can run through the real KVM `cgroup/namei_ext` attach path and pass
-  the same object-output oracle as a FUSE cache-view implementation.
+  the same object-output oracle as a FUSE cache-view implementation, while a
+  trace-derived state row over real ccache object names exercises the
+  verified-local to canonical epoch transition under both `namei_ext` and
+  FUSE.
 - Why the answer matters: this is the decisive non-agent workload. A passing
   run shows the paper is not only an agent-workspace story.
 
@@ -25,7 +28,8 @@
 - Independent evidence added beyond existing runs and published results: the
   run executes Redis/nginx ccache hot compiles under the modified kernel, an
   attached `cache_locality_view.bpf.c` policy, and a compile-through-FUSE
-  baseline with output-object equality and operation traces.
+  baseline with output-object equality and operation traces. It also records a
+  policy/FUSE state row derived from the same ccache trace objects.
 - Why the result is not tautological, already settled, or dominated: success is
   gated by real ccache compile success, output object hash equality, cache-path
   file-operation traces, policy/FUSE mechanism engagement, and KVM dmesg gates.
@@ -36,15 +40,18 @@
   than name resolution. If FUSE passes and is not materially more expensive,
   RQ2 is bounded by this workload rather than turned into a performance win.
 - Best alternative experiment and why this one has higher decision value:
-  a synthetic hit/miss/stale/corrupt header-selection project would cover more
-  labels, but Redis/nginx ccache is a stronger traditional workload and already
-  has source, cache, strace, FUSE, native, and output-oracle assets.
+  a synthetic hit/miss/stale/corrupt/epoch-switch header-selection project
+  would cover more labels, but Redis/nginx ccache is a stronger traditional
+  workload and already has source, cache, strace, FUSE, native, and
+  output-oracle assets.
 
 ## Expected And Alternative Outcomes
 
 - Current expected answer: `namei_ext` can run the ccache cache-object path
   policy under KVM and produce output objects identical to native hot ccache,
   while FUSE also passes but pays the cost of a filesystem daemon boundary.
+  The trace-derived state row is expected to show both mechanisms satisfy
+  verified-local and canonical epoch lookup/readdir behavior.
 - Strongest competing explanation: the important behavior is ccache's own cache
   service and not the VFS path-policy boundary.
 - Result that would contradict the expectation: attached policy compiles do not
@@ -60,10 +67,12 @@
   source trees already used by the repository workload targets, `ccache`,
   `strace`, libfuse, and the modified Phase 1 kernel.
 - What is reused: existing Make-owned W4 bulk ccache trace, policy-bridge,
-  policy-attached compile, native compile, and FUSE compile targets.
+  policy-attached compile, native compile, FUSE compile, and cache epoch
+  policy/FUSE oracle helpers.
 - Necessary deviations or custom glue: current paper-facing target
   `experiment-env-cache` collects and validates the non-table subset as
-  Experiment B under `results/experiments/build-cache/<RUN_ID>/`.
+  Experiment B under `results/experiments/build-cache/<RUN_ID>/`; the
+  trace-derived state row is labeled separately from real compiler execution.
 
 ## Comparison
 
@@ -77,7 +86,8 @@
   oracle; FUSE performance literature cannot substitute for the matched
   Redis/nginx ccache run.
 - Controls or ablations, labeled separately: native hot ccache compile is an
-  oracle/control row, not a competing policy mechanism.
+  oracle/control row, not a competing policy mechanism. The trace-derived
+  policy/FUSE state row is mechanism evidence, not a new main baseline.
 - Conclusion if each main baseline matches or wins: if FUSE matches or wins
   under the same oracle and fair cache configuration, the performance claim is
   narrowed to boundary value rather than speed.
@@ -91,13 +101,17 @@
 
 ## Workloads And Metrics
 
-- Real workloads or tasks: Redis and nginx C source compiles through ccache.
+- Real workloads or tasks: Redis and nginx C source compiles through ccache,
+  plus trace-derived lookup/readdir state transitions over ccache object names
+  from the same run.
 - Primary metrics: compile success, output-object equality, compile runtime,
   cache-path file operations, policy/FUSE cache-object operations,
-  operation-weighted hit rate, FUSE mount count, ccache direct hits, dmesg gate.
+  operation-weighted hit rate, FUSE mount count, ccache direct hits, state-row
+  setup/update writes, and dmesg gate.
 - Correctness check or ground truth: each policy/FUSE/native output object must
   match the hot native ccache object for the same source; all declared summary
-  rows must pass with zero failures.
+  rows must pass with zero failures. The state row must pass verified-local and
+  canonical epoch lookup/readdir oracles for both `namei_ext` and FUSE.
 - Repetitions, seeds, and uncertainty: release runs use
   `BUILD_CACHE_SAMPLES` samples, defaulting to 20 unless overridden.
 - Cost estimate when material: one full run executes 20 Redis/nginx source rows
@@ -110,16 +124,17 @@
 | main | proposed | Redis/nginx ccache hot compile | `namei_ext` `cache_locality_view.bpf.c` | `BUILD_CACHE_SAMPLES` | Supports RQ1 only if output equality, object redirection, op traces, and KVM gates pass. |
 | main | baseline | same source manifest and cache objects | feature-equivalent FUSE cache view | `BUILD_CACHE_SAMPLES` | Supports RQ2 only if the same oracle passes and FUSE mechanism engagement is recorded. |
 | control | oracle | same source manifest and cache objects | native hot ccache | `BUILD_CACHE_SAMPLES` | Establishes source/cache oracle and lower-bound runtime; not a policy baseline. |
+| main | state evidence | ccache trace-derived object names | `namei_ext` and feature-equivalent FUSE state rows | `BUILD_CACHE_SAMPLES` | Supports RQ1 mechanism scope only if verified-local and canonical epoch state oracles pass under both mechanisms. |
 | boundary | RQ3 support | same behavior | boundary evidence rows | 1 | Records daemon, FS method, data-path, and lower-FS ownership differences. |
 
 ## Execution
 
 - Authoritative command or workflow: `make experiment-env-cache`.
 - Real preflight case: the existing trace and policy-bridge prerequisites must
-  pass before policy, native, and FUSE compile rows run.
-- Full completion rule: every summary row for policy, native, and FUSE passes;
-  the collector writes a build-cache matrix JSONL, input hash file, command
-  file, copied raw JSONLs, and boundary rows; every dmesg scan passes.
+  pass before state, policy, native, and FUSE compile rows run.
+- Full completion rule: every summary row for state, policy, native, and FUSE
+  passes; the collector writes a build-cache matrix JSONL, input hash file,
+  command file, copied raw JSONLs, and boundary rows; every dmesg scan passes.
 - Raw-result path: `results/experiments/build-cache/<RUN_ID>/`.
 - Checkpoint or recovery approach: the underlying raw W4 bulk result root stays
   under `results/phase1/<RUN_ID>/`; the Experiment B root records hashes and
@@ -129,7 +144,8 @@
 
 - Positive result: Redis/nginx ccache compiles pass under attached `namei_ext`
   policy, native, and FUSE; output hashes match; operation traces show cache
-  object operations; FUSE has a filesystem-daemon boundary for the same oracle.
+  object operations; the trace-derived state row passes under both `namei_ext`
+  and FUSE; FUSE has a filesystem-daemon boundary for the same oracle.
 - Negative or contradictory result: any failed oracle row, missing mechanism
   engagement, missing dmesg gate, or missing FUSE parity blocks paper claims.
 - Mixed or inconclusive result: passing policy without FUSE, or compile success
@@ -143,5 +159,6 @@
   version files, source manifest, input SHA files, kernel config, and dmesg logs.
 - Config and seed notes: default sample count is `BUILD_CACHE_SAMPLES=20`.
 - Known deviations: this admitted run focuses on real verified-hit ccache hot
-  compiles. The broader hit/miss/stale/corrupt/epoch state labels remain part
-  of the design scope, but this run is the paper-facing real-workload row.
+  compiles plus a trace-derived state row. The broader real compile
+  hit/miss/stale/corrupt/epoch-switch labels remain part of the design scope,
+  but this run must not be read as closing those compiler-output cells.

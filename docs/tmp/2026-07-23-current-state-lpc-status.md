@@ -2,8 +2,8 @@
 
 Date: 2026-07-23
 Repository: `/home/yunwei37/workspace/namei_ext`
-Build/cache raw-result commit inspected:
-`ce87d81 Add build cache experiment matrix`
+Current build/cache raw result:
+`results/experiments/build-cache/20260723T-build-cache-state-release-v1/`
 Current proposal/status packet: latest `main` commit after this document is
 committed.
 
@@ -13,7 +13,7 @@ committed.
 the patch is a narrow VFS name-resolution extension point with KVM-tested
 Agent-workspace and traditional build/cache evidence, but it still needs a
 smaller upstream demo, API documentation, kernel selftests, and real
-miss/stale/corrupt/epoch compile cells before the broad build/cache
+miss/stale/corrupt/epoch-switch compile cells before the broad build/cache
 state-machine claim is closed.
 
 ## Current Story
@@ -35,7 +35,7 @@ stays in the kernel.
 
 | RQ | Current form | Current evidence status |
 | --- | --- | --- |
-| RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Agent-workspace RQ1 rows are complete; build/cache verified-hot-cache row is complete; full build/cache state machine remains open. |
+| RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Agent-workspace RQ1 rows are complete; build/cache verified-hot-cache compile row plus trace-derived state row are complete; real miss/stale/corrupt/epoch-switch compile cells remain open. |
 | RQ2 Cost / overhead versus FUSE | What is the cost of putting programmable policy on the VFS name-resolution path compared with feature-equivalent FUSE? | Build/cache has a matched FUSE row and timing; Agent workspace still needs final timing interpretation before broad RQ2 claims. |
 | RQ3 Safety / boundary versus custom or stackable FS | Does `namei_ext` give a narrower verifier-bounded boundary than building a custom or stackable filesystem when the needed behavior is name resolution? | Boundary rows exist for Agent workspace and build/cache; upstream-ready safety/API documentation is still missing. |
 
@@ -48,12 +48,16 @@ Implemented and exercised paths:
 - Real KVM validation path through the modified kernel and
   `cgroup/namei_ext` attach.
 - Make-owned experiment entrypoints; `make experiment-env-cache` now runs the
-  traditional Redis/nginx ccache build/cache matrix.
+  traditional Redis/nginx ccache build/cache matrix with real hot-cache
+  compile rows and a trace-derived policy/FUSE state row.
 - Build/cache result collection now preserves command, kernel config, uname,
   proc version, kernel cmdline, dmesg logs, stdout/stderr, copied raw JSONLs,
   and input/output SHA files.
 - Attached ccache policy compile rows now record compile timing as
   `compile_ns` and `compile_ns_avg`.
+- The build/cache matrix now records
+  `w4-ccache-bulk-cache-state-policy-fuse-summary`, a clean policy/FUSE state
+  row over real ccache trace-derived object names.
 
 Still missing for upstream-quality patch review:
 
@@ -86,18 +90,18 @@ unregistered-target containment.
 Claim status: good RQ1 evidence for the Agent workspace family. It does not by
 itself close RQ2 timing or RQ3 upstream safety.
 
-### Traditional Build/Cache Verified Hot-Cache Row
+### Traditional Build/Cache Matrix
 
 Release command:
 
 ```sh
-make experiment-env-cache BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-release-v1
+make experiment-env-cache BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-state-release-v1
 ```
 
 Raw root:
 
 ```text
-results/experiments/build-cache/20260723T-build-cache-release-v1/
+results/experiments/build-cache/20260723T-build-cache-state-release-v1/
 ```
 
 Terminal summary:
@@ -107,21 +111,39 @@ Terminal summary:
 | Samples | 20 | 20 | 20 |
 | Compile jobs | 400 | 400 | 400 |
 | Output hash matches | 400 | 400 | 400 |
-| Total compile ns | 152,263,433,153 | 157,443,184,178 | 267,748,534,960 |
-| Average ns/job | 380,658,582.9 | 393,607,960.4 | 669,371,337.4 |
+| Total compile ns | 145,877,006,283 | 137,824,038,806 | 317,994,708,330 |
+| Average ns/job | 364,692,515.7 | 344,560,097.0 | 794,986,770.8 |
 | Cache path file ops | 8,000 | 8,000 | 6,000 |
 | Cache object ops | 3,200 | 3,200 | 3,200 |
 | Redirected/direct cache hits | 800 redirected objects | 400 direct hits | 400 direct hits |
 
 Derived ratios:
 
-- FUSE/namei_ext total compile time: `1.758x`.
-- Native/namei_ext total compile time: `1.034x`.
+- FUSE/namei_ext total compile time: `2.180x`.
+- Native/namei_ext total compile time: `0.945x`.
 
 Claim status: good scoped RQ1/RQ2 evidence for real Redis/nginx ccache
 verified-hot-cache object selection. The strongest interpretation is
 correctness plus boundary value; timing is a release-run observation, not yet a
 statistical performance claim.
+
+The same release includes the trace-derived policy/FUSE state row:
+
+| Field | Value |
+| --- | --- |
+| Samples | 20 |
+| Objects per sample | 16 |
+| Trace entries available | 40 |
+| State oracle | verified-hit to local, epoch update to canonical, canonical fallback |
+| `namei_ext` pass | true |
+| FUSE pass | true |
+| `namei_ext` setup/update writes | 1,940 setup, 20 update |
+| FUSE setup/update writes | 320 setup, 320 update |
+| FUSE mounts | 20 |
+
+Claim status: useful state-mechanism evidence over real ccache object names and
+the same KVM attach path. It is not a real compiler-output
+miss/stale/corrupt/epoch-switch state-machine row.
 
 ## Claims We Can Make Now
 
@@ -130,6 +152,9 @@ statistical performance claim.
   `cache_locality_view.bpf.c` policy.
 - The build/cache row passes the same output-object oracle as native hot
   ccache and a feature-equivalent FUSE cache-view implementation.
+- The build/cache matrix includes a trace-derived state row where both
+  `namei_ext` and FUSE pass verified-local to canonical epoch selection over
+  real ccache object names.
 - The matched FUSE implementation passes the same oracle but has a broader
   filesystem-service boundary: daemon/mount lifecycle and filesystem method
   ownership for `getattr/readdir/open/read/release`.
@@ -141,8 +166,8 @@ statistical performance claim.
 ## Claims We Must Not Make Yet
 
 - Do not claim that real ccache compile workload covers the full
-  miss/stale/corrupt/epoch state machine. It currently covers verified
-  hot-cache object selection.
+  miss/stale/corrupt/epoch-switch state machine. It currently covers verified
+  hot-cache object selection plus a trace-derived state row.
 - Do not claim broad performance superiority over all FUSE configurations.
   Optimized FUSE and passthrough remain related mechanism pressure.
 - Do not claim upstream acceptability without selftests, API documentation,
@@ -157,11 +182,11 @@ baseline catalog.
 
 | Priority | Work | Expected value | Risk |
 | --- | --- | --- | --- |
-| P0 | Integrate existing `kvm-w4-ccache-bulk-cache-epoch-counterfactual` into `experiment-env-cache` as a trace-derived state row. | Quickly records epoch/state policy over real ccache trace objects with `namei_ext`, FUSE, materialized, and table accounting. | Still not real compile execution. Must be labeled as trace-derived. |
-| P1 | Add real compile `miss` and `epoch switch` cells to the current bulk ccache runner. | Extends the real compile oracle beyond hot hits while preserving same output-hash and FUSE comparison structure. | Requires careful ccache setup so the measured behavior is path policy, not only ccache internals. |
+| P0 | Integrate a trace-derived policy/FUSE state row into `experiment-env-cache`. | Completed in `20260723T-build-cache-state-release-v1`; records epoch/state policy over real ccache trace objects without making table-only the story. | Still not real compile execution. |
+| P1 | Add real compile `miss` and epoch-switch cells to the current bulk ccache runner. | Extends the real compile oracle beyond hot hits while preserving same output-hash and FUSE comparison structure. | Requires careful ccache setup so the measured behavior is path policy, not only ccache internals. |
 | P2 | Add real compile `stale` and `corrupt reject/fallback` cells. | Closes the broad build/cache state-machine claim. | Hardest cell: oracle must prove the bad local object was not exposed to the compile path. |
 
-The current best path is P0 plus P1. P2 should follow only after the miss/epoch
+The current best path is P1 next. P2 should follow only after the miss/epoch
 runner proves the compile-state machinery is sound.
 
 ## LPC Readiness

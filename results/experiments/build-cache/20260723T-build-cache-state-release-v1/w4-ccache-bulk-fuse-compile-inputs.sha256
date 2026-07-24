@@ -1,0 +1,12 @@
+c915dbbff41b51ccf05629185c42b9e63cea098eaa46de4c42f5ba4cdc90d58c  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-trace.jsonl
+055f5c8a783de70d8b5abccf59dd179eef1431d81d187b68bb4538aee2a9d43a  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-trace-inputs.sha256
+7df4dd0a374ba9c3835bf2c81067027d141544c8aec8ef228a86a2f8218d9646  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-trace-artifacts.sha256
+fa49f58f463ad09f80538c12168aab38765a763c30f59a6135d98ebf52825400  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-source-manifest.tsv
+d36decd6c67583c415af77b6e8d25f0ca17c3cbc13f8c6819fca54f05df0b962  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge.jsonl
+018b09a769cf1903721ad90bd66e4dd015eee62c291a850f80efe1760dfc9c24  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge-trace-objects.txt
+c3527d6372bc1b5d1e319a535212fa27dc6654c058a6b84e7a96a69fdd8e8dca  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-policy-bridge-entries.tsv
+4e14416a848e7fb2b36481bfb5b635feed4b16165970d5ed8992916122e776e5  /home/yunwei37/workspace/namei_ext/tests/w1_oracle/namei_ext_w1_oracle.c
+5ff9f3272e02001fec9eb20400fc1e808458b3e0b17eb6e1c70c7528eb34450e  /home/yunwei37/workspace/namei_ext/.build/w1-oracle/namei_ext_w1_oracle
+b86e3e0b6af44222cae6c2495658b73998815cfb4beaa69beee0b675be93bccd  /home/yunwei37/workspace/namei_ext/results/phase1/20260723T-build-cache-state-release-v1/w4-ccache-bulk-fuse-compile-ccache.version
+649fe862a4c3ba162eca117d789507b43c581db25955637bebe1c1bd5555fd9d  /home/yunwei37/workspace/namei_ext/docs/tmp/2026-06-16-w4-bulk-fuse-compile-baseline-implementation.md
+0cea149935efa5377523fcae4b35279a8ae6811ee3037d3087eb6035b538244f  /home/yunwei37/workspace/namei_ext/mk/kvm.mk

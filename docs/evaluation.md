@@ -103,9 +103,10 @@ admitted full runs pass result review:
   supporting-only and incomplete for final paper evidence.
 - `make experiment-env-cache` now runs the traditional Redis/nginx ccache
   build/cache matrix through KVM with `namei_ext`, native hot-ccache control,
-  and feature-equivalent FUSE rows. The current implementation covers the
-  verified hot-cache compile path, not every cache-state label in the broader
-  design scope.
+  feature-equivalent FUSE rows, and a trace-derived policy/FUSE state row. The
+  current implementation covers the verified hot-cache compile path and
+  trace-derived verified-local to canonical state selection, not real
+  miss/stale/corrupt/epoch-switch compiler-output cells.
 - `make kvm-agent-workspace-preflight` remains the implemented dependency
   preflight; it is not a paper-result cell.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves old
@@ -120,7 +121,7 @@ execution, and result review before it becomes final paper evidence:
 | Experiment | Role | Primary RQ | Paper-value admission | Main comparison |
 | --- | --- | --- | --- | --- |
 | A. Agent workspace lifecycle | headline | RQ1, with RQ2/RQ3 cells | Tests the central claim on the strongest source-backed agent filesystem/workspace setting. A positive result says the VFS name-resolution boundary can satisfy a real agent workspace oracle without filesystem ownership. | Feature-equivalent FUSE policy for overhead; source/custom/stackable ownership evidence for boundary. |
-| B. Traditional build/cache transition | decisive | RQ1 and RQ2, with RQ3 boundary evidence | Tests whether the idea extends beyond agent workspaces to traditional build/test cache state, where cache hit, miss, stale, corrupt, and epoch-update choices affect a real build/test oracle. MEnv/SWE-Factory/SWE-rebench rows may be used as build/test oracle sources, but the workload is not framed as an agent workload. | Feature-equivalent FUSE cache/policy view; native source evaluator as correctness oracle. |
+| B. Traditional build/cache transition | decisive | RQ1 and RQ2, with RQ3 boundary evidence | Tests whether the idea extends beyond agent workspaces to traditional build/test cache state, where hit/miss/stale/corrupt/epoch-update choices affect a real build/test oracle. MEnv/SWE-Factory/SWE-rebench rows may be used as build/test oracle sources, but the workload is not framed as an agent workload. | Feature-equivalent FUSE cache/policy view; native source evaluator as correctness oracle. |
 | C. Service/config transition | conditional supporting | RQ1 breadth, with RQ2/RQ3 if admitted | Included only after selecting a real service/config source whose oracle depends on lookup-time object selection. If the source only exercises projected-volume mechanics or app reload behavior, it stays related work. | Feature-equivalent FUSE policy when the source admits one; custom/stackable boundary evidence. |
 | D. Checkpoint/restart path remapping | conditional supporting | RQ1 breadth, with RQ2/RQ3 if admitted | Included only if the paper needs an OS-flavored traditional workload after build/cache and a concrete checkpoint/restart oracle is available. It must show restart success and reopened-file remapping through lookup-time object selection. | Feature-equivalent FUSE policy when feasible; DMTCP-style path-virtualization or custom/stackable boundary evidence. |
 
@@ -246,7 +247,7 @@ any paper claim is made.
 ### Experiment B: Traditional Build/Cache Transition
 
 Hypothesis: `namei_ext` can express traditional build/cache object selection for
-build/test workloads, including hit, miss, stale, corrupt, and update-epoch
+build/test workloads, including hit/miss/stale/corrupt/update-epoch
 states, without changing the source evaluator or owning the data path. This is
 the main non-agent workload. Environment-construction datasets may provide
 build/test oracles, but Experiment B should be presented as traditional
@@ -268,13 +269,15 @@ workloads. These are admitted only when they expose the same fixed cache-state
 oracle and path-operation trace.
 
 Current release result: `make experiment-env-cache
-BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-release-v1` completed in
-KVM and preserved raw results under
-`results/experiments/build-cache/20260723T-build-cache-release-v1/`. The run is
-the first completed paper-facing Experiment B row for the traditional
-build/cache family. It covers the real verified hot-cache ccache path over
-Redis/nginx source rows; it does not yet cover real miss, stale, corrupt, or
-epoch-switch compile cells.
+BUILD_CACHE_SAMPLES=20 RUN_ID=20260723T-build-cache-state-release-v1`
+completed in KVM and preserved raw results under
+`results/experiments/build-cache/20260723T-build-cache-state-release-v1/`.
+This supersedes the earlier hot-cache-only run
+`20260723T-build-cache-release-v1` as the current Experiment B result package.
+The current matrix covers the real verified hot-cache ccache compile path over
+Redis/nginx source rows and adds a trace-derived state row over real ccache
+object names. It still does not cover real compiler execution for miss, stale,
+corrupt, or epoch-switch cells.
 
 The terminal summary row reports:
 
@@ -283,14 +286,14 @@ The terminal summary row reports:
 | Samples | 20 | 20 | 20 |
 | Compile jobs | 400 | 400 | 400 |
 | Output hash matches | 400 | 400 | 400 |
-| Total compile time ns | 152,263,433,153 | 157,443,184,178 | 267,748,534,960 |
-| Average ns/job | 380,658,582.9 | 393,607,960.4 | 669,371,337.4 |
+| Total compile time ns | 145,877,006,283 | 137,824,038,806 | 317,994,708,330 |
+| Average ns/job | 364,692,515.7 | 344,560,097.0 | 794,986,770.8 |
 | Cache path file ops | 8,000 | 8,000 | 6,000 |
 | Cache object ops | 3,200 | 3,200 | 3,200 |
 | Redirected or direct cache hits | 800 redirected objects | 400 direct hits | 400 direct hits |
 
-Derived ratios for this run are `FUSE/namei_ext = 1.758x` by total compile
-time and `native/namei_ext = 1.034x`. These are release-run observations, not
+Derived ratios for this run are `FUSE/namei_ext = 2.180x` by total compile
+time and `native/namei_ext = 0.945x`. These are release-run observations, not
 yet a statistically modeled performance claim. The correctness interpretation
 is stronger than the timing interpretation: all three rows pass the same output
 object oracle, the `namei_ext` row executes the attached
@@ -298,13 +301,30 @@ object oracle, the `namei_ext` row executes the attached
 path, and the FUSE row completes the same compile-through cache-view oracle
 with 20 FUSE mounts.
 
+The same current release also adds a trace-derived state row:
+
+| State-row metric | `namei_ext` | Feature-equivalent FUSE |
+| --- | ---: | ---: |
+| Samples | 20 | 20 |
+| Objects per sample | 16 | 16 |
+| State oracle | verified-hit -> local; epoch update -> canonical | same |
+| Pass | true | true |
+| Setup writes | 1,940 | 320 |
+| Update writes | 20 | 320 |
+| FUSE mounts | 0 | 20 |
+
+The state row uses real ccache trace-derived object names and validates
+lookup/readdir behavior for verified-local and canonical epoch selection. It
+strengthens the state-mechanism evidence inside Experiment B, but it is not a
+real compiler-output miss/stale/corrupt/epoch-switch run.
+
 The upstream/LPC-facing value of this row is that a real build-cache use case
 can be expressed as VFS name-resolution policy while ccache and the lower
 filesystem keep data and write semantics. The matched FUSE row demonstrates
 the same behavior through a filesystem-daemon boundary that owns
 `getattr/readdir/open/read/release` handling and mount lifecycle. The current
 boundary evidence therefore supports an implementation-scope argument even
-before the full stale/corrupt/epoch state machine is complete.
+before the full real compile stale/corrupt/epoch state machine is complete.
 
 Step 0002 selected the intended suite for later BUILD_AND_EVALUATE admission,
 subject only to documented KVM/Docker compatibility failures before policy
