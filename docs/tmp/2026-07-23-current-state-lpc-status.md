@@ -2,6 +2,14 @@
 
 Date: 2026-07-23
 Repository: `/home/yunwei37/workspace/namei_ext`
+
+Superseded note: this document is preserved as the 2026-07-23 snapshot. The
+current 2026-07-24 state is
+`docs/tmp/2026-07-24-current-state-lpc-and-experiment-status.md`. In
+particular, real compiler-output epoch-switch coverage has since passed in
+`results/phase1/20260724T-epoch-switch-release-v2/`; real miss/stale/corrupt
+compile cells remain open.
+
 Current build/cache raw result:
 `results/experiments/build-cache/20260723T-build-cache-state-release-v1/`
 Current proposal/status packet: latest `main` commit after this document is

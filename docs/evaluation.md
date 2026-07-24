@@ -103,10 +103,11 @@ admitted full runs pass result review:
   supporting-only and incomplete for final paper evidence.
 - `make experiment-env-cache` now runs the traditional Redis/nginx ccache
   build/cache matrix through KVM with `namei_ext`, native hot-ccache control,
-  feature-equivalent FUSE rows, and a trace-derived policy/FUSE state row. The
-  current implementation covers the verified hot-cache compile path and
-  trace-derived verified-local to canonical state selection, not real
-  miss/stale/corrupt/epoch-switch compiler-output cells.
+  feature-equivalent FUSE rows, and a trace-derived policy/FUSE state row. A
+  standalone KVM release target additionally covers real compiler-output
+  epoch-switch selection for the same Redis/nginx ccache workload. The current
+  implementation still does not cover real compiler-output miss, stale, or
+  corrupt rejection cells.
 - `make kvm-agent-workspace-preflight` remains the implemented dependency
   preflight; it is not a paper-result cell.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves old
@@ -276,8 +277,10 @@ This supersedes the earlier hot-cache-only run
 `20260723T-build-cache-release-v1` as the current Experiment B result package.
 The current matrix covers the real verified hot-cache ccache compile path over
 Redis/nginx source rows and adds a trace-derived state row over real ccache
-object names. It still does not cover real compiler execution for miss, stale,
-corrupt, or epoch-switch cells.
+object names. A follow-up standalone KVM release target now covers real compiler
+execution for the epoch-switch cell under the same Redis/nginx ccache oracle.
+The remaining real compiler-output cells are miss, stale, and corrupt
+rejection.
 
 The terminal summary row reports:
 
@@ -315,8 +318,57 @@ The same current release also adds a trace-derived state row:
 
 The state row uses real ccache trace-derived object names and validates
 lookup/readdir behavior for verified-local and canonical epoch selection. It
-strengthens the state-mechanism evidence inside Experiment B, but it is not a
-real compiler-output miss/stale/corrupt/epoch-switch run.
+strengthens the state-mechanism evidence inside Experiment B, but by itself it
+is not a real compiler-output miss/stale/corrupt run. Real compiler-output
+epoch-switch coverage is recorded separately below.
+
+A newer standalone release target closes real compiler-output coverage for the
+epoch-switch cell:
+
+```sh
+make kvm-w4-ccache-bulk-compile-epoch-switch \
+  W4_CCACHE_BULK_COMPILE_EPOCH_SWITCH_SAMPLES=20 \
+  RUN_ID=20260724T-epoch-switch-release-v2
+```
+
+Raw root:
+
+```text
+results/phase1/20260724T-epoch-switch-release-v2/
+```
+
+The run passed with host exit code 0, 40/40 sample rows, zero failed rows, one
+summary row, one done row, and a clean dmesg gate.
+
+| Epoch-switch metric | `namei_ext` | Feature-equivalent FUSE |
+| --- | ---: | ---: |
+| Samples | 20 | 20 |
+| Source manifest entries | 20 | 20 |
+| Epoch 1 compile jobs | 400 | 400 |
+| Epoch 1 output matches | 400 | 400 |
+| Epoch 1 direct cache hits | 400 | 400 |
+| Epoch 1 compile ns | 142,918,676,763 | 285,034,552,484 |
+| Epoch 2 compile jobs | 400 | 400 |
+| Epoch 2 output matches | 400 | 400 |
+| Epoch 2 direct cache hits | 400 | 400 |
+| Epoch 2 compile ns | 140,874,419,542 | 309,449,913,726 |
+| Total epoch compile jobs | 800 | 800 |
+| Total output matches | 800 | 800 |
+| Total epoch compile ns | 283,793,096,305 | 594,484,466,210 |
+| Average ns/job | 354,741,370.4 | 743,105,582.8 |
+| Cache path file ops | 16,000 | 12,000 |
+| Cache object ops | 6,400 | 6,400 |
+| Policy session updates | 20 | n/a |
+| FUSE mounts | n/a | 20 |
+| Setup writes | 6,420 | n/a |
+| Update writes | 20 | 800 |
+| Backing invalidations | 800 | 800 |
+
+Derived timing observation for this run: `FUSE/namei_ext = 2.095x` by total
+epoch compile time. This timing ratio is still a release-run observation, not a
+broad FUSE performance claim. The correctness interpretation is the main claim:
+real Redis/nginx compiler output now covers the epoch-switch row for both
+`namei_ext` and feature-equivalent FUSE.
 
 The upstream/LPC-facing value of this row is that a real build-cache use case
 can be expressed as VFS name-resolution policy while ccache and the lower
@@ -376,11 +428,12 @@ operation-weighted lookup/readdir traces, macro runtime, and per-operation
 latency/overhead. Partial row replay, image setup, or trace inspection alone is
 dependency work, not an experiment result.
 
-Current status after the 2026-07-23 release run: the verified hot-cache compile
-subset is completed and useful for RQ1/RQ2 mechanism evidence and LPC/upstream
-motivation. The broader state-machine claim remains open until real miss,
-stale, corrupt, and epoch-switch compile cells are admitted and run under the
-same oracle for both `namei_ext` and FUSE.
+Current status after the 2026-07-23 build/cache release run and the
+2026-07-24 epoch-switch release run: the verified hot-cache compile subset and
+the real compile epoch-switch subset are completed and useful for RQ1/RQ2
+mechanism evidence and LPC/upstream motivation. The broader state-machine claim
+remains open until real miss, stale, and corrupt rejection compile cells are
+admitted and run under the same oracle for both `namei_ext` and FUSE.
 
 ### Experiment C: Service/Config Transition
 

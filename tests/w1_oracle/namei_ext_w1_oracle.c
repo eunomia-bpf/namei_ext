@@ -20287,6 +20287,1083 @@ static int run_w4_ccache_fuse_baseline_macrobench(FILE *out,
 	return failures ? 1 : 0;
 }
 
+struct w4_ccache_epoch_compile_round {
+	size_t compile_jobs;
+	size_t output_matches;
+	size_t cache_path_ops;
+	size_t cache_object_ops;
+	unsigned long long cache_miss;
+	unsigned long long direct_cache_hit;
+	unsigned long long local_storage_hit;
+	unsigned long long local_storage_write;
+	unsigned long long ccache_log_direct_hit;
+	unsigned long long compile_ns;
+	int failures;
+};
+
+struct w4_ccache_epoch_compile_totals {
+	int policy_rows;
+	int fuse_rows;
+	int failures;
+	size_t source_count;
+	size_t policy_epoch1_jobs;
+	size_t policy_epoch1_matches;
+	size_t policy_epoch1_cache_path_ops;
+	size_t policy_epoch1_cache_object_ops;
+	size_t policy_epoch2_jobs;
+	size_t policy_epoch2_matches;
+	size_t policy_epoch2_cache_path_ops;
+	size_t policy_epoch2_cache_object_ops;
+	size_t fuse_epoch1_jobs;
+	size_t fuse_epoch1_matches;
+	size_t fuse_epoch1_cache_path_ops;
+	size_t fuse_epoch1_cache_object_ops;
+	size_t fuse_epoch2_jobs;
+	size_t fuse_epoch2_matches;
+	size_t fuse_epoch2_cache_path_ops;
+	size_t fuse_epoch2_cache_object_ops;
+	unsigned long long policy_epoch1_ns;
+	unsigned long long policy_epoch2_ns;
+	unsigned long long fuse_epoch1_ns;
+	unsigned long long fuse_epoch2_ns;
+	unsigned long long policy_epoch1_direct_hit;
+	unsigned long long policy_epoch2_direct_hit;
+	unsigned long long fuse_epoch1_direct_hit;
+	unsigned long long fuse_epoch2_direct_hit;
+	unsigned long long policy_setup_writes;
+	unsigned long long policy_update_writes;
+	unsigned long long policy_backing_invalidations;
+	unsigned long long fuse_mounts;
+	unsigned long long fuse_update_writes;
+	unsigned long long fuse_backing_invalidations;
+};
+
+static int w4_ccache_epoch_canonical_name(char *dst, size_t size,
+					  const char *visible)
+{
+	int ret = snprintf(dst, size, "%s.e2.local", visible);
+
+	if (ret < 0)
+		return -errno;
+	if ((size_t)ret >= size)
+		return -ENAMETOOLONG;
+	return 0;
+}
+
+static int prepare_ccache_compile_epoch_entry(
+	struct oracle_entry *entry, const char *trace_cache_dir,
+	const char *cache_dir, char *canonical, size_t canonical_size)
+{
+	char mapped_path[PATH_MAX];
+	char local_path[PATH_MAX];
+	char canonical_path[PATH_MAX];
+	char parent_dir[PATH_MAX];
+	struct stat st;
+	const char *rel;
+	char *base;
+	char *slash;
+	int ret;
+
+	if (!path_under_dir(entry->original, trace_cache_dir, &rel))
+		return -EINVAL;
+	if (!has_suffix(entry->shadow, ".local"))
+		return -EINVAL;
+	ret = set_path(mapped_path, sizeof(mapped_path), cache_dir, rel);
+	if (ret)
+		return ret;
+	slash = strrchr(mapped_path, '/');
+	if (!slash || slash == mapped_path)
+		return -EINVAL;
+	base = slash + 1;
+	if (strcmp(base, entry->visible))
+		return -EINVAL;
+	*slash = 0;
+	ret = copy_string(parent_dir, sizeof(parent_dir), mapped_path);
+	*slash = '/';
+	if (ret)
+		return ret;
+	ret = w4_ccache_epoch_canonical_name(canonical, canonical_size,
+					     entry->visible);
+	if (ret)
+		return ret;
+	ret = set_path(local_path, sizeof(local_path), parent_dir,
+		       entry->shadow);
+	if (!ret)
+		ret = set_path(canonical_path, sizeof(canonical_path),
+			       parent_dir, canonical);
+	if (ret)
+		return ret;
+	if (stat(mapped_path, &st))
+		return -errno;
+	if (!S_ISREG(st.st_mode))
+		return -EINVAL;
+	if (!lstat(local_path, &st) || !lstat(canonical_path, &st))
+		return -EEXIST;
+	if (errno != ENOENT)
+		return -errno;
+	ret = copy_file(mapped_path, local_path);
+	if (!ret)
+		ret = copy_file(mapped_path, canonical_path);
+	if (!ret && unlink(mapped_path))
+		ret = -errno;
+	if (ret)
+		return ret;
+	return copy_string(entry->dir, sizeof(entry->dir), parent_dir);
+}
+
+static int prepare_ccache_compile_epoch_entries(
+	struct oracle_entry *entries, size_t nr_entries,
+	const char *trace_cache_dir, const char *cache_dir,
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1],
+	unsigned long long *backing_writes)
+{
+	size_t i;
+
+	*backing_writes = 0;
+	for (i = 0; i < nr_entries; i++) {
+		int ret = prepare_ccache_compile_epoch_entry(
+			&entries[i], trace_cache_dir, cache_dir,
+			canonical_names[i], NAMEI_EXT_NAME_MAX + 1);
+		if (ret)
+			return ret;
+		*backing_writes += 2;
+	}
+	return 0;
+}
+
+static int populate_w4_ccache_epoch_compile_policy_rules(
+	struct attached_policy *policy, __u64 cgroup_id,
+	const struct oracle_entry *entries,
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1],
+	size_t nr_entries, unsigned long long *writes)
+{
+	size_t i;
+
+	*writes = 0;
+	for (i = 0; i < nr_entries; i++) {
+		int ret;
+
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP,
+			entries[i].dir, entries[i].visible, entries[i].shadow,
+			i + 1, CACHE_STATE_VERIFIED_HIT, W4_CACHE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_LOOKUP,
+			entries[i].dir, entries[i].visible,
+			canonical_names[i], i + 1, CACHE_STATE_STALE,
+			W4_CACHE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+			entries[i].dir, entries[i].shadow, entries[i].visible,
+			i + 1, CACHE_STATE_VERIFIED_HIT, W4_CACHE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+			entries[i].dir, canonical_names[i], entries[i].visible,
+			i + 1, CACHE_STATE_VERIFIED_HIT, W4_CACHE_EPOCH_ONE);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+			entries[i].dir, entries[i].shadow, entries[i].visible,
+			i + 1, CACHE_STATE_STALE, W4_CACHE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+		ret = update_cache_epoch_rule(
+			policy, cgroup_id, BPF_NAMEI_EXT_READDIR,
+			entries[i].dir, canonical_names[i], entries[i].visible,
+			i + 1, CACHE_STATE_STALE, W4_CACHE_EPOCH_TWO);
+		if (ret)
+			return ret;
+		(*writes)++;
+	}
+	return 0;
+}
+
+static int unlink_w4_ccache_epoch1_backings(
+	const struct oracle_entry *entries, size_t nr_entries,
+	unsigned long long *invalidations)
+{
+	char path[PATH_MAX];
+	size_t i;
+
+	*invalidations = 0;
+	for (i = 0; i < nr_entries; i++) {
+		int ret = set_path(path, sizeof(path), entries[i].dir,
+				   entries[i].shadow);
+		if (ret)
+			return ret;
+		if (unlink(path))
+			return -errno;
+		(*invalidations)++;
+	}
+	return 0;
+}
+
+static int run_w4_ccache_epoch_compile_round(
+	const char *sample_dir, const char *cache_dir, const char *round_label,
+	const char *object_suffix, const char *stdout_suffix,
+	const char *stderr_suffix, const char *trace_suffix,
+	const struct oracle_entry *entries, size_t nr_entries,
+	const struct w4_ccache_source *sources, size_t nr_sources,
+	const char *redis_build_src, const char *nginx_build_src,
+	const char *baseline_hot_dir, const char *stats_path,
+	const char *log_path, bool require_direct_hit,
+	struct w4_ccache_epoch_compile_round *round)
+{
+	char stats_stderr[PATH_MAX];
+	char zero_stdout[PATH_MAX];
+	char zero_stderr[PATH_MAX];
+	__u64 compile_start_ns;
+	__u64 compile_end_ns;
+	int exit_code = -1;
+	int ret;
+	size_t i;
+
+	memset(round, 0, sizeof(*round));
+	if (stats_path && stats_path[0]) {
+		char name[128];
+
+		ret = snprintf(name, sizeof(name), "%s-zero-stats.stdout",
+			       round_label);
+		if (ret < 0)
+			return -errno;
+		if ((size_t)ret >= sizeof(name))
+			return -ENAMETOOLONG;
+		ret = set_path(zero_stdout, sizeof(zero_stdout), sample_dir,
+			       name);
+		if (!ret) {
+			ret = snprintf(name, sizeof(name),
+				       "%s-zero-stats.stderr", round_label);
+			if (ret < 0)
+				ret = -errno;
+			else if ((size_t)ret >= sizeof(name))
+				ret = -ENAMETOOLONG;
+			else
+				ret = set_path(zero_stderr,
+					       sizeof(zero_stderr),
+					       sample_dir, name);
+		}
+		if (!ret) {
+			ret = snprintf(name, sizeof(name),
+				       "%s-print-stats.stderr", round_label);
+			if (ret < 0)
+				ret = -errno;
+			else if ((size_t)ret >= sizeof(name))
+				ret = -ENAMETOOLONG;
+			else
+				ret = set_path(stats_stderr,
+					       sizeof(stats_stderr),
+					       sample_dir, name);
+		}
+		if (ret)
+			return ret;
+		ret = run_ccache_one_arg("--zero-stats", zero_stdout,
+					 zero_stderr, &exit_code);
+		if (ret || exit_code)
+			round->failures++;
+	}
+	if (log_path && log_path[0])
+		unlink_existing(log_path);
+
+	compile_start_ns = monotonic_ns();
+	for (i = 0; i < nr_sources; i++) {
+		char object_name[PATH_MAX];
+		char output_name[PATH_MAX];
+		char stdout_name[PATH_MAX];
+		char stderr_name[PATH_MAX];
+		char trace_name[PATH_MAX];
+		char output_path[PATH_MAX];
+		char source_stdout[PATH_MAX];
+		char source_stderr[PATH_MAX];
+		char trace_path[PATH_MAX];
+		char baseline_obj[PATH_MAX];
+		size_t source_cache_path_ops = 0;
+		size_t source_object_ops = 0;
+
+		ret = w4_ccache_source_file(object_name, sizeof(object_name),
+					    &sources[i], ".o");
+		if (!ret)
+			ret = w4_ccache_source_file(output_name,
+						    sizeof(output_name),
+						    &sources[i],
+						    object_suffix);
+		if (!ret)
+			ret = w4_ccache_source_file(stdout_name,
+						    sizeof(stdout_name),
+						    &sources[i],
+						    stdout_suffix);
+		if (!ret)
+			ret = w4_ccache_source_file(stderr_name,
+						    sizeof(stderr_name),
+						    &sources[i],
+						    stderr_suffix);
+		if (!ret)
+			ret = w4_ccache_source_file(trace_name,
+						    sizeof(trace_name),
+						    &sources[i],
+						    trace_suffix);
+		if (!ret)
+			ret = set_path(output_path, sizeof(output_path),
+				       sample_dir, output_name);
+		if (!ret)
+			ret = set_path(source_stdout, sizeof(source_stdout),
+				       sample_dir, stdout_name);
+		if (!ret)
+			ret = set_path(source_stderr, sizeof(source_stderr),
+				       sample_dir, stderr_name);
+		if (!ret)
+			ret = set_path(trace_path, sizeof(trace_path),
+				       sample_dir, trace_name);
+		if (!ret)
+			ret = set_path(baseline_obj, sizeof(baseline_obj),
+				       baseline_hot_dir, object_name);
+		if (ret) {
+			round->failures++;
+			continue;
+		}
+		exit_code = -1;
+		ret = run_ccache_source_compile(
+			&sources[i], redis_build_src, nginx_build_src,
+			output_path, source_stdout, source_stderr, trace_path,
+			&exit_code);
+		if (ret || exit_code) {
+			round->failures++;
+			continue;
+		}
+		round->compile_jobs++;
+		ret = compare_files(output_path, baseline_obj);
+		if (ret)
+			round->failures++;
+		else
+			round->output_matches++;
+		ret = count_ccache_optrace(trace_path, cache_dir, entries,
+					   nr_entries, sources[i].kind,
+					   &source_cache_path_ops,
+					   &source_object_ops);
+		if (ret) {
+			round->failures++;
+		} else {
+			round->cache_path_ops += source_cache_path_ops;
+			round->cache_object_ops += source_object_ops;
+		}
+	}
+	compile_end_ns = monotonic_ns();
+	round->compile_ns = compile_end_ns >= compile_start_ns ?
+				    compile_end_ns - compile_start_ns :
+				    0;
+
+	if (stats_path && stats_path[0]) {
+		ret = run_ccache_one_arg("--print-stats", stats_path,
+					 stats_stderr, &exit_code);
+		if (ret || exit_code)
+			round->failures++;
+		if (read_ccache_stat_u64(stats_path, "cache_miss",
+					 &round->cache_miss))
+			round->failures++;
+		if (read_ccache_stat_u64(stats_path, "direct_cache_hit",
+					 &round->direct_cache_hit))
+			round->failures++;
+		if (read_ccache_stat_u64(stats_path, "local_storage_hit",
+					 &round->local_storage_hit))
+			round->failures++;
+		if (read_ccache_stat_u64(stats_path, "local_storage_write",
+					 &round->local_storage_write))
+			round->failures++;
+	}
+	if (log_path && log_path[0]) {
+		size_t log_hits = 0;
+
+		if (count_ccache_log_direct_hits(log_path, &log_hits))
+			round->failures++;
+		else
+			round->ccache_log_direct_hit = log_hits;
+	}
+	if (round->compile_jobs != nr_sources ||
+	    round->output_matches != nr_sources)
+		round->failures++;
+	if (require_direct_hit) {
+		unsigned long long hits = (stats_path && stats_path[0]) ?
+						  round->direct_cache_hit :
+						  round->ccache_log_direct_hit;
+
+		if (hits < nr_sources)
+			round->failures++;
+	}
+	return round->failures ? 1 : 0;
+}
+
+static void emit_w4_ccache_epoch_compile_sample(
+	FILE *out, int sample, const char *system, bool fuse_baseline,
+	bool pass, int failures, size_t source_count,
+	const struct w4_ccache_epoch_compile_round *epoch1,
+	const struct w4_ccache_epoch_compile_round *epoch2,
+	unsigned long long setup_writes, unsigned long long update_writes,
+	unsigned long long backing_invalidations,
+	unsigned long long fuse_mounts, const char *detail)
+{
+	fputs("{\"event\":\"w4-ccache-bulk-compile-epoch-switch-sample\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_ccache_bulk_compile_epoch_switch.v1\","
+	      "\"result_level\":\"kvm_real_ccache_bulk_compile_epoch_switch\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-ccache-bulk-redis-nginx\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fputs("\"row_kind\":", out);
+	fprint_json_string(out, fuse_baseline ? "external_baseline" :
+						  "proposed_system");
+	fputs(",\"system\":", out);
+	fprint_json_string(out, system);
+	if (fuse_baseline)
+		fputs(",\"baseline\":\"fuse_cache_epoch_view\"", out);
+	fprintf(out,
+		",\"sample\":%d,\"pass\":%s,\"failures\":%d,"
+		"\"source_manifest_count\":%zu,"
+		"\"epoch1_compile_jobs\":%zu,"
+		"\"epoch1_output_matches\":%zu,"
+		"\"epoch1_compile_ns\":%llu,"
+		"\"epoch1_cache_path_file_ops\":%zu,"
+		"\"epoch1_cache_object_ops\":%zu,"
+		"\"epoch1_direct_cache_hit\":%llu,"
+		"\"epoch2_compile_jobs\":%zu,"
+		"\"epoch2_output_matches\":%zu,"
+		"\"epoch2_compile_ns\":%llu,"
+		"\"epoch2_cache_path_file_ops\":%zu,"
+		"\"epoch2_cache_object_ops\":%zu,"
+		"\"epoch2_direct_cache_hit\":%llu,"
+		"\"setup_writes\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"backing_invalidations\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"real_ccache_run\":true,"
+		"\"policy_executed\":%s,"
+		"\"ccache_compile_policy_executed\":%s,"
+		"\"kvm_validated\":true,"
+		"\"feature_equivalent_baseline\":%s,"
+		"\"complete_ccache_compile_epoch_switch\":true,"
+		"\"real_compile_epoch_switch\":true,"
+		"\"miss_stale_corrupt_compile_cells_closed\":false,"
+		"\"c2_supported\":false,"
+		"\"release_gate_pass\":false,"
+		"\"detail\":",
+		sample, pass ? "true" : "false", failures, source_count,
+		epoch1->compile_jobs, epoch1->output_matches,
+		epoch1->compile_ns, epoch1->cache_path_ops,
+		epoch1->cache_object_ops,
+		fuse_baseline ? epoch1->ccache_log_direct_hit :
+				epoch1->direct_cache_hit,
+		epoch2->compile_jobs, epoch2->output_matches,
+		epoch2->compile_ns, epoch2->cache_path_ops,
+		epoch2->cache_object_ops,
+		fuse_baseline ? epoch2->ccache_log_direct_hit :
+				epoch2->direct_cache_hit,
+		setup_writes, update_writes, backing_invalidations,
+		fuse_mounts, fuse_baseline ? "false" : "true",
+		fuse_baseline ? "false" : "true",
+		fuse_baseline ? "true" : "false");
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void emit_w4_ccache_epoch_compile_summary(
+	FILE *out, int samples,
+	const struct w4_ccache_epoch_compile_totals *totals,
+	const char *detail)
+{
+	bool policy_pass = totals->policy_rows == samples &&
+			   totals->policy_epoch1_jobs ==
+				   totals->policy_epoch1_matches &&
+			   totals->policy_epoch2_jobs ==
+				   totals->policy_epoch2_matches &&
+			   totals->policy_epoch1_jobs ==
+				   (size_t)samples * totals->source_count &&
+			   totals->policy_epoch2_jobs ==
+				   (size_t)samples * totals->source_count &&
+			   totals->policy_epoch1_direct_hit >=
+				   (unsigned long long)samples *
+					   totals->source_count &&
+			   totals->policy_epoch2_direct_hit >=
+				   (unsigned long long)samples *
+					   totals->source_count;
+	bool fuse_pass = totals->fuse_rows == samples &&
+			 totals->fuse_epoch1_jobs == totals->fuse_epoch1_matches &&
+			 totals->fuse_epoch2_jobs == totals->fuse_epoch2_matches &&
+			 totals->fuse_epoch1_jobs ==
+				 (size_t)samples * totals->source_count &&
+			 totals->fuse_epoch2_jobs ==
+				 (size_t)samples * totals->source_count &&
+			 totals->fuse_epoch1_direct_hit >=
+				 (unsigned long long)samples *
+					 totals->source_count &&
+			 totals->fuse_epoch2_direct_hit >=
+				 (unsigned long long)samples *
+					 totals->source_count &&
+			 totals->fuse_mounts == (unsigned long long)samples;
+	bool pass = totals->failures == 0 && policy_pass && fuse_pass;
+
+	fputs("{\"event\":\"w4-ccache-bulk-compile-epoch-switch-summary\","
+	      "\"schema\":\"namei_ext.eval_osdi.w4_ccache_bulk_compile_epoch_switch.v1\","
+	      "\"result_level\":\"kvm_real_ccache_bulk_compile_epoch_switch\","
+	      "\"run_environment\":\"kvm\","
+	      "\"workload\":\"w4-ccache-bulk-redis-nginx\","
+	      "\"app\":\"ccache\",",
+	      out);
+	fprintf(out,
+		"\"samples\":%d,"
+		"\"systems\":2,"
+		"\"pass\":%s,"
+		"\"failures\":%d,"
+		"\"source_manifest_count\":%zu,"
+		"\"namei_ext\":{\"system\":\"cache_locality_epoch_policy\","
+		"\"pass\":%s,"
+		"\"rows\":%d,"
+		"\"epoch1_compile_jobs\":%zu,"
+		"\"epoch1_output_matches\":%zu,"
+		"\"epoch1_compile_ns\":%llu,"
+		"\"epoch1_cache_path_file_ops\":%zu,"
+		"\"epoch1_cache_object_ops\":%zu,"
+		"\"epoch1_direct_cache_hit\":%llu,"
+		"\"epoch2_compile_jobs\":%zu,"
+		"\"epoch2_output_matches\":%zu,"
+		"\"epoch2_compile_ns\":%llu,"
+		"\"epoch2_cache_path_file_ops\":%zu,"
+		"\"epoch2_cache_object_ops\":%zu,"
+		"\"epoch2_direct_cache_hit\":%llu,"
+		"\"setup_writes\":%llu,"
+		"\"policy_session_updates\":%llu,"
+		"\"backing_invalidations\":%llu,"
+		"\"policy_executed\":true},"
+		"\"fuse_baseline\":{\"system\":\"fuse_cache_epoch_view\","
+		"\"pass\":%s,"
+		"\"rows\":%d,"
+		"\"epoch1_compile_jobs\":%zu,"
+		"\"epoch1_output_matches\":%zu,"
+		"\"epoch1_compile_ns\":%llu,"
+		"\"epoch1_cache_path_file_ops\":%zu,"
+		"\"epoch1_cache_object_ops\":%zu,"
+		"\"epoch1_direct_cache_hit\":%llu,"
+		"\"epoch2_compile_jobs\":%zu,"
+		"\"epoch2_output_matches\":%zu,"
+		"\"epoch2_compile_ns\":%llu,"
+		"\"epoch2_cache_path_file_ops\":%zu,"
+		"\"epoch2_cache_object_ops\":%zu,"
+		"\"epoch2_direct_cache_hit\":%llu,"
+		"\"fuse_mounts\":%llu,"
+		"\"update_writes\":%llu,"
+		"\"backing_invalidations\":%llu,"
+		"\"feature_equivalent_baseline\":true},"
+		"\"real_ccache_run\":true,"
+		"\"real_compile_epoch_switch\":true,"
+		"\"complete_ccache_compile_epoch_switch\":true,"
+		"\"miss_stale_corrupt_compile_cells_closed\":false,"
+		"\"policy_executed\":true,"
+		"\"feature_equivalent_fuse\":true,"
+		"\"kvm_validated\":true,"
+		"\"c2_supported\":false,"
+		"\"release_gate_pass\":false,"
+		"\"detail\":",
+		samples, pass ? "true" : "false", totals->failures,
+		totals->source_count, policy_pass ? "true" : "false",
+		totals->policy_rows, totals->policy_epoch1_jobs,
+		totals->policy_epoch1_matches, totals->policy_epoch1_ns,
+		totals->policy_epoch1_cache_path_ops,
+		totals->policy_epoch1_cache_object_ops,
+		totals->policy_epoch1_direct_hit,
+		totals->policy_epoch2_jobs, totals->policy_epoch2_matches,
+		totals->policy_epoch2_ns,
+		totals->policy_epoch2_cache_path_ops,
+		totals->policy_epoch2_cache_object_ops,
+		totals->policy_epoch2_direct_hit,
+		totals->policy_setup_writes, totals->policy_update_writes,
+		totals->policy_backing_invalidations,
+		fuse_pass ? "true" : "false", totals->fuse_rows,
+		totals->fuse_epoch1_jobs, totals->fuse_epoch1_matches,
+		totals->fuse_epoch1_ns,
+		totals->fuse_epoch1_cache_path_ops,
+		totals->fuse_epoch1_cache_object_ops,
+		totals->fuse_epoch1_direct_hit,
+		totals->fuse_epoch2_jobs, totals->fuse_epoch2_matches,
+		totals->fuse_epoch2_ns,
+		totals->fuse_epoch2_cache_path_ops,
+		totals->fuse_epoch2_cache_object_ops,
+		totals->fuse_epoch2_direct_hit, totals->fuse_mounts,
+		totals->fuse_update_writes,
+		totals->fuse_backing_invalidations);
+	fprint_json_string(out, detail);
+	fputs("}\n", out);
+	fflush(out);
+}
+
+static void add_w4_ccache_epoch_policy_totals(
+	struct w4_ccache_epoch_compile_totals *totals,
+	const struct w4_ccache_epoch_compile_round *epoch1,
+	const struct w4_ccache_epoch_compile_round *epoch2,
+	unsigned long long setup_writes, unsigned long long update_writes,
+	unsigned long long backing_invalidations)
+{
+	totals->policy_rows++;
+	totals->policy_epoch1_jobs += epoch1->compile_jobs;
+	totals->policy_epoch1_matches += epoch1->output_matches;
+	totals->policy_epoch1_ns += epoch1->compile_ns;
+	totals->policy_epoch1_cache_path_ops += epoch1->cache_path_ops;
+	totals->policy_epoch1_cache_object_ops += epoch1->cache_object_ops;
+	totals->policy_epoch1_direct_hit += epoch1->direct_cache_hit;
+	totals->policy_epoch2_jobs += epoch2->compile_jobs;
+	totals->policy_epoch2_matches += epoch2->output_matches;
+	totals->policy_epoch2_ns += epoch2->compile_ns;
+	totals->policy_epoch2_cache_path_ops += epoch2->cache_path_ops;
+	totals->policy_epoch2_cache_object_ops += epoch2->cache_object_ops;
+	totals->policy_epoch2_direct_hit += epoch2->direct_cache_hit;
+	totals->policy_setup_writes += setup_writes;
+	totals->policy_update_writes += update_writes;
+	totals->policy_backing_invalidations += backing_invalidations;
+}
+
+static void add_w4_ccache_epoch_fuse_totals(
+	struct w4_ccache_epoch_compile_totals *totals,
+	const struct w4_ccache_epoch_compile_round *epoch1,
+	const struct w4_ccache_epoch_compile_round *epoch2,
+	unsigned long long update_writes,
+	unsigned long long backing_invalidations, unsigned long long fuse_mounts)
+{
+	totals->fuse_rows++;
+	totals->fuse_epoch1_jobs += epoch1->compile_jobs;
+	totals->fuse_epoch1_matches += epoch1->output_matches;
+	totals->fuse_epoch1_ns += epoch1->compile_ns;
+	totals->fuse_epoch1_cache_path_ops += epoch1->cache_path_ops;
+	totals->fuse_epoch1_cache_object_ops += epoch1->cache_object_ops;
+	totals->fuse_epoch1_direct_hit += epoch1->ccache_log_direct_hit;
+	totals->fuse_epoch2_jobs += epoch2->compile_jobs;
+	totals->fuse_epoch2_matches += epoch2->output_matches;
+	totals->fuse_epoch2_ns += epoch2->compile_ns;
+	totals->fuse_epoch2_cache_path_ops += epoch2->cache_path_ops;
+	totals->fuse_epoch2_cache_object_ops += epoch2->cache_object_ops;
+	totals->fuse_epoch2_direct_hit += epoch2->ccache_log_direct_hit;
+	totals->fuse_mounts += fuse_mounts;
+	totals->fuse_update_writes += update_writes;
+	totals->fuse_backing_invalidations += backing_invalidations;
+}
+
+static int run_one_w4_ccache_epoch_policy_compile_sample(
+	FILE *out, const char *cgroup_path, __u64 cgroup_id,
+	const char *work_dir, int sample, const char *trace_cache_dir,
+	const struct oracle_entry *input_entries, size_t nr_entries,
+	const struct w4_ccache_source *sources, size_t nr_sources,
+	const char *redis_build_src, const char *nginx_build_src,
+	const char *baseline_hot_dir, const char *policy_obj,
+	struct w4_ccache_epoch_compile_totals *totals)
+{
+	struct attached_policy policy = {
+		.cgroup_fd = -1,
+		.prog_fd = -1,
+		.map_fd = -1,
+	};
+	struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1];
+	struct w4_ccache_epoch_compile_round epoch1;
+	struct w4_ccache_epoch_compile_round epoch2;
+	char sample_dir[PATH_MAX];
+	char sample_cache_dir[PATH_MAX];
+	char stats_epoch1[PATH_MAX];
+	char stats_epoch2[PATH_MAX];
+	char copy_label[64];
+	unsigned long long backing_writes = 0;
+	unsigned long long rule_writes = 0;
+	unsigned long long setup_writes = 0;
+	unsigned long long update_writes = 0;
+	unsigned long long backing_invalidations = 0;
+	int failures = 0;
+	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(canonical_names, 0, sizeof(canonical_names));
+	memset(&epoch1, 0, sizeof(epoch1));
+	memset(&epoch2, 0, sizeof(epoch2));
+	memcpy(entries, input_entries, sizeof(entries[0]) * nr_entries);
+
+	ret = snprintf(sample_dir, sizeof(sample_dir),
+		       "%s/epoch-policy-compile-sample-%03d", work_dir,
+		       sample);
+	if (ret < 0)
+		ret = -errno;
+	else if ((size_t)ret >= sizeof(sample_dir))
+		ret = -ENAMETOOLONG;
+	else
+		ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(sample_cache_dir, sizeof(sample_cache_dir),
+			       sample_dir, "ccache");
+	if (!ret)
+		ret = set_path(stats_epoch1, sizeof(stats_epoch1), sample_dir,
+			       "ccache-policy-epoch1-stats.txt");
+	if (!ret)
+		ret = set_path(stats_epoch2, sizeof(stats_epoch2), sample_dir,
+			       "ccache-policy-epoch2-stats.txt");
+	if (!ret) {
+		ret = snprintf(copy_label, sizeof(copy_label),
+			       "epoch-policy-cache-copy-%03d", sample);
+		if (ret < 0)
+			ret = -errno;
+		else if ((size_t)ret >= sizeof(copy_label))
+			ret = -ENAMETOOLONG;
+		else
+			ret = 0;
+	}
+	if (!ret)
+		ret = copy_tree_for_w1_sample(trace_cache_dir, sample_cache_dir,
+					      sample_dir, copy_label);
+	if (!ret)
+		ret = prepare_ccache_compile_epoch_entries(
+			entries, nr_entries, trace_cache_dir, sample_cache_dir,
+			canonical_names, &backing_writes);
+	if (!ret)
+		ret = open_policy(policy_obj, POLICY_CACHE_LOCALITY,
+				  "cache_locality_epoch", &policy);
+	if (!ret)
+		ret = populate_w4_ccache_epoch_compile_policy_rules(
+			&policy, cgroup_id, entries, canonical_names, nr_entries,
+			&rule_writes);
+	if (!ret)
+		ret = update_cache_epoch_session(&policy, cgroup_id,
+						 W4_CACHE_EPOCH_ONE, true);
+	if (!ret)
+		setup_writes = backing_writes + rule_writes + 1;
+	if (!ret && attach_policy(&policy, cgroup_path))
+		ret = -errno;
+	if (ret) {
+		failures++;
+		goto out_emit;
+	}
+
+	unsetenv("CCACHE_READONLY");
+	unsetenv("CCACHE_READONLY_DIRECT");
+	unsetenv("CCACHE_NOSTATS");
+	unsetenv("CCACHE_TEMPDIR");
+	unsetenv("CCACHE_LOGFILE");
+	if (setenv("CCACHE_DIR", sample_cache_dir, 1)) {
+		failures++;
+		goto out_destroy;
+	}
+	failures += run_w4_ccache_epoch_compile_round(
+		sample_dir, sample_cache_dir, "policy-epoch1",
+		".policy-e1.o", ".policy-e1.stdout", ".policy-e1.stderr",
+		".policy-e1.strace.log", entries, nr_entries, sources,
+		nr_sources, redis_build_src, nginx_build_src, baseline_hot_dir,
+		stats_epoch1, NULL, true, &epoch1);
+
+	ret = unlink_w4_ccache_epoch1_backings(entries, nr_entries,
+					       &backing_invalidations);
+	if (!ret) {
+		ret = update_cache_epoch_session(&policy, cgroup_id,
+						 W4_CACHE_EPOCH_TWO, true);
+		if (!ret)
+			update_writes = 1;
+	}
+	if (ret) {
+		failures++;
+		goto out_destroy;
+	}
+	failures += run_w4_ccache_epoch_compile_round(
+		sample_dir, sample_cache_dir, "policy-epoch2",
+		".policy-e2.o", ".policy-e2.stdout", ".policy-e2.stderr",
+		".policy-e2.strace.log", entries, nr_entries, sources,
+		nr_sources, redis_build_src, nginx_build_src, baseline_hot_dir,
+		stats_epoch2, NULL, true, &epoch2);
+
+out_destroy:
+	ret = destroy_policy(&policy);
+	if (ret)
+		failures++;
+	goto out_emit;
+
+out_emit:
+	if (policy.obj || policy.cgroup_fd >= 0 || policy.prog_fd >= 0)
+		destroy_policy(&policy);
+	add_w4_ccache_epoch_policy_totals(totals, &epoch1, &epoch2,
+					  setup_writes, update_writes,
+					  backing_invalidations);
+	totals->failures += failures;
+	emit_w4_ccache_epoch_compile_sample(
+		out, sample, "cache_locality_epoch_policy", false,
+		failures == 0, failures, nr_sources, &epoch1, &epoch2,
+		setup_writes, update_writes, backing_invalidations, 0,
+		failures ? "namei_ext real ccache epoch-switch compile failed" :
+			   "namei_ext real ccache epoch-switch compile passed");
+	return failures ? 1 : 0;
+}
+
+static int update_w4_fuse_epoch2_backings(
+	const struct w4_fuse_mount *mount, const struct oracle_entry *entries,
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1],
+	size_t nr_entries, unsigned long long *update_writes,
+	unsigned long long *backing_invalidations)
+{
+	char local_path[PATH_MAX];
+	char canonical_path[PATH_MAX];
+	char visible_path[PATH_MAX];
+	size_t i;
+
+	*update_writes = 0;
+	*backing_invalidations = 0;
+	for (i = 0; i < nr_entries; i++) {
+		int ret = w4_fuse_entry_backing_path(
+			mount, &entries[i], entries[i].shadow, local_path,
+			sizeof(local_path));
+		if (!ret)
+			ret = w4_fuse_entry_backing_path(
+				mount, &entries[i], canonical_names[i],
+				canonical_path, sizeof(canonical_path));
+		if (!ret)
+			ret = w4_fuse_entry_backing_path(
+				mount, &entries[i], entries[i].visible,
+				visible_path, sizeof(visible_path));
+		if (ret)
+			return ret;
+		if (unlink(local_path))
+			return -errno;
+		(*backing_invalidations)++;
+		ret = copy_file(canonical_path, visible_path);
+		if (ret)
+			return ret;
+		(*update_writes)++;
+	}
+	return 0;
+}
+
+static int run_one_w4_ccache_epoch_fuse_compile_sample(
+	FILE *out, const char *work_dir, int sample, const char *trace_cache_dir,
+	const struct oracle_entry *input_entries, size_t nr_entries,
+	const struct w4_ccache_source *sources, size_t nr_sources,
+	const char *redis_build_src, const char *nginx_build_src,
+	const char *baseline_hot_dir,
+	struct w4_ccache_epoch_compile_totals *totals)
+{
+	struct w4_fuse_mount fuse_mount = {};
+	struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	char canonical_names[NAMEI_EXT_MAX_ENTRIES][NAMEI_EXT_NAME_MAX + 1];
+	struct w4_ccache_epoch_compile_round epoch1;
+	struct w4_ccache_epoch_compile_round epoch2;
+	char sample_dir[PATH_MAX];
+	char sample_cache_dir[PATH_MAX];
+	char tmp_dir[PATH_MAX];
+	char log_epoch1[PATH_MAX];
+	char log_epoch2[PATH_MAX];
+	char ready_rel[PATH_MAX];
+	char copy_label[64];
+	unsigned long long backing_writes = 0;
+	unsigned long long update_writes = 0;
+	unsigned long long backing_invalidations = 0;
+	unsigned long long fuse_mounts = 0;
+	int failures = 0;
+	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(canonical_names, 0, sizeof(canonical_names));
+	memset(&epoch1, 0, sizeof(epoch1));
+	memset(&epoch2, 0, sizeof(epoch2));
+	memcpy(entries, input_entries, sizeof(entries[0]) * nr_entries);
+
+	ret = snprintf(sample_dir, sizeof(sample_dir),
+		       "%s/epoch-fuse-compile-sample-%03d", work_dir,
+		       sample);
+	if (ret < 0)
+		ret = -errno;
+	else if ((size_t)ret >= sizeof(sample_dir))
+		ret = -ENAMETOOLONG;
+	else
+		ret = mkdir_if_missing(sample_dir);
+	if (!ret)
+		ret = set_path(sample_cache_dir, sizeof(sample_cache_dir),
+			       sample_dir, "ccache");
+	if (!ret)
+		ret = set_path(tmp_dir, sizeof(tmp_dir), sample_dir,
+			       "ccache-tmp");
+	if (!ret)
+		ret = set_path(log_epoch1, sizeof(log_epoch1), sample_dir,
+			       "ccache-fuse-epoch1.log");
+	if (!ret)
+		ret = set_path(log_epoch2, sizeof(log_epoch2), sample_dir,
+			       "ccache-fuse-epoch2.log");
+	if (!ret) {
+		ret = snprintf(copy_label, sizeof(copy_label),
+			       "epoch-fuse-cache-copy-%03d", sample);
+		if (ret < 0)
+			ret = -errno;
+		else if ((size_t)ret >= sizeof(copy_label))
+			ret = -ENAMETOOLONG;
+		else
+			ret = 0;
+	}
+	if (!ret)
+		ret = copy_tree_for_w1_sample(trace_cache_dir, sample_cache_dir,
+					      sample_dir, copy_label);
+	if (!ret)
+		ret = prepare_ccache_compile_epoch_entries(
+			entries, nr_entries, trace_cache_dir, sample_cache_dir,
+			canonical_names, &backing_writes);
+	if (!ret)
+		ret = mkdir_if_missing(tmp_dir);
+	if (!ret)
+		ret = ccache_original_relative(trace_cache_dir, &entries[0],
+					       ready_rel, sizeof(ready_rel));
+	if (!ret)
+		ret = setup_w4_fuse_passthrough_cache_view(
+			sample_cache_dir, ready_rel, &fuse_mounts, &fuse_mount);
+	if (ret) {
+		failures++;
+		goto out_emit;
+	}
+
+	if (setenv("CCACHE_DIR", sample_cache_dir, 1) ||
+	    setenv("CCACHE_READONLY", "1", 1) ||
+	    setenv("CCACHE_READONLY_DIRECT", "1", 1) ||
+	    setenv("CCACHE_NOSTATS", "1", 1) ||
+	    setenv("CCACHE_TEMPDIR", tmp_dir, 1) ||
+	    setenv("CCACHE_LOGFILE", log_epoch1, 1)) {
+		failures++;
+		goto out_unmount;
+	}
+	failures += run_w4_ccache_epoch_compile_round(
+		sample_dir, sample_cache_dir, "fuse-epoch1", ".fuse-e1.o",
+		".fuse-e1.stdout", ".fuse-e1.stderr",
+		".fuse-e1.strace.log", entries, nr_entries, sources,
+		nr_sources, redis_build_src, nginx_build_src, baseline_hot_dir,
+		NULL, log_epoch1, true, &epoch1);
+
+	ret = update_w4_fuse_epoch2_backings(&fuse_mount, entries,
+					     canonical_names, nr_entries,
+					     &update_writes,
+					     &backing_invalidations);
+	if (ret) {
+		failures++;
+		goto out_unmount;
+	}
+	if (setenv("CCACHE_LOGFILE", log_epoch2, 1)) {
+		failures++;
+		goto out_unmount;
+	}
+	failures += run_w4_ccache_epoch_compile_round(
+		sample_dir, sample_cache_dir, "fuse-epoch2", ".fuse-e2.o",
+		".fuse-e2.stdout", ".fuse-e2.stderr",
+		".fuse-e2.strace.log", entries, nr_entries, sources,
+		nr_sources, redis_build_src, nginx_build_src, baseline_hot_dir,
+		NULL, log_epoch2, true, &epoch2);
+
+out_unmount:
+	ret = unmount_w4_fuse(&fuse_mount);
+	if (ret)
+		failures++;
+out_emit:
+	if (fuse_mount.active)
+		unmount_w4_fuse(&fuse_mount);
+	add_w4_ccache_epoch_fuse_totals(totals, &epoch1, &epoch2,
+					update_writes, backing_invalidations,
+					fuse_mounts);
+	totals->failures += failures;
+	emit_w4_ccache_epoch_compile_sample(
+		out, sample, "fuse_cache_epoch_view", true, failures == 0,
+		failures, nr_sources, &epoch1, &epoch2, backing_writes,
+		update_writes, backing_invalidations, fuse_mounts,
+		failures ? "FUSE real ccache epoch-switch compile failed" :
+			   "FUSE real ccache epoch-switch compile passed");
+	return failures ? 1 : 0;
+}
+
+static int run_w4_ccache_bulk_compile_epoch_switch(
+	FILE *out, const char *cgroup_mount, int samples, const char *work_dir,
+	const char *trace_cache_dir, const char *entries_tsv,
+	const char *source_manifest, const char *redis_build_src,
+	const char *nginx_build_src, const char *baseline_hot_dir,
+	const char *policy_obj)
+{
+	static struct oracle_entry entries[NAMEI_EXT_MAX_ENTRIES];
+	static struct w4_ccache_source sources[NAMEI_EXT_MAX_ENTRIES];
+	struct w4_ccache_epoch_compile_totals totals = {};
+	char current_cgroup[PATH_MAX];
+	__u64 current_cgroup_id = 0;
+	size_t nr_entries = 0;
+	size_t nr_sources = 0;
+	int sample;
+	int ret;
+
+	memset(entries, 0, sizeof(entries));
+	memset(sources, 0, sizeof(sources));
+	if (samples <= 0) {
+		totals.failures = 1;
+		emit_w4_ccache_epoch_compile_summary(
+			out, samples, &totals, "sample count must be positive");
+		return 1;
+	}
+	ret = mkdir_if_missing(work_dir);
+	if (ret) {
+		totals.failures = 1;
+		emit_w4_ccache_epoch_compile_summary(
+			out, samples, &totals,
+			"failed to create W4 ccache epoch compile workdir");
+		return 1;
+	}
+	if (access(trace_cache_dir, R_OK | X_OK) || access(entries_tsv, R_OK) ||
+	    access(source_manifest, R_OK) ||
+	    access(redis_build_src, R_OK | X_OK) ||
+	    access(nginx_build_src, R_OK | X_OK) ||
+	    access(baseline_hot_dir, R_OK | X_OK) ||
+	    access(policy_obj, R_OK)) {
+		totals.failures = 1;
+		emit_w4_ccache_epoch_compile_summary(
+			out, samples, &totals,
+			"W4 ccache epoch compile inputs are not readable");
+		return 1;
+	}
+	ret = read_entries(entries_tsv, entries, &nr_entries);
+	if (!ret)
+		ret = read_w4_ccache_sources(source_manifest, sources,
+					     &nr_sources);
+	if (!ret)
+		ret = current_cgroup_path(cgroup_mount, current_cgroup,
+					  sizeof(current_cgroup));
+	if (!ret)
+		ret = cgroup_id_from_path(current_cgroup, &current_cgroup_id);
+	if (ret || !nr_entries || !nr_sources) {
+		totals.failures = 1;
+		totals.source_count = nr_sources;
+		emit_w4_ccache_epoch_compile_summary(
+			out, samples, &totals,
+			"failed to read W4 ccache epoch compile inputs");
+		return 1;
+	}
+	totals.source_count = nr_sources;
+
+	for (sample = 0; sample < samples; sample++) {
+		run_one_w4_ccache_epoch_policy_compile_sample(
+			out, current_cgroup, current_cgroup_id, work_dir,
+			sample, trace_cache_dir, entries, nr_entries, sources,
+			nr_sources, redis_build_src, nginx_build_src,
+			baseline_hot_dir, policy_obj, &totals);
+		run_one_w4_ccache_epoch_fuse_compile_sample(
+			out, work_dir, sample, trace_cache_dir, entries,
+			nr_entries, sources, nr_sources, redis_build_src,
+			nginx_build_src, baseline_hot_dir, &totals);
+	}
+
+	emit_w4_ccache_epoch_compile_summary(
+		out, samples, &totals,
+		totals.failures ?
+			"W4 ccache real compile epoch-switch row failed" :
+			"W4 ccache real compile epoch-switch row passed for namei_ext and feature-equivalent FUSE");
+	return totals.failures ? 1 : 0;
+}
+
 static int run_nginx_real_app(FILE *out, const char *cgroup_mount,
 			      const char *work_dir, const char *nginx_bin,
 			      const char *fixture_conf,
@@ -22078,6 +23155,30 @@ int main(int argc, char **argv)
 		return ret ? 1 : 0;
 	}
 
+	if (argc == 13 &&
+	    !strcmp(argv[1], "--ccache-bulk-compile-epoch-switch")) {
+		char *end = NULL;
+		long samples;
+
+		errno = 0;
+		samples = strtol(argv[4], &end, 10);
+		if (errno || !end || *end || samples <= 0 || samples > INT_MAX) {
+			fprintf(stderr, "invalid sample count: %s\n", argv[4]);
+			return 2;
+		}
+		out = fopen(argv[2], "a");
+		if (!out) {
+			perror("fopen");
+			return 1;
+		}
+		ret = run_w4_ccache_bulk_compile_epoch_switch(
+			out, argv[3], (int)samples, argv[5], argv[6],
+			argv[7], argv[8], argv[9], argv[10], argv[11],
+			argv[12]);
+		fclose(out);
+		return ret ? 1 : 0;
+	}
+
 	if (argc == 16 && !strcmp(argv[1], "--ccache-parent-compile")) {
 		out = fopen(argv[2], "a");
 		if (!out) {
@@ -22230,6 +23331,7 @@ int main(int argc, char **argv)
 				"       %s --ccache-bulk-policy-macrobench OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST CACHE_POLICY\n"
 				"       %s --ccache-bulk-native-compile OUT_JSONL SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR\n"
 				"       %s --ccache-bulk-fuse-compile OUT_JSONL SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR\n"
+				"       --ccache-bulk-compile-epoch-switch OUT_JSONL CGROUP_MOUNT SAMPLES WORK_DIR TRACE_CACHE_DIR ENTRIES_TSV SOURCE_MANIFEST REDIS_BUILD_SRC NGINX_BUILD_SRC BASELINE_HOT_DIR CACHE_POLICY\n"
 					"       %s --ccache-policy-compile OUT_JSONL CGROUP_MOUNT WORK_DIR CACHE_DIR TRACE_CACHE_DIR ENTRIES_TSV REDIS_SRC REDIS_BUILD_SRC NGINX_SRC NGINX_BUILD_SRC REDIS_BASELINE_OBJ NGINX_BASELINE_OBJ CACHE_POLICY STATS_PATH\n"
 					"       %s --ccache-parent-compile OUT_JSONL CGROUP_MOUNT WORK_DIR CACHE_DIR TRACE_CACHE_DIR ENTRIES_TSV REDIS_SRC REDIS_BUILD_SRC NGINX_SRC NGINX_BUILD_SRC REDIS_BASELINE_OBJ NGINX_BASELINE_OBJ CACHE_POLICY STATS_PATH\n"
 					"       %s --ccache-table-compile OUT_JSONL CGROUP_MOUNT WORK_DIR CACHE_DIR TRACE_CACHE_DIR ENTRIES_TSV REDIS_SRC REDIS_BUILD_SRC NGINX_SRC NGINX_BUILD_SRC REDIS_BASELINE_OBJ NGINX_BASELINE_OBJ TABLE_POLICY STATS_PATH\n"
