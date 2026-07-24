@@ -20,10 +20,10 @@ draft. This is not a complete related-work survey.
 
 | Source | Link | Relevance |
 | --- | --- | --- |
-| LPC 2026 Call for Proposals | https://lpc.events/event/20/abstracts/ | Official dates and proposal categories. It says LPC 2026 is in Prague on 2026-10-05 to 2026-10-07, and Refereed Track proposals closed on 2026-06-28. |
+| LPC 2026 Call for Proposals | https://lpc.events/event/20/abstracts/ | Official dates and proposal categories. It says LPC 2026 is in Prague on 2026-10-05 to 2026-10-07; Refereed Track/Kernel Summit/BoF closed on 2026-06-28; eBPF Track proposals close on 2026-07-24; Microconference Subtopic proposals close on 2026-08-07. |
 | LPC 2026 overview | https://lpc.events/ | Frames LPC as a developer conference for Linux plumbing/core design problems. Useful for explaining why the proposal asks for design feedback, not only presenting paper results. |
 | LPC 2026 topics/blog | https://lpc.events/blog/current/ | Shows relevant microconference families such as Build Systems, Containers and checkpoint/restore, Linux System Monitoring and Observability, Safe Systems with Linux, and `sched_ext`. |
-| LPC 2026 FAQ | https://lpc.events/event/20/page/283-faqs | Notes microconference proposals are closed and need maintainer/community buy-in. This supports treating the current proposal as a discussion draft. |
+| LPC 2026 FAQ | https://lpc.events/event/20/page/283-faqs | Use only for logistics; the authoritative current action comes from the CFP page: eBPF Track and Microconference Subtopic proposals are still relevant on 2026-07-23. |
 
 ## Kernel Mechanism References
 
@@ -60,6 +60,36 @@ draft. This is not a complete related-work survey.
 | Broad FUSE performance claims require acknowledging optimized FUSE. | FUSE passthrough documentation. | Current run reports release-run timing only; no broad superiority claim. |
 | Materialized namespace mechanisms are related mechanisms, not the central baseline. | OverlayFS documentation plus local user-instruction file. | Current docs keep Overlay/materialization as background unless a source oracle makes it load-bearing. |
 | Real build/cache workload evidence exists. | ccache manual plus local build/cache raw root. | Redis/nginx ccache verified-hot-cache row passes under `namei_ext`, native, and FUSE. |
+
+## Packet To Send Upstream
+
+Send the upstream packet in this order:
+
+1. The one-paragraph maintainer pitch from
+   `docs/tmp/2026-07-23-lpc-proposal-namei-ext.md`.
+2. The local current-state report:
+   `docs/tmp/2026-07-23-current-state-lpc-status.md`.
+3. The build/cache result report:
+   `docs/tmp/2026-07-23-build-cache-lpc-result-report.md`.
+4. The raw-result pointer:
+   `results/experiments/build-cache/20260723T-build-cache-release-v1/`.
+5. The latest `main` commit containing the current proposal/status packet.
+6. External references:
+   - LPC CFP: https://lpc.events/event/20/abstracts/
+   - pathname lookup: https://docs.kernel.org/filesystems/path-lookup.html
+   - `sched_ext`: https://docs.kernel.org/scheduler/sched-ext.html
+   - BPF LSM: https://docs.kernel.org/bpf/prog_lsm.html
+   - FUSE: https://www.kernel.org/doc/html/next/filesystems/fuse.html
+   - ccache: https://ccache.dev/manual/3.7.9.html
+
+Suggested email opener:
+
+```text
+We are looking for early VFS/BPF feedback on whether a constrained BPF policy
+hook at name resolution is a viable boundary for dynamic path views over
+existing filesystem objects, before turning the prototype into an RFC patch
+series.
+```
 
 ## Reference Gaps Before RFC
 

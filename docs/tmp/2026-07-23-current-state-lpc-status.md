@@ -2,8 +2,10 @@
 
 Date: 2026-07-23
 Repository: `/home/yunwei37/workspace/namei_ext`
-Current pushed commit inspected: `ce87d81 Add build cache experiment matrix`
-Branch status before this document: `main...origin/main`
+Build/cache raw-result commit inspected:
+`ce87d81 Add build cache experiment matrix`
+Current proposal/status packet: latest `main` commit after this document is
+committed.
 
 ## One-Sentence State
 
@@ -164,8 +166,9 @@ runner proves the compile-state machinery is sound.
 
 ## LPC Readiness
 
-The project is ready for an LPC discussion draft, not a final upstream patch
-submission. The proposal should ask for subsystem feedback on:
+The project is ready for an LPC eBPF Track submission draft and for upstream
+discussion, not a final upstream patch submission. The proposal should ask for
+subsystem feedback on:
 
 - whether VFS name resolution is an acceptable extension-point boundary;
 - which hook location and locking/RCU constraints are acceptable;
@@ -176,5 +179,7 @@ submission. The proposal should ask for subsystem feedback on:
   filesystems.
 
 As of 2026-07-23, LPC 2026's official Refereed Track deadline has already
-passed, so the current document should be treated as a proposal draft for
-microconference discussion, maintainer outreach, or a later venue.
+passed. However, the eBPF Track proposal deadline is 2026-07-24 and the
+Microconference Subtopic deadline is 2026-08-07. The practical next action is
+to submit the eBPF Track proposal immediately, then reuse the same packet for
+maintainer outreach and microconference discussion.

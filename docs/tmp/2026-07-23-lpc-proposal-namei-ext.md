@@ -1,22 +1,36 @@
 # LPC Proposal Draft: BPF Policy At VFS Name Resolution
 
 Date: 2026-07-23
-Status: discussion draft, not a submitted LPC 2026 abstract
-Target audience: VFS, filesystem, BPF, LSM, containers/build systems, and
+Status: submission-ready draft for the LPC 2026 eBPF Track, plus a
+microconference/upstream discussion version
+Target audience: BPF, VFS, filesystem, LSM, containers/build systems, and
 `sched_ext` reviewers
 
 Note: Linux Plumbers Conference 2026 is scheduled for 2026-10-05 to
 2026-10-07 in Prague. The official Refereed Track, Kernel Summit, and BoF
 submission deadline listed by LPC was 2026-06-28, which has passed as of this
-document date. This proposal is therefore prepared as a maintainer discussion
-draft, microconference discussion seed, or later-venue abstract rather than a
-claim of submission.
+document date. The eBPF Track proposal deadline is 2026-07-24, and
+Microconference Subtopic proposals close on 2026-08-07. The immediate action is
+to submit this to the eBPF Track, then reuse it for maintainer outreach and
+microconference discussion.
+
+## Submission Fields
+
+| Field | Value |
+| --- | --- |
+| Track | eBPF Track |
+| Alternative venue | Microconference Subtopic, likely Filesystems, BPF, Build Systems, Containers/checkpoint-restore, or `sched_ext` adjacent discussion |
+| Format | 30-minute talk/discussion for eBPF Track |
+| Title | `namei_ext: BPF Policy at VFS Name Resolution Without Owning a Filesystem` |
+| Audience | BPF developers, VFS/filesystem maintainers, LSM reviewers, container/build-system developers |
+| Desired outcome | Early upstream feedback before an RFC patch series |
+| Required attendees | BPF maintainers/reviewers, VFS/pathname lookup reviewers, filesystem/FUSE reviewers, LSM reviewers |
 
 ## Proposed Title
 
-`namei_ext`: BPF Policy At VFS Name Resolution Without Owning A Filesystem
+`namei_ext`: BPF Policy at VFS Name Resolution Without Owning a Filesystem
 
-## Short Abstract
+## Abstract To Submit
 
 Many Linux workloads need a dynamic view of existing filesystem objects without
 wanting to implement a filesystem. Agent workspaces, build caches, service
@@ -39,6 +53,19 @@ checks under `namei_ext`, native hot ccache, and a feature-equivalent FUSE
 cache view. The goal of the session is to get upstream feedback on whether this
 is the right VFS/BPF boundary, what restrictions are necessary, and what
 selftests and API shape would be required before an RFC patch series.
+
+## Short Pitch For Maintainer Email
+
+We are looking for early VFS/BPF feedback on whether a constrained BPF policy
+hook at name resolution is a viable boundary for dynamic path views over
+existing filesystem objects, before turning the prototype into an RFC patch
+series.
+
+`namei_ext` is not a BPF filesystem. The policy only participates in bounded
+lookup/readdir decisions; the VFS and lower filesystem still own dentries,
+inodes, file operations, writes, permissions, page cache, and persistence. The
+current prototype has KVM evidence from Agent-workspace traces and a
+Redis/nginx ccache workload with a matched FUSE comparison.
 
 ## Problem
 
@@ -151,7 +178,17 @@ path while ccache and the lower filesystem keep data/write semantics.
 
 ## Proposed Session Shape
 
-For a 20-minute microconference discussion:
+For the LPC eBPF Track 30-minute format:
+
+1. 4 minutes: workload problem and why eBPF LSM/FUSE/custom FS are different
+   boundaries.
+2. 8 minutes: proposed VFS/BPF mechanism and current cgroup attach path.
+3. 7 minutes: KVM evidence from Agent workspace and build/cache.
+4. 8 minutes: safety/API questions: hook point, RCU/ref-walk, verifier,
+   allowed actions, and selftests.
+5. 3 minutes: requested maintainer feedback and next RFC steps.
+
+For a 20-minute microconference subtopic discussion:
 
 1. 3 minutes: workload problem and missing-middle boundary.
 2. 5 minutes: proposed VFS/BPF mechanism and safety constraints.
@@ -168,6 +205,8 @@ For a 45-minute track talk:
 
 ## Local Artifacts
 
+- Upstream reference packet:
+  `docs/tmp/2026-07-23-lpc-reference-map.md`
 - Current-state report:
   `docs/tmp/2026-07-23-current-state-lpc-status.md`
 - Build/cache plan:
