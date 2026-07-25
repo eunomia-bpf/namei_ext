@@ -18,32 +18,14 @@ include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/kvm.mk
-
-LEGACY_DIAGNOSTIC_GOALS := \
-	phase1-legacy-diagnostics provenance report \
-	experiment-env-cache kvm-build-cache-matrix \
-	table-% w1-% workloads workload-% \
-	eval-osdi-% kvm-eval-osdi-% \
-	kvm-w1-% kvm-w2-% kvm-w3-% kvm-w4-%
-ifneq ($(strip $(filter $(LEGACY_DIAGNOSTIC_GOALS),$(MAKECMDGOALS))),)
-ENABLE_LEGACY_DIAGNOSTICS := 1
-endif
-ENABLE_LEGACY_DIAGNOSTICS ?= 0
-
-ifeq ($(ENABLE_LEGACY_DIAGNOSTICS),1)
-include $(ROOT_DIR)/configs/eval-osdi/policy-budgets.mk
-include $(ROOT_DIR)/mk/table_budget.mk
-include $(ROOT_DIR)/mk/report.mk
 include $(ROOT_DIR)/mk/workload.mk
-include $(ROOT_DIR)/mk/eval_osdi.mk
-endif
 
 .DEFAULT_GOAL := phase1
 
 .PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional \
 	policy-load policy-semantic agent-workspace \
 	experiments experiment-agent-workspace experiment-env-cache \
-	phase1-legacy-diagnostics table-conformance w1-oracle \
+	w1-oracle \
 	help clean clean-results
 .NOTPARALLEL: phase1 experiments
 
@@ -58,8 +40,6 @@ experiments: experiment-agent-workspace experiment-env-cache
 experiment-agent-workspace: kvm-agent-workspace-matrix
 
 experiment-env-cache: kvm-build-cache-matrix
-
-phase1-legacy-diagnostics: phase1-smoke table-conformance w1-oracle kvm-policy-load kvm-policy-semantic kvm-w1-oracle kvm-w1-build-replay kvm-w1-release-build-replay kvm-w1-branch-probes kvm-w2-oracle kvm-w2-nginx-real kvm-w3-oracle kvm-w3-redis-replay kvm-w3-redis-table-replay kvm-w3-redis-counterfactual kvm-w4-oracle kvm-w4-cache-content kvm-w4-cache-table-content kvm-w4-cache-transition-counterfactual kvm-w4-ccache-real kvm-w4-ccache-trace kvm-w4-ccache-policy-bridge kvm-w4-ccache-policy-compile kvm-w4-ccache-parent-compile kvm-w4-ccache-table-compile kvm-w4-ccache-release-counterfactual table-budget kvm-bench docker-smoke report
 
 check-prereqs:
 	command -v make >/dev/null
@@ -88,9 +68,6 @@ policy-load:
 
 policy-semantic:
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_semantic" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
-
-table-conformance: bpf
-	$(MAKE) -C "$(ROOT_DIR)/tests/table_conformance" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" RESULT_DIR="$(PHASE1_RESULT_DIR)" run
 
 w1-oracle:
 	$(MAKE) -C "$(ROOT_DIR)/tests/w1_oracle" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
@@ -131,14 +108,6 @@ help:
 	@printf '%s\n' '  make functional      build functional-test component outputs'
 	@printf '%s\n' '  make bench           build benchmark component outputs'
 	@printf '%s\n' ''
-	@printf '%s\n' 'Archived legacy diagnostics:'
-	@printf '%s\n' '  ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics'
-	@printf '%s\n' '                       run archived W1-W4/table diagnostic flow; not current paper experiments'
-	@printf '%s\n' '  ENABLE_LEGACY_DIAGNOSTICS=1 make report'
-	@printf '%s\n' '                       write the archived legacy diagnostic report after phase1-legacy-diagnostics'
-	@printf '%s\n' '  ENABLE_LEGACY_DIAGNOSTICS=1 make workloads'
-	@printf '%s\n' '                       archived workload provenance helpers; not current paper experiments'
-	@printf '%s\n' ''
 	@printf '%s\n' 'Cleanup:'
 	@printf '%s\n' '  make clean           remove build/cache outputs, keep results'
 	@printf '%s\n' '  make clean-results   remove Phase 1 results'
@@ -150,7 +119,6 @@ clean: kernel-clean docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/functional" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_load" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_semantic" BUILD_ROOT="$(BUILD_ROOT)" clean
-	$(MAKE) -C "$(ROOT_DIR)/tests/table_conformance" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/w1_oracle" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean
 	rm -rf "$(BUILD_ROOT)/workloads" "$(CACHE_ROOT)/workloads"

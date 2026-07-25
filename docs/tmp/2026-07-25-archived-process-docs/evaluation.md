@@ -11,6 +11,9 @@ execution, and result review. The current workload plan is recorded in
 families are Agent workspace lifecycle and traditional build/cache. Service/config
 rotation and checkpoint/restart path remapping are conditional third-workload
 candidates, not replacements for build/cache.
+The immediate search strategy is bounded breadth-first exploration: small real
+probes across a few high-value branches precede release-scale deepening of any
+single branch.
 
 The frozen evaluation follows the current idea: `namei_ext` is a `sched_ext`-style
 VFS policy boundary for state-dependent path views, positioned in the sequence
@@ -114,6 +117,30 @@ admitted full runs pass result review:
   preflight; it is not a paper-result cell.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves old
   W1-W4/table diagnostics as archived provenance only.
+
+## Release Gate Scope
+
+A release gate is per-experiment, not repository-global. An admitted experiment
+run passes its release gate only when its own evidence is complete: all
+declared cells reached terminal status through Make-owned KVM targets, the
+same-oracle correctness rows pass for both `namei_ext` and the
+feature-equivalent FUSE comparison, dmesg is clean, raw artifacts
+(stdout/stderr, traces, hashes, kernel and policy identity) are preserved
+under `results/`, and an independent result review accepted the run. Global
+conditions outside the experiment — repository dirty state, artifact packaging,
+or claims about other mechanisms — must not flip an otherwise complete
+experiment run to `release_gate_pass=false`.
+
+The C8 table-only insufficiency claim is retired as of 2026-07-25. The user
+retired the table-only novelty line earlier, and `qualified_for_c8` fields in
+legacy ledgers are archived provenance, not open obligations. The C7 artifact
+reproducibility requirement stays, but as an artifact-evaluation property of
+the repository at submission time, not as a per-run experiment gate.
+
+The old `mk/eval_osdi.mk` claim-verdict machinery (C1–C8 ledgers,
+`qualified_for_c8`, and `c1_c8_gate` fields) encodes the retired global gate.
+It remains reachable only through `ENABLE_LEGACY_DIAGNOSTICS=1` as archived
+provenance; new experiments must not feed it.
 
 ## Frozen Complete Experiment Set
 
@@ -422,10 +449,10 @@ passed 80/80 bad-local non-use checks per system, and passed the dmesg gate.
 The implementation record is
 `docs/tmp/2026-07-24-bad-local-fallback-probe-implementation.md`.
 
-These are BFS probes, not release-scale paper results. They support promoting a
-combined stale/corrupt-hidden row, but they do not claim an explicit
-selected-corrupt reject followed by natural ccache retry and they do not close
-the real compile miss cell.
+These are BFS probes, not release-scale paper results. They support considering
+a combined stale/corrupt-hidden row for promotion after an adjacent breadth
+probe, but they do not claim an explicit selected-corrupt reject followed by
+natural ccache retry and they do not close the real compile miss cell.
 
 The upstream/LPC-facing value of this row is that a real build-cache use case
 can be expressed as VFS name-resolution policy while ccache and the lower
@@ -490,10 +517,12 @@ Current status after the 2026-07-23 build/cache release run and the
 2026-07-24 epoch-switch release run: the verified hot-cache compile subset and
 the real compile epoch-switch subset are completed and useful for RQ1/RQ2
 mechanism evidence and LPC/upstream motivation. One-sample stale-local and
-corrupt-hidden fallback probes passed and are now the strongest next BFS branch
-to promote. The broader state-machine claim remains open until real miss and
-release-scale stale/corrupt fallback compile cells are admitted and run under
-the same oracle for both `namei_ext` and FUSE.
+corrupt-hidden fallback probes passed and are strong build/cache promotion
+candidates. The next tactical step remains BFS: run one adjacent small probe,
+then choose the strongest branch for release-scale depth. The broader
+state-machine claim remains open until real miss and release-scale
+stale/corrupt fallback compile cells are admitted and run under the same oracle
+for both `namei_ext` and FUSE.
 
 ### Experiment C: Service/Config Transition
 

@@ -903,7 +903,7 @@ static void emit_nginx_case(FILE *out, const char *op, bool pass, int err,
 	      out);
 	fprint_json_string(out, op);
 	fprintf(out, ",\"pass\":%s,\"errno\":%d,\"exit_code\":%d,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err, exit_code);
 	fprint_json_string(out, detail);
 	fputs(",\"stdout\":", out);
@@ -926,7 +926,7 @@ static void emit_nginx_probe(FILE *out, const char *op, bool pass, int err,
 	      out);
 	fprint_json_string(out, op);
 	fprintf(out, ",\"pass\":%s,\"errno\":%d,\"exit_code\":0,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err);
 	fprint_json_string(out, detail);
 	fputs(",\"visible_path\":", out);
@@ -969,7 +969,7 @@ static void emit_cache_case(FILE *out, const char *branch, const char *op,
 	fputs(",\"op\":", out);
 	fprint_json_string(out, op);
 	fprintf(out, ",\"pass\":%s,\"errno\":%d,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err);
 	fprint_json_string(out, detail);
 	fputs(",\"path\":", out);
@@ -2124,7 +2124,6 @@ static void emit_nginx_macro_setup(FILE *out, int sample, bool pass, int err,
 		"\"overlay_mounts\":0,\"fuse_mounts\":0,"
 		"\"bytes_written\":%llu,\"bytes_copied\":%llu,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -2162,7 +2161,6 @@ static void emit_nginx_macro_update(FILE *out, int sample, bool pass, int err,
 		"\"update_bytes_written\":%llu,"
 		"\"update_bytes_copied\":%llu,"
 		"\"policy_executed\":true,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -2212,7 +2210,6 @@ static void emit_nginx_macro_correctness(FILE *out, int sample, bool pass,
 		"\"post_update_cert_probe_pass\":%s,"
 		"\"post_update_secret_probe_pass\":%s,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		pre_attach_rejected ? "true" : "false",
@@ -3184,7 +3181,7 @@ static int run_policy(FILE *out, const char *obj_path, enum policy_kind kind,
 	      out);
 	fprint_json_string(out, policy_name);
 	fprintf(out, ",\"entries\":%zu,\"pass\":%s,"
-		"\"failures\":%d,\"qualified_for_c8\":false,"
+		"\"failures\":%d,"
 		"\"detail\":",
 		nr_entries, failures ? "false" : "true", failures);
 	fprint_json_string(out, failures ? "path oracle failed" : pass_detail);
@@ -3213,7 +3210,7 @@ static void emit_redis_replay_case(FILE *out, const char *op, bool pass,
 		"\"kvm_validated\":true,"
 		"\"podman_criu_restore_executed\":false,"
 		"\"post_restore_vfs_replay\":true,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err, exit_code,
 		policy_executed ? "true" : "false");
 	fprint_json_string(out, detail);
@@ -3793,7 +3790,7 @@ static int run_w3_redis_replay(FILE *out, const char *cgroup_mount,
 		"\"post_restore_vfs_replay\":true,"
 		"\"podman_criu_restore_executed\":false,"
 		"\"pass\":%s,\"failures\":%d,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		table_baseline ? "true" : "false",
 		failures ? "false" : "true",
 		failures ? "false" : "true", failures);
@@ -4080,7 +4077,7 @@ static void emit_w1_build_epoch_setup(
 		"\"setup_writes\":%llu,\"%s\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, objects, setup_writes,
 		write_key, setup_writes,
@@ -4117,7 +4114,7 @@ static void emit_w1_build_epoch_correctness(
 		"\"wrong_epoch_hits\":%zu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false",
 		current_oracle_pass ? "true" : "false",
 		expected_static_failure_observed ? "true" : "false",
@@ -4153,7 +4150,7 @@ static void emit_w1_build_epoch_update(
 		"\"from_epoch\":1,\"to_epoch\":2,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns,
 		(unsigned long long)observed_window_ns, update_writes,
@@ -4237,7 +4234,6 @@ static void emit_w1_build_epoch_summary(
 		"\"release_sample_budget_pass\":%s,"
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, stats->setup_rows, stats->correctness_rows,
 		stats->update_rows, stats->objects,
@@ -5418,7 +5414,7 @@ static void emit_w2_fixture_epoch_setup(
 		"\"setup_writes\":%llu,\"%s\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, objects, setup_writes,
 		write_key, setup_writes,
@@ -5455,7 +5451,7 @@ static void emit_w2_fixture_epoch_correctness(
 		"\"wrong_epoch_hits\":%zu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false",
 		current_oracle_pass ? "true" : "false",
 		expected_static_failure_observed ? "true" : "false",
@@ -5491,7 +5487,7 @@ static void emit_w2_fixture_epoch_update(
 		"\"from_epoch\":1,\"to_epoch\":2,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns,
 		(unsigned long long)observed_window_ns, update_writes,
@@ -5576,7 +5572,6 @@ static void emit_w2_fixture_epoch_summary(
 		"\"release_sample_budget_pass\":%s,"
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, stats->setup_rows, stats->correctness_rows,
 		stats->update_rows, stats->objects,
@@ -6683,7 +6678,7 @@ static void emit_w3_epoch_setup(FILE *out, int sample, const char *system,
 		"\"setup_writes\":%llu,\"%s\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, objects, setup_writes,
 		write_key, setup_writes,
@@ -6722,7 +6717,7 @@ static void emit_w3_epoch_correctness(FILE *out, int sample,
 		"\"wrong_epoch_hits\":%zu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false",
 		current_oracle_pass ? "true" : "false",
 		expected_static_failure_observed ? "true" : "false",
@@ -6759,7 +6754,7 @@ static void emit_w3_epoch_update(FILE *out, int sample, const char *system,
 		"\"from_epoch\":1,\"to_epoch\":2,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns,
 		(unsigned long long)observed_window_ns, update_writes,
@@ -6838,7 +6833,6 @@ static void emit_w3_epoch_summary(FILE *out, int samples,
 		"\"release_sample_budget_pass\":%s,"
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, stats->setup_rows, stats->correctness_rows,
 		stats->update_rows, stats->objects,
@@ -7830,7 +7824,7 @@ static void emit_build_replay_case(FILE *out, const char *workload,
 		"\"policy_replay_output_hash_oracle\":true,"
 		"\"release_output_hash_oracle\":false,"
 		"\"output_hash_oracle_scope\":\"kvm_policy_preprocess\","
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err, exit_code,
 		policy_executed ? "true" : "false");
 	fprint_json_string(out, detail);
@@ -7864,7 +7858,7 @@ static void emit_release_replay_case(FILE *out, const char *workload,
 		"\"kvm_validated\":true,"
 		"\"release_binary_hash_match\":%s,"
 		"\"release_output_hash_oracle\":false,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err, exit_code,
 		policy_executed ? "true" : "false",
 		hash_match ? "true" : "false");
@@ -7898,7 +7892,7 @@ static void emit_w1_branch_probe(FILE *out, const char *workload,
 		"\"run_environment\":\"kvm\","
 		"\"policy_executed\":%s,"
 		"\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err,
 		policy_executed ? "true" : "false");
 	fprint_json_string(out, detail);
@@ -8632,7 +8626,6 @@ static void emit_w1_build_macro_setup(FILE *out, int sample, bool pass, int err,
 		"\"overlay_mounts\":0,\"fuse_mounts\":0,"
 		"\"bytes_written\":%llu,\"bytes_copied\":%llu,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns,
@@ -8670,7 +8663,6 @@ static void emit_w1_build_macro_update(FILE *out, int sample, bool pass, int err
 		"\"update_bytes_written\":%llu,"
 		"\"update_bytes_copied\":%llu,"
 		"\"policy_executed\":true,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -8702,7 +8694,6 @@ static void emit_w1_build_macro_correctness(FILE *out, int sample, bool pass,
 		"\"policy_replay_pass\":%s,"
 		"\"post_update_replay_pass\":%s,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		baseline_replay_pass ? "true" : "false",
@@ -8729,7 +8720,6 @@ static void emit_w1_build_macro_summary(FILE *out, int samples, int setup_rows,
 		"\"samples\":%d,\"setup_rows\":%d,\"update_rows\":%d,"
 		"\"correctness_rows\":%d,\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, setup_rows, update_rows, correctness_rows,
 		failures ? "false" : "true", failures,
@@ -9199,7 +9189,6 @@ static void emit_w1_build_baseline_setup(
 		"\"bytes_written\":%llu,\"bytes_copied\":%llu,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns,
@@ -9240,7 +9229,6 @@ static void emit_w1_build_baseline_update(
 		"\"update_bytes_copied\":%llu,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -9280,7 +9268,6 @@ static void emit_w1_build_baseline_correctness(
 		"\"post_update_replay_pass\":%s,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		entries, visible_aliases, alias_parent_dirs, fuse_mounts,
@@ -9315,7 +9302,6 @@ static void emit_w1_build_baseline_summary(
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		baseline_count, samples, setup_rows, update_rows,
 		correctness_rows, failures ? "false" : "true", failures);
@@ -10653,7 +10639,6 @@ static void emit_w3_redis_policy_setup(FILE *out, int sample, bool pass,
 		"\"total_rule_writes\":0,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -10697,7 +10682,6 @@ static void emit_w3_redis_policy_update(FILE *out, int sample, bool pass,
 		"\"update_total_rule_writes\":0,"
 		"\"policy_executed\":true,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -10732,7 +10716,6 @@ static void emit_w3_redis_policy_correctness(
 		"\"post_detach_absent\":%s,"
 		"\"policy_executed\":true,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		pre_attach_absent ? "true" : "false",
@@ -10766,7 +10749,6 @@ static void emit_w3_redis_policy_summary(FILE *out, int samples,
 		"\"correctness_rows\":%d,\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, setup_rows, update_rows, correctness_rows,
 		failures ? "false" : "true", failures,
@@ -11073,7 +11055,6 @@ static void emit_w3_redis_baseline_setup(
 		"\"total_rule_writes\":0,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -11119,7 +11100,6 @@ static void emit_w3_redis_baseline_update(
 		"\"update_total_rule_writes\":0,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -11155,7 +11135,6 @@ static void emit_w3_redis_baseline_correctness(
 		"\"post_update_get_pass\":%s,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		initial_get_pass ? "true" : "false",
@@ -11189,7 +11168,6 @@ static void emit_w3_redis_baseline_summary(
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		baseline_count, samples, setup_rows, update_rows,
 		correctness_rows, failures ? "false" : "true", failures);
@@ -12616,7 +12594,7 @@ static int run_w1_branch_probes(FILE *out, const char *cgroup_mount,
 		"\"workloads\":2,\"branch_classes\":2,"
 		"\"poison_probes\":2,\"negative_probes\":2,"
 		"\"pass\":%s,\"failures\":%d,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		failures ? "false" : "true", failures);
 	fprint_json_string(out, failures ?
 			   "W1 build-graph branch probes failed" :
@@ -12800,7 +12778,7 @@ static int run_build_replay(FILE *out, const char *cgroup_mount,
 		"\"release_output_hash_oracle\":false,"
 		"\"output_hash_oracle_scope\":\"kvm_policy_preprocess\","
 		"\"workloads\":2,\"entries\":%zu,\"pass\":%s,"
-		"\"failures\":%d,\"qualified_for_c8\":false,"
+		"\"failures\":%d,"
 		"\"detail\":",
 		nr_entries, failures ? "false" : "true", failures);
 	fprint_json_string(out, failures ?
@@ -13031,7 +13009,7 @@ static int run_release_build_replay(FILE *out, const char *cgroup_mount,
 		"\"release_binary_hash_match\":%s,"
 		"\"release_output_hash_oracle\":false,"
 		"\"workloads\":2,\"entries\":%zu,\"pass\":%s,"
-		"\"failures\":%d,\"qualified_for_c8\":false,"
+		"\"failures\":%d,"
 		"\"detail\":",
 		failures ? "false" : "true", nr_entries,
 		failures ? "false" : "true", failures);
@@ -13116,7 +13094,7 @@ static void emit_ccache_policy_compile_case_ex(
 		"\"kvm_validated\":true,"
 		"\"table_baseline_current_oracle_pass\":%s,"
 		"\"parent_rule_policy\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		pass ? "true" : "false", err, exit_code,
 		policy_executed ? "true" : "false",
 		policy_executed ? "true" : "false",
@@ -14567,7 +14545,7 @@ ccache_policy_compile_done:
 		"\"attached_sampled_operation_hit_rate\":%.17g,"
 		"\"operation_weighted_policy_cache_hit_rate\":false,"
 		"\"operation_weighted_policy_hit_rate_is_release\":false,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		bulk_policy_compile ? "true" : "false", nr_sources,
 		attached_compile_jobs, attached_compile_output_matches,
 		output_hash_match ? "true" : "false",
@@ -14899,7 +14877,7 @@ static int run_cache_content_oracle(FILE *out, const char *cgroup_mount,
 		",\"branches\":%zu,\"pass\":%s,\"failures\":%d,"
 		"\"table_baseline_current_oracle_pass\":%s,"
 		"\"content_equivalent_table_oracle\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		nr_entries, failures ? "false" : "true", failures,
 		table_baseline && !failures ? "true" : "false",
 		table_baseline ? "true" : "false");
@@ -15029,7 +15007,7 @@ static void emit_w4_transition_setup(FILE *out, int sample,
 		"\"setup_ns\":%llu,\"entries\":%zu,"
 		"\"stateful_entries\":%zu,\"setup_rule_writes\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, entries, stateful_entries,
 		rule_writes, pass ? "true" : "false");
@@ -15066,7 +15044,7 @@ static void emit_w4_transition_correctness(
 		"\"wrong_local_hit\":%s,"
 		"\"forbidden_mismatch\":%s,"
 		"\"policy_executed\":true,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false",
 		current_oracle_pass ? "true" : "false",
 		expected_static_failure_observed ? "true" : "false",
@@ -15109,7 +15087,7 @@ static void emit_w4_transition_update(FILE *out, int sample,
 		"\"rule_writes\":%llu,"
 		"\"state_transition_hit\":%s,"
 		"\"policy_executed\":true,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns,
 		(unsigned long long)observed_window_ns, rule_writes,
@@ -15168,7 +15146,6 @@ static void emit_w4_transition_summary(FILE *out, int samples,
 		"\"release_sample_budget_pass\":%s,"
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, stats->setup_rows, stats->correctness_rows,
 		stats->update_rows, stats->entries, stats->stateful_entries,
@@ -15987,7 +15964,7 @@ static void emit_w4_cache_epoch_setup(
 		"\"setup_writes\":%llu,\"%s\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, objects, setup_writes,
 		write_key, setup_writes,
@@ -16025,7 +16002,7 @@ static void emit_w4_cache_epoch_correctness(
 		"\"wrong_local_hits\":%zu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false",
 		current_oracle_pass ? "true" : "false",
 		expected_static_failure_observed ? "true" : "false",
@@ -16063,7 +16040,7 @@ static void emit_w4_cache_epoch_update(
 		"\"from_epoch\":1,\"to_epoch\":2,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"qualified_for_c8\":false,\"detail\":",
+		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns,
 		(unsigned long long)observed_window_ns, update_writes,
@@ -16146,7 +16123,6 @@ static void emit_w4_cache_epoch_summary(
 		"\"release_sample_budget_pass\":%s,"
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"qualified_for_c8\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, stats->setup_rows, stats->correctness_rows,
 		stats->update_rows, stats->objects, stats->trace_entries,
@@ -17477,7 +17453,6 @@ static void emit_w4_rule_setup(FILE *out, int sample, bool table_baseline,
 		"\"total_rule_writes\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -17528,7 +17503,6 @@ static void emit_w4_rule_update(FILE *out, int sample, bool table_baseline,
 		"\"update_total_rule_writes\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -17573,7 +17547,6 @@ static void emit_w4_rule_correctness(FILE *out, int sample, bool table_baseline,
 		"\"post_detach_absent\":%s,"
 		"\"policy_executed\":true,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":%s,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		attached_lookup_pass ? "true" : "false",
@@ -17602,7 +17575,6 @@ static void emit_w4_rule_summary(FILE *out, int samples, int systems,
 		"\"setup_rows\":%d,\"update_rows\":%d,"
 		"\"correctness_rows\":%d,\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, systems, setup_rows, update_rows, correctness_rows,
 		failures ? "false" : "true", failures,
@@ -18062,7 +18034,6 @@ static void emit_w4_bulk_policy_setup(
 		"\"total_rule_writes\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -18107,7 +18078,6 @@ static void emit_w4_bulk_policy_update(
 		"\"update_total_rule_writes\":%llu,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -18149,7 +18119,6 @@ static void emit_w4_bulk_policy_correctness(
 		"\"compile_smoke_required\":true,"
 		"\"compile_smoke_in_separate_witness\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		attached_lookup_pass ? "true" : "false",
@@ -18188,7 +18157,6 @@ static void emit_w4_bulk_policy_summary(FILE *out, int samples, int setup_rows,
 		"\"compile_smoke_required\":true,"
 		"\"compile_smoke_in_separate_witness\":true,"
 		"\"feature_equivalent_baseline\":false,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, setup_rows, update_rows, correctness_rows,
 		failures ? "false" : "true", failures,
@@ -18676,8 +18644,6 @@ static void emit_w4_bulk_native_compile_sample(
 		"\"feature_equivalent_baseline\":true,"
 		"\"operation_weighted_native_cache_hit_rate\":true,"
 		"\"operation_weighted_native_hit_rate_is_release\":true,"
-		"\"c2_supported\":false,"
-		"\"release_gate_pass\":false,"
 		"\"stats_file\":",
 		sample, pass ? "true" : "false", failures, source_count,
 		compile_jobs, output_matches, (unsigned long long)compile_ns,
@@ -18743,8 +18709,6 @@ static void emit_w4_bulk_native_compile_summary(
 		"\"feature_equivalent_baseline\":true,"
 		"\"operation_weighted_native_cache_hit_rate\":true,"
 		"\"operation_weighted_native_hit_rate_is_release\":true,"
-		"\"c2_supported\":false,"
-		"\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, compile_rows, failures ? "false" : "true", failures,
 		source_count, total_compile_jobs, total_output_matches,
@@ -19107,8 +19071,6 @@ static void emit_w4_bulk_fuse_compile_sample(
 		"\"ccache_stats_disabled\":true,"
 		"\"operation_weighted_fuse_cache_hit_rate\":true,"
 		"\"operation_weighted_fuse_hit_rate_is_release\":true,"
-		"\"c2_supported\":false,"
-		"\"release_gate_pass\":false,"
 		"\"ccache_log\":",
 		sample, pass ? "true" : "false", failures, source_count,
 		compile_jobs, output_matches, (unsigned long long)compile_ns,
@@ -19175,8 +19137,6 @@ static void emit_w4_bulk_fuse_compile_summary(
 		"\"ccache_stats_disabled\":true,"
 		"\"operation_weighted_fuse_cache_hit_rate\":true,"
 		"\"operation_weighted_fuse_hit_rate_is_release\":true,"
-		"\"c2_supported\":false,"
-		"\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, compile_rows, failures ? "false" : "true", failures,
 		source_count, total_compile_jobs, total_output_matches,
@@ -19504,7 +19464,6 @@ static void emit_w4_materialized_setup(
 		"\"total_rule_writes\":0,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -19548,7 +19507,6 @@ static void emit_w4_materialized_update(
 		"\"update_total_rule_writes\":0,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -19582,7 +19540,6 @@ static void emit_w4_materialized_correctness(
 		"\"hidden_backing_absent\":%s,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		visible_content_pass ? "true" : "false",
@@ -19615,7 +19572,6 @@ static void emit_w4_materialized_summary(FILE *out, int samples, int setup_rows,
 		"\"correctness_rows\":%d,\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, setup_rows, update_rows, correctness_rows,
 		failures ? "false" : "true", failures);
@@ -19657,7 +19613,6 @@ static void emit_w4_fuse_setup(FILE *out, int sample, bool pass, int err,
 		"\"total_rule_writes\":0,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -19702,7 +19657,6 @@ static void emit_w4_fuse_update(FILE *out, int sample, bool pass, int err,
 		"\"update_total_rule_writes\":0,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->baseline_update_writes,
@@ -19739,7 +19693,6 @@ static void emit_w4_fuse_correctness(FILE *out, int sample, bool pass,
 		"\"post_update_content_pass\":%s,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		visible_content_pass ? "true" : "false",
@@ -19772,7 +19725,6 @@ static void emit_w4_fuse_summary(FILE *out, int samples, int setup_rows,
 		"\"correctness_rows\":%d,\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, setup_rows, update_rows, correctness_rows,
 		failures ? "false" : "true", failures);
@@ -20753,8 +20705,6 @@ static void emit_w4_ccache_epoch_compile_sample(
 		"\"complete_ccache_compile_epoch_switch\":true,"
 		"\"real_compile_epoch_switch\":true,"
 		"\"miss_stale_corrupt_compile_cells_closed\":false,"
-		"\"c2_supported\":false,"
-		"\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures, source_count,
 		epoch1->compile_jobs, epoch1->output_matches,
@@ -20870,8 +20820,6 @@ static void emit_w4_ccache_epoch_compile_summary(
 		"\"policy_executed\":true,"
 		"\"feature_equivalent_fuse\":true,"
 		"\"kvm_validated\":true,"
-		"\"c2_supported\":false,"
-		"\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, pass ? "true" : "false", totals->failures,
 		totals->source_count, policy_pass ? "true" : "false",
@@ -21711,7 +21659,6 @@ static void emit_w4_ccache_bad_local_sample(
 		"\"feature_equivalent_baseline\":%s,"
 		"\"bfs_probe\":true,"
 		"\"complete_miss_stale_corrupt_compile_state_machine\":false,"
-		"\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures, source_count,
 		object_count, round->compile_jobs, round->output_matches,
@@ -21817,7 +21764,6 @@ static void emit_w4_ccache_bad_local_summary(
 		"\"kvm_validated\":true,"
 		"\"bfs_probe\":true,"
 		"\"complete_miss_stale_corrupt_compile_state_machine\":false,"
-		"\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, pass ? "true" : "false", totals->failures,
 		totals->source_count, totals->object_count,
@@ -22630,7 +22576,7 @@ static int run_nginx_real_app(FILE *out, const char *cgroup_mount,
 		"{\"event\":\"w2-nginx-real-summary\","
 		"\"result_level\":\"kvm_real_app_health_oracle\","
 		"\"workload\":\"w2-nginx-fixture\",\"app\":\"nginx\","
-		"\"pass\":%s,\"failures\":%d,\"qualified_for_c8\":false,"
+		"\"pass\":%s,\"failures\":%d,"
 		"\"detail\":",
 		failures ? "false" : "true", failures);
 	fprint_json_string(out, failures ?
@@ -22658,7 +22604,6 @@ static void emit_nginx_macro_summary(FILE *out, int samples, int setup_rows,
 		"\"update_rows\":%d,\"correctness_rows\":%d,"
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":%s,\"kvm_validated\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		samples, setup_rows, update_rows, correctness_rows,
 		failures ? "false" : "true", failures,
@@ -22696,7 +22641,6 @@ static void emit_nginx_baseline_setup(FILE *out, const char *baseline,
 		"\"bytes_written\":%llu,\"bytes_copied\":%llu,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)setup_ns, stats->created_dirs,
@@ -22737,7 +22681,6 @@ static void emit_nginx_baseline_update(FILE *out, const char *baseline,
 		"\"update_bytes_copied\":%llu,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", err,
 		(unsigned long long)update_ns, stats->source_update_writes,
@@ -22779,7 +22722,6 @@ static void emit_nginx_baseline_correctness(
 		"\"post_update_secret_probe_pass\":%s,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		sample, pass ? "true" : "false", failures,
 		baseline_nginx_test_pass ? "true" : "false",
@@ -22819,7 +22761,6 @@ static void emit_nginx_baseline_summary(FILE *out, const char *baselines,
 		"\"pass\":%s,\"failures\":%d,"
 		"\"policy_executed\":false,\"kvm_validated\":true,"
 		"\"feature_equivalent_baseline\":true,"
-		"\"c2_supported\":false,\"release_gate_pass\":false,"
 		"\"detail\":",
 		baseline_count, samples, setup_rows, update_rows,
 		correctness_rows, failures ? "false" : "true", failures);
@@ -24335,7 +24276,7 @@ int main(int argc, char **argv)
 		"{\"event\":\"%s-run-summary\","
 		"\"result_level\":\"kvm_policy_path_oracle\","
 		"\"entries\":%zu,\"policies\":2,\"pass\":%s,"
-		"\"failures\":%d,\"qualified_for_c8\":false,"
+		"\"failures\":%d,"
 		"\"detail\":",
 		event_prefix, nr_entries, failures ? "false" : "true", failures);
 	fprint_json_string(out, failures ? run_fail_detail : run_pass_detail);

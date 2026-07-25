@@ -1,19 +1,16 @@
 # Paper Evaluation Notes
 
-Status: active companion note for the frozen BUILD_AND_EVALUATE paper draft
-after BOOTSTRAP step 0005.
-Last routing update: 2026-07-15.
+Status: routing note for the paper draft.
+Last updated: 2026-07-25.
 
-The canonical evaluation plan is `../evaluation.md`. This file records the
-paper-directory routing rule: the LaTeX evaluation section should follow the
-frozen step-0005 RQ1/RQ2/RQ3 paper plan and must not revive older
-narrow-baseline gates.
-
-Use the skill-compatible layout instead:
+The old canonical evaluation plan (`docs/evaluation.md`) was archived to
+`docs/tmp/2026-07-25-archived-process-docs/evaluation.md` on 2026-07-25.
+Research process plans, admission rules, and gates are owned by the
+orchestrator skill, not by this repository.
 
 | Need | Canonical location |
 | --- | --- |
-| Current paper idea, claim scope, non-goals, and next action | `docs/idea-story.md` |
+| Current paper idea, claim scope, non-goals | `docs/idea-story.md` |
 | Related work, novelty risk, source-use verdicts, mandatory comparisons | `docs/background-related-work.md` |
 | Source repositories, datasets, artifacts, and reproduction-record links | `docs/reference/CODE_SOURCES.md` |
 | PDF inventory | `docs/reference/INDEX.md` |
