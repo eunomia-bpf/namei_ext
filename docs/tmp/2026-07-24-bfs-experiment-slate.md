@@ -1,14 +1,17 @@
 # BFS Experiment Slate After Epoch-Switch Release
 
 Date: 2026-07-24
-Status: strategy correction after user feedback; Candidates A, B, and C smoke passed
+Status: strategy correction after user feedback; Candidates A, B, and C smoke
+passed; Round 2 remains breadth-first
 
 ## Correction
 
 The next research step should be breadth-first search, not depth-first
-polishing of one path. The project already has a strong story and two main
-workload families. What remains uncertain is which next small real probe gives
-the largest paper value:
+polishing of one path. The user correction is explicit: this phase should try
+several schemes with small real probes before spending the full run budget on
+one branch. The project already has a strong story and two main workload
+families. What remains uncertain is which next small real probe gives the
+largest paper value:
 
 - completing more build/cache state cells;
 - showing the result survives as one integrated `experiment-env-cache` package;
@@ -68,14 +71,33 @@ Run or prepare probes in this order:
 2. Candidate B and C as the highest-value build/cache BFS branches. They target
    the missing stale/corrupt cells directly and keep the strongest current
    workload. Both one-sample probes have now passed.
-3. Candidate E in parallel or immediately after B/C if upstream discussion is
-   the next deadline pressure.
-4. Candidate F only if B/C are blocked or reviewers demand a third workload
-   family. It should not displace build/cache unless it produces a clearer
-   oracle quickly.
+3. Candidate E or F next as a breadth check, not as a replacement for
+   build/cache. Candidate E is the upstream/RFC credibility branch. Candidate F
+   is the traditional service/config branch and should be attempted only if a
+   lookup-time oracle can be admitted in a small probe.
+4. Only after A/B/C plus at least one adjacent breadth probe should the project
+   promote one branch to a 20-sample or release-scale run. The exception is an
+   explicit deadline-driven choice to package the already-strong build/cache
+   branch for LPC/upstream discussion.
 
 Candidate D is only useful if it produces a distinguishable oracle from the
 already-passed epoch2 row. Otherwise it should be merged into B/C or dropped.
+
+## Round 2 Promotion Rule
+
+Round 2 is still BFS. A branch can be promoted only if it has a source-derived
+oracle, a Make-owned KVM path for Phase 1 mechanism claims, raw artifacts, and
+a clear stop condition. Use feature-equivalent FUSE only when the branch is
+used for RQ2.
+
+The next breadth probe should be one of:
+
+1. Upstream selftest/demo skeleton: pass/hide/select/readdir/invalid decision
+   through KVM.
+2. Service/config lookup-time selection: a tiny nginx/Redis config epoch where
+   wrong object selection changes `nginx -t` or service-visible behavior.
+3. Local miss/canonical hit only if it is distinguishable from the completed
+   epoch-switch row.
 
 ## Interpretation Rules
 
@@ -146,7 +168,10 @@ Both passed. Each mode ran 20 Redis/nginx ccache compile jobs through
 the hot-cache oracle, recorded 40 bad local objects per row, passed 80/80
 bad-local non-use checks per row, and passed the dmesg gate.
 
-Candidate B/C interpretation: the BFS branch is worth promoting. The next
-high-value action is either a 20-sample combined stale/corrupt fallback run, or
-admission/review of this row before integrating it into `experiment-env-cache`.
-Do not run an unrelated baseline expansion first.
+Candidate B/C interpretation: the BFS branch is worth promoting, but promotion
+does not mean immediately running a deep release. The next strategic action is
+to run one adjacent small probe, preferably Candidate E for upstream ABI
+credibility or Candidate F if a concrete service/config oracle is available.
+After that, compare paper value and then choose whether B/C, E, or a
+service/config branch deserves release-scale depth. Do not run an unrelated
+baseline expansion.

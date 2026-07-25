@@ -17,20 +17,15 @@ as a Filesystems/eBPF microconference subtopic.
 
 ## Proposal Title
 
-`namei_ext`: a sched_ext-style eBPF extension point for VFS name resolution
+`namei_ext`: an eBPF extension point for VFS name resolution
 
 ## Short Abstract
 
-Many Linux workloads need dynamic path views without wanting to own a whole
-filesystem. Examples include agent workspaces with staged or hidden effects,
-build/cache systems that select verified local objects or canonical backing
-objects by cache state, and service/runtime setups that switch path views across
-epochs. Today these policies are usually implemented with bind mounts,
-OverlayFS/materialization, LSM allow/deny hooks, FUSE daemons, or custom
-filesystems. Those mechanisms are useful, but they sit at different boundaries:
-some only construct static namespaces, some cannot select an alternate VFS
-object, and FUSE/custom filesystems take ownership of filesystem methods,
-daemon lifetime, and failure modes.
+Many Linux workloads need dynamic path views on the fly, such as
+checkpoint/restore and fork in agent workspaces, build/cache systems that
+select files by cache state or version, and service/runtime setups that switch
+path views across epochs. Yet existing solutions to these policies are usually
+implemented with FUSE or custom filesystems.
 
 We propose `namei_ext`, a narrow VFS name-resolution extension point. A
 cgroup-scoped eBPF program is invoked during lookup and directory enumeration

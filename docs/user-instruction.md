@@ -1,47 +1,61 @@
 ## Current Effective Instructions (2026-07-24)
 
-- Treat `namei_ext` as a `sched_ext`-style VFS name-resolution extension
-  point positioned between eBPF LSM and FUSE/custom filesystem ownership. The
-  central contribution is the design plus Linux implementation of this systems
-  boundary, not a table mechanism or a BPF filesystem.
-- The strongest story is positive and systems-facing: many real workloads need
-  programmable path views while preserving lower-filesystem semantics. Do not
-  shrink the hypothesis around incomplete prototype evidence unless a valid
-  final result makes the hypothesis impossible.
-- RQ1 asks whether the narrow name-resolution boundary is expressive/sufficient
-  for real source-derived path-view policies. RQ2 compares cost and overhead
-  against feature-equivalent FUSE. RQ3 compares safety and ownership boundary
-  against custom or stackable filesystems; bind, Overlay, projected volumes,
-  copy/symlink/materialized views are background or cited mechanisms unless a
-  selected source oracle makes one load-bearing.
-- Stop making table-only insufficiency the main novelty line. Static table,
-  table redirect, materialized namespace, and other non-programmable mechanisms
-  may remain archived diagnostics or background, but they should not drive the
-  main experiment plan.
-- Experiments must be complete integrated matrices, not scattered smoke tests
-  or a long list of weak baselines. Prefer one strong same-oracle comparison:
-  feature-equivalent FUSE for RQ2, native/source behavior as oracle/control,
-  and custom/stackable filesystem ownership evidence for RQ3.
-- Search experiment directions breadth-first before deepening one path: run a
-  bounded set of small real probes across plausible high-value branches, then
-  promote the strongest branch to release-scale evidence. Do not spend a full
-  run budget polishing one candidate before adjacent candidates have been
-  checked.
-- Current primary workload families are Agent workspace lifecycle and
-  traditional build/cache. Service/config rotation and checkpoint/restart path
-  remapping are conditional breadth workloads only after a concrete source
-  oracle is admitted.
-- For build/cache, use traditional Redis/nginx/ccache-style workloads and make
-  the exact covered cache state explicit. If a release run covers only
-  verified hot-cache hits, say that; stale, corrupt, miss, and epoch-switch rows
-  require their own real same-oracle cells before becoming claims.
-- For LPC/upstream-facing work, prioritize a practical use case, a runnable
-  Make/KVM command, raw results, dmesg/kernel provenance, and a small boundary
-  argument that explains why this belongs at VFS name resolution rather than in
-  eBPF LSM or a userspace/full filesystem daemon.
+### Canonical Story
+
+`namei_ext` is an eBPF extension point for VFS name resolution.
+
+Many Linux workloads need dynamic path views on the fly: checkpoint/restore and
+fork in agent workspaces, build/cache systems that select files by cache state
+or version, and service/runtime setups that switch path views across epochs.
+Existing solutions are usually implemented with FUSE or custom filesystems.
+
+`namei_ext` is a narrow VFS name-resolution extension point. A cgroup-scoped
+eBPF program is invoked during lookup and directory enumeration and returns
+bounded actions such as pass, hide, or select a registered target. The BPF
+program decides name-resolution policy; the VFS and lower filesystem retain
+ownership of inodes, dentries, permissions, data path, writes, page cache,
+persistence, and filesystem-specific semantics.
+
+The design is analogous to `sched_ext`: policy is programmable, while the
+subsystem machinery remains in the kernel.
+
+The intended position is:
+
+```text
+bind/Overlay/materialization < eBPF LSM < namei_ext < FUSE/custom FS
+```
+
+### Guardrails
+
+- The contribution is the design plus Linux implementation of this systems
+  boundary, not a table mechanism, materialization comparison, or BPF
+  filesystem.
+- RQ1 is expressiveness/sufficiency for real source-derived path-view policies.
+  RQ2 is cost versus feature-equivalent FUSE. RQ3 is safety/boundary versus
+  custom or stackable filesystems.
+- Native/source systems are correctness oracles or motivation. FUSE is the main
+  same-oracle RQ2 comparison. Custom/stackable filesystems are RQ3 boundary
+  comparators.
+- The main evidence should stay positive and systems-facing. Do not shrink the
+  hypothesis around incomplete prototype evidence unless a valid final result
+  makes the hypothesis impossible.
 - Do not edit the current skills. Use them only when they materially help the
-  requested phase; do not let skill-driven process replace the user's latest
-  scientific direction or add unnecessary constraints.
+  requested phase.
+
+### Current Experiment Process
+
+Use bounded breadth-first search before depth. Run small real probes across
+several plausible schemes, then promote the strongest branch to release-scale
+evidence. A passing smoke result is a promotion candidate, not permission to
+turn the whole evaluation into that one branch.
+
+## Supersession Rule
+
+The notes below preserve prior user requests for provenance. They are not
+independently authoritative when they conflict with the current effective
+instructions above. In particular, old table-only, materialized-view shootout,
+or single-branch deepening instructions are superseded unless the user
+explicitly reopens them.
 
 你觉得这个论文的 idea 和 novelty 是什么? 合适吗? 有价值吗
 
