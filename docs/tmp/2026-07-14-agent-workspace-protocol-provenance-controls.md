@@ -31,19 +31,19 @@ creation, and a source-tied RQ3 boundary table.
 - `docs/tmp/2026-07-13-agent-workspace-complete-experiment-plan.md`
 - `docs/tmp/2026-07-02-agentfs-official-workload-reproduction.md`
 - `docs/tmp/build-and-evaluate/step-0003-20260714T154705-0700/01-experiment-gate/experiment-001-agent-workspace/003-result-review-20260714T155300-0700.md`
-- `tests/agent_workspace/namei_ext_agent_workspace.c`
-- `tests/agent_workspace/namei_ext_agent_workspace_fuse.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace_fuse.c`
 - `mk/kvm.mk`
 
 ## Implementation Details
 
 Runner changes:
 
-- `tests/agent_workspace/namei_ext_agent_workspace.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace.c`
   - records `agent_workspace_matrix_summary` when invoked with `--matrix`;
   - keeps `agent_workspace_preflight_summary` for the preflight path;
   - adds `nohook_stat_base_main_ns` and `nohook_readdir_base_ns` metrics.
-- `tests/agent_workspace/namei_ext_agent_workspace_fuse.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace_fuse.c`
   - records `fuse_agent_workspace_matrix_summary` when invoked with
     `--matrix`;
   - keeps `fuse_agent_workspace_preflight_summary` for the preflight path;

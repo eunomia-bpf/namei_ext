@@ -38,7 +38,7 @@ remote/object backing、snapshot/rollback、permission/audit 或 metadata-log se
 
 代码中已有专门的 W4 transition gate：
 
-- runner: `tests/w1_oracle/namei_ext_w1_oracle.c`
+- runner: `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - mode: `--cache-transition-counterfactual`
 - Make target: `make kvm-w4-cache-transition-counterfactual`
 - raw output: `results/phase1/<RUN_ID>/w4-cache-transition-counterfactual.jsonl`

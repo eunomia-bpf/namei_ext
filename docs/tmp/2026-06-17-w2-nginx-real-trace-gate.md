@@ -12,7 +12,7 @@ content, and nginx does not open production decoy paths.
 
 ## Inspected paths
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `mk/eval_osdi.mk`
 - `configs/eval-osdi/w2-tool-redirect-paper-release-gate.jq`

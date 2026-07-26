@@ -39,7 +39,7 @@ workload，因为现有代码已经有：
 
 ## 拟复用代码路径
 
-Runner：`tests/w1_oracle/namei_ext_w1_oracle.c`
+Runner：`experiments/legacy_oracle/namei_ext_w1_oracle.c`
 
 可复用的现有 helper：
 

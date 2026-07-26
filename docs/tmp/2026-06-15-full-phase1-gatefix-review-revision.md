@@ -11,7 +11,7 @@
 
 此前 Hooke 总体 review 给出 weak reject，其中 P1.3 指出最新 W4
 attach-window/release-counterfactual gatefix 只是 scoped root，不是完整 Phase 1
-report root；P2 指出 `workload/w4-ccache-redis-nginx/evidence.md` 仍把
+report root；P2 指出 `workloads/legacy/w4-ccache-redis-nginx/evidence.md` 仍把
 policy-attached ccache compile 写成 pending。
 
 本轮修复运行了：

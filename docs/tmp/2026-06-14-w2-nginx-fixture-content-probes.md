@@ -29,7 +29,7 @@ attach 期间的普通 VFS `open/read` probe。
   - lookup 分支包含 `nginx.conf`、`postgresql.conf`、`db.password`、
     `server.crt`、`upstream.sock` 和 `prod.token`。
   - readdir 分支把 backing names 映射回 visible aliases。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - `run_nginx_real_app()` 已经负责 materialize nginx prefix、load/attach policy、
     运行 `nginx -t`、启动 worker、跑 HTTP health 和 detach。
   - `compare_files()` 已可用于普通 VFS `open/read` 内容比较。
@@ -69,7 +69,7 @@ lookup。它们不是直接检查 BPF object，也不是 host mock。
 
 ## 修改内容
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 W2 fixture/decoy 常量。
   - `prepare_nginx_prefix()` 在 guest `/tmp` prefix 下 materialize expected backing 和
     production-like decoy files。
@@ -81,7 +81,7 @@ lookup。它们不是直接检查 BPF object，也不是 host mock。
     `attached_config_fixture_probe`、`attached_endpoint_fixture_probe`、
     `attached_fake_cert_probe`、`attached_fake_secret_probe`、
     `attached_poison_probe`。
-- `workload/w2-nginx-fixture/evidence.md`、`docs/research_plan.md`、
+- `workloads/legacy/w2-nginx-fixture/evidence.md`、`docs/research_plan.md`、
   `docs/experiment-plans/osdi-evaluation.md` 和 paper 草稿同步更新 W2 证据范围。
 
 ## 验证

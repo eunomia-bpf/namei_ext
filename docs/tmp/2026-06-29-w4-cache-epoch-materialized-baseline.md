@@ -21,7 +21,7 @@ lookup/readdir correctness oracle.
 
 Inspected paths:
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `docs/tmp/2026-06-29-w4-cache-epoch-counterfactual.md`
 - `docs/tmp/2026-06-29-c8-killer-experiment-update.md`
@@ -31,7 +31,7 @@ Inspected paths:
 
 Changed implementation paths:
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 
 No project-owned shell script was added. The workflow remains Make-owned and

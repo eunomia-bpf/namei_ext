@@ -26,7 +26,7 @@ cache hit rate。
 ## 调研和检查的代码路径
 
 - `mk/kvm.mk`：已有 `kvm-w4-ccache-trace`、KVM guest target 模式、W4 ccache 结果路径。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：`--cache-content` runner 的 TSV schema、
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：`--cache-content` runner 的 TSV schema、
   workdir materialization、`cache_rules` map 填充、lookup/readdir/detach oracle。
 - `bpf/policies/cache_locality_view.bpf.c`：`verified_hit`、`miss`、`stale` 和
   `corrupt` 的 `cache_rules` dispatch。
@@ -34,7 +34,7 @@ cache hit rate。
 - `docs/research_plan.md`、`docs/experiment-plans/osdi-evaluation.md`、
   `docs/paper/sections/04-implementation.tex`、
   `docs/paper/sections/05-evaluation.tex` 和
-  `workload/w4-ccache-redis-nginx/evidence.md`：W4 evidence ledger 和 overclaim 边界。
+  `workloads/legacy/w4-ccache-redis-nginx/evidence.md`：W4 evidence ledger 和 overclaim 边界。
 
 ## 设计选择
 

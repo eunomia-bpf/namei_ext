@@ -31,8 +31,8 @@ cross-section drift 会降低 reviewer 对证据链的信任。
 
 ## 修订
 
-- 更新 `workload/w1-redis-build/evidence.md` 和
-  `workload/w1-nginx-build/evidence.md`：状态改为
+- 更新 `workloads/legacy/w1-redis-build/evidence.md` 和
+  `workloads/legacy/w1-nginx-build/evidence.md`：状态改为
   `source-build-trace` + `functional_only_kvm_path_oracle`，新增 W1 KVM path oracle
   raw result 和 input hash manifest，保留完整 output oracle 与 C8 blocker。
 - 更新 `docs/paper/sections/04-implementation.tex`：明确 nginx app oracle 只覆盖

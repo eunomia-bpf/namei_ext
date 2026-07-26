@@ -20,7 +20,7 @@
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 增加 W1 baseline selection parser。
   - 增加 baseline setup/update/correctness/summary emitters。
   - 增加 copy/symlink/bind materialization helpers。

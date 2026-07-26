@@ -13,14 +13,14 @@ user-space programmable remap baseline。
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
-- `tests/w1_oracle/Makefile`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/Makefile`
 - `mk/kvm.mk`
 - `mk/eval_osdi.mk`
 
 ## 实现内容
 
-`tests/w1_oracle/namei_ext_w1_oracle.c` 新增 `fuse_redirect` W2 baseline：
+`experiments/legacy_oracle/namei_ext_w1_oracle.c` 新增 `fuse_redirect` W2 baseline：
 
 - oracle binary 增加 `FUSE_USE_VERSION=26` 和 libfuse headers；
 - `struct nginx_macro_stats` 增加 `fuse_mounts`，setup JSON 不再把 `fuse_mounts` 硬编码为 0；
@@ -35,7 +35,7 @@ user-space programmable remap baseline。
 - cleanup 对每个 FUSE sample 执行 `umount(prefix/conf)` 并 wait/terminate FUSE child；
   cleanup failure 计入 sample failure。
 
-`tests/w1_oracle/Makefile` 增加：
+`experiments/legacy_oracle/Makefile` 增加：
 
 ```text
 FUSE_CFLAGS ?= -D_FILE_OFFSET_BITS=64 -I/usr/include/fuse

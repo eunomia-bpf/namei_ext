@@ -13,7 +13,7 @@ baseline，并把它们纳入默认 `kvm-w1-build-baseline-macrobench` baseline 
 
 ## 代码路径
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 将 W1 baseline family 扩展为 `copy_tree`、`symlink_forest`、`bind_mount`、
     `projected_volume` 和 `fuse_redirect`。
   - 新增 W1 alias spec 收集和去重，复用 Redis/nginx build graph oracle entries，

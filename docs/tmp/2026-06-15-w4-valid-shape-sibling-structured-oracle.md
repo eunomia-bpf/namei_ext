@@ -20,7 +20,7 @@ human-readable detail。
 
 ## 实现细节
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `struct file_content_oracle`。
   - 新增 streaming FNV-1a helper，用现有 ccache name witness hash 常量记录内容 hash；
     这避免引入 OpenSSL 或外部 sha256 依赖。

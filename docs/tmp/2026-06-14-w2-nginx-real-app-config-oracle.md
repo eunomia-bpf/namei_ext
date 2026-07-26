@@ -27,7 +27,7 @@ poison 或 table/update budget oracle，因此不能计入 C1/C8。
 - `bpf/policies/sandbox_fixture_view.bpf.c`
   - 确认 policy 对 basename `nginx.conf` 做 literal redirect 到
     `nginx.test.conf`，不依赖绝对路径。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 复用已有 libbpf loader、cgroup attach/detach、JSONL emission 和 fail-fast 结构。
 - `mk/kvm.mk`
   - 增加 KVM guest target，保持所有流程由 Make target 驱动。
@@ -86,7 +86,7 @@ nginx prefix 放在 guest `/tmp`，而不是 host 9p 共享的 result 目录。�
 
 ## 实现内容
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 增加 `--sandbox-nginx-smoke` 模式；
   - 增加 nginx prefix materialization、stdout/stderr 捕获、真实 `nginx -t` 执行；
   - 增加 pre-attach、attached、post-detach 三阶段 JSONL case；

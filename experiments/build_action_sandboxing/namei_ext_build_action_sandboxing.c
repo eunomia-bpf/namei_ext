@@ -2,13 +2,10 @@
 
 #define _GNU_SOURCE
 
-#include <bpf/bpf.h>
-#include <bpf/libbpf.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <ftw.h>
-#include <linux/bpf.h>
+#include <limits.h>
+#include <namei_ext_harness.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -24,7 +21,6 @@
 #define ACTION_A_INPUT "declared-input-A\n"
 #define ACTION_B_INPUT "declared-input-B\n"
 #define UNDECLARED_INPUT "undeclared-input-must-stay-hidden\n"
-#define NAMEI_EXT_NAME_MAX 64
 
 enum build_action_sandboxing_counter {
 	BAS_COUNTER_TOTAL = 0,
@@ -34,22 +30,6 @@ enum build_action_sandboxing_counter {
 	BAS_COUNTER_HIDE_LOOKUP = 4,
 	BAS_COUNTER_HIDE_READDIR = 5,
 	BAS_COUNTER_PASS = 6,
-};
-
-struct attached_policy {
-	struct bpf_object *obj;
-	int cgroup_fd;
-	int prog_fd;
-	bool attached;
-};
-
-struct namei_ext_component_key {
-	__u32 event;
-	__u32 name_len;
-	__u64 cgroup_id;
-	__u64 parent_dev;
-	__u64 parent_ino;
-	__u8 name[NAMEI_EXT_NAME_MAX];
 };
 
 struct bazel_action {
@@ -88,386 +68,18 @@ static void emit_counter(FILE *out, const char *name,
 	fflush(out);
 }
 
-static int set_path(char *dst, size_t size, const char *dir,
-		    const char *name)
+static int check_counter(FILE *out,
+			 struct namei_ext_harness_policy *policy,
+			 const char *name, uint32_t key)
 {
-	int ret = snprintf(dst, size, "%s/%s", dir, name);
-
-	if (ret < 0)
-		return -errno;
-	if ((size_t)ret >= size)
-		return -ENAMETOOLONG;
-	return 0;
-}
-
-static int write_file(const char *path, const char *value)
-{
-	size_t len = strlen(value);
-	ssize_t nwritten;
-	int fd;
-
-	fd = open(path, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644);
-	if (fd < 0)
-		return -errno;
-	nwritten = write(fd, value, len);
-	if (nwritten != (ssize_t)len) {
-		int saved_errno = errno ? errno : EIO;
-
-		close(fd);
-		return -saved_errno;
-	}
-	if (close(fd))
-		return -errno;
-	return 0;
-}
-
-static bool read_file_matches(const char *path, const char *expected)
-{
-	char buf[256] = {};
-	ssize_t nread;
-	int fd;
-
-	fd = open(path, O_RDONLY | O_CLOEXEC);
-	if (fd < 0)
-		return false;
-	nread = read(fd, buf, sizeof(buf) - 1);
-	close(fd);
-	return nread >= 0 && !strcmp(buf, expected);
-}
-
-static int copy_file(const char *source, const char *destination)
-{
-	char buf[4096];
-	ssize_t nread;
-	int in_fd;
-	int out_fd;
-
-	in_fd = open(source, O_RDONLY | O_CLOEXEC);
-	if (in_fd < 0)
-		return -errno;
-	out_fd = open(destination, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC,
-		      0644);
-	if (out_fd < 0) {
-		int saved_errno = errno;
-
-		close(in_fd);
-		return -saved_errno;
-	}
-	while ((nread = read(in_fd, buf, sizeof(buf))) > 0) {
-		ssize_t offset = 0;
-
-		while (offset < nread) {
-			ssize_t nwritten = write(out_fd, buf + offset,
-						nread - offset);
-
-			if (nwritten < 0) {
-				int saved_errno = errno;
-
-				close(out_fd);
-				close(in_fd);
-				return -saved_errno;
-			}
-			offset += nwritten;
-		}
-	}
-	if (nread < 0) {
-		int saved_errno = errno;
-
-		close(out_fd);
-		close(in_fd);
-		return -saved_errno;
-	}
-	if (close(out_fd)) {
-		int saved_errno = errno;
-
-		close(in_fd);
-		return -saved_errno;
-	}
-	if (close(in_fd))
-		return -errno;
-	return 0;
-}
-
-static int move_self_to_cgroup(const char *cgroup_path)
-{
-	char procs_path[PATH_MAX];
-	char pid_buf[32];
-	ssize_t nwritten;
-	int fd;
-	int len;
-
-	if (set_path(procs_path, sizeof(procs_path), cgroup_path,
-		     "cgroup.procs"))
-		return -ENAMETOOLONG;
-	fd = open(procs_path, O_WRONLY | O_CLOEXEC);
-	if (fd < 0)
-		return -errno;
-	len = snprintf(pid_buf, sizeof(pid_buf), "%ld\n", (long)getpid());
-	if (len < 0 || (size_t)len >= sizeof(pid_buf)) {
-		close(fd);
-		return -EINVAL;
-	}
-	nwritten = write(fd, pid_buf, len);
-	if (nwritten != len) {
-		int saved_errno = errno ? errno : EIO;
-
-		close(fd);
-		return -saved_errno;
-	}
-	if (close(fd))
-		return -errno;
-	return 0;
-}
-
-static int wait_child(pid_t pid)
-{
-	int status;
-
-	if (waitpid(pid, &status, 0) != pid)
-		return -errno;
-	if (!WIFEXITED(status))
-		return -ECHILD;
-	return WEXITSTATUS(status) ? -EIO : 0;
-}
-
-static int register_target_for_cgroup(const char *cgroup_path,
-				      const char *target_dir)
-{
-	pid_t pid = fork();
-
-	if (pid < 0)
-		return -errno;
-	if (!pid) {
-		char register_buf[64];
-		ssize_t nwritten;
-		int register_fd;
-		int target_fd;
-		int len;
-
-		if (move_self_to_cgroup(cgroup_path))
-			_exit(1);
-		target_fd = open(target_dir, O_PATH | O_DIRECTORY | O_CLOEXEC);
-		if (target_fd < 0)
-			_exit(1);
-		register_fd = open("/sys/kernel/debug/namei_ext/register_target",
-				   O_WRONLY | O_CLOEXEC);
-		if (register_fd < 0) {
-			close(target_fd);
-			_exit(1);
-		}
-		len = snprintf(register_buf, sizeof(register_buf), "%u %d\n",
-			       ACTION_TARGET_ID, target_fd);
-		if (len < 0 || (size_t)len >= sizeof(register_buf)) {
-			close(register_fd);
-			close(target_fd);
-			_exit(1);
-		}
-		nwritten = write(register_fd, register_buf, len);
-		close(register_fd);
-		close(target_fd);
-		_exit(nwritten == len ? 0 : 1);
-	}
-	return wait_child(pid);
-}
-
-static int clear_targets_for_cgroup(const char *cgroup_path)
-{
-	pid_t pid = fork();
-
-	if (pid < 0)
-		return -errno;
-	if (!pid) {
-		const char clear[] = "clear\n";
-		ssize_t nwritten;
-		int register_fd;
-
-		if (move_self_to_cgroup(cgroup_path))
-			_exit(1);
-		register_fd = open("/sys/kernel/debug/namei_ext/register_target",
-				   O_WRONLY | O_CLOEXEC);
-		if (register_fd < 0)
-			_exit(1);
-		nwritten = write(register_fd, clear, strlen(clear));
-		close(register_fd);
-		_exit(nwritten == (ssize_t)strlen(clear) ? 0 : 1);
-	}
-	return wait_child(pid);
-}
-
-static int cgroup_id_from_path(const char *path, __u64 *id_out)
-{
-	union {
-		__u64 cgroup_id;
-		unsigned char bytes[8];
-	} id = {};
-	struct file_handle *handle;
-	struct file_handle *resized;
-	size_t size = sizeof(*handle);
-	int mount_id = 0;
-	int saved_errno;
+	uint64_t value = 0;
+	bool pass;
 	int ret;
 
-	handle = calloc(1, size);
-	if (!handle)
-		return -errno;
-	errno = 0;
-	ret = name_to_handle_at(AT_FDCWD, path, handle, &mount_id, 0);
-	if (ret >= 0 || errno != EOVERFLOW || handle->handle_bytes != 8) {
-		saved_errno = errno ? errno : EINVAL;
-		free(handle);
-		return -saved_errno;
-	}
-	size += handle->handle_bytes;
-	resized = realloc(handle, size);
-	if (!resized) {
-		saved_errno = errno;
-		free(handle);
-		return -saved_errno;
-	}
-	handle = resized;
-	ret = name_to_handle_at(AT_FDCWD, path, handle, &mount_id, 0);
-	if (ret < 0) {
-		saved_errno = errno;
-		free(handle);
-		return -saved_errno;
-	}
-	memcpy(id.bytes, handle->f_handle, sizeof(id.bytes));
-	free(handle);
-	if (!id.cgroup_id)
-		return -EINVAL;
-	*id_out = id.cgroup_id;
-	return 0;
-}
-
-static int load_and_attach(const char *obj_path, const char *cgroup_path,
-			   struct attached_policy *policy)
-{
-	struct bpf_program *program;
-	struct bpf_object *object;
-	int cgroup_fd;
-	int program_fd;
-	int err;
-
-	object = bpf_object__open_file(obj_path, NULL);
-	err = libbpf_get_error(object);
-	if (err) {
-		errno = -err;
-		return -1;
-	}
-	err = bpf_object__load(object);
-	if (err) {
-		errno = -err;
-		goto close_object;
-	}
-	program = bpf_object__next_program(object, NULL);
-	if (!program) {
-		errno = EINVAL;
-		goto close_object;
-	}
-	program_fd = bpf_program__fd(program);
-	if (program_fd < 0) {
-		errno = EINVAL;
-		goto close_object;
-	}
-	cgroup_fd = open(cgroup_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-	if (cgroup_fd < 0)
-		goto close_object;
-	err = bpf_prog_attach(program_fd, cgroup_fd, BPF_CGROUP_NAMEI_EXT, 0);
-	if (err) {
-		errno = -err;
-		close(cgroup_fd);
-		goto close_object;
-	}
-	policy->obj = object;
-	policy->cgroup_fd = cgroup_fd;
-	policy->prog_fd = program_fd;
-	policy->attached = true;
-	return 0;
-
-close_object:
-	bpf_object__close(object);
-	return -1;
-}
-
-static int destroy_policy(struct attached_policy *policy)
-{
-	int err = 0;
-
-	if (policy->attached) {
-		err = bpf_prog_detach2(policy->prog_fd, policy->cgroup_fd,
-				       BPF_CGROUP_NAMEI_EXT);
-		policy->attached = false;
-	}
-	if (policy->cgroup_fd >= 0)
-		close(policy->cgroup_fd);
-	bpf_object__close(policy->obj);
-	policy->obj = NULL;
-	policy->cgroup_fd = -1;
-	policy->prog_fd = -1;
-	return err;
-}
-
-static int fill_component_key(struct namei_ext_component_key *key,
-			      __u64 cgroup_id, const char *parent,
-			      const char *name)
-{
-	struct stat st;
-	size_t name_len = strlen(name);
-
-	if (name_len > sizeof(key->name))
-		return -ENAMETOOLONG;
-	if (stat(parent, &st))
-		return -errno;
-	memset(key, 0, sizeof(*key));
-	key->name_len = name_len;
-	key->cgroup_id = cgroup_id;
-	key->parent_dev = st.st_dev;
-	key->parent_ino = st.st_ino;
-	memcpy(key->name, name, name_len);
-	return 0;
-}
-
-static int update_component_map(struct attached_policy *policy,
-				const char *map_name, __u64 cgroup_id,
-				const char *parent, const char *name,
-				__u32 value)
-{
-	struct namei_ext_component_key key;
-	struct bpf_map *map;
-	int map_fd;
-	int ret;
-
-	ret = fill_component_key(&key, cgroup_id, parent, name);
+	ret = namei_ext_policy_counter(
+		policy, "build_action_sandboxing_counters", key, &value);
 	if (ret)
 		return ret;
-	map = bpf_object__find_map_by_name(policy->obj, map_name);
-	if (!map)
-		return -ENOENT;
-	map_fd = bpf_map__fd(map);
-	if (map_fd < 0)
-		return -EINVAL;
-	if (bpf_map_update_elem(map_fd, &key, &value, BPF_ANY))
-		return -errno;
-	return 0;
-}
-
-static int check_counter(FILE *out, struct attached_policy *policy,
-			 const char *name, __u32 key)
-{
-	struct bpf_map *map;
-	__u64 value = 0;
-	int map_fd;
-	bool pass;
-
-	map = bpf_object__find_map_by_name(
-		policy->obj, "build_action_sandboxing_counters");
-	if (!map)
-		return -ENOENT;
-	map_fd = bpf_map__fd(map);
-	if (map_fd < 0)
-		return -EINVAL;
-	if (bpf_map_lookup_elem(map_fd, &key, &value))
-		return -errno;
 	pass = value > 0;
 	emit_counter(out, name, value, pass);
 	return pass ? 0 : -EINVAL;
@@ -487,11 +99,12 @@ static int write_bazel_workspace(const char *workspace,
 
 	if (mkdir(workspace, 0755))
 		return -errno;
-	ret = set_path(build_path, sizeof(build_path), workspace,
-		       "BUILD.bazel");
+	ret = namei_ext_path_join(build_path, sizeof(build_path), workspace,
+				  "BUILD.bazel");
 	if (!ret)
-		ret = set_path(workspace_path, sizeof(workspace_path), workspace,
-			       "WORKSPACE.bazel");
+		ret = namei_ext_path_join(workspace_path,
+					  sizeof(workspace_path), workspace,
+					  "WORKSPACE.bazel");
 	if (ret)
 		return ret;
 	len = snprintf(
@@ -508,9 +121,9 @@ static int write_bazel_workspace(const char *workspace,
 		ready_path, release_path, logical_action);
 	if (len < 0 || (size_t)len >= sizeof(build))
 		return -ENAMETOOLONG;
-	ret = write_file(build_path, build);
+	ret = namei_ext_write_text(build_path, build);
 	if (!ret)
-		ret = write_file(
+		ret = namei_ext_write_text(
 			workspace_path,
 			"workspace(name = \"namei_ext_build_action\")\n");
 	return ret;
@@ -529,7 +142,7 @@ static int spawn_bazel_action(const char *bazel,
 		int stderr_fd;
 		int stdout_fd;
 
-		if (move_self_to_cgroup(action->cgroup))
+		if (namei_ext_move_self_to_cgroup(action->cgroup))
 			_exit(120);
 		stdout_fd = open(action->stdout_path,
 				 O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644);
@@ -582,25 +195,10 @@ static bool wait_for_both_actions(const char *ready_a, const char *ready_b,
 	return false;
 }
 
-static int remove_callback(const char *path, const struct stat *statbuf,
-			   int type, struct FTW *ftw)
-{
-	(void)statbuf;
-	(void)type;
-	(void)ftw;
-	return remove(path);
-}
-
-static void remove_tree(const char *path)
-{
-	if (path && path[0])
-		nftw(path, remove_callback, 64, FTW_DEPTH | FTW_PHYS);
-}
-
 int main(int argc, char **argv)
 {
 	const char *cgroup_root = "/sys/fs/cgroup";
-	struct attached_policy policy = {
+	struct namei_ext_harness_policy policy = {
 		.cgroup_fd = -1,
 		.prog_fd = -1,
 	};
@@ -638,8 +236,8 @@ int main(int argc, char **argv)
 	struct stat input_b_before;
 	struct stat input_a_after;
 	struct stat input_b_after;
-	__u64 cgroup_id_a = 0;
-	__u64 cgroup_id_b = 0;
+	uint64_t cgroup_id_a = 0;
+	uint64_t cgroup_id_b = 0;
 	FILE *out;
 	bool target_a_registered = false;
 	bool target_b_registered = false;
@@ -668,7 +266,7 @@ int main(int argc, char **argv)
 	}
 #define BUILD_PATH(dst, dir, name) \
 	do { \
-		if (set_path((dst), sizeof(dst), (dir), (name))) { \
+		if (namei_ext_path_join((dst), sizeof(dst), (dir), (name))) { \
 			emit_case(out, "paths", false, ENAMETOOLONG, \
 				  "path construction failed"); \
 			fails++; \
@@ -715,10 +313,10 @@ int main(int argc, char **argv)
 
 	if (mkdir(view, 0755) || mkdir(logical_action, 0755) ||
 	    mkdir(target_a, 0755) || mkdir(target_b, 0755) ||
-	    write_file(input_a, ACTION_A_INPUT) ||
-	    write_file(input_b, ACTION_B_INPUT) ||
-	    write_file(private_a, UNDECLARED_INPUT) ||
-	    write_file(private_b, UNDECLARED_INPUT) ||
+	    namei_ext_write_text(input_a, ACTION_A_INPUT) ||
+	    namei_ext_write_text(input_b, ACTION_B_INPUT) ||
+	    namei_ext_write_text(private_a, UNDECLARED_INPUT) ||
+	    namei_ext_write_text(private_b, UNDECLARED_INPUT) ||
 	    stat(input_a, &input_a_before) || stat(input_b, &input_b_before)) {
 		emit_case(out, "fixture", false, errno,
 			  "declared and undeclared input fixture failed");
@@ -742,20 +340,21 @@ int main(int argc, char **argv)
 		fails++;
 		goto cleanup;
 	}
-	ret = cgroup_id_from_path(cgroup_a, &cgroup_id_a);
+	ret = namei_ext_cgroup_id(cgroup_a, &cgroup_id_a);
 	if (!ret)
-		ret = cgroup_id_from_path(cgroup_b, &cgroup_id_b);
+		ret = namei_ext_cgroup_id(cgroup_b, &cgroup_id_b);
 	emit_case(out, "action_identities", !ret, ret ? -ret : 0,
 		  "two action identities derived from cgroup v2");
 	fails += !!ret;
 	if (ret)
 		goto cleanup;
 
-	ret = register_target_for_cgroup(cgroup_a, target_a);
+	ret = namei_ext_register_target(cgroup_a, target_a, ACTION_TARGET_ID);
 	if (!ret)
 		target_a_registered = true;
 	if (!ret)
-		ret = register_target_for_cgroup(cgroup_b, target_b);
+		ret = namei_ext_register_target(cgroup_b, target_b,
+					       ACTION_TARGET_ID);
 	if (!ret)
 		target_b_registered = true;
 	emit_case(out, "register_declared_input_roots", !ret,
@@ -765,7 +364,7 @@ int main(int argc, char **argv)
 	if (ret)
 		goto cleanup;
 
-	if (load_and_attach(argv[1], cgroup_root, &policy)) {
+	if (namei_ext_policy_load_attach(argv[1], cgroup_root, &policy)) {
 		emit_case(out, "attach_policy", false, errno,
 			  "load or attach failed");
 		fails++;
@@ -774,23 +373,21 @@ int main(int argc, char **argv)
 	emit_case(out, "attach_policy", true, 0,
 		  "policy attached through cgroup/namei_ext");
 
-	ret = update_component_map(&policy, "build_action_views",
-				   cgroup_id_a, view, "action",
-				   ACTION_TARGET_ID);
+	ret = namei_ext_component_map_update(
+		&policy, "build_action_views", cgroup_id_a, view, "action",
+		ACTION_TARGET_ID);
 	if (!ret)
-		ret = update_component_map(&policy, "build_action_views",
-					   cgroup_id_b, view, "action",
-					   ACTION_TARGET_ID);
+		ret = namei_ext_component_map_update(
+			&policy, "build_action_views", cgroup_id_b, view,
+			"action", ACTION_TARGET_ID);
 	if (!ret)
-		ret = update_component_map(&policy,
-					   "build_action_hidden_inputs",
-					   cgroup_id_a, target_a,
-					   "private.txt", 1);
+		ret = namei_ext_component_map_update(
+			&policy, "build_action_hidden_inputs", cgroup_id_a,
+			target_a, "private.txt", 1);
 	if (!ret)
-		ret = update_component_map(&policy,
-					   "build_action_hidden_inputs",
-					   cgroup_id_b, target_b,
-					   "private.txt", 1);
+		ret = namei_ext_component_map_update(
+			&policy, "build_action_hidden_inputs", cgroup_id_b,
+			target_b, "private.txt", 1);
 	emit_case(out, "install_action_views", !ret, ret ? -ret : 0,
 		  "declared roots selected and undeclared paths hidden per action");
 	fails += !!ret;
@@ -838,42 +435,46 @@ int main(int argc, char **argv)
 	fails += !both_ready;
 
 release_and_wait:
-	ret = write_file(release, "release\n");
+	ret = namei_ext_write_text(release, "release\n");
 	if (ret) {
 		emit_case(out, "release_actions", false, -ret,
 			  "action release marker failed");
 		fails++;
 	}
 	if (action_a.pid > 0) {
-		ret = wait_child(action_a.pid);
+		ret = namei_ext_wait_child(action_a.pid);
 		emit_case(out, "bazel_action_a", !ret, ret ? -ret : 0,
 			  "Bazel action A completed with declared input only");
 		fails += !!ret;
 		action_a.pid = -1;
 	}
 	if (action_b.pid > 0) {
-		ret = wait_child(action_b.pid);
+		ret = namei_ext_wait_child(action_b.pid);
 		emit_case(out, "bazel_action_b", !ret, ret ? -ret : 0,
 			  "Bazel action B completed with declared input only");
 		fails += !!ret;
 		action_b.pid = -1;
 	}
 
-	ret = read_file_matches(bazel_output_a, ACTION_A_INPUT) ? 0 : -EIO;
+	ret = namei_ext_read_text_equals(bazel_output_a, ACTION_A_INPUT) ?
+		      0 :
+		      -EIO;
 	emit_case(out, "action_a_output_oracle", !ret, ret ? -ret : 0,
 		  "same logical pathname produced action A's declared bytes");
 	fails += !!ret;
 	if (!ret) {
-		ret = copy_file(bazel_output_a, saved_output_a);
+		ret = namei_ext_copy_file(bazel_output_a, saved_output_a);
 		if (ret)
 			fails++;
 	}
-	ret = read_file_matches(bazel_output_b, ACTION_B_INPUT) ? 0 : -EIO;
+	ret = namei_ext_read_text_equals(bazel_output_b, ACTION_B_INPUT) ?
+		      0 :
+		      -EIO;
 	emit_case(out, "action_b_output_oracle", !ret, ret ? -ret : 0,
 		  "same logical pathname produced action B's declared bytes");
 	fails += !!ret;
 	if (!ret) {
-		ret = copy_file(bazel_output_b, saved_output_b);
+		ret = namei_ext_copy_file(bazel_output_b, saved_output_b);
 		if (ret)
 			fails++;
 	}
@@ -889,8 +490,8 @@ release_and_wait:
 	     input_b_before.st_ino != input_b_after.st_ino ||
 	     input_b_before.st_mode != input_b_after.st_mode ||
 	     input_b_before.st_size != input_b_after.st_size ||
-	     !read_file_matches(private_a, UNDECLARED_INPUT) ||
-	     !read_file_matches(private_b, UNDECLARED_INPUT)))
+	     !namei_ext_read_text_equals(private_a, UNDECLARED_INPUT) ||
+	     !namei_ext_read_text_equals(private_b, UNDECLARED_INPUT)))
 		ret = -EIO;
 	emit_case(out, "lower_inputs_unchanged", !ret, ret ? -ret : 0,
 		  "lower filesystem retained declared and undeclared objects");
@@ -909,23 +510,23 @@ release_and_wait:
 
 cleanup:
 	if (action_a.pid > 0)
-		fails += !!wait_child(action_a.pid);
+		fails += !!namei_ext_wait_child(action_a.pid);
 	if (action_b.pid > 0)
-		fails += !!wait_child(action_b.pid);
+		fails += !!namei_ext_wait_child(action_b.pid);
 	if (policy.attached) {
-		ret = destroy_policy(&policy);
+		ret = namei_ext_policy_destroy(&policy);
 		emit_case(out, "detach_policy", !ret, ret ? -ret : 0,
 			  "policy detached");
 		fails += !!ret;
 	}
 	if (target_a_registered) {
-		ret = clear_targets_for_cgroup(cgroup_a);
+		ret = namei_ext_clear_targets(cgroup_a);
 		emit_case(out, "clear_action_a_target", !ret,
 			  ret ? -ret : 0, "action A target registry cleared");
 		fails += !!ret;
 	}
 	if (target_b_registered) {
-		ret = clear_targets_for_cgroup(cgroup_b);
+		ret = namei_ext_clear_targets(cgroup_b);
 		emit_case(out, "clear_action_b_target", !ret,
 			  ret ? -ret : 0, "action B target registry cleared");
 		fails += !!ret;
@@ -944,6 +545,6 @@ cleanup:
 		both_ready ? "true" : "false",
 		fails ? "false" : "true", fails);
 	fclose(out);
-	remove_tree(root);
+	namei_ext_remove_tree(root);
 	return fails ? 1 : 0;
 }

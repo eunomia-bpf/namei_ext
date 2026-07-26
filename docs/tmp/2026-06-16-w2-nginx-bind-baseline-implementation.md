@@ -17,13 +17,13 @@ C2 setup/storage/update 阈值。
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `mk/eval_osdi.mk`
 
 ## 实现内容
 
-`tests/w1_oracle/namei_ext_w1_oracle.c` 新增 `bind_mount` baseline：
+`experiments/legacy_oracle/namei_ext_w1_oracle.c` 新增 `bind_mount` baseline：
 
 - setup 阶段为每个 visible alias 创建空目标文件；
 - 用 `mount(src, dst, NULL, MS_BIND, NULL)` 把 backing file 绑定到 visible alias；

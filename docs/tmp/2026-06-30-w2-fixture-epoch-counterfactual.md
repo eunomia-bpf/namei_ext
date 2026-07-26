@@ -22,7 +22,7 @@ counterfactual, not a real nginx reload trace. The run explicitly records
   - kept the existing literal nginx/PostgreSQL fixture redirects unchanged;
   - made the fallback path consult epoch rules for config, secret, cert,
     endpoint, and poison path classes.
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - mirrored the new BPF map ABI structs;
   - added `update_sandbox_fixture_session()` and
     `update_sandbox_fixture_epoch_rule()`;

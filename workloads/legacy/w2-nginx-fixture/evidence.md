@@ -20,7 +20,7 @@ Policy family：`sandbox_fixture_view.bpf.c`
 - 固定 nginx 源码版本：nginx `1.26.3`
 - Source tarball SHA256：`69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa`
 - nginx sample config SHA256：`95363d79620c1b3eb6951711b6630a411f147bc9197bc91442c0605cf6688e46`
-- workload fixture config：`workload/w2-nginx-fixture/nginx.test.conf`
+- workload fixture config：`workloads/legacy/w2-nginx-fixture/nginx.test.conf`
 - workload fixture config SHA256：`2d37a18dbf88e9e6d14f59efbbda76f003304d79b6ef944c372b0aa1be442532`
 - endpoint fixture SHA256：`d3b36896c2c2f936de7f35bdf7cd296177f984f612919ecabef6220120e2cbd2`
 - Source provenance target：`make workload-nginx-build-fetch`，与 W1 nginx source provenance 共享
@@ -71,7 +71,7 @@ Policy family：`sandbox_fixture_view.bpf.c`
 - detach 后 alias 再次不可达
 - `w2-oracle-inputs.sha256` 固定 TSV、manifests、policy source/object 和 runner source/binary
 - 真实 nginx `1.26.3` binary 在 KVM guest 内执行 `nginx -t`，并使用
-  `workload/w2-nginx-fixture/nginx.test.conf` 作为 `nginx.test.conf`
+  `workloads/legacy/w2-nginx-fixture/nginx.test.conf` 作为 `nginx.test.conf`
 - attach 前 `conf/nginx.conf` 缺失，`nginx -t` 失败；attach 后同一路径由
   `sandbox_fixture_view.bpf.c` 重定向到 `nginx.test.conf`，`nginx -t` 成功；detach
   后再次失败

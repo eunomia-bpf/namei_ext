@@ -37,7 +37,7 @@ replay，所以仍不能计入 C1/C8。它的作用是缩小 W1 从 synthetic pe
   - 记录 `w1-build-replay-inputs.sha256` 和 `w1-build-replay-outputs.sha256`；
   - 捕获 `dmesg-w1-build-replay.log`；
   - 清理 guest 临时目录。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `--build-replay` mode；
   - 新增 baseline preprocessing、policy preprocessing、alias materialization、toolchain alias、include fallback 和 output compare 逻辑；
   - 复用真实 `cgroup/namei_ext` attach path，加载 `build_graph_view.bpf.o` 并填充 redirect map；

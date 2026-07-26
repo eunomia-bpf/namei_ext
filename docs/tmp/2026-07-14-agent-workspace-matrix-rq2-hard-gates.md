@@ -18,8 +18,8 @@ experiment, not reasons to change the paper hypothesis or add a new baseline.
 
 ## Code Paths Inspected
 
-- `tests/agent_workspace/namei_ext_agent_workspace.c`
-- `tests/agent_workspace/namei_ext_agent_workspace_fuse.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace_fuse.c`
 - `mk/kvm.mk`
 - `results/experiments/agent-workspace-matrix/20260714T224916Z-9b4f6dec/`
 

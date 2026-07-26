@@ -37,8 +37,8 @@ Instructions and plans read:
 
 Files changed:
 
-- `tests/agent_workspace/namei_ext_agent_workspace.c`;
-- `tests/agent_workspace/namei_ext_agent_workspace_fuse.c`;
+- `experiments/agent_workspace/namei_ext_agent_workspace.c`;
+- `experiments/agent_workspace/namei_ext_agent_workspace_fuse.c`;
 - `mk/kvm.mk`.
 
 Implementation changes:

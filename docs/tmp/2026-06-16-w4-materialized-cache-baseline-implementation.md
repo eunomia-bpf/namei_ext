@@ -9,7 +9,7 @@ baseline。根据当前 evaluation 方向，负结果不能靠修改论文规避
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `--ccache-materialized-baseline-macrobench` mode。
   - 新增 materialized setup/update/correctness/summary JSONL 事件。
   - setup 阶段读取 trace-derived ccache entries，并把 `original` 复制到

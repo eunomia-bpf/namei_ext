@@ -39,7 +39,7 @@ KVM boots. The kernel identifies itself as
 ### Source-trace binding and oracle
 
 - Both runners received the same
-  `tests/agent_workspace/agentfs_lifecycle_trace.txt`. Its recorded SHA-256 is
+  `experiments/agent_workspace/agentfs_lifecycle_trace.txt`. Its recorded SHA-256 is
   `bc383bb71e413424b8dcf7538c04a0b061798cab07d03afb2c1e939a4b0e45f4`
   in all three roots.
 - Both source-artifact and source-replay gates pass in every run. The fixed

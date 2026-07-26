@@ -16,9 +16,9 @@ but no source-derived two-application grant/revoke lifecycle.
   cgroup identity, `HIDE`, and registered-target `SELECT` ABI;
 - `kernel/fs/namei_ext.c` for target registration, cgroup-scoped target lookup,
   and readdir action handling;
-- `tests/agent_workspace/namei_ext_agent_workspace.c` for the real libbpf
+- `experiments/agent_workspace/namei_ext_agent_workspace.c` for the real libbpf
   attach and target-registration path;
-- `tests/w1_oracle/namei_ext_w1_oracle.c` for converting a cgroup path to the
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c` for converting a cgroup path to the
   kernel cgroup ID used by BPF maps.
 
 ## Implementation
@@ -28,7 +28,7 @@ but no source-derived two-application grant/revoke lifecycle.
   application cgroup ID. For a managed `document` entry, an authorized lookup
   selects a registered target, an unauthorized lookup or readdir hides the
   entry, and authorized readdir passes the existing placeholder entry.
-- `tests/application_file_sharing/namei_ext_application_file_sharing.c`
+- `experiments/application_file_sharing/namei_ext_application_file_sharing.c`
   creates two application cgroups, registers an existing host directory for
   application A, and executes the fixed before-grant, granted, cross-application
   isolation, and revoked oracle in child processes moved into those cgroups.

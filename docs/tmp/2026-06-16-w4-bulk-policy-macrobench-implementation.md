@@ -12,7 +12,7 @@ and materialized baselines.
 
 ## Files Inspected
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `Makefile`
 - `configs/eval-osdi/w4-ccache-workload-macrobench.jq`

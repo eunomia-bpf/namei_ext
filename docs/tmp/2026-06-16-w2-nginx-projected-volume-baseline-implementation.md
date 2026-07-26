@@ -40,7 +40,7 @@ rename(..data_tmp, ..data)
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `mk/eval_osdi.mk`
 

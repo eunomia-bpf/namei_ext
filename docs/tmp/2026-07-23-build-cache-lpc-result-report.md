@@ -41,7 +41,7 @@ the full miss/stale/corrupt/epoch-switch cache-state matrix.
   and FUSE compile rows, copies raw JSONL/SHA/dmesg artifacts into a single
   experiment root, writes provenance, emits boundary rows, and gates correctness
   with `jq`.
-- `tests/w1_oracle/namei_ext_w1_oracle.c` now records compile time for
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c` now records compile time for
   attached ccache policy compile rows as `compile_ns` and `compile_ns_avg`.
 - `docs/tmp/2026-07-23-build-cache-experiment-b-plan.md` records the admitted
   Experiment B plan for this scoped release run.

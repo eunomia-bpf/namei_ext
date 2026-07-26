@@ -26,7 +26,7 @@ table/update budget。当前目标更窄：把真实来源固定到 provenance �
   分支和 `cache_rules` map。
 - `bpf/include/namei_ext_policy.h`：确认 user/kernel 共享的 policy key、value 和 event
   常量。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：确认现有 W1/W2 runner 可以复用真实
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：确认现有 W1/W2 runner 可以复用真实
   attach、lookup、readdir、detach 路径。
 - `mk/workload.mk`：确认 workload manifest、TSV 和 provenance 生成位置。
 - `mk/kvm.mk`：确认 KVM guest 调用、结果目录、输入哈希和 dmesg 采集模式。
@@ -64,7 +64,7 @@ W3/W4 采用和 W1/W2 相同的最小 oracle 结构：
 
 ## 实现内容
 
-`tests/w1_oracle/namei_ext_w1_oracle.c` 增加了两个 runner mode：
+`experiments/legacy_oracle/namei_ext_w1_oracle.c` 增加了两个 runner mode：
 
 - `--checkpoint-restore OUT_JSONL CGROUP_MOUNT ENTRIES_TSV CHECKPOINT_POLICY TABLE_POLICY`
 - `--cache-locality OUT_JSONL CGROUP_MOUNT ENTRIES_TSV CACHE_POLICY TABLE_POLICY`

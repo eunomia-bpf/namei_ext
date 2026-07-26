@@ -24,7 +24,7 @@ raw input。
   - `kvm-w4-ccache-bulk-trace`
   - `kvm-w4-ccache-bulk-policy-bridge`
   - sampled `kvm-w4-ccache-policy-compile`
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - `run_ccache_policy_compile()`
   - `ccache_entry_from_source()`
   - `run_ccache_redis_compile()`
@@ -72,7 +72,7 @@ scan do not pass.
   `trace-derived-bulk/<source>/...`, preserving sampled W4 behavior while making
   bulk bridge entries eligible for compile optrace accounting.
 - `struct w4_ccache_source` and source-manifest parsing were added to
-  `tests/w1_oracle/namei_ext_w1_oracle.c`.
+  `experiments/legacy_oracle/namei_ext_w1_oracle.c`.
 - `run_ccache_policy_compile()` now has optional bulk inputs. Existing sampled,
   parent-rule, and table-redirect call sites pass `NULL` bulk inputs and keep the
   previous event names.

@@ -60,7 +60,7 @@ stale/corrupt/miss witness 仍然太窄，不能证明需要 eBPF programmable c
 
 本次实现修改了：
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 参数化 W4 cache-content oracle 的 event、result level、policy name 和 policy
     family；
   - 保留 `--cache-content`；

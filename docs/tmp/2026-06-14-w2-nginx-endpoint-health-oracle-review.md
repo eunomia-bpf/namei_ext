@@ -14,9 +14,9 @@ weak accept。
 
 - `mk/kvm.mk` 的 `kvm-w2-nginx-real` 和 guest target；
 - `mk/report.mk` 的 W2 real-app report gate；
-- `tests/w1_oracle/namei_ext_w1_oracle.c` 的 `--sandbox-nginx-smoke` 模式；
-- `workload/w2-nginx-fixture/nginx.test.conf`；
-- `workload/w2-nginx-fixture/evidence.md`；
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c` 的 `--sandbox-nginx-smoke` 模式；
+- `workloads/legacy/w2-nginx-fixture/nginx.test.conf`；
+- `workloads/legacy/w2-nginx-fixture/evidence.md`；
 - `docs/research_plan.md`；
 - `docs/experiment-plans/osdi-evaluation.md`；
 - `docs/paper/`；

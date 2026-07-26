@@ -20,9 +20,9 @@ preflight instead of reinterpreting those older artifacts.
   implements two exact bounded decisions:
   per-action selection of a registered existing directory and per-action
   hiding of an undeclared component.
-- `tests/build_action_sandboxing/Makefile`
+- `experiments/build_action_sandboxing/Makefile`
   builds the userspace runner against the repository's static libbpf.
-- `tests/build_action_sandboxing/namei_ext_build_action_sandboxing.c`
+- `experiments/build_action_sandboxing/namei_ext_build_action_sandboxing.c`
   builds the fixture, creates action cgroups, configures maps and target
   registries, starts two real Bazel genrules, checks the oracle, and preserves
   raw logs and outputs.

@@ -17,7 +17,7 @@ witness：用真实 `redis-server` 生成 checkpoint backing，并让 Redis 通�
 
 ## 调研和检查的代码路径
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：复用现有 W1/W2/W3/W4 path-oracle runner，
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：复用现有 W1/W2/W3/W4 path-oracle runner，
   增加 Redis RESP helper 和 `--checkpoint-redis-replay` mode。
 - `mk/kvm.mk`：增加 `kvm-w3-redis-replay` 和 guest target，把 Redis binary、policy
   object、W3 TSV、checkpoint manifest、runner source/binary 纳入 input hash。

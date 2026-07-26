@@ -10,7 +10,7 @@
 
 ## 修改内容
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - `--ccache-materialized-baseline-macrobench` 增加可选 `WORKLOAD` 参数。
   - 旧调用不传参数时仍输出 `w4-ccache-redis-nginx`。
   - bulk target 传 `w4-ccache-bulk-redis-nginx`，避免和 two-file baseline 混淆。

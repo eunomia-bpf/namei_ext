@@ -24,7 +24,7 @@ workload macrobench。
 
 - `mk/eval_osdi.mk`：`eval-osdi-w2-nginx-workload-macrobench-ledger` 读取 proposed-system
   与 baseline JSONL，并写出 W2 summary。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：W2 raw rows 已包含 `setup_ns`、`update_ns`、
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：W2 raw rows 已包含 `setup_ns`、`update_ns`、
   `created_dirs`、`created_files`、`created_symlinks`、`bind_mounts`、`fuse_mounts`、
   `bytes_written`、`bytes_copied`、`source_update_writes`、`baseline_update_writes`、
   `policy_update_writes`、`update_bytes_written` 和 `update_bytes_copied`。

@@ -17,7 +17,7 @@ writes 也相同。这是负面或 mixed evidence，必须保留。
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `--ccache-rule-macrobench` runner 模式；
   - 新增 `w4-ccache-rule-macrobench-{setup,update,correctness,summary}` JSONL rows；
   - 每个 sample 分别执行：

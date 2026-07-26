@@ -22,11 +22,11 @@ baseline family 完整。
   和 `FUSE_LIBS=-lfuse -pthread`。
 - `configs/kernel/x86_64_phase1.config`：已有 `CONFIG_FUSE_FS=y`，KVM guest 不依赖
   module load。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：W2 nginx baseline runner 已支持
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：W2 nginx baseline runner 已支持
   `copy_tree`、`symlink_forest`、`bind_mount` 和 `projected_volume`，并统一执行真实
   `nginx -t`、config/endpoint/cert/secret/poison probes、post-update `nginx -t` 和
   post-update probes。
-- `tests/w1_oracle/Makefile`：当前 oracle binary 只链接 libbpf/libelf/zlib，尚未链接
+- `experiments/legacy_oracle/Makefile`：当前 oracle binary 只链接 libbpf/libelf/zlib，尚未链接
   libfuse。
 
 ## 设计选择

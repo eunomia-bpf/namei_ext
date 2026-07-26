@@ -21,7 +21,7 @@ both satisfy the same lookup/readdir state oracle?
 
 ## Files Changed
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - Added `--ccache-bulk-cache-state-policy-fuse`.
   - Added a clean terminal summary event:
     `w4-ccache-bulk-cache-state-policy-fuse-summary`.

@@ -23,7 +23,7 @@ build trace 中自然触发这些分支的 evidence，因此仍显式 `qualified
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `--build-branch-probes` mode。
   - 在 Redis `src/` 和 nginx `src/core/` parent directory 副本中写入
     `poison.dep`，保持 `private.h` 和 `missing.h` 不存在。

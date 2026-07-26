@@ -23,7 +23,7 @@ make kvm-w1-build-baseline-macrobench \
 
 - workload source：Redis `7.2.14` 与 nginx `1.26.3` 真实源码构建/strace。
 - entries：同 RUN_ID 下生成的 `w1-build-graph-oracle-entries.tsv`。
-- runner：`tests/w1_oracle/namei_ext_w1_oracle.c`。
+- runner：`experiments/legacy_oracle/namei_ext_w1_oracle.c`。
 - KVM target：`mk/kvm.mk` 中的 `kvm-w1-build-baseline-macrobench` 和
   `__phase1_guest_w1_build_baseline_macrobench`。
 - baseline family：`copy_tree`、`symlink_forest`、`bind_mount`。

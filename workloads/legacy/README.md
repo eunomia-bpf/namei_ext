@@ -1,10 +1,16 @@
-# Workload 证据目录
+# Legacy Workload Evidence
+
+> Legacy record: this directory preserves the pre-W1--W7 workload numbering
+> and old target notes. Commands listed below are a historical snapshot and
+> are not guaranteed to exist. It is not the current experiment interface. Use the
+> top-level `Makefile`, `workloads/README.md`, and `docs/evaluation.md` for
+> current case names and commands.
 
 本目录保存 OSDI evaluation 的 release-level 真实 workload 证据。
 
 规则：
 
-- 每个 workload 都有自己的 `workload/<workload-id>/` 目录。
+- 每个历史 workload 都有自己的 `workloads/legacy/<workload-id>/` 目录。
 - 项目自有 orchestration 必须是 Makefile-only；不要在这里新增项目自有 `.sh`
   文件。
 - 每个 workload 必须保留 `evidence.md`，记录上游 URL、版本或 commit、下载
@@ -13,7 +19,7 @@
 - workload 只有在 `evidence.md` 状态从 `planned` 改成 `validated`，并且引用的
   KVM raw results 已经存在于 `results/` 下之后，才能支撑 C1/C8。
 
-Makefile-owned workload 入口：
+历史 Makefile 入口（只用于理解旧记录，不是当前可调用接口）：
 
 - `make workloads`
 - `make workload-fetch`
@@ -32,7 +38,7 @@ source targets 会把固定上游输入下载到 `.cache/workloads/`，解压到
 `.build/workloads/`，并把 provenance JSON 写到
 `results/workloads/provenance/`。archive SHA256 固定在
 `configs/eval-osdi/workload-sources.mk`；Make 每次解压前都会校验 archive hash，
-hash 不匹配是 hard failure。
+当时的 hash 不匹配是 hard failure。
 
 W1 build-graph targets 会从干净的 per-run source trees 构建并 trace 固定的
 Redis/nginx release。source trees 位于
@@ -50,7 +56,7 @@ workload 只有在修改后的 kernel、真实 policy attach path、workload-spe
 raw results 写到 `results/` 之后，才能支撑 release-level claim。exact-map
 diagnostics 只在 claim 明确讨论预计算映射时需要；它不是所有 workload 的默认 gate。
 
-清理规则：
+历史清理规则：
 
 - `make workload-clean` 删除 workload build/cache outputs，但保留
   `results/workloads/`。

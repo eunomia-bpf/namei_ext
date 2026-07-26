@@ -22,14 +22,14 @@ functional evidence。
   verified-hit、miss、stale 和 corrupt state dispatch，并保留 literal fallback 作为
   诊断路径。修订后 lookup/readdir 都先查 `cache_rules`，只有 map miss 才进入 literal
   fallback。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：复用现有 libbpf open/load/attach/detach、
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：复用现有 libbpf open/load/attach/detach、
   JSONL emit、TSV parser、路径 materialization、map update 和 file comparison 代码。
 - `mk/kvm.mk`：现有 KVM guest target 都在 guest 内 mount bpffs/debugfs/cgroup2，
   然后执行 runner。
 - `mk/report.mk`：现有 report gate 以 JSONL hard checks 和 input sha256 manifest
   为准，失败即 fail-fast。
-- `workload/w4-ccache-redis-nginx/evidence.md` 和
-  `workload/w4-buildkit-prometheus-go-cache/evidence.md`：记录 W4 仍不能计入 C1/C8
+- `workloads/legacy/w4-ccache-redis-nginx/evidence.md` 和
+  `workloads/legacy/w4-buildkit-prometheus-go-cache/evidence.md`：记录 W4 仍不能计入 C1/C8
   的证据边界。
 
 ## 设计选择
@@ -91,7 +91,7 @@ cache transition、output hash、update writes、stale window 或 table/update b
 
 ## 实现内容
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `--cache-content` mode；
   - 新增 `emit_cache_case`；
   - 新增 `struct cache_rule`、branch-to-state 映射和 `cache_rules` map update；

@@ -31,7 +31,7 @@ ccache 自身通过 `namei_ext` 访问 cache。
   列表。
 - `Dockerfile`：runtime image 依赖列表。
 - `Makefile`：`phase1` dependency graph 和 `make help` 文案。
-- `workload/w4-ccache-redis-nginx/evidence.md`：W4 ccache workload 的真实来源和
+- `workloads/legacy/w4-ccache-redis-nginx/evidence.md`：W4 ccache workload 的真实来源和
   当前证据边界。
 - `docs/research_plan.md`、`docs/experiment-plans/osdi-evaluation.md`、
   `docs/paper/evaluation.md`、`docs/paper/sections/04-implementation.tex` 和

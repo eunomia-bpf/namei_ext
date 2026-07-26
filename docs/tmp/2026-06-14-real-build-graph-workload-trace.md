@@ -24,8 +24,8 @@ source provenance 只能证明固定上游输入可以下载，不能证明项�
 - `mk/workload.mk`
 - `Makefile`
 - `workload/README.md`
-- `workload/w1-redis-build/evidence.md`
-- `workload/w1-nginx-build/evidence.md`
+- `workloads/legacy/w1-redis-build/evidence.md`
+- `workloads/legacy/w1-nginx-build/evidence.md`
 - `docs/research_plan.md`
 - `docs/experiment-plans/osdi-evaluation.md`
 

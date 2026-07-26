@@ -19,7 +19,7 @@ Redis replay 没有 table-only comparator。因此它只能证明 checkpoint pol
 
 - 同一个 Redis checkpoint replay；
 - 同一个修改内核 KVM 环境；
-- 同一个 `tests/w1_oracle/namei_ext_w1_oracle` runner；
+- 同一个 `experiments/legacy_oracle/namei_ext_w1_oracle` runner；
 - 只把 policy 从 `checkpoint_restore_view.bpf.c` 换成 `table_redirect.bpf.c`；
 - 输出独立 raw JSONL 和输入 sha256；
 - 汇总到一个 W3 release counterfactual accounting JSONL；
@@ -75,7 +75,7 @@ Redis replay 没有 table-only comparator。因此它只能证明 checkpoint pol
 
 本次实现修改了：
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - `run_w3_redis_replay()` 参数化 policy kind/name/result level；
   - 保留 `--checkpoint-redis-replay`；
   - 新增 `--checkpoint-redis-table-replay`；

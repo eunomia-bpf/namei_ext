@@ -13,10 +13,10 @@ weak accept。
 本次审查覆盖 W2 nginx real-app health oracle 增量，以及 Phase 1、evaluation 和 paper
 文档中的 claim 边界。重点文件和结果：
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `mk/report.mk`
-- `workload/w2-nginx-fixture/evidence.md`
+- `workloads/legacy/w2-nginx-fixture/evidence.md`
 - `docs/tmp/2026-06-14-w2-nginx-real-app-health-oracle.md`
 - `docs/research_plan.md`
 - `docs/experiment-plans/osdi-evaluation.md`

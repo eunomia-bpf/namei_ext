@@ -27,7 +27,7 @@ The checkpoint/restore line is W3. The current evidence is not a real restore be
 
 Current evidence:
 
-- `workload/w3-redis-podman-criu/evidence.md` explicitly states that the current implemented witness is `w3-redis-rdb-load-replay`, not Podman/CRIU restore.
+- `workloads/legacy/w3-redis-podman-criu/evidence.md` explicitly states that the current implemented witness is `w3-redis-rdb-load-replay`, not Podman/CRIU restore.
 - `results/phase1/20260615T-parent-key-poc/w3-redis-replay.jsonl` shows a real Redis RDB load path observes the checkpoint policy redirect.
 - `results/phase1/20260616T-w3-redis-macrobench-release-v1/w3-redis-policy-macrobench.jsonl` and `w3-redis-baseline-macrobench.jsonl` provide 20-sample KVM proposed-system, materialized checkpoint-view, and FUSE checkpoint-view input rows.
 - `results/eval-osdi/paper/20260617T-eval-w3-redis-workload-macrobench-ledger-v7/b3-macrobench/w3-redis-workload-macrobench.jsonl` is threshold-negative: `w3_c2_slice_supported=false`, `setup_latency_threshold_pass=false`, and `update_latency_threshold_pass=false`.

@@ -15,7 +15,7 @@ rejected pattern of scattered or incomplete experiments.
 The Experiment A runner and Make target were strengthened without changing the
 frozen scientific contract or adding a new baseline family.
 
-`tests/agent_workspace/namei_ext_agent_workspace.c` now emits and checks:
+`experiments/agent_workspace/namei_ext_agent_workspace.c` now emits and checks:
 
 - lower-FS/no-hook control rows over the base and upper trees;
 - generated-file negative-before-write evidence;
@@ -23,7 +23,7 @@ frozen scientific contract or adding a new baseline family.
 - fixed stat and readdir latency rows;
 - unregistered-target containment after target-registry clear.
 
-`tests/agent_workspace/namei_ext_agent_workspace_fuse.c` now emits the matching
+`experiments/agent_workspace/namei_ext_agent_workspace_fuse.c` now emits the matching
 FUSE-side controls, negative-before-write evidence, final manifest, and stat
 and readdir latency rows.
 

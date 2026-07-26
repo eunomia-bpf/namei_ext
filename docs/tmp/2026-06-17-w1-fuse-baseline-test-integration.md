@@ -19,7 +19,7 @@ the full five-baseline performance matrix.
 
 ## Code Paths
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - Added alias-parent counting for W1 alias specs.
   - Extended `w1-build-baseline-correctness` rows with:
     `entries`, `visible_aliases`, `alias_parent_dirs`, `fuse_mounts`,

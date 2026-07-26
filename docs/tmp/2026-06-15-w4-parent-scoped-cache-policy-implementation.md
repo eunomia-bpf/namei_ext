@@ -32,7 +32,7 @@ W4 `cache_locality_view.bpf.c` 之前已经可以用 exact `(event, parent, comp
   - 增加 parent wildcard lookup：exact rule miss 后，用同一 `cache_rules` map 查 `name_len = 0` 的 parent key。
   - parent rule 对 verified-hit state 生成 `name + ".local"` redirect。
   - 增加 `.local` 后缀保护，防止 backing name 二次 redirect。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 增加 `--ccache-parent-compile` 模式。
   - parent 模式为每个 cache leaf parent 写一条 wildcard lookup rule，并为 readdir 写 exact alias rule。
   - 输出 `parent_rule_policy`、`cache_leaf_parents`、`parent_rule_updates`、`exact_readdir_updates`、`table_equivalent_rule_updates` 等原始字段。

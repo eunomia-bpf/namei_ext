@@ -18,7 +18,7 @@ itself.
 
 ## Code Paths Inspected
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - Existing W4 bulk policy compile witness.
   - Existing ccache source manifest parser and compile helpers.
   - Existing ccache strace operation counter.

@@ -16,7 +16,7 @@ replay witness 和 branch probes。
 
 ## 修改范围
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `--w1-build-macrobench` mode；
   - 写出 `w1-build-macrobench-setup`、`w1-build-macrobench-update`、
     `w1-build-macrobench-correctness` 和 `w1-build-macrobench-summary` raw rows；

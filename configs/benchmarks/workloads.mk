@@ -1,6 +1,7 @@
 # OSDI evaluation workload IDs.
 #
-# The owning workload directories live under workload/<id>/.
+# Current source inputs are pinned in workload-sources.mk. Historical
+# pre-W1--W7 evidence directories live under workloads/legacy/<id>/.
 
 OSDI_WORKLOADS_BUILD := \
 	w1-redis-build \
@@ -23,4 +24,3 @@ OSDI_WORKLOADS_ALL := \
 	$(OSDI_WORKLOADS_FIXTURE) \
 	$(OSDI_WORKLOADS_CHECKPOINT) \
 	$(OSDI_WORKLOADS_CACHE)
-

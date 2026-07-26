@@ -19,8 +19,8 @@ correctness oracle：`kvm-w2-nginx-real` 已在修改内核 guest 中运行真�
 - `mk/kvm.mk`
   - `kvm-w2-nginx-real` 启动修改内核 KVM guest。
   - guest target `__phase1_guest_w2_nginx_real` 固定输入、写 `w2-nginx-real-inputs.sha256`，
-    然后调用 `tests/w1_oracle/namei_ext_w1_oracle.c`。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+    然后调用 `experiments/legacy_oracle/namei_ext_w1_oracle.c`。
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - `prepare_nginx_prefix()` materialize nginx prefix、`conf/`、`logs/`、`html/` 和
     fixture/decoy files。
   - `run_nginx_real_app()` load/attach `sandbox_fixture_view.bpf.c`，运行 `nginx -t`、

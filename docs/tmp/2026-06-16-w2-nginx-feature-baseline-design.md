@@ -22,7 +22,7 @@ results/phase1/20260615T-w2-nginx-c2-macrobench-release-sample-v1/w2-nginx-macro
   - 已有 `kvm-w2-nginx-macrobench` 和 `__phase1_guest_w2_nginx_macrobench`。
   - 该 target 会在 KVM guest 中校验 nginx binary、fixture config、endpoint fixture、
     `mime.types`、policy object 和 runner。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 已有 `--sandbox-nginx-macrobench` mode。
   - 已有 `prepare_nginx_prefix()`、`update_nginx_macro_fixture()`、
     `check_nginx_fixture_compare()` 和 `run_nginx_test()`。

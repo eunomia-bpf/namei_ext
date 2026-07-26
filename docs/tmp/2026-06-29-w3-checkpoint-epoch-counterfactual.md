@@ -27,13 +27,13 @@ Inspected policy and orchestration paths:
 
 - `bpf/policies/checkpoint_restore_view.bpf.c`
 - `bpf/policies/table_redirect.bpf.c`
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `Makefile`
 
 Changed paths:
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `Makefile`
 

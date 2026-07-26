@@ -1,6 +1,7 @@
 KERNEL_BUILD_DIR ?= $(BUILD_ROOT)/kernel
 KERNEL_CONFIG_FRAGMENT ?= $(ROOT_DIR)/configs/kernel/x86_64_phase1.config
 KERNEL_IMAGE ?= $(KERNEL_BUILD_DIR)/arch/x86/boot/bzImage
+KERNEL_COMMIT_FILE ?= $(BUILD_ROOT)/kernel-commit.txt
 KERNEL_MERGE_CONFIG ?= $(KERNEL_DIR)/scripts/kconfig/merge_config.sh
 KERNEL_TOUCHED_OBJECTS := \
 	fs/namei.o \
@@ -31,7 +32,7 @@ KERNEL_SOURCE_DEPS := \
 	$(KERNEL_DIR)/tools/lib/bpf/libbpf.c \
 	$(KERNEL_DIR)/tools/lib/bpf/libbpf_probes.c
 
-.PHONY: kernel-config kernel-objects kernel kernel-clean
+.PHONY: kernel-config kernel-objects kernel kernel-provenance kernel-clean
 
 kernel-config: $(KERNEL_BUILD_DIR)/include/config/auto.conf
 	grep '^CONFIG_NAMEI_EXT=y' "$(KERNEL_BUILD_DIR)/.config"
@@ -56,6 +57,18 @@ kernel-objects: $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)
 	$(MAKE) -C "$(KERNEL_DIR)" O="$(KERNEL_BUILD_DIR)" $(KERNEL_TOUCHED_OBJECTS) -j"$(JOBS)"
 
 kernel: $(KERNEL_IMAGE)
+
+kernel-provenance:
+	install -d "$(BUILD_ROOT)"
+	commit=$$(git -C "$(KERNEL_DIR)" rev-parse HEAD); \
+	case "$$commit" in (*[!0-9a-f]*|'') exit 1;; esac; \
+	test "$${#commit}" -eq 40; \
+	printf '%s\n' "$$commit" >"$(KERNEL_COMMIT_FILE).tmp"; \
+	if test -r "$(KERNEL_COMMIT_FILE)" && cmp -s "$(KERNEL_COMMIT_FILE).tmp" "$(KERNEL_COMMIT_FILE)"; then \
+		rm -f "$(KERNEL_COMMIT_FILE).tmp"; \
+	else \
+		mv -f "$(KERNEL_COMMIT_FILE).tmp" "$(KERNEL_COMMIT_FILE)"; \
+	fi
 
 $(KERNEL_IMAGE): $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)/.config $(KERNEL_SOURCE_DEPS)
 	$(MAKE) -C "$(KERNEL_DIR)" O="$(KERNEL_BUILD_DIR)" bzImage -j"$(JOBS)"

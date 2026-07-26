@@ -27,14 +27,14 @@ Inspected paths:
 
 - `bpf/policies/cache_locality_view.bpf.c`
 - `bpf/policies/table_redirect.bpf.c`
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `Makefile`
 
 Changed paths:
 
 - `bpf/policies/cache_locality_view.bpf.c`
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `Makefile`
 

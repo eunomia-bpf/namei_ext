@@ -31,7 +31,7 @@ health、no-real-secret、endpoint、poison、table/update budget 或 C1/C8。
 
 - `bpf/policies/sandbox_fixture_view.bpf.c` 是 `cgroup/namei_ext` 程序，并对 lookup 的
   `nginx.conf` literal redirect 到 `nginx.test.conf`。
-- `tests/w1_oracle/namei_ext_w1_oracle.c` 通过 libbpf load object，并使用
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c` 通过 libbpf load object，并使用
   `BPF_CGROUP_NAMEI_EXT` attach 当前 cgroup。
 - runner materialize `conf/nginx.test.conf`，保持 `conf/nginx.conf` 不存在，并执行真实
   nginx `-t -p <prefix>/ -c conf/nginx.conf -g "user root;"`。

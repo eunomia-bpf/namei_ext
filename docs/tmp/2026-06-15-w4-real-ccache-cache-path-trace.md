@@ -33,7 +33,7 @@ attach `namei_ext` policy，也不证明 operation-weighted policy cache hit rat
 - `mk/report.mk`：Phase 1 hard gates、raw artifact 列表和 summary 生成路径。
 - `Makefile`：默认 `phase1` dependency graph 和 `make help` 文案。
 - `Dockerfile`：runtime image 依赖列表。
-- `workload/w4-ccache-redis-nginx/evidence.md`：W4 ccache workload 的 source-to-signal
+- `workloads/legacy/w4-ccache-redis-nginx/evidence.md`：W4 ccache workload 的 source-to-signal
   ledger。
 - `docs/research_plan.md`、`docs/experiment-plans/osdi-evaluation.md`、
   `docs/paper/evaluation.md`、`docs/paper/sections/04-implementation.tex` 和

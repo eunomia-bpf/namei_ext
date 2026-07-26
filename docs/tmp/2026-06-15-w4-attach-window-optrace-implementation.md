@@ -20,7 +20,7 @@ blocker，本步骤给现有 parent/table compile witness 增加 ccache 子进�
 
 ## 实现
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `run_child_capture_trace()`，在保持 stdout/stderr capture 的同时可选地用
     `strace -f -e trace=%file -o <trace>` 包裹子命令；
   - Redis/nginx 两个 `ccache gcc -c` helper 接受可选 trace path；

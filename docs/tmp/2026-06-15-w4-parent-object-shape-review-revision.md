@@ -10,7 +10,7 @@
 sibling PASS 负例后，启动独立只读 subagent 按 OSDI 实验设计标准审阅以下材料：
 
 - `bpf/policies/cache_locality_view.bpf.c`
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `docs/tmp/2026-06-15-w4-parent-object-shape-negative-implementation.md`
 - `docs/tmp/2026-06-15-w4-parent-scoped-cache-policy-implementation.md`
 - `docs/tmp/2026-06-15-w4-parent-scoped-cache-policy-review-revision.md`

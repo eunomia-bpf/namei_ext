@@ -16,7 +16,7 @@ worth promoting before spending a full run budget.
 
 ## Code Paths Changed
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - Added `--ccache-bulk-bad-local-fallback`.
   - Added two modes: `stale` and `corrupt-hidden`.
   - Reused the existing Redis/nginx ccache source manifest, trace-derived cache

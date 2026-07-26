@@ -12,7 +12,7 @@ It is an external baseline input only. It does not make C2 or C8 supported.
 
 ## Code Paths
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - Added `--ccache-bulk-fuse-compile`.
   - Reuses the existing W4 FUSE daemon operations.
   - Copies the hot trace-derived `CCACHE_DIR` into a per-sample tree, renames it
@@ -68,7 +68,7 @@ The fixed target passed:
 
 ```text
 make w1-oracle
-git diff --check -- Makefile mk/kvm.mk tests/w1_oracle/namei_ext_w1_oracle.c docs/tmp/2026-06-16-w4-bulk-fuse-compile-baseline-implementation.md
+git diff --check -- Makefile mk/kvm.mk experiments/legacy_oracle/namei_ext_w1_oracle.c docs/tmp/2026-06-16-w4-bulk-fuse-compile-baseline-implementation.md
 make kvm-w4-ccache-bulk-fuse-compile RUN_ID=20260616T-w4-ccache-bulk-fuse-compile-smoke-v2 W4_CCACHE_BULK_FUSE_COMPILE_SAMPLES=1
 ```
 

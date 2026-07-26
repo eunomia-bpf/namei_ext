@@ -1,6 +1,6 @@
 # Implementation
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed the latest paper
 reorganization pass and independent outer audit. Implementation artifacts below
@@ -22,6 +22,34 @@ Failures are hard failures: unsupported actions, verifier failures, malformed
 decisions, syscall failures, missing capabilities, invalid lower selections,
 and workload oracle failures must fail the owning Make target and preserve raw
 evidence under `results/`.
+
+## Unified Experiment Infrastructure
+
+Formal case studies now live under `experiments/`, mechanism regressions remain
+under `tests/`, and performance suites remain under `bench/`. Per-case KVM
+recipes live in `mk/experiments/`; `mk/kvm.mk` retains shared guest setup and
+mechanism suites. The old ccache matrix is isolated in
+`mk/experiments/legacy_build_cache.mk`.
+
+`runner/libnamei_ext_harness.a` owns repeated mechanism lifecycle code:
+cgroup movement and identity, BPF load/attach/detach, registered targets, exact
+component-map updates, counters, path helpers, and child cleanup. Workload
+state machines and correctness oracles remain in focused experiment runners.
+Sandboxed Application File Sharing and Build Action Sandboxing use this shared
+harness. The historical 24,286-line multi-workload runner is isolated under
+`experiments/legacy_oracle/` and is not a template for new cases.
+
+Canonical case-study result roots use `namei_ext.run.v1` metadata and preserve
+`observations.jsonl`, commands, separate source and binary hash manifests,
+stdout/stderr, kernel configuration and identity, and dmesg. Kernel commit
+identity is captured on the host before KVM boot and validated in the guest;
+missing or malformed provenance is a hard failure.
+
+The infrastructure migration passed the real modified-kernel KVM path for
+Sandboxed Application File Sharing, Build Action Sandboxing, and the Agent
+workspace namei_ext/FUSE matrix, followed by a complete `make phase1` run. The
+standalone implementation and validation record is
+`docs/tmp/2026-07-26-unified-experiment-infrastructure-implementation.md`.
 
 ## Current Make Control Plane
 
@@ -49,7 +77,7 @@ The implementation record for this control-plane alignment is
 
 The W1 preflight is implemented by
 `bpf/policies/application_file_sharing.bpf.c` and
-`tests/application_file_sharing/namei_ext_application_file_sharing.c`.
+`experiments/application_file_sharing/namei_ext_application_file_sharing.c`.
 The policy scopes a managed logical document by parent device/inode and name,
 then keys its grant by application cgroup ID. The scoped KVM run passed
 grant, revoke, cross-application isolation, lookup/readdir/open/stat,

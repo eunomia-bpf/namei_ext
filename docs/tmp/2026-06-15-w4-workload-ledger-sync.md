@@ -9,7 +9,7 @@
 
 ## 动机
 
-`workload/w4-ccache-redis-nginx/evidence.md` 仍把“真实 ccache compile under policy
+`workloads/legacy/w4-ccache-redis-nginx/evidence.md` 仍把“真实 ccache compile under policy
 attach window”列为待完成项。但当前已经有：
 
 - `kvm-w4-ccache-policy-compile`

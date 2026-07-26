@@ -45,7 +45,7 @@ oracle、table-only counterfactual、repetition/performance distributions、dirt
    - 原因：这是后续实验 blocker，不是文档措辞可以解决的 blocker。
 
 4. W3 Redis replay 与 `w3-redis-podman-criu` workload ID 有误导风险。
-   - 处理：已在 `workload/w3-redis-podman-criu/evidence.md` 增加命名说明：目录名保留
+   - 处理：已在 `workloads/legacy/w3-redis-podman-criu/evidence.md` 增加命名说明：目录名保留
      发布级 Podman/CRIU 目标，当前 Phase 1 增量 witness 应称为
      `w3-redis-rdb-load-replay` 或 W3 Redis checkpoint replay witness。论文 evaluation
      表格也拆开“当前 witness”和“发布级目标”。

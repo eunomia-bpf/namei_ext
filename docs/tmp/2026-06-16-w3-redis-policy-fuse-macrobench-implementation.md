@@ -13,7 +13,7 @@ plane.
 
 ## Code Paths Inspected
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - Existing Redis helpers: `run_redis_daemon`, `redis_set`, `redis_save`,
     `redis_get`, and `run_w3_redis_replay`.
   - Existing W1/W2/W4 macrobench emitters and row schemas.

@@ -5,7 +5,7 @@
 - `AGENTS.md`
 - `experiment-001/plan.md`
 - Agent-workspace definitions and recipes in `mk/kvm.mk`
-- `tests/agent_workspace/Makefile`
+- `experiments/agent_workspace/Makefile`
 - The argument parsing, source-trace gate, lifecycle, correctness checks, and cleanup/control flow in both Agent workspace C runners
 - Read-only expansion probe: `make -n experiment-agent-workspace RUN_ID=plan-review-probe`
 
@@ -33,7 +33,7 @@
 
 - Current experiment plan.
 - Repair diff for `mk/kvm.mk`.
-- Repair diff for `tests/agent_workspace/namei_ext_agent_workspace_fuse.c`.
+- Repair diff for `experiments/agent_workspace/namei_ext_agent_workspace_fuse.c`.
 
 ### Findings
 

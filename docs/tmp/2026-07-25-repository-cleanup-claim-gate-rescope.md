@@ -46,7 +46,7 @@ misled agents about the live research frontier:
   required by the current build-cache matrix remains.
 - `configs/benchmarks/phase1.mk`: dead `BASELINE_*` / `EVAL_OSDI_BASELINES`
   variables.
-- `tests/w1_oracle/namei_ext_w1_oracle.c`: 91 emissions of retired fields
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`: 91 emissions of retired fields
   (`qualified_for_c8`, `c2_supported`, `release_gate_pass`). Schema strings
   (`namei_ext.eval_osdi.*`) intentionally kept as identifiers for
   compatibility with archived raw results.
@@ -88,7 +88,7 @@ Deliberately kept: `bpf/policies/table_redirect.bpf.c` (still referenced by
   `table-budget`, `policy-budgets`, `qualified_for_c8`, `c1_c8_gate`,
   `release_gate_eligible`, `release_gate_pass`, `c2_supported` remain
   (schema-name strings in C sources excepted, kept deliberately).
-- `tests/w1_oracle` rebuilds clean with `-Wall -Wextra` after the field
+- `experiments/legacy_oracle` rebuilds clean with `-Wall -Wextra` after the field
   strip; edited emit sites produce valid JSON.
 
 ## Remaining Notes

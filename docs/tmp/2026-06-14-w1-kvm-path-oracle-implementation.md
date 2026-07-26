@@ -51,9 +51,9 @@ cgroup。runner 因此解析 `/proc/self/cgroup`，再用 cgroup v2 path 的 fil
   - TSV 包含 workload、branch、parent、visible、shadow、original backing path 和
     backing SHA256；
   - 生成时 fail-fast 校验行数、列数、源文件存在性和 SHA256。
-- `tests/w1_oracle/Makefile`
+- `experiments/legacy_oracle/Makefile`
   - 编译 `namei_ext_w1_oracle`，复用 kernel tree 的 libbpf。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 读取 TSV；
   - 在 `/tmp/namei-ext-w1-*` 下为每个 entry 建独立目录；
   - 复制真实 backing 文件作为 shadow；

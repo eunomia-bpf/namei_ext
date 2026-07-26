@@ -22,7 +22,7 @@ kernel/KVM guest 中证明：
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `--release-build-replay` CLI mode。
   - 新增 Redis/nginx release rebuild runner。
   - policy 源树在 attach 前完成 rebuild cleanup，避免 cleanup 自身被 readdir alias 干扰。

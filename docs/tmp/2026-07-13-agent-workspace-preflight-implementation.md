@@ -18,17 +18,17 @@ Added a dependency preflight, not a paper-result experiment:
 
 - `bpf/policies/agent_workspace_view.bpf.c`: selects logical component `ws`
   through registered target ID 1 and hides `deleted.txt` for lookup/readdir;
-- `tests/agent_workspace/namei_ext_agent_workspace.c`: creates a base/upper
+- `experiments/agent_workspace/namei_ext_agent_workspace.c`: creates a base/upper
   workspace fixture, attaches the policy, registers target ID 1 to base and
   then upper, checks stable logical path transition, whiteout-style hide,
   symlink metadata, lower-FS write placement, detach behavior, and nonzero
   operation counters for the policy path;
-- `tests/agent_workspace/namei_ext_agent_workspace_fuse.c`: implements the same
+- `experiments/agent_workspace/namei_ext_agent_workspace_fuse.c`: implements the same
   preflight path-view shape as a FUSE policy filesystem, with `/ws` selecting
   base or upper state, `deleted.txt` hidden, symlink metadata preserved, and
   writes landing in the active upper state; it also emits FUSE operation
   counters for the small policy filesystem path;
-- `tests/agent_workspace/Makefile`: builds the runner under
+- `experiments/agent_workspace/Makefile`: builds the runner under
   `.build/agent-workspace/`;
 - `Makefile`: adds `agent-workspace` and documents
   `kvm-agent-workspace-preflight`;

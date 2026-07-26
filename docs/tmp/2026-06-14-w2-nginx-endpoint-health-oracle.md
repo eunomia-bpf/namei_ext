@@ -20,18 +20,18 @@ counterfactual，因此不能计入 C1/C8。
 
 ## 调研和检查的代码路径
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：现有 W1/W2/W3/W4 path oracle runner，
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：现有 W1/W2/W3/W4 path oracle runner，
   以及 W2 nginx real-app health oracle。
 - `mk/workload.mk`：W2 nginx fixture manifest、endpoint fixture 和 oracle TSV 的生成。
 - `mk/kvm.mk`：`kvm-w2-nginx-real` guest target 的输入哈希、KVM 执行命令和 runner 参数。
 - `mk/report.mk`：Phase 1 report 对 W2 nginx real-app raw JSON 和 input hash 的 gate。
-- `workload/w2-nginx-fixture/nginx.test.conf`：新增的 workload-owned nginx fixture config。
-- `workload/w2-nginx-fixture/evidence.md`、`docs/research_plan.md`、
+- `workloads/legacy/w2-nginx-fixture/nginx.test.conf`：新增的 workload-owned nginx fixture config。
+- `workloads/legacy/w2-nginx-fixture/evidence.md`、`docs/research_plan.md`、
   `docs/experiment-plans/osdi-evaluation.md`、`docs/paper/`：中文 evidence 和论文草稿边界。
 
 ## 设计选择
 
-1. workload config 放在 `workload/w2-nginx-fixture/nginx.test.conf`，遵守 workload
+1. workload config 放在 `workloads/legacy/w2-nginx-fixture/nginx.test.conf`，遵守 workload
    的启动脚本和配置都归档在对应 workload 子目录的规则。
 2. `nginx.test.conf` 使用 nginx 自身配置语义：
    `include mime.types` 和 `include upstream.sock`。在 `-p <prefix>/ -c conf/nginx.conf`
@@ -60,7 +60,7 @@ counterfactual，因此不能计入 C1/C8。
 
 ## 实现细节
 
-- 新增 `workload/w2-nginx-fixture/nginx.test.conf`。该配置在 `/` location 中
+- 新增 `workloads/legacy/w2-nginx-fixture/nginx.test.conf`。该配置在 `/` location 中
   `include upstream.sock`，endpoint fixture `upstream.local` 的内容为
   `proxy_pass http://127.0.0.1:18080;`。
 - `mk/workload.mk` 的 W2 nginx fixture manifest 将 config entry 的
@@ -69,7 +69,7 @@ counterfactual，因此不能计入 C1/C8。
 - `mk/kvm.mk` 将 `kvm-w2-nginx-real` 输入从 `W2_NGINX_SAMPLE_CONF` 改为
   `W2_NGINX_FIXTURE_CONF` 和 `W2_NGINX_ENDPOINT_FIXTURE`，并把两者写入 input hash 和
   `w2-nginx-real-input` JSON event。
-- `tests/w1_oracle/namei_ext_w1_oracle.c` 的 `--sandbox-nginx-smoke` 模式现在接收
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c` 的 `--sandbox-nginx-smoke` 模式现在接收
   `FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES SANDBOX_POLICY`。runner 会：
   - 创建 nginx prefix；
   - materialize `conf/nginx.test.conf`、`conf/upstream.local` 和 `conf/mime.types`；

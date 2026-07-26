@@ -53,7 +53,7 @@ make kvm-w1-build-macrobench RUN_ID=20260616T-w1-build-macrobench-release-sample
 - Redis/nginx host source build and trace manifests；
 - Redis/nginx alias manifests；
 - `bpf/policies/build_graph_view.bpf.c` 和 `.build/bpf/build_graph_view.bpf.o`；
-- `tests/w1_oracle/namei_ext_w1_oracle.c` 和 `.build/w1-oracle/namei_ext_w1_oracle`；
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c` 和 `.build/w1-oracle/namei_ext_w1_oracle`；
 - `docs/tmp/2026-06-16-w1-build-macrobench-design.md`；
 - `mk/kvm.mk`。
 

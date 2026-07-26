@@ -160,7 +160,7 @@ W4 C8 合格前必须同时满足：
 ## 需要修改的代码路径
 
 - `bpf/policies/cache_locality_view.bpf.c`：增加 parent-scoped suffix transform rule；
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：增加 release counterfactual runner mode，保存 raw
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：增加 release counterfactual runner mode，保存 raw
   per-object/per-parent observations；
 - `mk/kvm.mk`：新增 KVM target 和 guest target；
 - `mk/report.mk`：新增 hard gate，但只计算 ratio 和检查 raw artifact；

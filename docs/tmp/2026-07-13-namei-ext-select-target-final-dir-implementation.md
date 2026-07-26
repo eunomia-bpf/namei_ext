@@ -65,8 +65,8 @@ The implementation still fails closed for:
 - `kernel/fs/namei_ext.c`
 - `kernel/fs/namei.c`
 - `tests/functional/namei_ext_functional.c`
-- `tests/agent_workspace/namei_ext_agent_workspace.c`
-- `tests/agent_workspace/namei_ext_agent_workspace_fuse.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace.c`
+- `experiments/agent_workspace/namei_ext_agent_workspace_fuse.c`
 - `docs/design.md`
 - `docs/implementation.md`
 - `docs/evaluation.md`

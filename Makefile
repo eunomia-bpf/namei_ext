@@ -19,11 +19,15 @@ include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/kvm.mk
 include $(ROOT_DIR)/mk/workload.mk
+include $(ROOT_DIR)/mk/experiments/legacy_build_cache.mk
+include $(ROOT_DIR)/mk/experiments/agent_workspace.mk
+include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
+include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
 
 .DEFAULT_GOAL := phase1
 
 .PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional \
-	policy-load policy-semantic agent-workspace application-file-sharing \
+	policy-load policy-semantic runner agent-workspace application-file-sharing \
 	build-action-sandboxing \
 	experiments experiment-agent-workspace experiment-env-cache \
 	w1-oracle \
@@ -70,17 +74,20 @@ policy-load:
 policy-semantic:
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_semantic" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
+runner:
+	$(MAKE) -C "$(ROOT_DIR)/runner" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+
 w1-oracle:
-	$(MAKE) -C "$(ROOT_DIR)/tests/w1_oracle" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+	$(MAKE) -C "$(ROOT_DIR)/experiments/legacy_oracle" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 agent-workspace:
-	$(MAKE) -C "$(ROOT_DIR)/tests/agent_workspace" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+	$(MAKE) -C "$(ROOT_DIR)/experiments/agent_workspace" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 application-file-sharing:
-	$(MAKE) -C "$(ROOT_DIR)/tests/application_file_sharing" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+	$(MAKE) -C "$(ROOT_DIR)/experiments/application_file_sharing" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 build-action-sandboxing:
-	$(MAKE) -C "$(ROOT_DIR)/tests/build_action_sandboxing" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+	$(MAKE) -C "$(ROOT_DIR)/experiments/build_action_sandboxing" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 help:
 	@printf '%s\n' 'Targets:'
@@ -130,10 +137,11 @@ clean: kernel-clean docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/functional" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_load" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_semantic" BUILD_ROOT="$(BUILD_ROOT)" clean
-	$(MAKE) -C "$(ROOT_DIR)/tests/w1_oracle" BUILD_ROOT="$(BUILD_ROOT)" clean
-	$(MAKE) -C "$(ROOT_DIR)/tests/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean
-	$(MAKE) -C "$(ROOT_DIR)/tests/application_file_sharing" BUILD_ROOT="$(BUILD_ROOT)" clean
-	$(MAKE) -C "$(ROOT_DIR)/tests/build_action_sandboxing" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/experiments/legacy_oracle" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/runner" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/experiments/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/experiments/application_file_sharing" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/experiments/build_action_sandboxing" BUILD_ROOT="$(BUILD_ROOT)" clean
 	rm -rf "$(BUILD_ROOT)/workloads" "$(CACHE_ROOT)/workloads"
 	rm -rf "$(BUILD_ROOT)"
 

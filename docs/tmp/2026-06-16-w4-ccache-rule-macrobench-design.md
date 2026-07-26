@@ -30,7 +30,7 @@ raw rows，而不是把 W4 直接升级为 C2/C8 支持证据。
     targets；
   - 现有 W1/W2 macrobench targets 都采用 `kvm-*` 生成 raw JSONL，然后由
     `mk/eval_osdi.mk` 中的 ledger 合并 claim-level 结果。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：
   - 已有 `run_ccache_policy_compile()`，能为 parent-scoped policy 和 table baseline 填充
     map、attach policy、运行真实 ccache compile、检查 output hash；
   - 已有 `prepare_cache_content_dir()`、`cache_expect_equal()`、`cache_expect_readdir()` 等

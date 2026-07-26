@@ -28,7 +28,7 @@ workload provenance，也没有放进 Phase 1 KVM/report gate。
 - `bpf/policies/sandbox_fixture_view.bpf.c`：config、service config、secret、certificate、
   endpoint 和 poison 的 lookup/readdir hard-coded POC 分支；
 - `tests/policy_semantic/namei_ext_policy_semantic.c`：sandbox fixture POC cases；
-- `tests/w1_oracle/namei_ext_w1_oracle.c`：可复用的 libbpf load/attach、cgroup id、
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`：可复用的 libbpf load/attach、cgroup id、
   materialization、lookup/readdir 和 detach oracle；
 - `mk/workload.mk`：workload source provenance、W1 TSV 生成模式；
 - `mk/kvm.mk`：KVM guest target 模式和 input sha256 provenance；
@@ -51,7 +51,7 @@ gate 中完成。
   - 生成 PostgreSQL fixture manifest：upstream `postgresql.conf.sample`、fake password；
   - 生成 `w2-sandbox-fixture-oracle-entries.tsv`，并 fail-fast 校验行数、列数、
     backing path 和 SHA256。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 扩展为共享 path oracle runner；
   - 保持原 W1 CLI 不变；
   - 新增 `--sandbox-fixture` mode，输出 `w2-oracle*` events；
@@ -77,8 +77,8 @@ gate 中完成。
 - `Makefile`
   - `phase1` 纳入 `kvm-w2-oracle`；
   - `help` 增加 W2 oracle targets。
-- `workload/w2-nginx-fixture/evidence.md` 和
-  `workload/w2-postgres-secret-fixture/evidence.md`
+- `workloads/legacy/w2-nginx-fixture/evidence.md` 和
+  `workloads/legacy/w2-postgres-secret-fixture/evidence.md`
   - 区分当前已实现的 fixture manifest / TSV / KVM path oracle targets；
   - 把 health、no-real-secret、startup trace 和 table/update budget 记录为
     release-level 缺口，避免把当前 fixture path oracle 误写成真实服务运行结果。

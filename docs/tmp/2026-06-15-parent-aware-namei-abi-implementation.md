@@ -72,7 +72,7 @@ VFS object 指针。
 ### Policy key
 
 修改 `bpf/include/namei_ext_policy.h` 和
-`tests/w1_oracle/namei_ext_w1_oracle.c`，将 map-backed policy key 扩展为：
+`experiments/legacy_oracle/namei_ext_w1_oracle.c`，将 map-backed policy key 扩展为：
 
 ```c
 struct namei_ext_component_key {
@@ -93,7 +93,7 @@ mount identity 或 generation registry 的扩展点。
 
 ### W1 runner
 
-修改 `tests/w1_oracle/namei_ext_w1_oracle.c`：
+修改 `experiments/legacy_oracle/namei_ext_w1_oracle.c`：
 
 - `fill_key()` 现在接收 `parent_dir`，对该目录执行 `stat()`，写入 `st_dev/st_ino`；
 - `update_rule()` 和 `update_cache_rule()` 都通过 parent-aware key 更新 map；

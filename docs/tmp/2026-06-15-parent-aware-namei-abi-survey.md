@@ -278,7 +278,7 @@ struct namei_ext_component_key {
 
 ### Step 6: userspace map population
 
-修改 `tests/w1_oracle/namei_ext_w1_oracle.c` 中的 map update key builder：
+修改 `experiments/legacy_oracle/namei_ext_w1_oracle.c` 中的 map update key builder：
 
 - synthetic directory path oracle：在创建 parent directory 后用 `stat()` 读取 dev/ino；
 - real source replay：对 manifest 中 parent-relative directory 做 `stat()`，用当前 guest 中的 dev/ino 写 key；

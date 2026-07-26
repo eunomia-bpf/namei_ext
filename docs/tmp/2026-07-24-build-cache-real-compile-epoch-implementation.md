@@ -19,7 +19,7 @@ view under the same output-object oracle.
 
 ## Files Changed
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `docs/tmp/2026-07-24-build-cache-real-compile-epoch-plan.md`
 

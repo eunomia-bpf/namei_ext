@@ -37,7 +37,7 @@ attach `cache_locality_view.bpf.c` 时运行真实 Redis/nginx ccache hot compil
 
 ## 检查的代码路径和文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 已有 W4 cache content oracle、ccache trace parser、policy attach helper、
     map update helper 和 ccache compile helper。
   - 新增 `--ccache-policy-compile` runner mode。
@@ -100,7 +100,7 @@ policy 仍是 `bpf/policies/cache_locality_view.bpf.c` 下的 eBPF 程序。
 
 ## 实现细节
 
-`tests/w1_oracle/namei_ext_w1_oracle.c` 新增的关键 helper 包括：
+`experiments/legacy_oracle/namei_ext_w1_oracle.c` 新增的关键 helper 包括：
 
 - `run_ccache_redis_compile`
 - `run_ccache_nginx_compile`

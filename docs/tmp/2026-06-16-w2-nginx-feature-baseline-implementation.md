@@ -13,13 +13,13 @@ projected-volume、bind mount 或 FUSE baseline。
 
 ## 修改文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
 - `mk/kvm.mk`
 - `Makefile`
 
 ## 实现内容
 
-`tests/w1_oracle/namei_ext_w1_oracle.c` 新增 mode：
+`experiments/legacy_oracle/namei_ext_w1_oracle.c` 新增 mode：
 
 ```text
 --sandbox-nginx-baseline-macrobench OUT_JSONL WORK_DIR SAMPLES NGINX_BIN FIXTURE_CONF ENDPOINT_FIXTURE MIME_TYPES BASELINES

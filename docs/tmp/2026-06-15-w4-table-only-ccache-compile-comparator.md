@@ -19,7 +19,7 @@ witness 必须继续标记 `qualified_for_c8=false`。
 
 ## 检查和修改的代码路径
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 把 ccache compile runner 参数化为 `POLICY_CACHE_LOCALITY` 和 `POLICY_TABLE` 两种。
   - 新增 CLI `--ccache-table-compile`。
   - 在 table 模式下写出 `w4-ccache-table-compile-*` event、summary 和 stats 字段。

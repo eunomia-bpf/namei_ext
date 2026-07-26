@@ -15,7 +15,7 @@ epoch test, not a full real stale/corrupt compile workload.
 
 ## Files inspected or changed
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`: added a trace-derived variant of the
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`: added a trace-derived variant of the
   W4 cache-epoch runner. It reads `w4-ccache-bulk-policy-bridge-entries.tsv`,
   selects trace-derived cache object names and source SHA provenance, prepares
   deterministic local/canonical epoch payloads, and reuses the five-system

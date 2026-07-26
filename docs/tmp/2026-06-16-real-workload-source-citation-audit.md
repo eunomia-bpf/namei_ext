@@ -25,7 +25,7 @@ workload evidence 中，并明确当前证据等级。
 - `docs/paper/sections/05-evaluation.tex`
 - `docs/paper/refs.bib`
 - `research/CLAIM_LEDGER.md`
-- `workload/w2-nginx-fixture/evidence.md`
+- `workloads/legacy/w2-nginx-fixture/evidence.md`
 - `results/phase1/20260615T-w2-nginx-c2-macrobench-release-sample-v1/w2-nginx-macrobench.jsonl`
 
 ## 外部来源和它们能证明什么
@@ -67,7 +67,7 @@ workload evidence 中，并明确当前证据等级。
 - `docs/experiment-plans/osdi-evaluation.md` 新增 2026-06-16 citation audit 规则，并把
   W2 20-sample KVM setup/update macrobench 写入 source-to-signal ledger。
 - `research/CLAIM_LEDGER.md` 更新 C2 状态和 W1--W4 可引用来源列表。
-- `workload/w2-nginx-fixture/evidence.md` 新增 Docker Compose 来源、macrobench Make target、
+- `workloads/legacy/w2-nginx-fixture/evidence.md` 新增 Docker Compose 来源、macrobench Make target、
   20-sample result path 和 C2 release blocker。
 
 ## 本轮验证

@@ -18,7 +18,7 @@ measurement shape, but the family remains `qualified_for_c8=false`.
 
 ## Files changed
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - Added `--cache-transition-counterfactual`.
   - Added three W4 systems per sample:
     - `cache_locality_state_policy` uses `cache_locality_view.bpf.c`, materializes

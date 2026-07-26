@@ -22,7 +22,7 @@ workload hit，也没有发现 W1 release/branch witness 被计入 C8。但 revi
 
 ## 修改内容
 
-- `workload/w1-redis-build/evidence.md`
+- `workloads/legacy/w1-redis-build/evidence.md`
   - 把当前 W1 Redis evidence 统一到 run id `20260615T-parent-key-poc`。
   - 将 trace line、candidate hit rate、manifest path 和 KVM path oracle path 指向同一
     canonical run。
@@ -32,7 +32,7 @@ workload hit，也没有发现 W1 release/branch witness 被计入 C8。但 revi
     `w1-release-build-replay.jsonl` 和
     `w1-release-build-replay-outputs.sha256`。
 
-- `workload/w1-nginx-build/evidence.md`
+- `workloads/legacy/w1-nginx-build/evidence.md`
   - 把当前 W1 nginx evidence 统一到 run id `20260615T-parent-key-poc`。
   - 将 trace line、candidate hit rate、manifest path 和 KVM path oracle path 指向同一
     canonical run。

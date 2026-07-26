@@ -15,7 +15,7 @@ source backing update 和 app-level correctness。
 
 ## 代码改动
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `struct nginx_macro_stats`，记录 setup/update 原始计数：
     `created_dirs`、`created_files`、`bytes_written`、`bytes_copied`、
     `source_update_writes`、`policy_update_writes`、`update_bytes_written` 和

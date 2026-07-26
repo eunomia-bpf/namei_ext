@@ -23,7 +23,7 @@ object sibling”的直接漏洞。
   - 新增 `cache_name_is_ccache_object()`：只接受 31 字节 lower-alnum 前缀加最后一字节
     `M` 或 `R` 的 ccache object 名字。
   - parent lookup rule 在生成 `.local` redirect 前必须通过该 object-shape guard。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 新增 `W4_CCACHE_PARENT_SIBLING = "metadata.txt"`。
   - parent mode 在 attach 前把 `metadata.txt` 写入一个真实 cache leaf parent。
   - attach 后执行 `attached_parent_sibling_pass`，用真实 lookup/open 路径确认

@@ -3,7 +3,7 @@ Last updated: 2026-06-15
 > 2026-06-29 baseline scope update: this historical record preserves prior reasoning and results. Current C8/B12 guidance is claim-driven baseline selection; exact-map diagnostics are optional boundary evidence only when precomputed mapping is the competing claim.
 
 Stage at update: implementation planning
-Source/command: audit of `mk/workload.mk`, `mk/kvm.mk`, `tests/w1_oracle/namei_ext_w1_oracle.c`, and `results/workloads/runs/20260615T-parent-key-poc/`
+Source/command: audit of `mk/workload.mk`, `mk/kvm.mk`, `experiments/legacy_oracle/namei_ext_w1_oracle.c`, and `results/workloads/runs/20260615T-parent-key-poc/`
 Completeness: complete for choosing the next W1 release-binary replay implementation step
 
 # W1 Release Binary Replay 设计记录
@@ -56,7 +56,7 @@ operation-weighted hit rate 和 table/update budget counterfactual 也通过。
 - 生成 policy `.i` 并做 byte-for-byte 比较；
 - 写 `w1-build-replay.jsonl` 和 `w1-build-replay-outputs.sha256`。
 
-`tests/w1_oracle/namei_ext_w1_oracle.c` 已有可复用能力：
+`experiments/legacy_oracle/namei_ext_w1_oracle.c` 已有可复用能力：
 
 - `read_entries()` 读取 W1 TSV；
 - `assign_build_replay_parent_dirs()` 将 entries 绑定到 guest runtime parent dirs；
@@ -158,7 +158,7 @@ budget counterfactual。它可以证明“policy 下 release binary rebuild 没�
    - target 输入包括 W1 TSV、Redis/nginx manifests、alias manifests、
      `build_graph_view.bpf.c` source/object 和 runner source/binary。
 
-2. `tests/w1_oracle/namei_ext_w1_oracle.c`
+2. `experiments/legacy_oracle/namei_ext_w1_oracle.c`
    - 新增 recursive `remove_suffix_under()` helper，用于删除 `*.o`。
    - 新增 release build runner：
      - 复制/使用 baseline and policy source dirs；

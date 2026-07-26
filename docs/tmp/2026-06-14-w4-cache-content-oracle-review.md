@@ -28,7 +28,7 @@ Review 还指出：文档可以把第一版称为 KVM attach-path literal conten
 
 - `cache_locality_view.bpf.c` 的 lookup/readdir 改为 map-first：先查 `cache_rules`，
   map miss 才进入 literal fallback。
-- `tests/w1_oracle/namei_ext_w1_oracle.c` 新增与 BPF policy 对齐的 `struct cache_rule`，
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c` 新增与 BPF policy 对齐的 `struct cache_rule`，
   并把 W4 branch 映射到 bounded cache state。
 - `populate_policy_map()` 对 `POLICY_CACHE_LOCALITY` 不再跳过；它为每条 W4 TSV entry
   写入 lookup 和 readdir 两个 `cache_rules` map key。

@@ -22,7 +22,7 @@ operation-weighted hit rate 或 table/update budget counterfactual，因此不�
 
 ## 调研过的代码和产物
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 复用已有 `--sandbox-nginx-smoke` runner、libbpf loader、cgroup attach/detach 和
     JSONL emission。
   - 新增 daemon start/quit helper 和最小 C socket HTTP client，避免引入 curl 等额外
@@ -79,7 +79,7 @@ HTTP client 用 C 实现，原因是 Phase 1 KVM guest 不应依赖未声明的 
 
 ## 实现内容
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 增加 `NGINX_HEALTH_BODY`，并在 prefix 中写入 `html/index.html`。
   - 增加 `run_nginx_daemon_cmd()`，支持 daemon start 和 `nginx -s quit`。
   - 增加 `connect_local_http()` 和 `run_http_health()`，用 socket 执行 HTTP GET 并保存

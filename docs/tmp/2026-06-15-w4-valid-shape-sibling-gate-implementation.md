@@ -27,7 +27,7 @@ W4 parent-scoped ccache PoC 原本只证明了同一 cache leaf parent 下的
     `.local` suffix，未检查 component 是否属于 trace-derived witness。
   - `struct cache_rule` 已有 `expected_hash[4]` 和 `witness_count`，可以复用为
     bounded name witness，不需要新增 BPF map 或 ABI 字段。
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - `update_cache_parent_rule()` 原先只写 parent wildcard key 和 state。
   - `ccache_prepare_parent_sibling()` / `ccache_policy_expect_parent_sibling_pass()`
     已经覆盖 `metadata.txt` sibling PASS。

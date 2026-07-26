@@ -23,8 +23,8 @@ trace-witness manifest 生成路径。
 
 - `mk/workload.mk`
 - `workload/README.md`
-- `workload/w1-redis-build/evidence.md`
-- `workload/w1-nginx-build/evidence.md`
+- `workloads/legacy/w1-redis-build/evidence.md`
+- `workloads/legacy/w1-nginx-build/evidence.md`
 - `bpf/policies/build_graph_view.bpf.c`
 - `bpf/include/namei_ext.h`
 - `docs/experiment-plans/osdi-evaluation.md`

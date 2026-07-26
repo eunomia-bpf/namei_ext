@@ -71,7 +71,7 @@ attach-window proxy。
 
 ## 需要改动的文件
 
-- `tests/w1_oracle/namei_ext_w1_oracle.c`
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`
   - 增加 `run_child_capture_trace()`；
   - 让 Redis/nginx ccache compile 可选地通过 strace 包裹；
   - 解析 trace logs 并在 summary 写入 sampled attach-window metrics。

@@ -18,7 +18,7 @@ conditions.
   smoke summary and requires release-sample policy compile input.
 - `mk/eval_osdi.mk`: the W4 summary markdown prints the new
   `bulk_policy_compile_release_input_pass` field.
-- `tests/w1_oracle/namei_ext_w1_oracle.c`: large W4 ccache source/entry arrays in policy/native/FUSE bulk compile
+- `experiments/legacy_oracle/namei_ext_w1_oracle.c`: large W4 ccache source/entry arrays in policy/native/FUSE bulk compile
   paths were moved off the stack and zeroed explicitly before each run. The previous native compile attempt crashed
   at function entry due a multi-megabyte stack frame.
 
