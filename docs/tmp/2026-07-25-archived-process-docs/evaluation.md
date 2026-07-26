@@ -1,5 +1,9 @@
 # Evaluation Plan
 
+Archived: 2026-07-25. This is the superseded content of the canonical
+`docs/evaluation.md`, which continues as the living evaluation-state file.
+This snapshot is kept for provenance only; do not update it.
+
 Last updated: 2026-07-24
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed full writing,
