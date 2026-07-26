@@ -34,6 +34,16 @@ force them to own far more than name resolution.
 | Checkpoint/restart remapping | Conditional | DMTCP path virtualization (Cluster'16, SELSE'17 with Intel) is the direct precedent, implemented as fragile LD_PRELOAD `open()` interposition. | Kubernetes keeps migration as a non-goal (KEP-2008) and CRIU `--external mnt` covers restore-time mapping. Weakest demand; do not invest before the first three. |
 | Remote filesystem cache | Motivation evidence only, not evaluated | s3fs/gcsfuse/JuiceFS are FUSE daemons with documented pain; lazy container-image pulling migrated from FUSE to in-kernel erofs+fscache for "significantly better performance than FUSE" (AWS EKS AMI #2569). | Strongest industrial proof that the boundary exists: the kernel absorbed the data path, but selection/visibility policy stays hardwired per system. Not evaluated: the data path is the bulk of the problem and namei_ext deliberately does not own it. |
 
+Additional candidates recorded as pattern evidence, not as evaluated use
+cases (full verdicts in `docs/background-related-work.md`):
+
+| Candidate | Citation | Verdict |
+| --- | --- | --- |
+| SELinux polyinstantiation / pam_namespace | namespace.conf(5); Red Hat SELinux guide: per-context `/tmp` instances bound at login | Closest shipping precedent. Static per-context instance trees, not programmable per-lookup policy; must be positioned against in related work. |
+| Plan 9 per-process name spaces, union directories | Pike et al., Operating Systems Review 27(2):72–76, 1993 | Intellectual ancestor of view mechanisms; the delta is policy evaluated at lookup inside one shared namespace. |
+| Dependency/toolchain version views | Dolstra et al., LISA'04 (Nix); virtualenv/nvm/rbenv/Lmod/update-alternatives ecosystem | Daily demand implemented as symlink/PATH choreography; pattern-ubiquity evidence, not a target workload. |
+| Dataset versioning | lakeFS/DVC: git-like branches over object storage | Demand is real but consumption is via SDK/S3 API, not POSIX paths; related work only. |
+
 Positioning constraint (from `docs/review/` adversarial analysis, still
 unresolved): the one capability no materialized mechanism provides is
 same-mount-namespace, per-cgroup divergent views with runtime state
