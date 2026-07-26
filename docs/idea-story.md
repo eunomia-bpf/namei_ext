@@ -105,6 +105,7 @@ Evidence program:
 | --- | --- |
 | 2026-07-15 | Story frozen after BOOTSTRAP step 0005: `sched_ext`-style VFS name-resolution extension point; RQ1 expressiveness, RQ2 cost versus feature-equivalent FUSE, RQ3 boundary versus custom/stackable FS; Agent workspace and traditional build/cache as the two primary workload families. |
 | 2026-07-25 | Repository cleanup: retired C1–C8 claim-verdict machinery deleted from the Make control plane; process docs archived to `docs/tmp/2026-07-25-archived-process-docs/`; this file slimmed to story, RQs, evidence, rejected paths, and guardrails (full history in the archive). Scientific story unchanged. |
+| 2026-07-25 | Use cases grounded in industrial demand evidence (`docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`): six domains re-implemented lookup-time object selection at wrong layers. Service/config rotation promoted to the third use case; build/cache repositioned as access-point view governance; remote filesystem cache recorded as motivation evidence. |
 
 ## Guardrails
 

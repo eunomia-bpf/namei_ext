@@ -1,6 +1,6 @@
 # Background And Related Work
 
-Last updated: 2026-07-23
+Last updated: 2026-07-25
 Source/command: `research-literature-novelty` during BOOTSTRAP step
 `docs/tmp/bootstrap/step-0002-20260713T004618-0700/`; local PDF corpus in
 `docs/reference/`; source catalog in `docs/reference/CODE_SOURCES.md`; current
@@ -22,6 +22,7 @@ pressure and baseline obligations; it is not final RQ evidence.
 | 2026-07-13 | BOOTSTRAP step 0002: SWE-Factory, MEnvAgent/MEnvData-SWE, SWE-rebench V2, DockSmith, Multi-Docker-Eval | Check build/cache source assets. | Strong executable build/test oracles exist for the traditional build/cache workload; these sources are oracle inputs, not an agent-workload framing. DockSmith is mainly trajectory/methodology unless concrete evaluator paths are selected. |
 | 2026-07-13 | Kubernetes projected volumes, ConfigMaps, Secrets, OverlayFS, mount namespaces | Check service/config and materialized namespace context. | Projected/materialized mechanisms are important background. Service/config should remain conditional unless a lookup-time object-selection oracle is chosen. |
 | 2026-07-23 | OSDI'26, NSDI'26, FAST'26, EuroSys'26, OSDI'25, OSDI'22 proceedings and official repositories for Oxbow, DeLFS, vBPF, PeeR, USEC, Xkernel, Murakkab, FalconFS, KRAKENGUARD, CoFS, SpecFS/SYSSPEC, RFUSE, XRP, bpftime/EIM, SwitchFS, MesaFS, DFUSE, SREGym | Refresh latest related work and check direct same-claim risk. | The new work strengthens the current positioning. Recent systems either optimize FUSE/full filesystems, build distributed/custom filesystems, extend eBPF/kernel programmability, or motivate agentic/system workloads. No primary source found a narrow BPF-controlled VFS name-resolution policy boundary that selects existing lower objects while leaving lower-FS semantics owned by the kernel/lower filesystem. |
+| 2026-07-25 | Industrial demand survey: E2B/Modal/Daytona/AgentFS product docs and issues, DeltaBox, kubelet AtomicWriter source, Kubernetes ConfigMap docs, Vault Agent, Reloader, ingress-nginx docs, DMTCP papers, CRIU/Kubernetes KEP-2008, ccache/sccache/Bazel/BuildKit/GitHub Actions cache docs and cache-poisoning incidents, s3fs/gcsfuse/JuiceFS, nydus erofs+fscache migration | Ground each use case in citable industrial demand and check whether lookup-time object selection is the crux behavior. | Full record: `docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`. Six domains re-implemented lookup-time object selection at wrong layers (FUSE, stackable FS, symlink hack, embedded Lua, LD_PRELOAD). YoloFS independently implements the HIDE/REDIRECT/SELECT semantics; kubelet's config switch already lives at name resolution; nydus's FUSE→erofs+fscache migration is the strongest industrial proof of the boundary. Industry's mainstream cache isolation is key-space, so build/cache is positioned as access-point view governance, not acceleration. |
 
 ## PDF Corpus
 
@@ -65,6 +66,82 @@ pressure and baseline obligations; it is not final RQ evidence.
 | AgentFS, BranchFS, YoloFS, Sandlock, Mirage, Redis AFS, ToolFS, agent-vfs | Agent filesystems/sandboxes need COW, branch, snapshot, staging, permission, and workspace state. | FUSE/NFS/kernel module/runtime/filesystem/library systems. | Agent/workspace tests and benchmarks where available. | Same workload setting; broader mechanisms. | Best source oracles and boundary evidence for Experiment A. |
 | Murakkab and SREGym | Agentic systems and benchmarks increasingly expose real multi-step tool/runtime environments. | Agentic workflow serving and live SRE-agent benchmark code. | OSDI/arXiv agentic workloads. | Same broad agentic setting; not a filesystem mechanism. | Useful motivation for real source environments and oracles, but not a main filesystem baseline. |
 | SWE-Factory, MEnvAgent, SWE-rebench V2, DockSmith | Environment construction and reuse provide real repository build/test oracles. | Docker/eval pipelines, datasets, trajectories. | Fail-to-pass and build/test oracles. | Same build/cache setting when framed as traditional build/test plus cache path policy; different mechanism. | Best source oracles for Experiment B, but Experiment B should be written as non-agent traditional build/cache. |
+
+## Industrial Demand Evidence For Use Cases
+
+Added 2026-07-25. Full record with verbatim quotes and URLs:
+`docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`. The framing
+result: six domains re-implemented lookup-time object selection at layers
+that force them to own far more than name resolution. Each row below states
+the demand it proves, the mechanism used today, the documented pain, and the
+role the source plays for this paper.
+
+### Agent workspace views
+
+| Source | Demand proven | Mechanism today and documented pain | Role for the paper |
+| --- | --- | --- | --- |
+| YoloFS (arXiv:2604.13536, UW-Madison) | From 290 real incident reports: "AI coding agents operate directly on users' filesystems, where they regularly corrupt data, delete files, and leak secrets." | A full stackable kernel filesystem; its `Hidden` state makes "readdir skip it, and lookup, stat, and open behave as if it does not exist"; override-tree lookup chain selects staged/base/tombstone objects. OverlayFS rejected as "too expensive for agent workloads". | Strongest alignment evidence: an independent serious system implements our HIDE/REDIRECT/SELECT semantics and pays an entire kernel filesystem for them. Cite for demand, action-set validity, and RQ3 boundary cost. |
+| BranchFS (arXiv:2602.08199) | "Current agent frameworks resort to ad hoc solutions such as git stashing, temporary directories, or container clones, which incur significant overhead." R5 rules out "heavyweight mechanisms such as VM snapshots, privileged container runtimes, or filesystem-specific solutions." | FUSE branch filesystem: "regular FUSE mode achieves 1,655 MB/s read throughput (19% of native)". | Cite the six workspace requirements and the FUSE overhead number as direct RQ2 motivation. |
+| Turso AgentFS (product blog, docs, issues #228/#167) | "A POSIX filesystem gives infinite tool compatibility with zero integration effort" — agents must run unmodified Unix toolchains. | FUSE + SQLite overlay. Issue #228: `make -j10` kernel build "about 10X slower in agentfs" from FUSE serialization. Issue #167: daemon deadlock; user reports OverlayFS unusable with autofs in the same issue. | First-hand industry evidence that the FUSE route hurts at exactly the metadata-heavy workloads; supports RQ2 fairness framing and the daemon-reliability argument. |
+| DeltaBox (arXiv:2605.22781) plus E2B/Modal/Daytona product docs | Agent sandbox checkpoint/rollback is a product-level requirement (E2B pause: "approximately 4 seconds per 1 GiB of RAM"; Modal ships directory snapshots). | Whole-VM or whole-image granularity: "hundreds of milliseconds to seconds of latency per C/R"; standard overlayfs "freezes its layer stack at mount time" so DeltaBox had to patch the kernel module. | Demand evidence for fan-out/branch workloads; also shows even kernel-adjacent teams hit the missing middle and patch around it. |
+| Sandlock (arXiv:2605.26298) | "Containers and microVMs add privilege, image-management, and startup costs, while ad-hoc process controls... provide weak guarantees." | Unprivileged process sandbox (seccomp-style policy compilation), not a name-resolution mechanism. | Breadth demand citation only. |
+
+Scope note: server-side multi-tenant sandboxes (E2B/Modal) have settled on
+microVMs; the home ground for namei_ext is local coding agents and single-VM
+branch fan-out. namei_ext covers the view/visibility half of the agent
+requirement, not write-path COW staging.
+
+### Build/cache view governance
+
+| Source | Demand proven | Mechanism today and documented pain | Role for the paper |
+| --- | --- | --- | --- |
+| sccache (Mozilla README) | Shared compile caches are default production form: "Multi-level caching with automatic backfill is supported for hierarchical cache architectures"; ten storage backends. | Compiler wrapper; requires absolute-path matching for hits, with `SCCACHE_BASEDIRS` to normalize paths — cache semantics coupled to path representation. | Establishes deployment scale; the path-coupling detail supports "cache visibility is a path problem at consumption time". |
+| ccache manual (`namespace`, `secondary_storage`, `hard_link`) | "A group of developers can increase the cache hit rate by sharing a cache directory"; `namespace` gives logical views over one physical cache. | Isolation is key-space (namespace mixed into hash). `hard_link` trap: multiple build trees sharing one inode leak mtime updates and corrupt cache entries. | Shows per-workspace cache views are a recognized need; the hard_link trap is a concrete correctness failure of "same pathname, same shared object across workspaces". |
+| Bazel remote caching docs + issue #4276 | Content-addressed action/output caches shared across machines; disk cache shared "when switching branches and/or working on multiple workspaces". | "Take care in who has the ability to write to the remote cache"; issue #4276: "the cache will be poisoned. We've seen this in production." Poisoned caches cannot be cleaned per-entry. | Production-grade evidence that cache object selection/visibility needs a policy layer with trust differentiation. |
+| BuildKit `RUN --mount=type=cache` | The `id` parameter selects which cache backs a given target path; builds "should work with any contents of the cache directory". | Cache view selected at mount time per build step; `id` defaults are themselves disputed (moby/buildkit#1706). | Productized precedent for "same path, identity-dependent backing object" — the closest industrial analogue of the namei_ext action set. |
+| GitHub Actions cache docs + 2026-06 read-only token change + Angular incident (Adnan Khan) | "Branches are the security boundary for GitHub Actions caching"; cache is immutable per key, versioned, evicted by policy. | Cache poisoning escalated into a supply-chain compromise of Angular; GitHub now issues read-only cache tokens to untrusted triggers. | Strongest evidence that "who may see/write which cache view" must be decided per caller context; today only platforms can enforce it. |
+
+Honest verdict recorded in the survey: industry's mainstream isolation is
+key-space, deliberately bypassing paths; no primary source asks for a kernel
+path hook. The defensible gap is cache visibility/writability governance for
+unmodified toolchains on shared build machines. Position the use case as
+access-point governance, not ccache acceleration.
+
+### Service/config rotation
+
+| Source | Demand proven | Mechanism today and documented pain | Role for the paper |
+| --- | --- | --- | --- |
+| kubelet AtomicWriter (source comment) + Kubernetes ConfigMap docs | Config/secret objects must switch generations under a stable path. | The switch already lives at name resolution: visible files are symlinks into "a hidden timestamped directory... atomically updated by changing the target of the data directory symlink". Propagation delay = sync period + cache delay (measured 60–90s); subPath mounts never update; env consumption needs pod restart. | Central evidence that epoch switching *is* a name-resolution behavior implemented as a symlink hack; namei_ext removes the minute-scale reconcile trigger and the choreography. |
+| Vault Agent injector/template docs | Rotated secrets must reach running applications. | Sidecar renders the new secret to a shared file and runs an `exec` reload command — the application must cooperate. | Shows the cost of having no lookup-time switch: a whole sidecar/reload ecosystem. |
+| stakater Reloader (9k+ stars) | "Kubernetes does not trigger pod restarts when a referenced Secret or ConfigMap is updated." | A standalone controller watches changes and performs rollouts. | Popularity of the workaround is demand evidence. |
+| nginx control docs, envoy hot-restart docs | Configuration must switch without dropping the service. | Full process replacement plus drain protocols (envoy: two processes coordinate over UDS RPC). | Process-level switching exists partly because config objects cannot be re-selected at lookup time. |
+| ingress-nginx "How it works" | Reloads hurt: "this feature saves significant number of Nginx reloads which can otherwise affect response latency, load balancing quality". | Embeds lua-nginx-module to move upstream/certificate object selection to request time. | The single best citation that industry re-invents lookup-time object selection inside applications when the OS does not offer it. |
+
+Honest boundary: namei_ext cannot help applications holding old file
+descriptors; it serves every application that re-resolves paths at open.
+Oracle candidates are concrete (`nginx -t`, service-visible behavior across
+epochs). Promoted to the third use case on 2026-07-25.
+
+### Checkpoint/restart path remapping
+
+| Source | Demand proven | Mechanism today and documented pain | Role for the paper |
+| --- | --- | --- | --- |
+| DMTCP path virtualization (IEEE Cluster'16) | "A path virtualization plugin translates paths remembered by the application into correct paths as per the new mount points." | LD_PRELOAD interposition of `open()` — fragile user-space path virtualization. | Direct precedent that lookup-time remapping is the crux behavior; the implementation layer is the problem. |
+| DMTCP × Intel (SELSE'17, arXiv:1703.00897) | Real industrial migration scenario: "the environment variables, the file paths, and the files that are saved as part of a checkpoint image make such migrations challenging." | Same plugin approach; interposes `open` for filename virtualization. | Industrial reality of the demand. |
+| CRIU `--external mnt`/`--inherit-fd` + KEP-2008 | Restore may run "at a later time, on a different system, or both". | Static, operator-supplied mapping at restore start; Kubernetes keeps migration a non-goal (Beta, forensic-only, in-place restore). | Bounds the use case: weakest demand of the four; keep conditional. |
+
+### Remote filesystem cache (motivation evidence, not evaluated)
+
+| Source | Demand proven | Mechanism today and documented pain | Role for the paper |
+| --- | --- | --- | --- |
+| s3fs/gcsfuse/JuiceFS/Alluxio | Mounting cloud object storage as a filesystem is a widespread need. | All are FUSE daemons with documented performance/consistency pain (gcsfuse semantics docs; JuiceFS exists as a company on this gap). | Background demand for daemon-free remote views. |
+| nydus evolution (d7y.io blog), AWS EKS AMI issue #2569, community lazy-pull analysis | Lazy container-image pulling is production-critical. | Migrated from FUSE to in-kernel erofs+fscache/cachefiles on-demand (Linux 5.19+): "in-kernel fscache mode that provides significantly better performance than FUSE"; "the only solution that eliminates FUSE from the data path entirely". | The strongest industrial proof of the namei_ext boundary: the kernel absorbed the data path, but selection/visibility policy (which object, which generation, when a cached entry is stale/hidden) remains hardwired per system. |
+
+Not an evaluated use case: the data path (fetch, prefetch, consistency) is
+the bulk of the problem and namei_ext deliberately does not own it; a fair
+RQ2 comparison would require building a fetcher for both sides. If promoted
+later, the shape is namei_ext plus an existing fetcher (e.g. fscache) for
+per-workload remote-cache view governance.
 
 ## Main Comparisons And Evidence Roles
 
@@ -141,6 +218,12 @@ ablations are admitted only when they change an RQ answer.
 - Murakkab and SREGym as agentic workload context only.
 - SWE-Factory, MEnvAgent/MEnvData-SWE, SWE-rebench V2, DockSmith.
 - DeltaFS, IndexFS, TableFS as boundary/non-goal context.
+- 2026-07-25 industrial demand set: DeltaBox, kubelet AtomicWriter and
+  Kubernetes ConfigMap docs, ingress-nginx Lua docs, DMTCP path
+  virtualization (Cluster'16, SELSE'17), ccache namespace/hard_link manual
+  entries, BuildKit cache-mount reference, GitHub Actions cache docs and the
+  Angular cache-poisoning writeup, nydus erofs+fscache migration
+  (AWS EKS AMI #2569).
 
 ## Novelty Verdict
 
@@ -180,6 +263,14 @@ ablations are admitted only when they change an RQ answer.
   for workspace lifecycle; Redis/nginx/PostgreSQL, ccache/BuildKit-style
   workloads, and SWE-Factory/MEnv/SWE-rebench build/test rows for traditional
   build/cache; ExtFUSE/FUSE/Bento/Wrapfs for comparison discipline.
+- 2026-07-25 industrial demand survey
+  (`docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`): six domains
+  re-implemented lookup-time object selection at wrong layers. Service/config
+  rotation is promoted from conditional to the third use case (kubelet's
+  switch already lives at name resolution; ingress-nginx re-invents
+  lookup-time selection in Lua). Build/cache is repositioned as access-point
+  view governance rather than acceleration. Remote filesystem cache
+  (nydus FUSE→erofs+fscache) is recorded as motivation evidence only.
 - Next action: BUILD_AND_EVALUATE should run the complete Agent workspace
   matrix with feature-equivalent FUSE for RQ2 and custom/stackable filesystem
   ownership evidence for RQ3, or start the traditional build/cache preflight if
