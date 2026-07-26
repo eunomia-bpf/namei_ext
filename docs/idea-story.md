@@ -99,6 +99,13 @@ Evidence program:
 | Negative-result story in the paper | User requested a more attractive positive story and warned against changing the hypothesis around flawed experiment design. | If a valid final result contradicts a frozen claim and must be scoped honestly. |
 | C8 table-only insufficiency as a live claim, and repo-global release gates | The table-only novelty line was retired; keeping C8 in verdict ledgers and coupling per-run results to repo-global conditions made no run ever pass. The claim-verdict machinery was deleted from the Make control plane on 2026-07-25. | Only if the user explicitly reopens table-only insufficiency as a separate paper question. |
 
+## Change Log
+
+| Date | Accepted change |
+| --- | --- |
+| 2026-07-15 | Story frozen after BOOTSTRAP step 0005: `sched_ext`-style VFS name-resolution extension point; RQ1 expressiveness, RQ2 cost versus feature-equivalent FUSE, RQ3 boundary versus custom/stackable FS; Agent workspace and traditional build/cache as the two primary workload families. |
+| 2026-07-25 | Repository cleanup: retired C1–C8 claim-verdict machinery deleted from the Make control plane; process docs archived to `docs/tmp/2026-07-25-archived-process-docs/`; this file slimmed to story, RQs, evidence, rejected paths, and guardrails (full history in the archive). Scientific story unchanged. |
+
 ## Guardrails
 
 - Do not claim only `namei_ext` or only eBPF can implement the selected

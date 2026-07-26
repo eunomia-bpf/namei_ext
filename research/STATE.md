@@ -12,6 +12,7 @@ orchestration belong to the orchestrator skill, not to this repository.
 | Paper idea, claim scope, non-goals | `docs/idea-story.md` |
 | Mechanism boundary | `docs/design.md` |
 | Implementation and validation boundary | `docs/implementation.md` |
+| Evaluation state: use cases, matrices, results, open questions | `docs/evaluation.md` |
 | Related work, novelty risk, closest work, source-use verdicts, central comparisons | `docs/background-related-work.md` |
 | Source repositories, datasets, artifacts, and evidence-record links | `docs/reference/CODE_SOURCES.md` |
 | PDF inventory | `docs/reference/INDEX.md` |

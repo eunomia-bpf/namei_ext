@@ -3,10 +3,12 @@
 Status: routing note for the paper draft.
 Last updated: 2026-07-25.
 
-The old canonical evaluation plan (`docs/evaluation.md`) was archived to
-`docs/tmp/2026-07-25-archived-process-docs/evaluation.md` on 2026-07-25.
-Research process plans, admission rules, and gates are owned by the
-orchestrator skill, not by this repository.
+The old process-heavy evaluation plan was archived to
+`docs/tmp/2026-07-25-archived-process-docs/evaluation.md` on 2026-07-25 and
+replaced by a slim `docs/evaluation.md` holding only the scientific
+evaluation state (use cases, matrices, results, open questions). Research
+process plans, admission rules, and gates are owned by the orchestrator
+skill, not by this repository.
 
 | Need | Canonical location |
 | --- | --- |
