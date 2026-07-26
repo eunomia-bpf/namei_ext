@@ -143,6 +143,19 @@ RQ2 comparison would require building a fetcher for both sides. If promoted
 later, the shape is namei_ext plus an existing fetcher (e.g. fscache) for
 per-workload remote-cache view governance.
 
+### Additional candidates and existing-mechanism precedents
+
+| Source | What it proves | Static view or lookup-time policy? | Role for the paper |
+| --- | --- | --- | --- |
+| SELinux polyinstantiation / pam_namespace (namespace.conf(5), Red Hat SELinux guide) | The closest shipping mechanism for per-context divergent views: `/tmp` polyinstantiated "based on user name, sensitivity level or complete security context". | Static: per-context instance trees bound at login; not programmable, no redirect/hide/verified-selection semantics. | Must-cite precedent. Position: namei_ext generalizes a static, login-time, directory-granularity mechanism into a programmable per-lookup policy. |
+| Plan 9 per-process name spaces and union directories (Pike et al., Operating Systems Review 27(2):72–76, 1993) | The intellectual ancestor: each process assembles its own view; union directories merge file trees at one point. | Static namespace construction per process; Linux inherited it as mount namespaces. | Historical grounding for the mechanism ladder; the delta is policy evaluated at lookup inside one shared namespace. |
+| Nix (Dolstra et al., LISA'04) and the virtualenv/nvm/rbenv/Lmod/update-alternatives ecosystem | "Lack of support for multiple versions or variants of a component" motivated an entire deployment ecosystem; version views are a daily need. | Symlink chains and PATH manipulation; environment-wide, no per-workload runtime switching. | Demand and pattern-ubiquity evidence; not a target workload. |
+| lakeFS / DVC | Branch/checkout views are wanted for data lakes, not just code ("Git-like semantics... on top of an existing data lake"). | Object-store metadata layer consumed via S3 APIs/SDKs, not POSIX paths. | Related work only; does not exercise a VFS boundary. |
+
+No strong primary citation was found for honeypot/decoy filesystems in this
+pass; the scenario matches HIDE/REDIRECT semantics but is not recorded as
+evidence.
+
 ## Main Comparisons And Evidence Roles
 
 This section separates baselines from oracles, controls, and boundary evidence

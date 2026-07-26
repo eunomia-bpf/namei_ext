@@ -39,7 +39,11 @@ unresolved): the one capability no materialized mechanism provides is
 same-mount-namespace, per-cgroup divergent views with runtime state
 transitions. No admitted workload yet names a customer that strictly requires
 cgroup scope over mount namespaces; the paper currently argues boundary and
-cost, not necessity.
+cost, not necessity. Additional candidate use cases and existing-mechanism
+precedents (SELinux polyinstantiation, Plan 9 name spaces, Nix/toolchain
+version views, lakeFS/DVC) are recorded as pattern evidence in
+`docs/background-related-work.md`; SELinux polyinstantiation is the closest
+shipping precedent and must be positioned against in related work.
 
 ## Experiment Matrix Status
 

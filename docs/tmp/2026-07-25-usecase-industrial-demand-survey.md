@@ -205,3 +205,78 @@ boundary.
 If it ever becomes a fourth evaluated use case, the shape is: namei_ext plus
 an existing fetcher (e.g. fscache) providing per-workload remote-cache view
 governance. It competes with checkpoint/restart for that slot.
+
+## Additional Candidates And Existing-Mechanism Precedents
+
+Added 2026-07-25 (second pass). These are not proposed as new evaluated use
+cases; they are recorded as pattern-ubiquity evidence and, for two of them,
+as existing-mechanism precedents that reviewers are likely to raise.
+
+### SELinux polyinstantiation / pam_namespace (precedent — must cite)
+
+- namespace.conf(5) man page: "The pam_namespace.so module allows setup of
+  private namespaces with polyinstantiated directories. Directories can be
+  polyinstantiated based on user name or, in the case of SELinux, user name,
+  sensitivity level or complete security context."
+  https://man7.org/linux/man-pages/man5/namespace.conf.5.html
+- Red Hat SELinux guide: "each user's /tmp/ and /var/tmp/ directory is
+  automatically mounted under /tmp-inst and /var/tmp/tmp-inst".
+  https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/security-enhanced_linux/
+
+This is the closest shipping mechanism to per-context divergent views of the
+same pathname. Key difference for the paper: polyinstantiation creates
+static, pre-built per-context instance trees bound at login time; it is not a
+programmable, per-lookup, state-dependent policy, and it cannot express
+redirect/hide/verified-selection semantics. It is a precedent to position
+against, not a competitor that closes the gap.
+
+### Plan 9 per-process name spaces and union directories (intellectual ancestor)
+
+- Pike, Presotto, Thompson, Trickey, Winterbottom, "The Use of Name Spaces in
+  Plan 9", Operating Systems Review 27(2):72–76, 1993 (bibliographic record:
+  https://9p.io/sys/doc/lexnames.html). Per-process name spaces let each
+  process assemble its own view; union directories merge several file trees
+  at one point, making even the PATH variable unnecessary.
+
+The per-process namespace idea is the intellectual ancestor of every view
+mechanism here; Linux inherited it as mount namespaces. The namei_ext delta:
+decisions are programmable policy evaluated at lookup time within one shared
+namespace, not static per-process namespace construction.
+
+### Nix / toolchain and dependency version views (demand evidence)
+
+- Dolstra, de Jonge, Visser, "Nix: A Safe and Policy-Free System for Software
+  Deployment", LISA'04, pp. 79–92. Official abstract: existing deployment
+  systems show "the lack of support for multiple versions or variants of a
+  component", and Nix addresses this "through a simple technique of using
+  cryptographic hashes to compute unique paths for component instances."
+  https://edolstra.github.io/pubs/nspfssd-lisa2004-final.pdf
+- The wider ecosystem (virtualenv, nvm, rbenv, HPC environment modules/Lmod,
+  Debian update-alternatives(8)) implements version views with symlink chains
+  and PATH manipulation.
+
+An entire ecosystem exists because "which dependency version does this
+project see" is a daily problem. The mechanism is content-named paths plus
+symlink/PATH choreography — workable but static and environment-wide; no
+per-workload, runtime-switchable, verified selection. Recorded as demand and
+mechanism-pattern evidence, not as a target workload.
+
+### Dataset versioning: lakeFS and DVC (weak fit — related work only)
+
+- lakeFS (official): "an open-source version management system based on
+  Git-like semantics that works on top of an existing data lake", applying
+  branches/commits/merges to object storage.
+  https://lakefs.io/data-version-control/dvc-tools/
+- DVC provides git-style versioning for ML project data.
+
+Proves that branch/checkout views are wanted for data as well as code, but
+consumption happens through S3 APIs and SDKs rather than POSIX path
+resolution, so it does not exercise a VFS name-resolution boundary. Related
+work only.
+
+### Honeypot / decoy filesystems
+
+No strong primary citation was found in this pass; the idea (showing
+attacker-controlled processes a different object set than real processes)
+matches the HIDE/REDIRECT semantics, but without a citable system it remains
+an anecdote. Not recorded as evidence.
