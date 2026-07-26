@@ -12,6 +12,13 @@ Phase 1 policy roles:
   behavior.
 - `select_portal.bpf.c`: minimal regression policy for intermediate
   SELECT_TARGET behavior through a registered lower directory.
+- `application_file_sharing.bpf.c`: XDG-derived Sandboxed Application File
+  Sharing preflight policy. It scopes a managed document by parent and name,
+  then uses application cgroup identity for grant/revoke `SELECT` and `HIDE`
+  decisions.
+- `build_action_sandboxing.bpf.c`: Bazel-derived Build Action Sandboxing
+  preflight policy. It selects an existing declared-input root for each action
+  identity and hides undeclared paths during lookup and directory enumeration.
 - `agent_workspace_view.bpf.c`: Agent workspace dependency-preflight policy
   for stable logical `ws` directory selection plus whiteout-style hiding. This
   is a preflight policy, not the full Experiment A policy matrix.

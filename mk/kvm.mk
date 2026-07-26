@@ -15,6 +15,26 @@ AGENT_WORKSPACE_RUNNER_SOURCE ?= $(ROOT_DIR)/tests/agent_workspace/namei_ext_age
 AGENT_WORKSPACE_FUSE_RUNNER ?= $(BUILD_ROOT)/agent-workspace/namei_ext_agent_workspace_fuse
 AGENT_WORKSPACE_FUSE_RUNNER_SOURCE ?= $(ROOT_DIR)/tests/agent_workspace/namei_ext_agent_workspace_fuse.c
 AGENT_WORKSPACE_SOURCE_TRACE ?= $(ROOT_DIR)/tests/agent_workspace/agentfs_lifecycle_trace.txt
+APPLICATION_FILE_SHARING_RESULT_DIR ?= $(RESULT_ROOT)/experiments/application-file-sharing/$(RUN_ID)
+APPLICATION_FILE_SHARING_JSON ?= $(APPLICATION_FILE_SHARING_RESULT_DIR)/application-file-sharing-preflight.jsonl
+APPLICATION_FILE_SHARING_INPUTS ?= $(APPLICATION_FILE_SHARING_RESULT_DIR)/application-file-sharing-preflight-inputs.sha256
+APPLICATION_FILE_SHARING_ARTIFACTS ?= $(APPLICATION_FILE_SHARING_RESULT_DIR)/application-file-sharing-preflight-artifacts.sha256
+APPLICATION_FILE_SHARING_COMMAND ?= $(APPLICATION_FILE_SHARING_RESULT_DIR)/application-file-sharing-preflight-command.txt
+APPLICATION_FILE_SHARING_POLICY ?= $(BUILD_ROOT)/bpf/application_file_sharing.bpf.o
+APPLICATION_FILE_SHARING_POLICY_SOURCE ?= $(ROOT_DIR)/bpf/policies/application_file_sharing.bpf.c
+APPLICATION_FILE_SHARING_RUNNER ?= $(BUILD_ROOT)/application-file-sharing/namei_ext_application_file_sharing
+APPLICATION_FILE_SHARING_RUNNER_SOURCE ?= $(ROOT_DIR)/tests/application_file_sharing/namei_ext_application_file_sharing.c
+BUILD_ACTION_SANDBOXING_RESULT_DIR ?= $(RESULT_ROOT)/experiments/build-action-sandboxing/$(RUN_ID)
+BUILD_ACTION_SANDBOXING_JSON ?= $(BUILD_ACTION_SANDBOXING_RESULT_DIR)/build-action-sandboxing-preflight.jsonl
+BUILD_ACTION_SANDBOXING_INPUTS ?= $(BUILD_ACTION_SANDBOXING_RESULT_DIR)/build-action-sandboxing-preflight-inputs.sha256
+BUILD_ACTION_SANDBOXING_ARTIFACTS ?= $(BUILD_ACTION_SANDBOXING_RESULT_DIR)/build-action-sandboxing-preflight-artifacts.sha256
+BUILD_ACTION_SANDBOXING_OUTPUTS ?= $(BUILD_ACTION_SANDBOXING_RESULT_DIR)/build-action-sandboxing-preflight-outputs.sha256
+BUILD_ACTION_SANDBOXING_COMMAND ?= $(BUILD_ACTION_SANDBOXING_RESULT_DIR)/build-action-sandboxing-preflight-command.txt
+BUILD_ACTION_SANDBOXING_POLICY ?= $(BUILD_ROOT)/bpf/build_action_sandboxing.bpf.o
+BUILD_ACTION_SANDBOXING_POLICY_SOURCE ?= $(ROOT_DIR)/bpf/policies/build_action_sandboxing.bpf.c
+BUILD_ACTION_SANDBOXING_RUNNER ?= $(BUILD_ROOT)/build-action-sandboxing/namei_ext_build_action_sandboxing
+BUILD_ACTION_SANDBOXING_RUNNER_SOURCE ?= $(ROOT_DIR)/tests/build_action_sandboxing/namei_ext_build_action_sandboxing.c
+BUILD_ACTION_SANDBOXING_PLAN ?= $(ROOT_DIR)/docs/tmp/2026-07-26-build-action-sandboxing-experiment-plan.md
 BUILD_CACHE_SAMPLES ?= 20
 BUILD_CACHE_RESULT_DIR ?= $(RESULT_ROOT)/experiments/build-cache/$(RUN_ID)
 BUILD_CACHE_JSON ?= $(BUILD_CACHE_RESULT_DIR)/build-cache-matrix.jsonl
@@ -81,7 +101,7 @@ W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_WORK_DIR ?= $(PHASE1_RESULT_DIR)/w4-ccache-bul
 W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_SAMPLES ?= 1
 W4_CCACHE_BULK_BAD_LOCAL_FALLBACK_MODE ?= stale
 
-.PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-agent-workspace-preflight kvm-agent-workspace-matrix kvm-build-cache-matrix kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-cache-state-policy-fuse kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-compile-epoch-switch kvm-w4-ccache-bulk-bad-local-fallback kvm-functional kvm-bench __phase1_guest_smoke __phase1_guest_policy_load __phase1_guest_policy_semantic __experiment_agent_workspace_preflight __experiment_agent_workspace_matrix __experiment_build_cache_matrix __phase1_guest_w4_ccache_bulk_trace __phase1_guest_w4_ccache_bulk_policy_bridge __phase1_guest_w4_ccache_bulk_cache_state_policy_fuse __phase1_guest_w4_ccache_bulk_policy_compile __phase1_guest_w4_ccache_bulk_native_compile __phase1_guest_w4_ccache_bulk_fuse_compile __phase1_guest_w4_ccache_bulk_compile_epoch_switch __phase1_guest_w4_ccache_bulk_bad_local_fallback __phase1_guest_functional __phase1_guest_bench
+.PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-agent-workspace-preflight kvm-application-file-sharing-preflight kvm-build-action-sandboxing-preflight kvm-agent-workspace-matrix kvm-build-cache-matrix kvm-w4-ccache-bulk-trace kvm-w4-ccache-bulk-policy-bridge kvm-w4-ccache-bulk-cache-state-policy-fuse kvm-w4-ccache-bulk-policy-compile kvm-w4-ccache-bulk-native-compile kvm-w4-ccache-bulk-fuse-compile kvm-w4-ccache-bulk-compile-epoch-switch kvm-w4-ccache-bulk-bad-local-fallback kvm-functional kvm-bench __phase1_guest_smoke __phase1_guest_policy_load __phase1_guest_policy_semantic __experiment_agent_workspace_preflight __experiment_application_file_sharing_preflight __experiment_build_action_sandboxing_preflight __experiment_agent_workspace_matrix __experiment_build_cache_matrix __phase1_guest_w4_ccache_bulk_trace __phase1_guest_w4_ccache_bulk_policy_bridge __phase1_guest_w4_ccache_bulk_cache_state_policy_fuse __phase1_guest_w4_ccache_bulk_policy_compile __phase1_guest_w4_ccache_bulk_native_compile __phase1_guest_w4_ccache_bulk_fuse_compile __phase1_guest_w4_ccache_bulk_compile_epoch_switch __phase1_guest_w4_ccache_bulk_bad_local_fallback __phase1_guest_functional __phase1_guest_bench
 
 kvm-smoke: $(KERNEL_IMAGE)
 	install -d "$(PHASE1_RESULT_DIR)"
@@ -143,6 +163,55 @@ __experiment_agent_workspace_preflight:
 	"$(AGENT_WORKSPACE_FUSE_RUNNER)" "$(AGENT_WORKSPACE_PREFLIGHT_JSON)"
 	dmesg >"$(AGENT_WORKSPACE_RESULT_DIR)/dmesg-agent-workspace-preflight.log"
 	printf '{"event":"agent-workspace-preflight-done","run_id":"%s","result_level":"kvm_agent_workspace_dependency_preflight"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_PREFLIGHT_JSON)"
+
+kvm-application-file-sharing-preflight: $(KERNEL_IMAGE) bpf application-file-sharing
+	install -d "$(APPLICATION_FILE_SHARING_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __experiment_application_file_sharing_preflight RUN_ID=$(RUN_ID)"
+
+__experiment_application_file_sharing_preflight:
+	install -d "$(APPLICATION_FILE_SHARING_RESULT_DIR)"
+	printf 'make -C %s __experiment_application_file_sharing_preflight RUN_ID=%s\n' "$(ROOT_DIR)" "$(RUN_ID)" >"$(APPLICATION_FILE_SHARING_COMMAND)"
+	sha256sum "$(APPLICATION_FILE_SHARING_POLICY_SOURCE)" "$(APPLICATION_FILE_SHARING_RUNNER_SOURCE)" "$(ROOT_DIR)/docs/tmp/2026-07-25-sandboxed-application-file-sharing-experiment-plan.md" >"$(APPLICATION_FILE_SHARING_INPUTS)"
+	sha256sum "$(KERNEL_IMAGE)" "$(APPLICATION_FILE_SHARING_POLICY)" "$(APPLICATION_FILE_SHARING_RUNNER)" >"$(APPLICATION_FILE_SHARING_ARTIFACTS)"
+	uname -a >"$(APPLICATION_FILE_SHARING_RESULT_DIR)/uname.txt"
+	cat /proc/version >"$(APPLICATION_FILE_SHARING_RESULT_DIR)/proc-version.txt"
+	cp "$(KERNEL_BUILD_DIR)/.config" "$(APPLICATION_FILE_SHARING_RESULT_DIR)/kernel.config"
+	printf '{"event":"application-file-sharing-start","run_id":"%s","result_level":"kvm_application_file_sharing_preflight","workload":"sandboxed-application-file-sharing","source_system":"xdg-document-portal"}\n' "$(RUN_ID)" >"$(APPLICATION_FILE_SHARING_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	"$(APPLICATION_FILE_SHARING_RUNNER)" "$(APPLICATION_FILE_SHARING_POLICY)" "$(APPLICATION_FILE_SHARING_JSON)" /sys/fs/cgroup
+	dmesg >"$(APPLICATION_FILE_SHARING_RESULT_DIR)/dmesg-application-file-sharing-preflight.log"
+	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(APPLICATION_FILE_SHARING_RESULT_DIR)/dmesg-application-file-sharing-preflight.log" >/dev/null
+	printf '{"event":"application-file-sharing-done","run_id":"%s","result_level":"kvm_application_file_sharing_preflight"}\n' "$(RUN_ID)" >>"$(APPLICATION_FILE_SHARING_JSON)"
+
+kvm-build-action-sandboxing-preflight: $(KERNEL_IMAGE) bpf build-action-sandboxing workload-bazel
+	install -d "$(BUILD_ACTION_SANDBOXING_RESULT_DIR)"
+	$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) __experiment_build_action_sandboxing_preflight RUN_ID=$(RUN_ID)"
+
+__experiment_build_action_sandboxing_preflight:
+	install -d "$(BUILD_ACTION_SANDBOXING_RESULT_DIR)"
+	printf 'make -C %s __experiment_build_action_sandboxing_preflight RUN_ID=%s\n' "$(ROOT_DIR)" "$(RUN_ID)" >"$(BUILD_ACTION_SANDBOXING_COMMAND)"
+	printf 'BAZEL_VERSION=%s\nBAZEL_URL=%s\nBAZEL_BINARY=%s\nBAZEL_BINARY_SHA256=%s\n' "$(BAZEL_VERSION)" "$(BAZEL_URL)" "$(BAZEL_BINARY)" "$(BAZEL_BINARY_SHA256)" >>"$(BUILD_ACTION_SANDBOXING_COMMAND)"
+	sha256sum "$(BUILD_ACTION_SANDBOXING_POLICY_SOURCE)" "$(BUILD_ACTION_SANDBOXING_RUNNER_SOURCE)" "$(BUILD_ACTION_SANDBOXING_PLAN)" "$(ROOT_DIR)/configs/benchmarks/workload-sources.mk" >"$(BUILD_ACTION_SANDBOXING_INPUTS)"
+	sha256sum "$(KERNEL_IMAGE)" "$(BUILD_ACTION_SANDBOXING_POLICY)" "$(BUILD_ACTION_SANDBOXING_RUNNER)" "$(BAZEL_BINARY)" >"$(BUILD_ACTION_SANDBOXING_ARTIFACTS)"
+	printf '%s  %s\n' "$(BAZEL_BINARY_SHA256)" "$(BAZEL_BINARY)" | sha256sum -c -
+	"$(BAZEL_BINARY)" --version >"$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/bazel-version.txt"
+	uname -a >"$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/uname.txt"
+	cat /proc/version >"$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/proc-version.txt"
+	cat /proc/cmdline >"$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/kernel-cmdline.txt"
+	cp "$(KERNEL_BUILD_DIR)/.config" "$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/kernel.config"
+	printf '{"event":"build-action-sandboxing-start","run_id":"%s","result_level":"kvm_bazel_action_preflight","workload":"build-action-sandboxing","source_system":"bazel-action-sandboxing","bazel_version":"%s"}\n' "$(RUN_ID)" "$(BAZEL_VERSION)" >"$(BUILD_ACTION_SANDBOXING_JSON)"
+	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	"$(BUILD_ACTION_SANDBOXING_RUNNER)" "$(BUILD_ACTION_SANDBOXING_POLICY)" "$(BUILD_ACTION_SANDBOXING_JSON)" "$(BAZEL_BINARY)" "$(BUILD_ACTION_SANDBOXING_RESULT_DIR)" /sys/fs/cgroup
+	sha256sum "$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/action-a-output.txt" "$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/action-b-output.txt" >"$(BUILD_ACTION_SANDBOXING_OUTPUTS)"
+	jq -e 'select(.event == "build-action-sandboxing-summary" and .pass == true and .bazel_actions == 2 and .concurrent == true)' "$(BUILD_ACTION_SANDBOXING_JSON)" >/dev/null
+	! jq -e 'select(.pass == false)' "$(BUILD_ACTION_SANDBOXING_JSON)" >/dev/null
+	dmesg >"$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/dmesg-build-action-sandboxing-preflight.log"
+	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(BUILD_ACTION_SANDBOXING_RESULT_DIR)/dmesg-build-action-sandboxing-preflight.log" >/dev/null
+	printf '{"event":"build-action-sandboxing-done","run_id":"%s","result_level":"kvm_bazel_action_preflight"}\n' "$(RUN_ID)" >>"$(BUILD_ACTION_SANDBOXING_JSON)"
 
 kvm-agent-workspace-matrix: $(KERNEL_IMAGE) bpf agent-workspace
 	install -d "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)"
@@ -744,4 +813,3 @@ __phase1_guest_bench:
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-bench.log"
 	status=$$(cat "$(PHASE1_RESULT_DIR)/bench-status.txt"); printf '{"event":"bench-done","run_id":"%s","status":%s}\n' "$(RUN_ID)" "$$status" >>"$(PHASE1_RESULT_DIR)/bench.jsonl"
 	test "$$(cat "$(PHASE1_RESULT_DIR)/bench-status.txt")" = "0"
-

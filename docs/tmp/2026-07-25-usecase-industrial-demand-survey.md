@@ -208,9 +208,10 @@ governance. It competes with checkpoint/restart for that slot.
 
 ## Additional Candidates And Existing-Mechanism Precedents
 
-Added 2026-07-25 (second pass). These are not proposed as new evaluated use
-cases; they are recorded as pattern-ubiquity evidence and, for two of them,
-as existing-mechanism precedents that reviewers are likely to raise.
+Added 2026-07-25 (second pass). This section originally recorded candidate
+patterns and existing-mechanism precedents. The later portfolio update below
+promotes toolchain/dependency views to formal W7; SELinux, Plan 9, and dataset
+versioning keep the dispositions recorded here.
 
 ### SELinux polyinstantiation / pam_namespace (precedent — must cite)
 
@@ -251,15 +252,16 @@ namespace, not static per-process namespace construction.
   component", and Nix addresses this "through a simple technique of using
   cryptographic hashes to compute unique paths for component instances."
   https://edolstra.github.io/pubs/nspfssd-lisa2004-final.pdf
-- The wider ecosystem (virtualenv, nvm, rbenv, HPC environment modules/Lmod,
-  Debian update-alternatives(8)) implements version views with symlink chains
-  and PATH manipulation.
+- The wider ecosystem (Guix, Spack, virtualenv, Conda, nvm, rbenv, HPC
+  environment modules/Lmod, Debian update-alternatives(8), and CernVM-FS
+  variant symlinks) implements version views with profile trees, filesystem
+  views, symlink chains, FUSE policy, and PATH/environment manipulation.
 
 An entire ecosystem exists because "which dependency version does this
-project see" is a daily problem. The mechanism is content-named paths plus
-symlink/PATH choreography — workable but static and environment-wide; no
-per-workload, runtime-switchable, verified selection. Recorded as demand and
-mechanism-pattern evidence, not as a target workload.
+project or HPC job see" is a daily problem. The later portfolio update promotes
+this family to W7 with real version/build/import, concurrent-isolation, switch,
+and rollback oracles. Package solving, installation, activation scripts, and
+ABI management stay with the source systems.
 
 ### Dataset versioning: lakeFS and DVC (weak fit — related work only)
 
@@ -280,3 +282,109 @@ No strong primary citation was found in this pass; the idea (showing
 attacker-controlled processes a different object set than real processes)
 matches the HIDE/REDIRECT semantics, but without a citable system it remains
 an anecdote. Not recorded as evidence.
+
+## Portfolio Update: Industrial Workflows And Benchmarks
+
+Added later on 2026-07-25. This update supersedes the earlier disposition that
+toolchain views are only pattern evidence. It does not erase the first-pass
+findings above. The complete experiment plan and source inspection are in
+`docs/tmp/2026-07-25-case-study-and-standard-benchmark-plan.md`.
+
+### W1 Sandboxed Application File Sharing
+
+The official Documents API exposes host files to sandboxed applications through
+a FUSE filesystem, gives each application a restricted view, and supports
+grant and revoke operations:
+https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Documents.html.
+The API reference also documents automatic host-application identity based on
+a standardized cgroup path:
+https://flatpak.github.io/xdg-desktop-portal/docs/api-reference.html.
+
+This is a formal W1 case because the source behavior has an exact
+per-application visibility oracle. The first experiment covers only registered
+existing objects and grant/revoke visibility. Synthetic document IDs, mode
+synthesis, persistent permissions, and UI remain portal behavior.
+
+The first real KVM preflight passed under
+`results/experiments/application-file-sharing/20260725T-sandboxed-file-sharing-preflight-v3/`.
+Two application cgroups exercised hidden-before-grant, visible-after-grant,
+cross-application isolation, and hidden-after-revoke behavior. The host object
+and an unrelated same-named path remained unchanged, all policy-action counters
+were nonzero, and the run reported zero failures.
+
+### W3 Build Action Sandboxing
+
+Bazel's sandboxfs announcement says an action may require hundreds or thousands
+of mappings and describes the cost and correctness problems of constructing
+symlink forests:
+https://blog.bazel.build/2017/08/25/introducing-sandboxfs.html.
+The public source remains available, although it is archived:
+https://github.com/bazelbuild/sandboxfs.
+
+This is a formal W3 case. A real Bazel action supplies declared-input mappings,
+build/test output, and an undeclared-input failure oracle. Remote execution,
+CAS transfer, output upload, and process sandboxing remain outside the
+`namei_ext` case.
+
+### W6 HPC File Staging
+
+LLNL's official Spindle page documents transparent relocation of libraries,
+executables, Python files, and selected data from a shared filesystem to
+node-local storage:
+https://computing.llnl.gov/projects/spindle.
+Current El Capitan documentation says Spindle is automatically enabled for
+every job and describes shared library caches and configurable Python/data
+prefixes:
+https://hpc.llnl.gov/documentation/user-guides/using-el-capitan-systems/using-el-capitan-systems-spindle-and-library.
+Public source:
+https://github.com/LLNL/Spindle.
+
+Source inspection shows direct `open`, `stat`, `exec`, and loader
+interposition, followed by opening a relocated local pathname. Spindle is
+therefore the formal W6 source. Its distribution and cache controller remain in
+place; the `namei_ext` experiment replaces only the final shared-versus-local
+object selection.
+
+### W7 Toolchain And Dependency Environments
+
+This family is now formal W7:
+
+- Nix profiles are versioned symlink trees into the immutable store and support
+  atomic generation switching and rollback:
+  https://nix.dev/manual/nix/2.34/command-ref/files/profiles.html.
+- Guix provides per-user profiles and transactional rollback:
+  https://guix.gnu.org/manual/en/guix.pdf.
+- Spack environment views link installed packages into conventional
+  `bin/lib/include` trees and support symlink, hardlink, or copy views:
+  https://spack.readthedocs.io/en/v0.23.1/environments.html.
+- Python venv and Conda create environment prefixes and change executable and
+  library search state:
+  https://docs.python.org/3/library/venv.html and
+  https://docs.conda.io/en/latest/user-guide/tasks/manage-environments.html.
+- nvm, rbenv, Lmod, and update-alternatives select installed versions through
+  environment changes, shims, or symlink groups:
+  https://github.com/nvm-sh/nvm,
+  https://github.com/rbenv/rbenv,
+  https://lmod.readthedocs.io/en/6.6/, and
+  https://manpages.debian.org/bookworm/dpkg/update-alternatives.1.en.html.
+- CernVM-FS implements "variant symlinks" in its FUSE client so a software or
+  certificate path resolves according to client configuration at access time:
+  https://cvmfs.readthedocs.io/en/2.14/cpt-repo/#variant-symlinks.
+
+The case reuses installed objects and source-native version/build/import
+oracles. It does not replace package solving, installation, activation scripts,
+or ABI compatibility management.
+
+The Guix paper also records GNU Hurd `stowfs`, an older dynamic filesystem
+approach to software profiles. systemd-sysext/confext materializes read-only
+`/usr`, `/opt`, or `/etc` extensions with OverlayFS. These are related-work and
+RQ3 precedents, not additional case studies.
+
+### Performance-Benchmark Separation
+
+FxMark is the primary standard RQ2 VFS benchmark; selected IOR/mdtest operations
+and Filebench fileserver/webserver profiles provide secondary breadth. These
+benchmarks measure stock, patched-unattached, attached `PASS`/`SELECT`, and
+FUSE cost. They are not counted as real source-system case studies. The custom
+project benchmark remains responsible for `HIDE`, cross-filesystem `SELECT`,
+failure, tail latency, and update-to-visible measurements.

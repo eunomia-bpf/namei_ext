@@ -23,7 +23,8 @@ include $(ROOT_DIR)/mk/workload.mk
 .DEFAULT_GOAL := phase1
 
 .PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional \
-	policy-load policy-semantic agent-workspace \
+	policy-load policy-semantic agent-workspace application-file-sharing \
+	build-action-sandboxing \
 	experiments experiment-agent-workspace experiment-env-cache \
 	w1-oracle \
 	help clean clean-results
@@ -75,6 +76,12 @@ w1-oracle:
 agent-workspace:
 	$(MAKE) -C "$(ROOT_DIR)/tests/agent_workspace" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
+application-file-sharing:
+	$(MAKE) -C "$(ROOT_DIR)/tests/application_file_sharing" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+
+build-action-sandboxing:
+	$(MAKE) -C "$(ROOT_DIR)/tests/build_action_sandboxing" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+
 help:
 	@printf '%s\n' 'Targets:'
 	@printf '%s\n' ''
@@ -91,6 +98,10 @@ help:
 	@printf '%s\n' '                       run the traditional Redis/nginx ccache build-cache matrix with namei_ext, native, and FUSE rows'
 	@printf '%s\n' '  make kvm-agent-workspace-preflight'
 	@printf '%s\n' '                       boot KVM and run the Agent workspace dependency preflight'
+	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
+	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
+	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
+	@printf '%s\n' '                       run two concurrent source-derived Bazel actions through namei_ext in KVM'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Build and component checks:'
 	@printf '%s\n' '  make kernel-config   build the committed x86_64 Phase 1 kernel config'
@@ -121,6 +132,8 @@ clean: kernel-clean docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_semantic" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/w1_oracle" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/tests/application_file_sharing" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/tests/build_action_sandboxing" BUILD_ROOT="$(BUILD_ROOT)" clean
 	rm -rf "$(BUILD_ROOT)/workloads" "$(CACHE_ROOT)/workloads"
 	rm -rf "$(BUILD_ROOT)"
 

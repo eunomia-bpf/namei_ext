@@ -1,6 +1,6 @@
 # Implementation
 
-Last updated: 2026-07-18
+Last updated: 2026-07-25
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed the latest paper
 reorganization pass and independent outer audit. Implementation artifacts below
@@ -37,12 +37,27 @@ entrypoints, and archived diagnostics:
   supporting-only and incomplete for final paper evidence.
 - `make experiment-env-cache` is the historical target name for the traditional
   build/cache matrix entrypoint. It currently fails with the required cells.
+- `make kvm-application-file-sharing-preflight` runs the W1 Sandboxed
+  Application File Sharing grant/revoke oracle with two application cgroups
+  through the real KVM attach path.
 - `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves the
   archived W1-W4/table diagnostic flow for provenance and debugging; it is not
   the current paper experiment route.
 
 The implementation record for this control-plane alignment is
 `docs/tmp/2026-07-13-build-evaluate-make-control-plane-alignment.md`.
+
+The W1 preflight is implemented by
+`bpf/policies/application_file_sharing.bpf.c` and
+`tests/application_file_sharing/namei_ext_application_file_sharing.c`.
+The policy scopes a managed logical document by parent device/inode and name,
+then keys its grant by application cgroup ID. The scoped KVM run passed
+grant, revoke, cross-application isolation, lookup/readdir/open/stat,
+same-named-path containment, and lower-object-preservation checks with zero
+failures:
+`results/experiments/application-file-sharing/20260725T-sandboxed-file-sharing-preflight-v3/`.
+The complete implementation record is
+`docs/tmp/2026-07-25-sandboxed-application-file-sharing-preflight-implementation.md`.
 
 ## Current Implementation State
 

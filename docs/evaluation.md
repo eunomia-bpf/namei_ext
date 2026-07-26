@@ -18,46 +18,123 @@ process-heavy version is archived at
 
 ## Use Cases
 
-Full demand evidence with verbatim quotes and source URLs:
-`docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`. The framing result
-of that survey: six domains (AgentFS/BranchFS in FUSE, YoloFS as a stackable
-kernel FS, kubelet via symlink indirection, ingress-nginx via embedded Lua,
-DMTCP via LD_PRELOAD, cloud-mount/lazy-pull systems via FUSE then in-kernel
-erofs+fscache) all re-implemented lookup-time object selection at layers that
-force them to own far more than name resolution.
+The evaluation separates three kinds of evidence:
 
-| Use case | Role | Demand and citation basis | Necessity status |
-| --- | --- | --- | --- |
-| Agent workspace views | Primary (Experiment A) | YoloFS (290 real incident reports) and BranchFS motivate workspace fork/snapshot/hide; YoloFS independently implements our HIDE/REDIRECT/SELECT semantics inside an entire stackable kernel FS; BranchFS measures FUSE at 19% of native read throughput; AgentFS issues #228/#167 document 10x multicore slowdown and daemon deadlock. | Sources implement the same behavior with FUSE/stackable-FS mechanisms. The claim is the same capability at a narrow verified boundary, not exclusive necessity. Covers view/visibility, not write-path COW staging. |
-| Traditional build/cache view governance | Primary (Experiment B) | sccache/ccache/Bazel/BuildKit shared caches are infrastructure; BuildKit cache-mount `id` and ccache `namespace` are productized cache views; Bazel #4276 and the Angular incident show cache poisoning in production; GitHub now issues read-only cache tokens to untrusted triggers. | Industry's mainstream isolation is key-space (namespace-in-hash, CAS), deliberately bypassing paths. Defensible gap: cache visibility/writability governance for unmodified toolchains on shared build machines. Position as access-point governance, not ccache acceleration. |
-| Service/config rotation | Third use case (promoted 2026-07-25) | kubelet AtomicWriter already implements epoch switching as symlink retargeting at name resolution; official K8s docs document 60–90s propagation, subPath never updating, env requiring restart; Vault sidecars, Reloader, and nginx/envoy hot-restart are the workaround ecosystem; ingress-nginx embeds Lua to move object selection to request time. | The switch already lives at name resolution as a symlink hack; namei_ext removes the minute-scale reconcile trigger and the choreography for every app that re-resolves paths at open. Cannot help apps holding old fds. |
-| Checkpoint/restart remapping | Conditional | DMTCP path virtualization (Cluster'16, SELSE'17 with Intel) is the direct precedent, implemented as fragile LD_PRELOAD `open()` interposition. | Kubernetes keeps migration as a non-goal (KEP-2008) and CRIU `--external mnt` covers restore-time mapping. Weakest demand; do not invest before the first three. |
-| Remote filesystem cache | Motivation evidence only, not evaluated | s3fs/gcsfuse/JuiceFS are FUSE daemons with documented pain; lazy container-image pulling migrated from FUSE to in-kernel erofs+fscache for "significantly better performance than FUSE" (AWS EKS AMI #2569). | Strongest industrial proof that the boundary exists: the kernel absorbed the data path, but selection/visibility policy stays hardwired per system. Not evaluated: the data path is the bulk of the problem and namei_ext deliberately does not own it. |
+1. **Case studies** replay behavior from a real source system and check its
+   correctness oracle.
+2. **Standard filesystem benchmarks** measure the cost of adding the hook to
+   the VFS path.
+3. **Mechanism-specific tests** isolate `PASS`, `HIDE`, target selection,
+   policy updates, and failure behavior that standard benchmarks do not know
+   about.
 
-Additional candidates recorded as pattern evidence, not as evaluated use
-cases (full verdicts in `docs/background-related-work.md`):
+A case study is admitted only when an unmodified POSIX application consumes
+paths, the source system changes which existing object a path denotes or
+whether the object is visible, and the behavior has a reproducible oracle.
+The experiment does **not** need to prove that a static table, mount, symlink,
+or another mechanism is impossible. It tests whether the source behavior fits
+the narrow `namei_ext` boundary and compares its cost with a
+feature-equivalent FUSE implementation.
 
-| Candidate | Citation | Verdict |
+The unit of classification is an industrial workflow, identified by its user,
+production objective, triggering event, source system, and correctness oracle.
+It is not a policy action such as `HIDE`, `SELECT`, an epoch switch, or pathname
+remapping. Multiple systems that solve the same production problem are grouped
+inside one case; systems that happen to use similar path actions but solve
+different production problems remain separate.
+
+### Industrial case-study portfolio
+
+| ID | Industrial workflow | Source systems and current mechanism | State and path-view effect | Correctness oracle | `namei_ext` boundary and natural comparison |
+| --- | --- | --- | --- | --- | --- |
+| W1 | Sandboxed Application File Sharing | The official [Documents portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Documents.html) exposes host files to sandboxed applications through a FUSE filesystem, gives each application a restricted view, and supports grant/revoke. The portal API can derive host-application identity from a standardized [cgroup path](https://flatpak.github.io/xdg-desktop-portal/docs/api-reference.html). | `(application identity, grant state, document ID)` selects an existing host file or hides it; revocation changes subsequent lookup/readdir results. | The granted application opens/stats/enumerates the document; another application and the revoked application receive the portal's expected `ENOENT`/visibility result; bytes and inode-backed behavior match the registered host object. | Implement the existing-object grant/revoke subset and compare with the portal-style FUSE view. Synthetic document contents, mode synthesis, persistent grant storage, and portal UI stay out of scope. |
+| W2 | Agent Workspaces | [AgentFS](https://github.com/tursodatabase/agentfs), [BranchFS](https://arxiv.org/abs/2602.08199), and [YoloFS](https://arxiv.org/abs/2604.13536) provide workspace branch, snapshot, hide/whiteout, and staged/base views through FUSE or a stackable filesystem. | `(workspace, branch state, pathname)` selects a staged object, base object, or hidden result; fork, staging, and rollback change the visible workspace. | Source-derived lifecycle trace, final file-tree oracle, expected lookup/readdir/open/stat results, concurrent branch isolation, and unchanged lower-object data/metadata outside the policy decision. | Compare the same view/visibility subset with feature-equivalent FUSE. Write isolation, copy-up, commit, conflict resolution, and audit storage remain with the workspace manager or filesystem. |
+| W3 | Build Action Sandboxing | Bazel's [sandboxfs](https://blog.bazel.build/2017/08/25/introducing-sandboxfs.html) was built because an action may require hundreds or thousands of mappings; symlink-forest construction was costly and error-prone, while FUSE could expose an arbitrary view. Its [official repository](https://github.com/bazelbuild/sandboxfs) is archived but reproducible. | `(action identity, declared-input set, configuration)` maps action paths to existing source or generated objects and hides undeclared paths. | A real Bazel build/test succeeds with the declared inputs, output hashes match, an undeclared-input probe fails, and two concurrent actions observe their own mappings. | Reuse an action trace and local existing targets. Compare `namei_ext` with the source symlink-forest behavior and feature-equivalent FUSE; remote execution, CAS download, output upload, and sandbox process isolation are out of scope. |
+| W4 | Service Configuration and Secret Rotation | Kubernetes [AtomicWriter](https://github.com/kubernetes/kubernetes/blob/master/pkg/volume/util/atomic_writer.go) materializes timestamped versions and atomically retargets a symlink; [ConfigMap documentation](https://kubernetes.io/docs/concepts/configuration/configmap/) records delayed propagation and non-updating `subPath` mounts. ingress-nginx embeds Lua to avoid reloads for some runtime selections. | `(service identity, validated release)` selects current, canary, or rollback config/certificate/secret; an invalid candidate remains hidden and lookup falls back to the current object. | `nginx -t` or the service's native validator, service-visible behavior after reopen/reload, rejection of a bad release, and successful rollback. | Compare with a feature-equivalent FUSE view and retain AtomicWriter as the source-system behavior. Applications that keep old file descriptors, secret generation, validation, and reload orchestration remain out of scope. |
+| W5 | Checkpoint/Restore and Migration | [DMTCP path virtualization](https://dmtcp.sourceforge.io/papers/cluster16.pdf) translates paths remembered before checkpoint to paths valid after migration; the implementation interposes pathname operations in user space. | `(restart image, restored root/mount state, remembered pathname)` selects the restored existing object or fails closed when the mapping is absent. | The source application checkpoints, moves to a different root, restarts, and reopens the expected object with matching bytes/metadata; an unmapped stale path fails. | Compare the same remapping with DMTCP's source plugin behavior and feature-equivalent FUSE. Process checkpointing, descriptor restoration, distributed coordination, and file-content transfer remain DMTCP/CRIU responsibilities. |
+| W6 | HPC File Staging | LLNL [Spindle](https://computing.llnl.gov/projects/spindle) intercepts library, executable, Python, and selected data-file operations, distributes one shared-filesystem read to node-local storage, and redirects applications to the local object. It is [enabled automatically on El Capitan](https://hpc.llnl.gov/documentation/user-guides/using-el-capitan-systems/using-el-capitan-systems-spindle-and-library). Its public [source](https://github.com/LLNL/Spindle) interposes `open`, `stat`, `exec`, and dynamic-loader operations. | `(job/session, local-stage readiness, pathname)` selects the prepared local copy or the shared canonical object; a negative or invalid entry hides the local candidate. | Pynamic or an LLNL-style MPI/Python launch completes with identical loaded object hashes and output; file-operation and shared-filesystem request counts fall; stale/wrong local objects are not loaded. | Reuse Spindle's distribution/cache control plane and replace only its pathname redirection decision. `namei_ext` does not distribute bytes, populate caches, or recognize libraries. Compare with source Spindle behavior and feature-equivalent FUSE over the same pre-populated objects. |
+| W7 | Toolchain and Dependency Environments | [Nix profiles](https://nix.dev/manual/nix/2.34/command-ref/files/profiles.html) and [Guix profiles](https://guix.gnu.org/manual/en/guix.pdf) are versioned symlink trees into immutable stores; [Spack environment views](https://spack.readthedocs.io/en/v0.23.1/environments.html) link installed packages into `bin/lib/include` trees; Python [venv](https://docs.python.org/3/library/venv.html), [Conda](https://docs.conda.io/en/latest/user-guide/tasks/manage-environments.html), [nvm](https://github.com/nvm-sh/nvm), [rbenv](https://github.com/rbenv/rbenv), [Lmod](https://lmod.readthedocs.io/en/6.6/), and Debian [update-alternatives](https://manpages.debian.org/bookworm/dpkg/update-alternatives.1.en.html) select versions through environment, shims, profiles, or symlink groups. CernVM-FS even implements [variant symlinks](https://cvmfs.readthedocs.io/en/2.14/cpt-repo/#variant-symlinks) in FUSE so one software or certificate path resolves according to client configuration. | `(project/job/process group, selected environment, pathname)` selects one installed executable, library tree, dependency profile, or site-specific target; switching the environment changes later exec/open/readdir results without changing the application's path. | Run source-native version and build/import checks in two real environments; verify executable/library identity and output, concurrent isolation, switch, and rollback. | Reuse installed objects from Spack/Nix/Guix or two Python/Node environments. The natural source behavior remains the oracle; feature-equivalent FUSE is the RQ2 comparison. Package solving, installation, builds, activation scripts, and ABI compatibility stay with the source package manager. |
+
+The cases remain distinct even when their policies use the same bounded action:
+
+| Potential confusion | Non-overlap boundary |
+| --- | --- |
+| W2 Agent Workspaces vs W5 Checkpoint/Restore and Migration | W2 creates concurrent, isolated workspace branches for agents; W5 resumes one traditional application after restart or migration and preserves its pathname continuity. |
+| W3 Build Action Sandboxing vs W7 Toolchain and Dependency Environments | W3 restricts each action to declared build inputs and tests undeclared-input failure; W7 selects an installed compiler/runtime/dependency environment and tests version, linkage, import, and program output. |
+| W6 HPC File Staging vs W7 Toolchain and Dependency Environments | W6 moves the same object from shared storage to node-local storage to reduce launch and shared-filesystem load; W7 chooses among semantically different installed software variants. |
+| W4 Service Configuration and Secret Rotation vs W7 Toolchain and Dependency Environments | W4 publishes validated configuration, certificate, or secret releases to a running service; W7 selects a user, project, or job software environment. |
+
+W1--W7 are seven industrial workflow cases, not seven unrelated performance
+benchmarks. Multiple source systems are consolidated within the workflow they
+serve. Each case gets a correctness cell for RQ1 and an ownership/scope row for
+RQ3. RQ2 uses standard benchmarks plus feature-equivalent FUSE on
+representative macro cases; it does not require seven bespoke FUSE performance
+stories.
+
+### Related evidence, not case studies
+
+| Candidate | Citation | Disposition |
 | --- | --- | --- |
-| SELinux polyinstantiation / pam_namespace | namespace.conf(5); Red Hat SELinux guide: per-context `/tmp` instances bound at login | Closest shipping precedent. Static per-context instance trees, not programmable per-lookup policy; must be positioned against in related work. |
-| Plan 9 per-process name spaces, union directories | Pike et al., Operating Systems Review 27(2):72–76, 1993 | Intellectual ancestor of view mechanisms; the delta is policy evaluated at lookup inside one shared namespace. |
-| Dependency/toolchain version views | Dolstra et al., LISA'04 (Nix); virtualenv/nvm/rbenv/Lmod/update-alternatives ecosystem | Daily demand implemented as symlink/PATH choreography; pattern-ubiquity evidence, not a target workload. |
-| Dataset versioning | lakeFS/DVC: git-like branches over object storage | Demand is real but consumption is via SDK/S3 API, not POSIX paths; related work only. |
+| SELinux polyinstantiation / `pam_namespace` | [`namespace.conf(5)`](https://man7.org/linux/man-pages/man5/namespace.conf.5.html); Red Hat SELinux guide | Closest shipping precedent for per-context path views. Cite and account for it in RQ3; no separate workload is needed. |
+| Plan 9 per-process namespaces and union directories | Pike et al., *The Use of Name Spaces in Plan 9*, 1993 | Intellectual ancestor and related work, not a Linux evaluation workload. |
+| lakeFS and DVC | Git-like branches over object storage | Demand is real, but normal consumption is through S3 APIs/SDKs rather than VFS pathname lookup; related work only. |
 
-Positioning constraint (from `docs/review/` adversarial analysis, still
-unresolved): the one capability no materialized mechanism provides is
-same-mount-namespace, per-cgroup divergent views with runtime state
-transitions. No admitted workload yet names a customer that strictly requires
-cgroup scope over mount namespaces; the paper currently argues boundary and
-cost, not necessity. Additional candidate use cases and existing-mechanism
-precedents (SELinux polyinstantiation, Plan 9 name spaces, Nix/toolchain
-version views, lakeFS/DVC) are recorded as pattern evidence in
-`docs/background-related-work.md`; SELinux polyinstantiation is the closest
-shipping precedent and must be positioned against in related work.
+The paper claims that these source behaviors can share one bounded
+name-resolution decision boundary. It does not claim that the workloads
+intrinsically require eBPF or that their existing mechanisms cannot implement
+the behavior.
+
+## Performance Evaluation
+
+### Standard benchmarks
+
+| Benchmark | Role and operations | Conditions | Primary metrics and figure |
+| --- | --- | --- | --- |
+| [FxMark](https://github.com/sslab-gatech/fxmark) ([ATC'16 paper](https://www.usenix.org/conference/atc16/technical-sessions/presentation/min)) | Primary VFS microbenchmark: component/path lookup (`MRPL`, `MRPM`, `MRPH`), directory enumeration (`MRDL`, `MRDM`), and create control (`MWCL`). | Stock kernel; patched kernel unattached; attached `PASS`; attached same-filesystem `SELECT`; feature-equivalent FUSE. Run cache-hot and cache-cold variants where supported and scale threads/vCPUs. | Operations/s and normalized overhead versus stock across core count; median and confidence interval across independent runs. Main figure: throughput curves or a compact operation-by-condition heatmap. |
+| [mdtest/IOR](https://github.com/hpc/ior) | Standard metadata breadth: file/directory create, stat, open/read, rename, and remove. It checks that the conclusion is not unique to FxMark's operation mix. | Stock, patched-unattached, attached `PASS`, and FUSE; selected operations only, with fixed tree and process counts. | Metadata operations/s and scaling efficiency. Appendix or secondary figure. |
+| [Filebench](https://github.com/filebench/filebench) | Mixed macro control using fileserver and webserver profiles. It is not evidence for RQ1. | Stock, patched-unattached, attached `PASS`, representative `SELECT`, and FUSE with identical lower storage and cache warmup. | Runtime/throughput, CPU utilization, context switches, and FUSE daemon CPU. Secondary macro figure. |
+
+### Mechanism-specific measurements
+
+The repository's custom VFS benchmark remains necessary for operations that
+standard suites do not expose:
+
+| Measurement | Conditions | Metrics |
+| --- | --- | --- |
+| Hook fast path | Stock kernel versus patched-unattached, then attached `PASS`, for `stat`, `open`, `access`, `exec`, multi-component walk, and `readdir` | ns/op, p50/p95/p99, cycles, instructions, branch misses |
+| Policy actions | `PASS`, `HIDE`, same-filesystem `SELECT`, cross-filesystem `SELECT`, and invalid/fail-closed decision | ns/op and tail latency per operation; returned errno/object identity |
+| State update | Policy/object registration update followed by concurrent lookup | update calls/s, update-to-visible latency, stale observations after acknowledged update |
+| FUSE comparison | Same policy inputs, targets, operation stream, cache state, daemon count, and justified caching/passthrough mode | client latency/throughput, daemon CPU, context switches, request count, correctness oracle |
+
+The critical kernel-maintainer result is the patched-but-unattached cost.
+Macro compile time cannot establish that fast path because compiler work
+dilutes pathname lookup overhead.
 
 ## Experiment Matrix Status
 
-### A. Agent workspace lifecycle (headline)
+### Case-study implementation status
+
+| Case | Source/oracle fixed | `namei_ext` correctness in KVM | Feature-equivalent FUSE | RQ3 boundary record |
+| --- | --- | --- | --- | --- |
+| W1 Sandboxed Application File Sharing | Existing-object, two-application grant/revoke subset frozen from the XDG Documents portal API | Preflight passed: grant, revoke, cross-application isolation, lookup/readdir/open/stat, and unchanged lower object | Source system is FUSE; matched project implementation not run | Preflight records lower-object preservation; full ownership table open |
+| W2 Agent Workspaces | AgentFS-derived lifecycle trace fixed | Passed, three terminal runs | Correctness passed; macro timing open | Open |
+| W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Preflight passed: two concurrent real Bazel actions, distinct expected outputs, undeclared input hidden, lower objects unchanged | Not run | Preflight records lower-object preservation; full ownership table open |
+| W4 Service Configuration and Secret Rotation | AtomicWriter and nginx validation oracle identified | Not run | Not run | Not written |
+| W5 Checkpoint/Restore and Migration | DMTCP plugin behavior identified | Not run | Not run | Not written |
+| W6 HPC File Staging | Spindle source and production behavior identified; exact Pynamic/MPI/Python trace not yet frozen | Not run; blocked on cross-filesystem `SELECT` preflight | Not run | Not written |
+| W7 Toolchain and Dependency Environments | Industrial workflow and source set fixed; exact Spack/Nix/Python workflow not yet selected | Not run | Not run | Not written |
+
+### A. Sandboxed Application File Sharing (supporting RQ1 breadth)
+
+| Cell | Status | Raw root |
+| --- | --- | --- |
+| XDG-derived two-application grant/revoke preflight | Passed in KVM; application A hidden before grant, visible after grant, and hidden after revoke; application B always hidden; unrelated same-named path and lower object unchanged; zero failures | `results/experiments/application-file-sharing/20260725T-sandboxed-file-sharing-preflight-v3/` |
+| Policy engagement | Passed: 123 lookup, 30 readdir, 2 `SELECT`, 8 lookup `HIDE`, and 4 readdir `HIDE` events | Same raw root |
+| Matched FUSE performance comparison | Open; the source system establishes FUSE behavior, but no matched timing result exists | — |
+
+Make entrypoint: `make kvm-application-file-sharing-preflight`.
+
+### B. Agent Workspaces (headline)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -65,7 +142,19 @@ shipping precedent and must be positioned against in related work.
 | RQ2 timing versus FUSE | Open: no macro runtime or per-operation latency claim yet | — |
 | RQ3 boundary table | Open: source-tied ownership rows not yet written | — |
 
-### B. Traditional build/cache (decisive)
+### C. Build Action Sandboxing (supporting RQ1 breadth)
+
+| Cell | Status | Raw root |
+| --- | --- | --- |
+| Two concurrent Bazel 6.5.0 genrules in separate action cgroups | Passed in KVM; both actions reached the barrier concurrently and completed successfully | `results/experiments/build-action-sandboxing/20260726T-build-action-sandboxing-preflight-v3/` |
+| Same logical path, distinct declared-input roots | Passed; action A and B produced their expected distinct 17-byte outputs | Same raw root |
+| Undeclared existing input hidden from lookup and readdir | Passed; policy recorded 4 `SELECT`, 2 lookup `HIDE`, and 2 readdir `HIDE` decisions | Same raw root |
+| Lower-filesystem preservation and kernel health | Passed; declared and undeclared lower objects remained unchanged; zero false records and no declared dmesg failure signature | Same raw root |
+| Matched sandboxfs/symlink-forest/FUSE comparison | Open; this correctness preflight is not a performance result | — |
+
+Make entrypoint: `make kvm-build-action-sandboxing-preflight`.
+
+### D. ccache compile macrobenchmark (existing performance evidence)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -78,22 +167,36 @@ shipping precedent and must be positioned against in related work.
 | Timing uncertainty (median/dispersion across samples) | Open: ratios are release-run observations, not modeled statistics | — |
 | RQ3 boundary table | Open | — |
 
-Make entrypoints: `make experiments` (both matrices),
+Make entrypoints: `make experiments` (both completed matrices),
 `make experiment-env-cache`, `make experiment-agent-workspace`,
+`make kvm-application-file-sharing-preflight`,
+`make kvm-build-action-sandboxing-preflight`,
 `make kvm-w4-ccache-bulk-compile-epoch-switch`,
 `make kvm-w4-ccache-bulk-bad-local-fallback`.
 
+The ccache matrix is useful RQ2 macro evidence and validates state changes in
+the prototype. It is not, by itself, a headline case-study motivation:
+ccache already implements cache lookup and validation in user space. W3 Bazel
+action views and W6 Spindle file relocation provide the source-derived
+build/cache cases whose pathname view is the behavior under study.
+
 ## Open Questions
 
-1. Does the build/cache state machine close at release scale (real-compile
-   miss, stale, corrupt cells under the same oracle for both mechanisms)?
-2. Does the RQ2 ratio survive median/dispersion reporting and a hardened
-   FUSE configuration (single daemon, caching/passthrough accounted)?
-3. Which admitted workload demonstrates per-cgroup divergent views with
-   runtime state transitions — the capability materialized mechanisms do
-   not provide — and does any real customer need cgroup scope specifically?
-4. What do the per-workload RQ3 ownership tables show once written from the
-   same-oracle evidence?
-5. Can the service/config use case produce a KVM oracle cell (config epoch
-   switch with `nginx -t`-style validation and service-visible behavior)
-   through the real attach path, now that its demand evidence is strong?
+1. Is the patched-but-unattached path statistically indistinguishable from
+   stock Linux on FxMark lookup/readdir and the custom per-operation tests?
+2. What are attached `PASS` and `SELECT` overheads, including p95/p99 and
+   concurrency scaling, and how do they compare with a correctly configured
+   feature-equivalent FUSE implementation?
+3. What are the setup and steady-state costs of the W3 action view relative to
+   Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
+   correctness preflight?
+4. Does cross-filesystem target selection preserve lower-filesystem behavior
+   well enough to replay Spindle's shared-to-local redirection without turning
+   `namei_ext` into a cache or remote filesystem?
+5. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
+   application oracle while staying within existing-object selection?
+6. What do the per-workload RQ3 ownership tables show for FUSE and the
+   relevant custom/stackable source system?
+7. Does the existing ccache macro ratio survive independent-run
+   median/dispersion reporting and a hardened FUSE configuration with caching
+   and passthrough explicitly accounted for?

@@ -18,6 +18,8 @@ NGINX_SRC := $(WORKLOAD_BUILD_ROOT)/$(NGINX_SOURCE_DIR_NAME)
 NGINX_STAMP := $(NGINX_SRC)/.source.ok
 NGINX_PROVENANCE := $(WORKLOAD_RESULT_ROOT)/nginx-source.json
 
+BAZEL_BINARY := $(WORKLOAD_CACHE_ROOT)/$(BAZEL_BINARY_NAME)
+
 REDIS_BUILD_WORK_ROOT := $(WORKLOAD_BUILD_ROOT)/runs/$(RUN_ID)/w1-redis-build
 REDIS_BUILD_SRC := $(REDIS_BUILD_WORK_ROOT)/src
 REDIS_BUILD_STAMP := $(REDIS_BUILD_SRC)/.workload-source.ok
@@ -34,11 +36,13 @@ NGINX_CONFIGURE_LOG := $(NGINX_BUILD_RESULT_DIR)/configure.log
 NGINX_BUILD_LOG := $(NGINX_BUILD_RESULT_DIR)/build.log
 NGINX_BUILD_JSON := $(NGINX_BUILD_RESULT_DIR)/build.json
 
-.PHONY: workload-redis-build workload-nginx-build
+.PHONY: workload-redis-build workload-nginx-build workload-bazel
 
 workload-redis-build: $(REDIS_BUILD_JSON)
 
 workload-nginx-build: $(NGINX_BUILD_JSON)
+
+workload-bazel: $(BAZEL_BINARY)
 
 $(WORKLOAD_CACHE_ROOT) $(WORKLOAD_BUILD_ROOT) $(WORKLOAD_RESULT_ROOT):
 	install -d "$@"
@@ -55,6 +59,12 @@ $(NGINX_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
 	curl -fL --retry 3 --connect-timeout 30 -o "$@.tmp" "$(NGINX_URL)"
 	mv -f "$@.tmp" "$@"
 	printf '%s  %s\n' "$(NGINX_ARCHIVE_SHA256)" "$@" | sha256sum -c -
+
+$(BAZEL_BINARY): | $(WORKLOAD_CACHE_ROOT)
+	curl -fL --retry 3 --connect-timeout 30 -o "$@.tmp" "$(BAZEL_URL)"
+	printf '%s  %s\n' "$(BAZEL_BINARY_SHA256)" "$@.tmp" | sha256sum -c -
+	chmod 0755 "$@.tmp"
+	mv -f "$@.tmp" "$@"
 
 $(REDIS_STAMP): $(REDIS_ARCHIVE) | $(WORKLOAD_BUILD_ROOT)
 	rm -rf "$(REDIS_SRC)"
