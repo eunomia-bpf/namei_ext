@@ -34,10 +34,15 @@ include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 	build-action-sandboxing \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
-	experiments experiment-agent-workspace experiment-env-cache \
+	experiments legacy-build-cache \
 	w1-oracle \
 	help clean clean-results
 .NOTPARALLEL: phase1 experiments
+
+FORMAL_EXPERIMENT_TARGETS := \
+	kvm-agent-workspace-matrix \
+	kvm-application-file-sharing-preflight \
+	kvm-build-action-sandboxing-preflight
 
 all: phase1
 
@@ -45,11 +50,9 @@ phase1: phase1-smoke kvm-policy-load kvm-functional
 
 phase1-smoke: check-prereqs result-contract abi bpf functional bench policy-load policy-semantic kernel-objects kvm-smoke
 
-experiments: experiment-agent-workspace experiment-env-cache
+experiments: $(FORMAL_EXPERIMENT_TARGETS)
 
-experiment-agent-workspace: kvm-agent-workspace-matrix
-
-experiment-env-cache: kvm-build-cache-matrix
+legacy-build-cache: kvm-build-cache-matrix
 
 check-prereqs:
 	command -v make >/dev/null
@@ -107,13 +110,11 @@ help:
 	@printf '%s\n' '  make phase1          run current prototype validation: host checks, KVM smoke, policy load, functional KVM'
 	@printf '%s\n' '  make phase1-smoke    check tools, build userspace/BPF, compile touched kernel objects, boot KVM smoke'
 	@printf '%s\n' ''
-	@printf '%s\n' 'Current experiment lifecycle:'
+	@printf '%s\n' 'Formal experiment lifecycle:'
 	@printf '%s\n' '  make experiments'
-	@printf '%s\n' '                       run current integrated experiment targets; fails until all matrices exist'
-	@printf '%s\n' '  make experiment-agent-workspace'
-	@printf '%s\n' '                       run the Agent workspace lifecycle matrix and preserve raw KVM/FUSE results'
-	@printf '%s\n' '  make experiment-env-cache'
-	@printf '%s\n' '                       run the traditional Redis/nginx ccache build-cache matrix with namei_ext, native, and FUSE rows'
+	@printf '%s\n' '                       run every implemented formal case-study gate through the shared KVM/result lifecycle'
+	@printf '%s\n' '  make kvm-agent-workspace-matrix'
+	@printf '%s\n' '                       run the Agent workspace lifecycle matrix with namei_ext and FUSE'
 	@printf '%s\n' '  make kvm-agent-workspace-preflight'
 	@printf '%s\n' '                       boot KVM and run the Agent workspace dependency preflight'
 	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
@@ -126,6 +127,10 @@ help:
 	@printf '%s\n' '                       run the complete paired FxMark RQ2 matrix in isolated KVM boots'
 	@printf '%s\n' '  make experiment-fxmark-rq2'
 	@printf '%s\n' '                       run the complete FxMark matrix and generate its statistical report and figure'
+	@printf '%s\n' ''
+	@printf '%s\n' 'Historical experiment reproduction:'
+	@printf '%s\n' '  make legacy-build-cache'
+	@printf '%s\n' '                       reproduce the isolated Redis/nginx ccache matrix; not part of make experiments'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Build and component checks:'
 	@printf '%s\n' '  make kernel-config   build the committed x86_64 Phase 1 kernel config'

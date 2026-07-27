@@ -167,10 +167,12 @@ Make entrypoint: `make kvm-build-action-sandboxing-preflight`.
 | Timing uncertainty (median/dispersion across samples) | Open: ratios are release-run observations, not modeled statistics | — |
 | RQ3 boundary table | Open | — |
 
-Make entrypoints: `make experiments` (both completed matrices),
-`make experiment-env-cache`, `make experiment-agent-workspace`,
-`make kvm-application-file-sharing-preflight`,
-`make kvm-build-action-sandboxing-preflight`,
+Formal case-study entrypoints: `make experiments`,
+`make kvm-agent-workspace-matrix`,
+`make kvm-application-file-sharing-preflight`, and
+`make kvm-build-action-sandboxing-preflight`.
+
+Historical ccache reproduction entrypoints: `make legacy-build-cache`,
 `make kvm-w4-ccache-bulk-compile-epoch-switch`,
 `make kvm-w4-ccache-bulk-bad-local-fallback`.
 

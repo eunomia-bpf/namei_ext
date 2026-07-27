@@ -14,7 +14,10 @@ suite files own workload semantics.
 - `benchmarks/*.mk`: standard performance matrices and their analysis entrypoints.
 
 Legacy suites may remain isolated for reproducibility, but new experiments
-must not call their runners or extend their result formats.
+must not call their runners or extend their result formats. The top-level
+`FORMAL_EXPERIMENT_TARGETS` list is the authoritative formal-suite aggregate;
+legacy suites must have explicitly named reproduction targets and must not be
+dependencies of `make experiments`.
 
 ## Suite Contract
 

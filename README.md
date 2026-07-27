@@ -42,15 +42,23 @@ All supported workflows are owned by Make:
 
 ```text
 make phase1
+make experiments
 make kvm-agent-workspace-matrix
 make kvm-application-file-sharing-preflight
 make kvm-build-action-sandboxing-preflight
 make kvm-bench
+make kvm-fxmark-rq2-preflight
 ```
 
 `make phase1` builds and checks the ABI, BPF programs, userspace tests, touched
 kernel objects, KVM boot, policy load/attach, and functional behavior. Host-only
 execution does not count as Phase 1 validation.
+
+`make experiments` is the formal case-study aggregate. It runs the implemented
+Agent workspace, Application File Sharing, and Build Action Sandboxing gates
+through the shared KVM and result lifecycle. The historical Redis/nginx ccache
+matrix remains reproducible through `make legacy-build-cache`, but it is not a
+formal-suite dependency and must not define the structure of new experiments.
 
 Canonical KVM case-study result roots contain `run.json`,
 `observations.jsonl`, `command.txt`, source and artifact hash manifests,
