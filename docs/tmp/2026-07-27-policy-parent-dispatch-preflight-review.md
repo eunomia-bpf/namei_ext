@@ -85,12 +85,12 @@ that must be repaired before the unchanged hypothesis is tested at full scale.
 Do not run or reinterpret the full 450-cell RQ2 matrix from this kernel.
 Preserve both preflights as internal mechanism evidence.
 
-The next diagnostic should isolate the cost of dispatch without BPF execution
-on the same kernel. Add one internal attached-but-`EXACT(empty)` condition to
-the short one-worker preflight, or collect equivalent function-level timing,
-while retaining stock, unattached, exact `PASS`, exact `SELECT`, and FUSE. If
-the empty condition remains near exact `PASS`, the next design must provide a
-cheaper negative-component fast path rather than optimize the policy body.
+The follow-up attached-but-`EXACT(empty)` diagnostic has now completed. It
+remained near exact `PASS` despite executing the BPF program zero times, so the
+next design must provide a cheaper negative-component fast path rather than
+optimize the policy body. The complete design, raw-result review, and mechanism
+decision are recorded in
+`docs/tmp/2026-07-27-fxmark-exact-empty-dispatch-diagnostic.md`.
 
 Candidate implementation directions for that negative fast path are:
 

@@ -101,7 +101,7 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 	jq --arg stock_kernel_commit "$(STOCK_KERNEL_COMMIT)" \
 		--argjson duration_seconds "$(FXMARK_PREFLIGHT_DURATION)" \
 		--argjson bpf_stats "$(FXMARK_BPF_STATS)" \
-		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","pass","select","fuse"],types:["MRPL"],workers:[1],repetitions:1,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
+		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","empty","pass","select","fuse"],types:["MRPL"],workers:[1],repetitions:1,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
 		"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json" \
 		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json.tmp"
 	mv -f "$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json.tmp" \
@@ -130,11 +130,11 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts.sha256"
 	: >"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"
 	: >"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"
-	conditions=(stock unattached pass select fuse); \
+	conditions=(stock unattached empty pass select fuse); \
 	for condition in "$${conditions[@]}"; do \
 		case "$$condition" in \
 		stock|fuse) image="$(STOCK_KERNEL_IMAGE)"; config="$(STOCK_KERNEL_BUILD_DIR)/.config"; vmlinux="$(STOCK_KERNEL_BUILD_DIR)/vmlinux"; commit="$(STOCK_KERNEL_COMMIT)"; btf="$(FXMARK_STOCK_KERNEL_BTF)"; notes="$(FXMARK_STOCK_KERNEL_NOTES)"; flavor=stock ;; \
-		unattached|pass|select) image="$(KERNEL_IMAGE)"; config="$(KERNEL_BUILD_DIR)/.config"; vmlinux="$(KERNEL_BUILD_DIR)/vmlinux"; commit="$$(cat "$(KERNEL_COMMIT_FILE)")"; btf="$(FXMARK_PATCHED_KERNEL_BTF)"; notes="$(FXMARK_PATCHED_KERNEL_NOTES)"; flavor=patched ;; \
+		unattached|empty|pass|select) image="$(KERNEL_IMAGE)"; config="$(KERNEL_BUILD_DIR)/.config"; vmlinux="$(KERNEL_BUILD_DIR)/vmlinux"; commit="$$(cat "$(KERNEL_COMMIT_FILE)")"; btf="$(FXMARK_PATCHED_KERNEL_BTF)"; notes="$(FXMARK_PATCHED_KERNEL_NOTES)"; flavor=patched ;; \
 		*) exit 1 ;; \
 		esac; \
 		btf_sha=$$(sha256sum "$$btf" | awk '{print $$1}'); \
@@ -155,10 +155,10 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 	find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | xargs -0 jq -r '"\(.repetition)|\(.condition)|\(.kernel_commit)|\(.kernel_build_id)|\(.kernel_notes_sha256)|\(.kernel_btf_sha256)"' | LC_ALL=C sort >"$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-boots.txt"
 	cmp "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-cells.txt"
 	cmp "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-boots.txt"
-	test "$$(jq -s 'length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "5"
-	test "$$(jq -s '[.[] | select(.pass == true)] | length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "5"
-	test "$$(jq -s '[.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"] | unique | length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "5"
-	test "$$(find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -type f | wc -l)" = "5"
+	test "$$(jq -s 'length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "6"
+	test "$$(jq -s '[.[] | select(.pass == true)] | length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "6"
+	test "$$(jq -s '[.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"] | unique | length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "6"
+	test "$$(find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -type f | wc -l)" = "6"
 	for boot in "$(FXMARK_PREFLIGHT_RESULT_DIR)"/boots/*; do \
 		for file in launcher.stdout.log launcher.stderr.log; do \
 			test -e "$$boot/$$file"; \
@@ -327,7 +327,7 @@ __fxmark_rq2_guest:
 	cat /proc/stat >"$(FXMARK_BOOT_RESULT_DIR)/proc-stat-before.txt"
 	policy="-"; \
 	case "$(CONDITION)" in \
-	pass) policy="$(FXMARK_PASS_POLICY)" ;; \
+	empty|pass) policy="$(FXMARK_PASS_POLICY)" ;; \
 	select) policy="$(FXMARK_SELECT_POLICY)" ;; \
 	stock|unattached|fuse) ;; \
 	*) exit 1 ;; \

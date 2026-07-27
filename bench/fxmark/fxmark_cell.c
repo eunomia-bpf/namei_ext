@@ -577,6 +577,7 @@ static int parse_config(int argc, char **argv, struct cell_config *config)
 	if (config->ncore > 4 ||
 	    (strcmp(config->condition, "stock") &&
 	     strcmp(config->condition, "unattached") &&
+	     strcmp(config->condition, "empty") &&
 	     strcmp(config->condition, "pass") &&
 	     strcmp(config->condition, "select") &&
 	     strcmp(config->condition, "fuse")))
@@ -614,7 +615,7 @@ int main(int argc, char **argv)
 	unsigned long long fuse_measured = 0;
 	pid_t fuse_pid = -1;
 	bool policy_loaded = false;
-	bool policy_parent_exact = false;
+	bool policy_parent_configured = false;
 	bool fuse_mounted = false;
 	bool cgroup_verified = false;
 	bool pass = true;
@@ -670,7 +671,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!strcmp(config.condition, "pass") ||
+	if (!strcmp(config.condition, "empty") ||
+	    !strcmp(config.condition, "pass") ||
 	    !strcmp(config.condition, "select")) {
 		if (!strcmp(config.policy_object, "-")) {
 			pass = false;
@@ -687,11 +689,14 @@ int main(int argc, char **argv)
 			goto cleanup;
 		}
 		policy_loaded = true;
-		if (namei_ext_policy_parent_exact(cgroup, config.work_root)) {
+		if ((!strcmp(config.condition, "empty") &&
+		     namei_ext_policy_parent_clear(cgroup)) ||
+		    (strcmp(config.condition, "empty") &&
+		     namei_ext_policy_parent_exact(cgroup, config.work_root))) {
 			pass = false;
 			goto cleanup;
 		}
-		policy_parent_exact = true;
+		policy_parent_configured = true;
 		if (attached_program_stats(&policy, &policy_before)) {
 			pass = false;
 			goto cleanup;
@@ -738,6 +743,9 @@ int main(int argc, char **argv)
 	    (attached_program_stats(&policy, &policy_after) ||
 	     policy_after.program_id != policy_before.program_id))
 		pass = false;
+	if (!strcmp(config.condition, "empty") &&
+	    policy_after.run_count != policy_before.run_count)
+		pass = false;
 
 cleanup:
 	if (fuse_mounted) {
@@ -755,7 +763,7 @@ cleanup:
 		    !fuse_setup)
 			pass = false;
 	}
-	if (policy_parent_exact &&
+	if (policy_parent_configured &&
 	    namei_ext_policy_parent_global(cgroup))
 		pass = false;
 	if (policy_loaded) {

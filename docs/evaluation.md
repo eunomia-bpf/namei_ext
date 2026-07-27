@@ -194,34 +194,35 @@ build/cache cases whose pathname view is the behavior under study.
 | Result review | Run valid; hypothesis contradicted; decisive mechanism/workload boundary; implementation redesign and fresh rerun required | `docs/tmp/2026-07-27-rq2-fxmark-result-review.md` |
 | Exact-parent invocation attribution | Directional KVM preflight passed; policy runs fell from about 10 to about 1 per work unit, with about 25 ns in the BPF body per run | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-run-count-v1/` |
 | Exact-parent normal preflight | Directional only: stock 2.471M, unattached 2.332M, `PASS` 1.235M, `SELECT` 1.085M, FUSE 2.041M ops/s; dispatch-count repair did not justify a new full matrix | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-preflight-v1/` |
-| Exact-parent result review | Full matrix remains blocked; next diagnostic isolates attached dispatch without BPF execution | `docs/tmp/2026-07-27-policy-parent-dispatch-preflight-review.md` |
+| Exact-empty invocation check | Passed in KVM: an attached PASS program remained stable and executed zero times during the measured `empty` cell | `results/experiments/fxmark-rq2-preflight/20260727T-exact-empty-run-count-v2/` |
+| Exact-empty normal preflight | Directional only: unattached 2.424M, `empty` 1.251M, `PASS` 1.222M, `SELECT` 1.109M, FUSE 2.000M ops/s; zero-invocation `empty` reached only 0.516x unattached throughput | `results/experiments/fxmark-rq2-preflight/20260727T-exact-empty-preflight-v1/` |
+| Exact-empty result review | Full matrix remains blocked; repeated pre-BPF dispatch and scope work is the next mechanism target | `docs/tmp/2026-07-27-fxmark-exact-empty-dispatch-diagnostic.md` |
 
 These results are retained as internal mechanism evidence and are not paper
 performance claims. They do not change RQ2 or the hypothesis. Attached-only
 state and RCU fallback have been repaired, and exact-parent registration has
-reduced BPF execution count. The next step is to isolate the remaining
-per-component dispatch-filter cost before another full matrix. A dynamic
-update/invalidation comparison may add RQ2 evidence, but it does not replace
-the strong cached-FUSE row.
+reduced BPF execution count. The exact-empty diagnostic now localizes the
+remaining active cost before BPF execution: nonmatching pathname components
+still enter cgroup and scope dispatch. A cheaper negative-component fast path
+is required before another full matrix. A dynamic update/invalidation
+comparison may add RQ2 evidence, but it does not replace the strong
+cached-FUSE row.
 
 ## Open Questions
 
-1. Does an attached `EXACT(empty)` diagnostic remain near exact `PASS`,
-   confirming that negative-component dispatch rather than BPF execution is the
-   dominant remaining active-path cost?
-2. Can a VFS-owned exact-parent marker, global RCU registration filter, or
+1. Can a VFS-owned exact-parent marker, global RCU registration filter, or
    lookup-lifetime scope snapshot provide a cheap negative-component fast path
    while preserving cgroup inheritance and rename/mount lifetime semantics?
-3. What are the setup and steady-state costs of the W3 action view relative to
+2. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?
-4. Does cross-filesystem target selection preserve lower-filesystem behavior
+3. Does cross-filesystem target selection preserve lower-filesystem behavior
    well enough to replay Spindle's shared-to-local redirection without turning
    `namei_ext` into a cache or remote filesystem?
-5. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
+4. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
    application oracle while staying within existing-object selection?
-6. What do the per-workload RQ3 ownership tables show for FUSE and the
+5. What do the per-workload RQ3 ownership tables show for FUSE and the
    relevant custom/stackable source system?
-7. Does the existing ccache macro ratio survive independent-run
+6. Does the existing ccache macro ratio survive independent-run
    median/dispersion reporting and a hardened FUSE configuration with caching
    and passthrough explicitly accounted for?
