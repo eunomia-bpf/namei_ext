@@ -44,9 +44,10 @@ kvm-build-action-sandboxing-preflight
 ```
 
 `make experiments` depends directly on that list. The historical Redis/nginx
-ccache implementation remains available only as `make legacy-build-cache`,
-which delegates to its existing KVM matrix without changing workload behavior
-or raw results. New formal suites continue to use:
+ccache implementation uses `make legacy-build-cache` as its canonical
+aggregate entrypoint; lower-level `kvm-w4-ccache-*` diagnostics remain
+available for reproduction. This does not change workload behavior or raw
+results. New formal suites continue to use:
 
 ```text
 experiments/<suite>/        workload runner and oracle
@@ -89,8 +90,7 @@ legacy-build-cache: kvm-build-cache-matrix
 
 - all three concrete formal KVM targets retain their kernel image, BPF,
   runner/workload, and `kernel-provenance` dependencies;
-- no active Make, README, `mk/`, or evaluation reference uses the removed
-  aliases; and
+- no active Make or documentation reference uses the removed aliases; and
 - `make phase1-smoke
   RUN_ID=20260727T-suite-catalog-phase1-smoke-v1` passed its prerequisite,
   result-contract, ABI, component-build, touched-kernel-object, and modified

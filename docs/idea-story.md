@@ -81,7 +81,8 @@ Evidence program:
   (`results/experiments/agent-workspace-matrix/20260722T0201*-rq1run{1,2,3}/`)
   pass the same AgentFS-derived trace oracle for `namei_ext` and
   feature-equivalent FUSE, with zero failed records and clean dmesg gates.
-- Traditional build/cache: `make experiment-env-cache` release runs
+- Traditional build/cache: historical runs now aggregated by
+  `make legacy-build-cache`
   (2026-07-23 hot-cache, 2026-07-24 epoch-switch) pass the Redis/nginx ccache
   output oracle in KVM for `namei_ext`, native control, and
   feature-equivalent FUSE; observed `FUSE/namei_ext` compile-time ratio is

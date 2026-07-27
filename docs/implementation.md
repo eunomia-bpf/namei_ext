@@ -70,19 +70,19 @@ entrypoints, and archived diagnostics:
 
 - `make phase1` runs current prototype validation only: host checks, component
   builds, KVM smoke, policy load, and KVM functional tests.
-- `make experiments` is the integrated experiment-suite entrypoint for the
-  frozen evaluation program.
-- `make experiment-agent-workspace` currently runs an Agent workspace prototype
-  matrix and preserves raw KVM/FUSE outputs; its latest reviewed run is
-  supporting-only and incomplete for final paper evidence.
-- `make experiment-env-cache` is the historical target name for the traditional
-  build/cache matrix entrypoint. It currently fails with the required cells.
+- `make experiments` runs the implemented formal case-study gates: Agent
+  workspace, Application File Sharing, and Build Action Sandboxing.
+- `make kvm-agent-workspace-matrix` runs the Agent workspace matrix and
+  preserves raw KVM/FUSE outputs.
+- `make legacy-build-cache` is the canonical aggregate entrypoint for the
+  historical traditional build/cache matrix.
 - `make kvm-application-file-sharing-preflight` runs the W1 Sandboxed
   Application File Sharing grant/revoke oracle with two application cgroups
   through the real KVM attach path.
-- `ENABLE_LEGACY_DIAGNOSTICS=1 make phase1-legacy-diagnostics` preserves the
-  archived W1-W4/table diagnostic flow for provenance and debugging; it is not
-  the current paper experiment route.
+- `make kvm-build-action-sandboxing-preflight` runs the source-derived Bazel
+  action-input visibility oracle through the real KVM attach path.
+- Lower-level `kvm-w4-ccache-*` targets remain available for historical ccache
+  diagnostics; they are not dependencies of `make experiments`.
 
 The implementation record for this control-plane alignment is
 `docs/tmp/2026-07-13-build-evaluate-make-control-plane-alignment.md`.
@@ -185,7 +185,7 @@ the admitted oracle needs it, result review, and custom/stackable boundary
 audit required for full Experiment A.
 
 An unreviewed prototype matrix target also exists: `make
-experiment-agent-workspace` runs the current Agent workspace matrix through KVM
+kvm-agent-workspace-matrix` runs the current Agent workspace matrix through KVM
 and the FUSE runner, then appends boundary-evidence rows. The preserved raw
 roots are:
 
@@ -198,7 +198,7 @@ result review, these roots are prototype implementation artifacts only, not
 final RQ evidence.
 
 Historical BUILD_AND_EVALUATE Loop 001 repaired the Agent workspace matrix gates and ran
-`make experiment-agent-workspace`, producing
+`make kvm-agent-workspace-matrix`, producing
 `results/experiments/agent-workspace-matrix/20260713T073438Z-5be906d9/`.
 The repaired target now emits lower-filesystem/no-hook control rows, generated-file
 negative-before-write rows, final manifest rows, fixed stat/readdir latency
@@ -211,7 +211,7 @@ invalid-policy containment. The raw root is supporting implementation evidence
 only.
 
 The current BUILD_AND_EVALUATE step repaired protocol blockers found by that
-review and reran `make experiment-agent-workspace`, producing
+review and reran `make kvm-agent-workspace-matrix`, producing
 `results/experiments/agent-workspace-matrix/20260714T231148Z-7e0cc0e8/`.
 That root now preserves command provenance, input hashes, kernel config,
 stdout/stderr logs, explicit FUSE options, matrix-specific summary labels, and
