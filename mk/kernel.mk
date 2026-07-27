@@ -3,6 +3,12 @@ KERNEL_CONFIG_FRAGMENT ?= $(ROOT_DIR)/configs/kernel/x86_64_phase1.config
 KERNEL_IMAGE ?= $(KERNEL_BUILD_DIR)/arch/x86/boot/bzImage
 KERNEL_COMMIT_FILE ?= $(BUILD_ROOT)/kernel-commit.txt
 KERNEL_MERGE_CONFIG ?= $(KERNEL_DIR)/scripts/kconfig/merge_config.sh
+STOCK_KERNEL_COMMIT ?= 062871f1371b2e02a272ff5279c6479aff0a37ef
+STOCK_KERNEL_SOURCE_DIR ?= $(BUILD_ROOT)/kernel-stock-src
+STOCK_KERNEL_BUILD_DIR ?= $(BUILD_ROOT)/kernel-stock
+STOCK_KERNEL_IMAGE ?= $(STOCK_KERNEL_BUILD_DIR)/arch/x86/boot/bzImage
+STOCK_KERNEL_SOURCE_STAMP ?= $(STOCK_KERNEL_SOURCE_DIR)/.source-commit
+STOCK_KERNEL_COMMIT_FILE ?= $(BUILD_ROOT)/kernel-stock-commit.txt
 KERNEL_TOUCHED_OBJECTS := \
 	fs/namei.o \
 	fs/readdir.o \
@@ -32,7 +38,9 @@ KERNEL_SOURCE_DEPS := \
 	$(KERNEL_DIR)/tools/lib/bpf/libbpf.c \
 	$(KERNEL_DIR)/tools/lib/bpf/libbpf_probes.c
 
-.PHONY: kernel-config kernel-objects kernel kernel-provenance kernel-clean
+.PHONY: kernel-config kernel-objects kernel kernel-provenance \
+	kernel-stock-source kernel-stock-config kernel-stock \
+	kernel-stock-provenance kernel-clean
 
 kernel-config: $(KERNEL_BUILD_DIR)/include/config/auto.conf
 	grep '^CONFIG_NAMEI_EXT=y' "$(KERNEL_BUILD_DIR)/.config"
@@ -58,6 +66,17 @@ kernel-objects: $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)
 
 kernel: $(KERNEL_IMAGE)
 
+kernel-stock-source: $(STOCK_KERNEL_SOURCE_STAMP)
+
+kernel-stock-config: $(STOCK_KERNEL_BUILD_DIR)/include/config/auto.conf
+	grep '^CONFIG_BPF_SYSCALL=y' "$(STOCK_KERNEL_BUILD_DIR)/.config"
+	grep '^CONFIG_BPF_JIT=y' "$(STOCK_KERNEL_BUILD_DIR)/.config"
+	grep '^CONFIG_CGROUP_BPF=y' "$(STOCK_KERNEL_BUILD_DIR)/.config"
+	grep '^CONFIG_FUSE_FS=y' "$(STOCK_KERNEL_BUILD_DIR)/.config"
+	! grep '^CONFIG_NAMEI_EXT=' "$(STOCK_KERNEL_BUILD_DIR)/.config"
+
+kernel-stock: $(STOCK_KERNEL_IMAGE)
+
 kernel-provenance:
 	install -d "$(BUILD_ROOT)"
 	commit=$$(git -C "$(KERNEL_DIR)" rev-parse HEAD); \
@@ -70,8 +89,38 @@ kernel-provenance:
 		mv -f "$(KERNEL_COMMIT_FILE).tmp" "$(KERNEL_COMMIT_FILE)"; \
 	fi
 
+kernel-stock-provenance: $(STOCK_KERNEL_SOURCE_STAMP)
+	install -d "$(BUILD_ROOT)"
+	printf '%s\n' "$(STOCK_KERNEL_COMMIT)" >"$(STOCK_KERNEL_COMMIT_FILE).tmp"
+	if test -r "$(STOCK_KERNEL_COMMIT_FILE)" && cmp -s "$(STOCK_KERNEL_COMMIT_FILE).tmp" "$(STOCK_KERNEL_COMMIT_FILE)"; then \
+		rm -f "$(STOCK_KERNEL_COMMIT_FILE).tmp"; \
+	else \
+		mv -f "$(STOCK_KERNEL_COMMIT_FILE).tmp" "$(STOCK_KERNEL_COMMIT_FILE)"; \
+	fi
+
 $(KERNEL_IMAGE): $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)/.config $(KERNEL_SOURCE_DEPS)
 	$(MAKE) -C "$(KERNEL_DIR)" O="$(KERNEL_BUILD_DIR)" bzImage -j"$(JOBS)"
 
+$(STOCK_KERNEL_SOURCE_STAMP):
+	git -C "$(KERNEL_DIR)" cat-file -e "$(STOCK_KERNEL_COMMIT)^{commit}"
+	rm -rf "$(STOCK_KERNEL_SOURCE_DIR)"
+	install -d "$(STOCK_KERNEL_SOURCE_DIR)"
+	git -C "$(KERNEL_DIR)" archive "$(STOCK_KERNEL_COMMIT)" | tar -x -C "$(STOCK_KERNEL_SOURCE_DIR)"
+	printf '%s\n' "$(STOCK_KERNEL_COMMIT)" >"$@"
+
+$(STOCK_KERNEL_BUILD_DIR):
+	install -d "$@"
+
+$(STOCK_KERNEL_BUILD_DIR)/.config: $(KERNEL_CONFIG_FRAGMENT) $(STOCK_KERNEL_SOURCE_STAMP) | $(STOCK_KERNEL_BUILD_DIR)
+	$(MAKE) -C "$(STOCK_KERNEL_SOURCE_DIR)" O="$(STOCK_KERNEL_BUILD_DIR)" x86_64_defconfig
+	cd "$(STOCK_KERNEL_SOURCE_DIR)" && scripts/kconfig/merge_config.sh -O "$(STOCK_KERNEL_BUILD_DIR)" "$(STOCK_KERNEL_BUILD_DIR)/.config" "$(KERNEL_CONFIG_FRAGMENT)"
+	$(MAKE) -C "$(STOCK_KERNEL_SOURCE_DIR)" O="$(STOCK_KERNEL_BUILD_DIR)" olddefconfig
+
+$(STOCK_KERNEL_BUILD_DIR)/include/config/auto.conf: $(STOCK_KERNEL_BUILD_DIR)/.config
+	$(MAKE) -C "$(STOCK_KERNEL_SOURCE_DIR)" O="$(STOCK_KERNEL_BUILD_DIR)" olddefconfig
+
+$(STOCK_KERNEL_IMAGE): $(STOCK_KERNEL_BUILD_DIR)/include/config/auto.conf $(STOCK_KERNEL_BUILD_DIR)/.config
+	$(MAKE) -C "$(STOCK_KERNEL_SOURCE_DIR)" O="$(STOCK_KERNEL_BUILD_DIR)" bzImage -j"$(JOBS)"
+
 kernel-clean:
-	rm -rf "$(KERNEL_BUILD_DIR)"
+	rm -rf "$(KERNEL_BUILD_DIR)" "$(STOCK_KERNEL_BUILD_DIR)" "$(STOCK_KERNEL_SOURCE_DIR)"

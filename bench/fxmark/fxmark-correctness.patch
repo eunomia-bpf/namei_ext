@@ -1,0 +1,69 @@
+diff --git a/src/bench.c b/src/bench.c
+--- a/src/bench.c
++++ b/src/bench.c
+@@ -87,9 +87,12 @@ static void worker_main(void *arg)
+         int err = 0;
+ 
+         /* set affinity */ 
+-        setaffinity(worker->id);
++        if (setaffinity(worker->id)) {
++                err = errno;
++                goto err_out;
++        }
+ 
+         /* pre-work */
+         if (bench->ops.pre_work) {
+                 err = bench->ops.pre_work(worker);
+                 if (err) goto err_out;
+@@ -178,10 +181,12 @@ void run_bench(struct bench *bench)
+ 		pid_t p = fork();
+-		if (p < 0)
++		if (p < 0) {
+ 			bench->workers[i].ret = errno;
++			bench->workers[i].clocks = 1;
++			bench->stop = 1;
+-		else if (!p) {
++		} else if (!p) {
+ 			worker_main(&bench->workers[i]);
+ 			exit(0);
+ 		}
+ 	}
+ 	worker_main(&bench->workers[0]);
+ 	wait(bench);
+diff --git a/src/fxmark.c b/src/fxmark.c
+--- a/src/fxmark.c
++++ b/src/fxmark.c
+@@ -208,18 +208,33 @@ int main(int argc, char *argv[])
+ {
+ 	struct cmd_opt opt = {NULL, 0, 0, 0, 0, NULL};
+ 	struct bench *bench; 
++	int i;
+ 
+ 	/* parse command line options */
+ 	if (parse_option(argc, argv, &opt) < 4) {
+ 		usage(stderr);
+ 		exit(1);
+ 	}
++	if (opt.ncore < 1 || opt.ncore > 4 || opt.nbg < 0 ||
++	    opt.nbg >= opt.ncore || opt.duration < 1) {
++		fprintf(stderr, "invalid worker or duration configuration\n");
++		exit(1);
++	}
+ 
+ 	/* create, initialize, and run a bench */ 
+ 	bench = alloc_bench(opt.ncore, opt.nbg);
++	if (!bench)
++		exit(1);
+ 	init_bench(bench, &opt);
+ 	run_bench(bench);
++	for (i = 0; i < bench->ncpu; ++i) {
++		if (bench->workers[i].ret) {
++			fprintf(stderr, "worker %d failed: %d\n", i,
++				bench->workers[i].ret);
++			exit(2);
++		}
++	}
+ 	report_bench(bench, stdout);
+ 
+ 	return 0;
+ }

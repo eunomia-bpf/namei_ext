@@ -15,6 +15,7 @@ endif
 
 include $(ROOT_DIR)/configs/kvm/x86_64.mk
 include $(ROOT_DIR)/configs/benchmarks/phase1.mk
+include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/kvm.mk
@@ -23,12 +24,15 @@ include $(ROOT_DIR)/mk/experiments/legacy_build_cache.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
+include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 
 .DEFAULT_GOAL := phase1
 
 .PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional \
 	policy-load policy-semantic runner agent-workspace application-file-sharing \
 	build-action-sandboxing \
+	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
+	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	experiments experiment-agent-workspace experiment-env-cache \
 	w1-oracle \
 	help clean clean-results
@@ -51,6 +55,8 @@ check-prereqs:
 	command -v clang >/dev/null
 	command -v docker >/dev/null
 	command -v jq >/dev/null
+	command -v patch >/dev/null
+	command -v pkg-config >/dev/null
 	command -v $(VNG) >/dev/null
 	command -v pahole >/dev/null
 	test -r /dev/kvm
@@ -109,6 +115,12 @@ help:
 	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
 	@printf '%s\n' '                       run two concurrent source-derived Bazel actions through namei_ext in KVM'
+	@printf '%s\n' '  make kvm-fxmark-rq2-preflight'
+	@printf '%s\n' '                       run one real MRPL cell in five isolated stock/patched/FUSE KVM boots'
+	@printf '%s\n' '  make kvm-fxmark-rq2'
+	@printf '%s\n' '                       run the complete paired FxMark RQ2 matrix in isolated KVM boots'
+	@printf '%s\n' '  make experiment-fxmark-rq2'
+	@printf '%s\n' '                       run the complete FxMark matrix and generate its statistical report and figure'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Build and component checks:'
 	@printf '%s\n' '  make kernel-config   build the committed x86_64 Phase 1 kernel config'
@@ -142,6 +154,7 @@ clean: kernel-clean docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/experiments/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/experiments/application_file_sharing" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/experiments/build_action_sandboxing" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/bench/fxmark" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" OUTPUT="$(BUILD_ROOT)/fxmark-rq2" clean
 	rm -rf "$(BUILD_ROOT)/workloads" "$(CACHE_ROOT)/workloads"
 	rm -rf "$(BUILD_ROOT)"
 
