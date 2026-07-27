@@ -1,6 +1,6 @@
 # Evaluation
 
-Last updated: 2026-07-25
+Last updated: 2026-07-27
 
 This file holds the scientific evaluation state: use cases, experiment
 matrices, result pointers, and open questions. Research process rules and
@@ -180,13 +180,31 @@ ccache already implements cache lookup and validation in user space. W3 Bazel
 action views and W6 Spindle file relocation provide the source-derived
 build/cache cases whose pathname view is the behavior under study.
 
+### E. FxMark path-resolution cost (decisive RQ2 mechanism result)
+
+| Cell | Status | Raw root |
+| --- | --- | --- |
+| Complete matched matrix | Valid: 50 KVM boots, 450/450 unique passing observations, no exclusions, exact boot/cell sets | `results/experiments/fxmark-rq2/20260726T-rq2-fxmark-full-v2/` |
+| Patched-unattached versus stock | Hypothesis contradicted: median ratio `0.867--0.942`; all nine CI upper bounds below `0.98` | Same raw root and `analysis/summary.csv` |
+| Attached `SELECT` versus optimized FUSE | Hypothesis contradicted for the stable cache-hot view: median ratio `0.314--0.570`; all nine CIs below `1` | Same raw root and `analysis/report.md` |
+| Attached-path ablation | `PASS` accounts for most active cost: paired `PASS`/unattached medians `0.298--0.547`; `SELECT`/`PASS` is `0.980--1.004` | Same raw root; independently recomputed |
+| Baseline engagement | FUSE setup median requests `28--195,433`, measured-phase median requests `1--18`; valid for stable cache-hot policy, not update/invalidation behavior | Same raw root |
+| Result review | Run valid; hypothesis contradicted; decisive mechanism/workload boundary; implementation redesign and fresh rerun required | `docs/tmp/2026-07-27-rq2-fxmark-result-review.md` |
+
+The current result is retained as internal negative evidence and is not a
+paper performance claim. It does not change RQ2 or the hypothesis. The next
+step is to isolate attached-only state from the inactive path, diagnose RCU
+fallback and cgroup/BPF dispatch, and rerun the same approved matrix under a
+new run ID. A dynamic update/invalidation comparison may add RQ2 evidence, but
+it does not replace the strong cached-FUSE row.
+
 ## Open Questions
 
-1. Is the patched-but-unattached path statistically indistinguishable from
-   stock Linux on FxMark lookup/readdir and the custom per-operation tests?
-2. What are attached `PASS` and `SELECT` overheads, including p95/p99 and
-   concurrency scaling, and how do they compare with a correctly configured
-   feature-equivalent FUSE implementation?
+1. Can an out-of-line attached slow path restore the predeclared
+   patched-unattached FxMark threshold without changing semantics?
+2. How much of the attached `PASS`/`SELECT` cost comes from RCU fallback,
+   context initialization, cgroup dispatch, and BPF execution, and which
+   mechanism repair can meet the unchanged cached-FUSE comparison?
 3. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?

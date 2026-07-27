@@ -20,7 +20,7 @@ FXMARK_GUEST_MOUNT ?= /tmp/namei-ext-fxmark-rq2
 
 .PHONY: fxmark-source fxmark-rq2-build fxmark-kernel-pair \
 	kvm-fxmark-rq2-preflight kvm-fxmark-rq2 \
-	fxmark-rq2-report experiment-fxmark-rq2 \
+	fxmark-rq2-finalize fxmark-rq2-report experiment-fxmark-rq2 \
 	__fxmark_rq2_guest fxmark-rq2-clean
 
 fxmark-source: $(FXMARK_SOURCE_STAMP)
@@ -234,6 +234,14 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=$$repetition FXMARK_RUN_DURATION=$(FXMARK_DURATION) FXMARK_RUN_TYPES='$(FXMARK_TYPES)' FXMARK_RUN_CORES='$(FXMARK_CORES)' FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_FLAVOR=$$flavor,$$boot_dir,$(FXMARK_RESULT_DIR)); \
 		done; \
 	done
+	$(MAKE) -C "$(ROOT_DIR)" fxmark-rq2-finalize \
+		RUN_ID="$(RUN_ID)" \
+		FXMARK_REPETITIONS="$(FXMARK_REPETITIONS)" \
+		FXMARK_TYPES="$(FXMARK_TYPES)" \
+		FXMARK_CORES="$(FXMARK_CORES)"
+
+fxmark-rq2-finalize:
+	jq -e '.status == "running" and (.completed_at | not) and (.failed_at | not)' "$(FXMARK_RESULT_DIR)/run.json" >/dev/null
 	LC_ALL=C sort -o "$(FXMARK_RESULT_DIR)/expected-boots.txt" "$(FXMARK_RESULT_DIR)/expected-boots.txt"
 	LC_ALL=C sort -o "$(FXMARK_RESULT_DIR)/expected-cells.txt" "$(FXMARK_RESULT_DIR)/expected-cells.txt"
 	find "$(FXMARK_RESULT_DIR)/boots" -name observations.jsonl -print0 \
@@ -243,8 +251,8 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 	cmp "$(FXMARK_RESULT_DIR)/expected-cells.txt" "$(FXMARK_RESULT_DIR)/observed-cells.txt"
 	cmp "$(FXMARK_RESULT_DIR)/expected-boots.txt" "$(FXMARK_RESULT_DIR)/observed-boots.txt"
 	expected=$$((5 * $(FXMARK_REPETITIONS) * $$(wc -w <<<"$(FXMARK_TYPES)") * $$(wc -w <<<"$(FXMARK_CORES)"))); \
-	test "$$(jq -s 'length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"
-	test "$$(jq -s '[.[] | select(.pass == true)] | length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"
+	test "$$(jq -s 'length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"; \
+	test "$$(jq -s '[.[] | select(.pass == true)] | length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"; \
 	test "$$(jq -s '[.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"] | unique | length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"
 	expected_boots=$$((5 * $(FXMARK_REPETITIONS))); \
 	test "$$(find "$(FXMARK_RESULT_DIR)/boots" -name boot.json -type f | wc -l)" = "$$expected_boots"

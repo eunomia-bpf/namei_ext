@@ -206,6 +206,7 @@ does not use it as a paper metric.
 
 - `make kvm-fxmark-rq2-preflight`;
 - `make kvm-fxmark-rq2`;
+- `make fxmark-rq2-finalize`;
 - `make fxmark-rq2-report`;
 - `make experiment-fxmark-rq2`.
 
@@ -240,6 +241,32 @@ launcher stdout/stderr, FUSE stats where applicable, observation JSONL, and
 dmesg. Completion requires exact equality between the planned and observed
 boot/cell key sets, not only matching row counts.
 
+## Full Run And Completion-Gate Repair
+
+The corrected counter-free matrix ran as
+`20260726T-rq2-fxmark-full-v2` from 2026-07-27 03:15:55Z through
+11:02:23Z. All 50 KVM boots produced completed `boot.json` records and all 450
+planned observations had `pass=true`. Expected and observed boot/cell tuples
+were byte-for-byte equal.
+
+The initial top-level command nevertheless exited after collection because
+three Make recipe lines shared an `expected` shell variable without line
+continuations. Make started a new shell for the second and third tests, so a
+correct count was compared with an empty variable. The root correctly remained
+`running`; no per-boot raw artifact was changed or discarded.
+
+The repair keeps the three count checks in one shell and moves all post-boot
+aggregation, exact-set checks, artifact checks, and completion into
+`make fxmark-rq2-finalize`. The normal full-run target invokes this finalizer
+automatically. A recovery invocation is allowed only while the root is still
+`running` and has no completion or failure timestamp. Running the finalizer on
+the completed full-v2 root fails before writing; hashes of `run.json` and
+`observations.jsonl` remained unchanged in that negative test.
+
+After the repair, finalization passed all gates on the existing complete raw
+matrix and `make fxmark-rq2-report` generated the planned JSON, CSV, Markdown,
+PNG, and PDF outputs.
+
 ## Analysis
 
 `analysis/fxmark/analyze.py` requires the complete 450-row matrix. It refuses
@@ -272,15 +299,20 @@ directory. A synthetic 450-row structural test completed successfully.
   instrumentation defect.
 - Corrected counter-free policies and cgroup-membership gate: passed local
   build with no new warnings.
+- Corrected five-boot KVM preflight with exact kernel notes/BTF identity:
+  passed.
+- Full matrix: 50/50 completed boots, 450/450 passing observations, and exact
+  planned/observed boot and cell sets.
+- Finalizer recovery and completed-root rejection: passed.
+- Full statistical report and figures: generated successfully.
 
 ## Remaining Risks
 
-- The full `MRPM`/`MRPH` cells exercise much larger setup trees than preflight.
-- The corrected implementation still requires a fresh real KVM full run; the
-  invalidated run cannot be reused.
-- The cache-hot FUSE baseline may serve most measured `stat()` operations
-  without daemon requests and may outperform attached BPF. This is a valid
-  contradictory outcome under the fixed plan, not a baseline failure.
-- One preflight sample showed lower patched-unattached throughput than stock;
-  only ten paired blocks can distinguish fast-path cost from boot noise.
+- Independent result review must still determine baseline fairness, causal
+  interpretation, and paper impact.
+- The cache-hot FUSE baseline served almost all measured `stat()` operations
+  without daemon requests. That condition is valid for the fixed stable-policy
+  plan but does not measure update-to-visible behavior under policy changes.
+- The matched stock comparison exposes a material patched-unattached cost that
+  requires mechanism diagnosis and redesign before a fresh final evaluation.
 - This matrix does not answer open, readdir, cache-cold, or tail-latency costs.
