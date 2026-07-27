@@ -73,18 +73,35 @@ run as publishable evidence.
 
 ## Validation
 
-Validation must include:
+Completed:
 
-1. the infrastructure result-contract test on the edited tree;
-2. Make dependency inspection confirming every current target reaches
-   `experiment-source-clean`;
-3. a clean-tree formal KVM preflight after this change is committed;
-4. inspection of the generated `run.json` and provenance files.
+1. `make bpf bench result-contract` passed. The result-contract fixtures reject
+   untracked, tracked-unstaged, and tracked-staged changes in both source
+   repositories.
+2. Make dependency inspection confirmed every current case-study and FxMark
+   run target reaches `experiment-source-clean` and expands
+   `NAMEI_EXT_REQUIRE_CLEAN=1`.
+3. After commit `0f02d6e`, the committed-tree command `make
+   kvm-application-file-sharing-preflight
+   RUN_ID=20260727T-source-provenance-v2-rerun` passed through the modified
+   kernel in KVM.
+4. The completed result root is
+   `results/experiments/application-file-sharing/20260727T-source-provenance-v2-rerun/`.
+   Its v2 record contains source commit `0f02d6e`, kernel commit `8fd1fb52f`,
+   `dirty=false` for both repositories, and empty source and kernel status
+   files. The grant/revoke correctness oracle passed and the dmesg gate found
+   no kernel failure signature.
+
+An earlier invocation used an external one-second command timeout and
+terminated the launcher before Make could mark the run failed. Its immutable
+root,
+`results/experiments/application-file-sharing/20260727T-source-provenance-v2/`,
+remains `status=running` and is excluded from evidence.
 
 ## Remaining Work
 
-- Run the complete RQ2 matrix only after the clean-tree KVM preflight passes.
+- Run the complete RQ2 matrix from a clean committed tree.
 - Keep the large historical build/cache reproduction isolated from the current
-  formal target set.
+  target set.
 - Revisit cleanup target naming and legacy Makefile loading separately; neither
   should block correctness or provenance of the current experiments.
