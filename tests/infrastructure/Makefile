@@ -7,7 +7,7 @@ RUN_ID ?= result-contract-test
 OUTPUT_ROOT ?= $(BUILD_ROOT)/tests/result-contract
 OUTPUT ?= $(OUTPUT_ROOT)/$(RUN_ID)
 RESULT_JSON ?= $(OUTPUT)/observations.jsonl
-KERNEL_COMMIT_FILE ?= $(BUILD_ROOT)/kernel-commit.txt
+SOURCE_FIXTURE_ROOT ?= $(OUTPUT_ROOT)/source-state-fixture
 
 include $(ROOT_DIR)/mk/results.mk
 
@@ -31,6 +31,60 @@ test:
 	$(call NAMEI_EXT_RUN_START,$(OUTPUT),result-contract,self-test,host_result_contract,$(RESULT_JSON),none,make)
 	printf '%s\n' '{"event":"result-contract","pass":true}' >"$(RESULT_JSON)"
 	$(call NAMEI_EXT_RUN_VALIDATE_CANONICAL,$(OUTPUT),$(RESULT_JSON))
+	jq -e '.schema == "namei_ext.run.v2" and (.source.dirty | type == "boolean") and (.kernel.dirty | type == "boolean")' "$(OUTPUT)/run.json" >/dev/null
+	test "$$(cat "$(OUTPUT)/source-commit.txt")" = "$$(git -C "$(ROOT_DIR)" rev-parse HEAD)"
+	test "$$(cat "$(OUTPUT)/kernel-commit.txt")" = "$$(git -C "$(ROOT_DIR)/kernel" rev-parse HEAD)"
+	rm -rf "$(SOURCE_FIXTURE_ROOT)"
+	for repo in source kernel; do \
+		git init -q "$(SOURCE_FIXTURE_ROOT)/$$repo"; \
+		git -C "$(SOURCE_FIXTURE_ROOT)/$$repo" config user.name namei-ext-test; \
+		git -C "$(SOURCE_FIXTURE_ROOT)/$$repo" config user.email namei-ext-test@example.invalid; \
+		git -C "$(SOURCE_FIXTURE_ROOT)/$$repo" config commit.gpgsign false; \
+		printf '%s\n' tracked >"$(SOURCE_FIXTURE_ROOT)/$$repo/tracked"; \
+		git -C "$(SOURCE_FIXTURE_ROOT)/$$repo" add tracked; \
+		git -C "$(SOURCE_FIXTURE_ROOT)/$$repo" commit -qm fixture; \
+	done
+	$(MAKE) --no-print-directory experiment-source-clean \
+		NAMEI_EXT_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/source" \
+		NAMEI_EXT_KERNEL_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/kernel"
+	printf '%s\n' dirty >"$(SOURCE_FIXTURE_ROOT)/source/untracked"
+	if $(MAKE) --no-print-directory experiment-source-clean \
+		NAMEI_EXT_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/source" \
+		NAMEI_EXT_KERNEL_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/kernel"; then \
+		printf '%s\n' 'dirty source tree unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rm -f "$(SOURCE_FIXTURE_ROOT)/source/untracked"
+	printf '%s\n' unstaged >>"$(SOURCE_FIXTURE_ROOT)/source/tracked"
+	if $(MAKE) --no-print-directory experiment-source-clean \
+		NAMEI_EXT_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/source" \
+		NAMEI_EXT_KERNEL_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/kernel"; then \
+		printf '%s\n' 'unstaged source change unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	git -C "$(SOURCE_FIXTURE_ROOT)/source" add tracked
+	if $(MAKE) --no-print-directory experiment-source-clean \
+		NAMEI_EXT_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/source" \
+		NAMEI_EXT_KERNEL_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/kernel"; then \
+		printf '%s\n' 'staged source change unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	git -C "$(SOURCE_FIXTURE_ROOT)/source" commit -qm staged-fixture
+	printf '%s\n' unstaged >>"$(SOURCE_FIXTURE_ROOT)/kernel/tracked"
+	if $(MAKE) --no-print-directory experiment-source-clean \
+		NAMEI_EXT_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/source" \
+		NAMEI_EXT_KERNEL_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/kernel"; then \
+		printf '%s\n' 'unstaged kernel change unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	git -C "$(SOURCE_FIXTURE_ROOT)/kernel" add tracked
+	if $(MAKE) --no-print-directory experiment-source-clean \
+		NAMEI_EXT_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/source" \
+		NAMEI_EXT_KERNEL_SOURCE_DIR="$(SOURCE_FIXTURE_ROOT)/kernel"; then \
+		printf '%s\n' 'staged kernel change unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rm -rf "$(SOURCE_FIXTURE_ROOT)"
 	mv "$(OUTPUT)/dmesg.log" "$(OUTPUT)/dmesg.log.saved"
 	if $(MAKE) --no-print-directory validate-only \
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" \

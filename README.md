@@ -54,19 +54,22 @@ make kvm-fxmark-rq2-preflight
 kernel objects, KVM boot, policy load/attach, and functional behavior. Host-only
 execution does not count as Phase 1 validation.
 
-`make experiments` is the formal case-study aggregate. It runs the implemented
-Agent workspace, Application File Sharing, and Build Action Sandboxing gates
-through the shared KVM and result lifecycle. The historical Redis/nginx ccache
-matrix remains reproducible through `make legacy-build-cache`, but it is not a
-formal-suite dependency and must not define the structure of new experiments.
+`make experiments` is the current case-study aggregate. It runs the Agent
+workspace matrix and the implemented Application File Sharing and Build Action
+Sandboxing preflights through the shared KVM and result lifecycle. The
+historical Redis/nginx ccache matrix remains reproducible through
+`make legacy-build-cache`, but it is not a current-suite dependency and must
+not define the structure of new experiments.
 
 Canonical KVM case-study result roots contain `run.json`,
 `observations.jsonl`, `command.txt`, source and artifact hash manifests,
-guest and launcher stdout/stderr, kernel identity and configuration, and
-dmesg. Result roots are immutable by `RUN_ID`; artifact and correctness gates
-run while the result is `running`, before it can transition to `completed`.
+main-repository and kernel commits and status, guest and launcher
+stdout/stderr, kernel identity and configuration, and dmesg. Formal targets
+reject a dirty main or kernel tree. Result roots are immutable by `RUN_ID`;
+artifact and correctness gates run while the result is `running`, before it
+can transition to `completed`.
 
-Multi-boot benchmark matrices use the same `namei_ext.run.v1` lifecycle and
+Multi-boot benchmark matrices use the same `namei_ext.run.v2` lifecycle and
 place kernel identity, configuration, logs, and raw cell records under one
 directory per boot. Suite Makefiles own only their workload matrix and
 correctness gates; `mk/kvm.mk` owns execution and `mk/results.mk` owns the

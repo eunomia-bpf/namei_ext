@@ -1,6 +1,6 @@
 # Implementation
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed the latest paper
 reorganization pass and independent outer audit. Implementation artifacts below
@@ -30,9 +30,10 @@ under `tests/`, and performance suites remain under `bench/`. Per-case KVM
 recipes live in `mk/experiments/`; `mk/kvm.mk` retains shared guest setup and
 mechanism suites. Standard performance matrices live in `mk/benchmarks/`.
 `mk/results.mk` owns immutable result-root creation and the common
-`namei_ext.run.v1` start, artifact-validation, and completion gates. Formal
-runs start on the host before KVM launch, preserve launcher logs, validate
-while `running`, and only then transition to `completed`. The old ccache matrix is isolated in
+`namei_ext.run.v2` start, source-state and artifact validation, and completion
+gates. Formal runs reject dirty main or kernel trees, start on the host before
+KVM launch, preserve launcher logs, validate while `running`, and only then
+transition to `completed`. The old ccache matrix is isolated in
 `mk/experiments/legacy_build_cache.mk`.
 
 `runner/libnamei_ext_harness.a` owns repeated mechanism lifecycle code:
@@ -43,11 +44,12 @@ Sandboxed Application File Sharing and Build Action Sandboxing use this shared
 harness. The historical 24,286-line multi-workload runner is isolated under
 `experiments/legacy_oracle/` and is not a template for new cases.
 
-Canonical case-study result roots use `namei_ext.run.v1` metadata and preserve
-`observations.jsonl`, commands, separate source and binary hash manifests,
-guest and launcher stdout/stderr, kernel configuration and identity, and dmesg. Kernel commit
-identity is captured on the host before KVM boot and validated in the guest;
-missing or malformed provenance is a hard failure.
+Canonical case-study result roots use `namei_ext.run.v2` metadata and preserve
+`observations.jsonl`, commands, separate source and binary hash manifests, main
+and kernel commit/status files, guest and launcher stdout/stderr, kernel
+configuration and identity, and dmesg. Source identity is captured on the host
+before KVM boot, and kernel identity is validated in the guest; dirty, missing,
+or malformed formal-run provenance is a hard failure.
 
 Multi-boot benchmark suites use the same run schema with
 `layout="boot-matrix"`. The root records the fixed matrix and both stock and
@@ -64,7 +66,7 @@ standalone implementation and validation record is
 `docs/tmp/2026-07-26-unified-experiment-infrastructure-implementation.md`.
 
 A 2026-07-27 follow-up audit retained this layout and removed the remaining
-control-plane drift. The top-level formal-suite catalog is now also the source
+control-plane drift. The top-level current-suite catalog is now also the source
 of KVM provenance dependencies, current suites share one fail-fast dmesg gate,
 and the default mechanism microbenchmark runs only `baseline`, `pass_only`,
 and `policy`. The retired table comparison remains available only through an
@@ -83,6 +85,11 @@ under the existing mutex and RCU lifetime model. The implementation and KVM
 evidence are recorded in
 `docs/tmp/2026-07-27-namei-ext-global-parent-fast-path-implementation.md`.
 
+The same-day source-provenance convergence adds a clean-tree gate and records
+both repository states under the v2 result schema for every current case-study
+and FxMark RQ2 run. Design, alternatives, and validation are recorded in
+`docs/tmp/2026-07-27-unified-source-provenance-infrastructure.md`.
+
 ## Current Make Control Plane
 
 The default Make path separates current validation, prototype experiment
@@ -90,8 +97,9 @@ entrypoints, and archived diagnostics:
 
 - `make phase1` runs current prototype validation only: host checks, component
   builds, KVM smoke, policy load, and KVM functional tests.
-- `make experiments` runs the implemented formal case-study gates: Agent
-  workspace, Application File Sharing, and Build Action Sandboxing.
+- `make experiments` runs the implemented case-study gates: the Agent workspace
+  matrix and the Application File Sharing and Build Action Sandboxing
+  preflights.
 - `make kvm-agent-workspace-matrix` runs the Agent workspace matrix and
   preserves raw KVM/FUSE outputs.
 - `make legacy-build-cache` is the canonical aggregate entrypoint for the

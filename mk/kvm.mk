@@ -42,7 +42,7 @@ KVM_CORE_ENTRYPOINTS := \
 	kvm-functional \
 	kvm-bench \
 	kvm-agent-workspace-preflight \
-	$(FORMAL_EXPERIMENT_TARGETS)
+	$(CURRENT_EXPERIMENT_TARGETS)
 
 $(KVM_CORE_ENTRYPOINTS): kernel-provenance
 

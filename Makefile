@@ -7,10 +7,15 @@ BUILD_ROOT ?= $(ROOT_DIR)/.build
 CACHE_ROOT ?= $(ROOT_DIR)/.cache
 RESULT_ROOT ?= $(ROOT_DIR)/results
 
-FORMAL_EXPERIMENT_TARGETS := \
+CURRENT_EXPERIMENT_TARGETS := \
 	kvm-agent-workspace-matrix \
 	kvm-application-file-sharing-preflight \
 	kvm-build-action-sandboxing-preflight
+CLEAN_SOURCE_EXPERIMENT_TARGETS := \
+	$(CURRENT_EXPERIMENT_TARGETS) \
+	kvm-fxmark-rq2-preflight \
+	kvm-fxmark-rq2 \
+	experiment-fxmark-rq2
 
 NPROC ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 JOBS ?= $(NPROC)
@@ -44,13 +49,16 @@ include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 	help clean clean-results
 .NOTPARALLEL: phase1 experiments
 
+$(CLEAN_SOURCE_EXPERIMENT_TARGETS): NAMEI_EXT_REQUIRE_CLEAN = 1
+$(CLEAN_SOURCE_EXPERIMENT_TARGETS): experiment-source-clean
+
 all: phase1
 
 phase1: phase1-smoke kvm-policy-load kvm-functional
 
 phase1-smoke: check-prereqs result-contract abi bpf functional bench policy-load policy-semantic kernel-objects kvm-smoke
 
-experiments: $(FORMAL_EXPERIMENT_TARGETS)
+experiments: $(CURRENT_EXPERIMENT_TARGETS)
 
 legacy-build-cache: kvm-build-cache-matrix
 
@@ -66,7 +74,7 @@ check-prereqs:
 	test -r /dev/kvm
 	test -w /dev/kvm
 
-result-contract: kernel-provenance
+result-contract:
 	$(MAKE) -C "$(ROOT_DIR)/tests/infrastructure" \
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" test
 
@@ -112,7 +120,7 @@ help:
 	@printf '%s\n' ''
 	@printf '%s\n' 'Formal experiment lifecycle:'
 	@printf '%s\n' '  make experiments'
-	@printf '%s\n' '                       run every implemented formal case-study gate through the shared KVM/result lifecycle'
+	@printf '%s\n' '                       run every current case-study matrix or preflight through the shared KVM/result lifecycle'
 	@printf '%s\n' '  make kvm-agent-workspace-matrix'
 	@printf '%s\n' '                       run the Agent workspace lifecycle matrix with namei_ext and FUSE'
 	@printf '%s\n' '  make kvm-agent-workspace-preflight'

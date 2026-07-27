@@ -167,7 +167,7 @@ Make entrypoint: `make kvm-build-action-sandboxing-preflight`.
 | Timing uncertainty (median/dispersion across samples) | Open: ratios are release-run observations, not modeled statistics | — |
 | RQ3 boundary table | Open | — |
 
-Formal case-study entrypoints: `make experiments`,
+Current case-study entrypoints: `make experiments`,
 `make kvm-agent-workspace-matrix`,
 `make kvm-application-file-sharing-preflight`, and
 `make kvm-build-action-sandboxing-preflight`.
