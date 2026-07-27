@@ -282,6 +282,35 @@ static int expect_readdir_hidden(const char *path, FILE *out)
 	return -1;
 }
 
+static int expect_dirent(const char *name, const char *path,
+			 const char *entry, bool want_visible, FILE *out)
+{
+	bool visible = false;
+	struct dirent *de;
+	DIR *dir;
+	int err = 0;
+
+	errno = 0;
+	dir = opendir(path);
+	if (!dir) {
+		emit_case(out, name, false, errno, "opendir failed");
+		return -1;
+	}
+	while ((de = readdir(dir))) {
+		if (!strcmp(de->d_name, entry))
+			visible = true;
+	}
+	if (errno)
+		err = errno;
+	closedir(dir);
+	if (!err && visible == want_visible) {
+		emit_case(out, name, true, 0, "directory visibility matched");
+		return 0;
+	}
+	emit_case(out, name, false, err, "directory visibility mismatch");
+	return -1;
+}
+
 static int expect_select_readdir(const char *path, FILE *out)
 {
 	bool saw_payload = false;
@@ -341,6 +370,196 @@ static int clear_targets(FILE *out, const char *name)
 	close(register_fd);
 	emit_case(out, name, true, 0, "target registry cleared");
 	return 0;
+}
+
+static int policy_parent_command(FILE *out, const char *name,
+				 const char *command, const char *parent)
+{
+	char command_buf[64];
+	int parent_fd = -1;
+	int control_fd;
+	ssize_t nwritten;
+	int len;
+
+	if (parent) {
+		parent_fd = open(parent, O_PATH | O_DIRECTORY | O_CLOEXEC);
+		if (parent_fd < 0) {
+			emit_case(out, name, false, errno,
+				  "open policy parent failed");
+			return -1;
+		}
+		len = snprintf(command_buf, sizeof(command_buf), "%s %d\n",
+			       command, parent_fd);
+	} else {
+		len = snprintf(command_buf, sizeof(command_buf), "%s\n",
+			       command);
+	}
+	if (len < 0 || (size_t)len >= sizeof(command_buf)) {
+		if (parent_fd >= 0)
+			close(parent_fd);
+		emit_case(out, name, false, EOVERFLOW,
+			  "policy parent command overflow");
+		return -1;
+	}
+	control_fd = open("/sys/kernel/debug/namei_ext/policy_parent",
+			  O_WRONLY | O_CLOEXEC);
+	if (control_fd < 0) {
+		if (parent_fd >= 0)
+			close(parent_fd);
+		emit_case(out, name, false, errno,
+			  "open policy parent control failed");
+		return -1;
+	}
+	nwritten = write(control_fd, command_buf, len);
+	close(control_fd);
+	if (parent_fd >= 0)
+		close(parent_fd);
+	if (nwritten != len) {
+		emit_case(out, name, false, errno,
+			  "policy parent command failed");
+		return -1;
+	}
+	emit_case(out, name, true, 0, "policy parent command applied");
+	return 0;
+}
+
+struct inherited_scope_result {
+	int move_ret;
+	int move_errno;
+	int clear_ret;
+	int clear_errno;
+	int stat_ret;
+	int stat_errno;
+};
+
+static int expect_inherited_scope(FILE *out, const char *cgroup_root,
+				  const char *secret)
+{
+	struct inherited_scope_result result = {};
+	char child_cgroup[PATH_MAX];
+	char cgroup_procs[PATH_MAX + 32];
+	int pipefd[2];
+	int status;
+	pid_t pid;
+	ssize_t nread;
+	int len;
+
+	len = snprintf(child_cgroup, sizeof(child_cgroup),
+		       "%s/namei-ext-scope-%ld", cgroup_root, (long)getpid());
+	if (len < 0 || (size_t)len >= sizeof(child_cgroup)) {
+		emit_case(out, "scope_inherit_setup", false, ENAMETOOLONG,
+			  "child cgroup path overflow");
+		return -1;
+	}
+	len = snprintf(cgroup_procs, sizeof(cgroup_procs), "%s/cgroup.procs",
+		       child_cgroup);
+	if (len < 0 || (size_t)len >= sizeof(cgroup_procs)) {
+		emit_case(out, "scope_inherit_setup", false, ENAMETOOLONG,
+			  "cgroup.procs path overflow");
+		return -1;
+	}
+	if (mkdir(child_cgroup, 0755)) {
+		emit_case(out, "scope_inherit_setup", false, errno,
+			  "child cgroup creation failed");
+		return -1;
+	}
+	if (pipe(pipefd)) {
+		emit_case(out, "scope_inherit_setup", false, errno,
+			  "result pipe failed");
+		rmdir(child_cgroup);
+		return -1;
+	}
+	pid = fork();
+	if (pid < 0) {
+		emit_case(out, "scope_inherit_setup", false, errno,
+			  "child fork failed");
+		close(pipefd[0]);
+		close(pipefd[1]);
+		rmdir(child_cgroup);
+		return -1;
+	}
+	if (!pid) {
+		const char clear[] = "clear\n";
+		struct stat st;
+		int fd;
+
+		close(pipefd[0]);
+		fd = open(cgroup_procs, O_WRONLY | O_CLOEXEC);
+		if (fd < 0) {
+			result.move_ret = -1;
+			result.move_errno = errno;
+		} else {
+			result.move_ret =
+				write(fd, "0\n", 2) == 2 ? 0 : -1;
+			result.move_errno = result.move_ret ? errno : 0;
+			close(fd);
+		}
+		if (!result.move_ret) {
+			fd = open("/sys/kernel/debug/namei_ext/policy_parent",
+				  O_WRONLY | O_CLOEXEC);
+			if (fd < 0) {
+				result.clear_ret = -1;
+				result.clear_errno = errno;
+			} else {
+				errno = 0;
+				result.clear_ret = write(fd, clear,
+							 strlen(clear));
+				result.clear_errno = errno;
+				close(fd);
+			}
+			errno = 0;
+			result.stat_ret = stat(secret, &st);
+			result.stat_errno = errno;
+		}
+		if (write(pipefd[1], &result, sizeof(result)) != sizeof(result))
+			_exit(2);
+		close(pipefd[1]);
+		_exit(0);
+	}
+
+	close(pipefd[1]);
+	nread = read(pipefd[0], &result, sizeof(result));
+	close(pipefd[0]);
+	if (waitpid(pid, &status, 0) < 0 ||
+	    nread != sizeof(result) || !WIFEXITED(status) ||
+	    WEXITSTATUS(status)) {
+		emit_case(out, "scope_inherit_setup", false, errno,
+			  "child result collection failed");
+		rmdir(child_cgroup);
+		return -1;
+	}
+	if (rmdir(child_cgroup)) {
+		emit_case(out, "scope_inherit_setup", false, errno,
+			  "child cgroup removal failed");
+		return -1;
+	}
+	if (!result.move_ret) {
+		emit_case(out, "scope_inherit_setup", true, 0,
+			  "child entered inherited policy cgroup");
+	} else {
+		emit_case(out, "scope_inherit_setup", false,
+			  result.move_errno, "child cgroup move failed");
+		return -1;
+	}
+	if (result.clear_ret < 0 && result.clear_errno == ENOENT) {
+		emit_case(out, "scope_inherit_clear_rejected", true,
+			  result.clear_errno,
+			  "child cannot override ancestor policy scope");
+	} else {
+		emit_case(out, "scope_inherit_clear_rejected", false,
+			  result.clear_errno,
+			  "child changed inherited policy scope");
+		return -1;
+	}
+	if (result.stat_ret < 0 && result.stat_errno == ENOENT) {
+		emit_case(out, "scope_inherit_policy_enforced", true,
+			  result.stat_errno,
+			  "ancestor policy remains effective in child");
+		return 0;
+	}
+	emit_case(out, "scope_inherit_policy_enforced", false,
+		  result.stat_errno, "ancestor policy was bypassed");
+	return -1;
 }
 
 static unsigned long long ptr_to_u64(const void *ptr)
@@ -606,6 +825,8 @@ int main(int argc, char **argv)
 	char portal_payload[PATH_MAX];
 	char target_dir[PATH_MAX];
 	char target_payload[PATH_MAX];
+	char scope_other[PATH_MAX];
+	char scope_other_secret[PATH_MAX];
 	FILE *out;
 	int fails = 0;
 	int setup_fails = 0;
@@ -651,6 +872,9 @@ int main(int argc, char **argv)
 		 "%s/visible/portal/payload", root);
 	snprintf(target_dir, sizeof(target_dir), "%s/target", root);
 	snprintf(target_payload, sizeof(target_payload), "%s/target/payload", root);
+	snprintf(scope_other, sizeof(scope_other), "%s/other", root);
+	snprintf(scope_other_secret, sizeof(scope_other_secret),
+		 "%s/other/secret", root);
 
 	err = write_file(native, "native\n");
 	if (err) {
@@ -683,7 +907,16 @@ int main(int argc, char **argv)
 		setup_errno = errno;
 		setup_fails++;
 	}
+	if (mkdir(scope_other, 0755)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
 	err = write_file(target_payload, "selected\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
+	err = write_file(scope_other_secret, "other-secret\n");
 	if (err) {
 		setup_errno = -err;
 		setup_fails++;
@@ -723,6 +956,41 @@ int main(int argc, char **argv)
 					 ENOENT, out);
 		fails += !!expect_stat("hide_backing_stat", backing, 0, out);
 		fails += !!expect_readdir_hidden(root, out);
+		fails += !!expect_inherited_scope(out, cgroup_path, secret);
+
+		fails += !!policy_parent_command(out, "scope_exact_root",
+						 "exact", root);
+		fails += !!expect_stat("scope_exact_root_hidden", secret,
+				       ENOENT, out);
+		fails += !!expect_dirent("scope_exact_root_readdir", root,
+					 "secret", false, out);
+		fails += !!expect_stat("scope_exact_other_visible",
+				       scope_other_secret, 0, out);
+		fails += !!expect_dirent("scope_exact_other_readdir",
+					 scope_other, "secret", true, out);
+
+		fails += !!policy_parent_command(out, "scope_add_other", "add",
+						 scope_other);
+		fails += !!expect_stat("scope_add_other_hidden",
+				       scope_other_secret, ENOENT, out);
+		fails += !!expect_dirent("scope_add_other_readdir",
+					 scope_other, "secret", false, out);
+
+		fails += !!policy_parent_command(out, "scope_clear", "clear",
+						 NULL);
+		fails += !!expect_stat("scope_empty_root_visible", secret, 0,
+				       out);
+		fails += !!expect_stat("scope_empty_other_visible",
+				       scope_other_secret, 0, out);
+		fails += !!expect_dirent("scope_empty_root_readdir", root,
+					 "secret", true, out);
+
+		fails += !!policy_parent_command(out, "scope_global", "global",
+						 NULL);
+		fails += !!expect_stat("scope_global_root_hidden", secret,
+				       ENOENT, out);
+		fails += !!expect_stat("scope_global_other_hidden",
+				       scope_other_secret, ENOENT, out);
 
 		err = destroy_policy(&policy);
 		if (err) {
@@ -868,7 +1136,9 @@ cleanup:
 	unlink(backing);
 	unlink(secret);
 	unlink(target_payload);
+	unlink(scope_other_secret);
 	rmdir(visible);
+	rmdir(scope_other);
 	rmdir(target_dir);
 	rmdir(root);
 	emit_case(out, "functional_summary", fails == 0, fails,

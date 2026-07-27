@@ -614,6 +614,7 @@ int main(int argc, char **argv)
 	unsigned long long fuse_measured = 0;
 	pid_t fuse_pid = -1;
 	bool policy_loaded = false;
+	bool policy_parent_exact = false;
 	bool fuse_mounted = false;
 	bool cgroup_verified = false;
 	bool pass = true;
@@ -686,6 +687,11 @@ int main(int argc, char **argv)
 			goto cleanup;
 		}
 		policy_loaded = true;
+		if (namei_ext_policy_parent_exact(cgroup, config.work_root)) {
+			pass = false;
+			goto cleanup;
+		}
+		policy_parent_exact = true;
 		if (attached_program_stats(&policy, &policy_before)) {
 			pass = false;
 			goto cleanup;
@@ -749,6 +755,9 @@ cleanup:
 		    !fuse_setup)
 			pass = false;
 	}
+	if (policy_parent_exact &&
+	    namei_ext_policy_parent_global(cgroup))
+		pass = false;
 	if (policy_loaded) {
 		if (namei_ext_policy_destroy(&policy))
 			pass = false;

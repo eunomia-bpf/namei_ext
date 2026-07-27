@@ -299,6 +299,78 @@ int namei_ext_clear_targets(const char *cgroup_path)
 	return namei_ext_wait_child(pid);
 }
 
+static int namei_ext_policy_parent_command(const char *cgroup_path,
+					    const char *command,
+					    const char *parent_dir)
+{
+	pid_t pid = fork();
+
+	if (pid < 0)
+		return -errno;
+	if (!pid) {
+		char command_buf[64];
+		ssize_t nwritten;
+		int parent_fd = -1;
+		int control_fd;
+		int len;
+
+		if (namei_ext_move_self_to_cgroup(cgroup_path))
+			_exit(1);
+		if (parent_dir) {
+			parent_fd = open(parent_dir,
+					 O_PATH | O_DIRECTORY | O_CLOEXEC);
+			if (parent_fd < 0)
+				_exit(1);
+			len = snprintf(command_buf, sizeof(command_buf),
+				       "%s %d\n", command, parent_fd);
+		} else {
+			len = snprintf(command_buf, sizeof(command_buf), "%s\n",
+				       command);
+		}
+		if (len < 0 || (size_t)len >= sizeof(command_buf)) {
+			if (parent_fd >= 0)
+				close(parent_fd);
+			_exit(1);
+		}
+		control_fd = open("/sys/kernel/debug/namei_ext/policy_parent",
+				  O_WRONLY | O_CLOEXEC);
+		if (control_fd < 0) {
+			if (parent_fd >= 0)
+				close(parent_fd);
+			_exit(1);
+		}
+		nwritten = write(control_fd, command_buf, len);
+		close(control_fd);
+		if (parent_fd >= 0)
+			close(parent_fd);
+		_exit(nwritten == len ? 0 : 1);
+	}
+	return namei_ext_wait_child(pid);
+}
+
+int namei_ext_policy_parent_exact(const char *cgroup_path,
+				   const char *parent_dir)
+{
+	return namei_ext_policy_parent_command(cgroup_path, "exact",
+					       parent_dir);
+}
+
+int namei_ext_policy_parent_add(const char *cgroup_path,
+				 const char *parent_dir)
+{
+	return namei_ext_policy_parent_command(cgroup_path, "add", parent_dir);
+}
+
+int namei_ext_policy_parent_clear(const char *cgroup_path)
+{
+	return namei_ext_policy_parent_command(cgroup_path, "clear", NULL);
+}
+
+int namei_ext_policy_parent_global(const char *cgroup_path)
+{
+	return namei_ext_policy_parent_command(cgroup_path, "global", NULL);
+}
+
 int namei_ext_policy_load_attach(const char *obj_path,
 				 const char *cgroup_path,
 				 struct namei_ext_harness_policy *policy)
