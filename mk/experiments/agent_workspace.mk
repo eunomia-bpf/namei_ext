@@ -32,8 +32,11 @@ __experiment_agent_workspace_preflight: __namei_ext_guest_prepare
 	printf '{"event":"agent-workspace-preflight-done","run_id":"%s","result_level":"kvm_agent_workspace_dependency_preflight"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_PREFLIGHT_JSON)"
 
 kvm-agent-workspace-matrix: $(KERNEL_IMAGE) bpf agent-workspace
-	install -d "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)"
-	$(call NAMEI_EXT_KVM_RUN,__experiment_agent_workspace_matrix,)
+	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR))
+	$(call NAMEI_EXT_RUN_START,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR),agent-workspace,agentfs-derived,kvm_agent_workspace_lifecycle_matrix,$(AGENT_WORKSPACE_MATRIX_JSON),agent_workspace_view.bpf.c,namei_ext_agent_workspace+fuse)
+	$(call NAMEI_EXT_KVM_RUN_CAPTURE,$(KERNEL_IMAGE),__experiment_agent_workspace_matrix,,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR),$(AGENT_WORKSPACE_MATRIX_RESULT_DIR))
+	$(call NAMEI_EXT_RUN_VALIDATE_CANONICAL,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR),$(AGENT_WORKSPACE_MATRIX_JSON))
+	$(call NAMEI_EXT_RUN_COMPLETE,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR))
 
 __experiment_agent_workspace_matrix: __namei_ext_guest_prepare
 	install -d "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)"
@@ -45,9 +48,8 @@ __experiment_agent_workspace_matrix: __namei_ext_guest_prepare
 	uname -a >"$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/uname.txt"
 	cat /proc/version >"$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/proc-version.txt"
 	cat /proc/cmdline >"$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/kernel-cmdline.txt"
-	sha256sum "$(AGENT_WORKSPACE_POLICY_SOURCE)" "$(AGENT_WORKSPACE_RUNNER_SOURCE)" "$(AGENT_WORKSPACE_FUSE_RUNNER_SOURCE)" "$(AGENT_WORKSPACE_SOURCE_TRACE)" "$(AGENT_WORKSPACE_SUITE_MAKE)" "$(ROOT_DIR)/docs/tmp/2026-07-13-agent-workspace-complete-experiment-plan.md" >"$(AGENT_WORKSPACE_MATRIX_INPUTS)"
+	sha256sum "$(AGENT_WORKSPACE_POLICY_SOURCE)" "$(AGENT_WORKSPACE_RUNNER_SOURCE)" "$(AGENT_WORKSPACE_FUSE_RUNNER_SOURCE)" "$(AGENT_WORKSPACE_SOURCE_TRACE)" "$(AGENT_WORKSPACE_SUITE_MAKE)" "$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/kvm.mk" "$(ROOT_DIR)/docs/tmp/2026-07-13-agent-workspace-complete-experiment-plan.md" >"$(AGENT_WORKSPACE_MATRIX_INPUTS)"
 	sha256sum "$(KERNEL_IMAGE)" "$(AGENT_WORKSPACE_POLICY)" "$(AGENT_WORKSPACE_RUNNER)" "$(AGENT_WORKSPACE_FUSE_RUNNER)" >"$(AGENT_WORKSPACE_MATRIX_ARTIFACTS)"
-	$(call NAMEI_EXT_RUN_START,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR),agent-workspace,agentfs-derived,kvm_agent_workspace_lifecycle_matrix,$(AGENT_WORKSPACE_MATRIX_JSON),agent_workspace_view.bpf.c,namei_ext_agent_workspace+fuse)
 	printf '{"event":"agent-workspace-matrix-start","run_id":"%s","result_level":"kvm_agent_workspace_lifecycle_matrix","policy":"agent_workspace_view.bpf.c"}\n' "$(RUN_ID)" >"$(AGENT_WORKSPACE_MATRIX_JSON)"
 	printf '{"event":"agent-workspace-provenance","run_id":"%s","result_level":"kvm_agent_workspace_lifecycle_matrix","command_file":"command.txt","input_sha256_file":"inputs.sha256","artifact_sha256_file":"artifacts.sha256","kernel_config":"kernel.config","stdout_file":"stdout.log","stderr_file":"stderr.log"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"
 	"$(AGENT_WORKSPACE_RUNNER)" --matrix "$(AGENT_WORKSPACE_POLICY)" "$(AGENT_WORKSPACE_MATRIX_JSON)" /sys/fs/cgroup "$(AGENT_WORKSPACE_SOURCE_TRACE)" >>"$(AGENT_WORKSPACE_MATRIX_STDOUT)" 2>>"$(AGENT_WORKSPACE_MATRIX_STDERR)"
@@ -75,5 +77,3 @@ __experiment_agent_workspace_matrix: __namei_ext_guest_prepare
 	done
 	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(AGENT_WORKSPACE_MATRIX_DMESG)" >/dev/null
 	printf '{"event":"agent-workspace-matrix-done","run_id":"%s","result_level":"kvm_agent_workspace_lifecycle_matrix"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"
-	for f in run.json observations.jsonl command.txt inputs.sha256 artifacts.sha256 stdout.log stderr.log kernel.config uname.txt proc-version.txt kernel-cmdline.txt dmesg.log; do test -e "$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)/$$f"; done
-	$(call NAMEI_EXT_RUN_COMPLETE,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR))

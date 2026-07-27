@@ -7,16 +7,16 @@ CACHE_LOCALITY_POLICY ?= $(BUILD_ROOT)/bpf/cache_locality_view.bpf.o
 TABLE_REDIRECT_POLICY ?= $(BUILD_ROOT)/bpf/table_redirect.bpf.o
 PASS_ONLY_POLICY ?= $(BUILD_ROOT)/bpf/pass_only.bpf.o
 
+define NAMEI_EXT_KVM_RUN_IMAGE
+$(VNG) --run "$(1)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) $(2) RUN_ID=$(RUN_ID) $(3)"
+endef
+
 define NAMEI_EXT_KVM_RUN
-$(VNG) --run "$(KERNEL_IMAGE)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) $(1) RUN_ID=$(RUN_ID) $(2)"
+$(call NAMEI_EXT_KVM_RUN_IMAGE,$(KERNEL_IMAGE),$(1),$(2))
 endef
 
-define NAMEI_EXT_RUN_START
-test -s "$(KERNEL_COMMIT_FILE)"; kernel_commit=$$(cat "$(KERNEL_COMMIT_FILE)"); case "$$kernel_commit" in (*[!0-9a-f]*|'') exit 1;; esac; test "$${#kernel_commit}" -eq 40; jq -n --arg schema "namei_ext.run.v1" --arg run_id "$(RUN_ID)" --arg suite "$(2)" --arg source_system "$(3)" --arg result_level "$(4)" --arg observations "$(notdir $(5))" --arg policy "$(6)" --arg runner "$(7)" --arg kernel_commit "$$kernel_commit" --arg started_at "$$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{schema:$$schema,run_id:$$run_id,suite:$$suite,source_system:$$source_system,result_level:$$result_level,status:"running",started_at:$$started_at,observations:$$observations,kernel_commit:$$kernel_commit,policy:$$policy,runner:$$runner}' >"$(1)/run.json"
-endef
-
-define NAMEI_EXT_RUN_COMPLETE
-completed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); jq --arg completed_at "$$completed_at" '.status = "completed" | .completed_at = $$completed_at' "$(1)/run.json" >"$(1)/run.json.tmp"; mv -f "$(1)/run.json.tmp" "$(1)/run.json"
+define NAMEI_EXT_KVM_RUN_CAPTURE
+if ! $(call NAMEI_EXT_KVM_RUN_IMAGE,$(1),$(2),$(3)) >"$(4)/launcher.stdout.log" 2>"$(4)/launcher.stderr.log"; then failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); jq --arg failed_at "$$failed_at" '.status = "failed" | .failed_at = $$failed_at | .failure = "kvm-launch-or-guest-command"' "$(5)/run.json" >"$(5)/run.json.tmp"; mv -f "$(5)/run.json.tmp" "$(5)/run.json"; exit 1; fi
 endef
 
 .PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-functional kvm-bench \

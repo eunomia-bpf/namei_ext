@@ -28,7 +28,11 @@ evidence under `results/`.
 Formal case studies now live under `experiments/`, mechanism regressions remain
 under `tests/`, and performance suites remain under `bench/`. Per-case KVM
 recipes live in `mk/experiments/`; `mk/kvm.mk` retains shared guest setup and
-mechanism suites. The old ccache matrix is isolated in
+mechanism suites. Standard performance matrices live in `mk/benchmarks/`.
+`mk/results.mk` owns immutable result-root creation and the common
+`namei_ext.run.v1` start, artifact-validation, and completion gates. Formal
+runs start on the host before KVM launch, preserve launcher logs, validate
+while `running`, and only then transition to `completed`. The old ccache matrix is isolated in
 `mk/experiments/legacy_build_cache.mk`.
 
 `runner/libnamei_ext_harness.a` owns repeated mechanism lifecycle code:
@@ -41,9 +45,17 @@ harness. The historical 24,286-line multi-workload runner is isolated under
 
 Canonical case-study result roots use `namei_ext.run.v1` metadata and preserve
 `observations.jsonl`, commands, separate source and binary hash manifests,
-stdout/stderr, kernel configuration and identity, and dmesg. Kernel commit
+guest and launcher stdout/stderr, kernel configuration and identity, and dmesg. Kernel commit
 identity is captured on the host before KVM boot and validated in the guest;
 missing or malformed provenance is a hard failure.
+
+Multi-boot benchmark suites use the same run schema with
+`layout="boot-matrix"`. The root records the fixed matrix and both stock and
+patched kernel identities. Every boot must preserve its own `boot.json`,
+observations, kernel config/commit, uname, `/proc/version`, command line, CPU
+snapshots, and dmesg before the root can transition to `completed`. Formal
+matrices compare every observed boot and cell key with the declared plan and
+establish the selected kernel identity from inside the guest.
 
 The infrastructure migration passed the real modified-kernel KVM path for
 Sandboxed Application File Sharing, Build Action Sandboxing, and the Agent

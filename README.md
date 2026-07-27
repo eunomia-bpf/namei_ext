@@ -25,6 +25,9 @@ experiments/            focused industrial case-study runners
 tests/                  ABI, policy-load, semantic, and functional regressions
 bench/                  VFS performance workloads
 mk/experiments/         Make-owned KVM suites for individual case studies
+mk/benchmarks/          Make-owned standard performance matrices
+mk/results.mk           shared run lifecycle and raw-artifact validation
+analysis/               derived statistics and figures from raw observations
 workloads/legacy/       evidence using the superseded workload numbering
 results/                raw observations, logs, hashes, and run metadata
 ```
@@ -51,5 +54,13 @@ execution does not count as Phase 1 validation.
 
 Canonical KVM case-study result roots contain `run.json`,
 `observations.jsonl`, `command.txt`, source and artifact hash manifests,
-stdout/stderr, kernel identity and configuration, and dmesg. Workload
-correctness gates run before performance results are interpreted.
+guest and launcher stdout/stderr, kernel identity and configuration, and
+dmesg. Result roots are immutable by `RUN_ID`; artifact and correctness gates
+run while the result is `running`, before it can transition to `completed`.
+
+Multi-boot benchmark matrices use the same `namei_ext.run.v1` lifecycle and
+place kernel identity, configuration, logs, and raw cell records under one
+directory per boot. Suite Makefiles own only their workload matrix and
+correctness gates; `mk/kvm.mk` owns execution and `mk/results.mk` owns the
+minimum result contract. Multi-boot completion also requires exact agreement
+between the declared and observed matrix and in-guest kernel identity.

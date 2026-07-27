@@ -18,6 +18,7 @@ include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
+include $(ROOT_DIR)/mk/results.mk
 include $(ROOT_DIR)/mk/kvm.mk
 include $(ROOT_DIR)/mk/workload.mk
 include $(ROOT_DIR)/mk/experiments/legacy_build_cache.mk
@@ -28,7 +29,7 @@ include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 
 .DEFAULT_GOAL := phase1
 
-.PHONY: all phase1 phase1-smoke check-prereqs abi bpf bench functional \
+.PHONY: all phase1 phase1-smoke check-prereqs result-contract abi bpf bench functional \
 	policy-load policy-semantic runner agent-workspace application-file-sharing \
 	build-action-sandboxing \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
@@ -42,7 +43,7 @@ all: phase1
 
 phase1: phase1-smoke kvm-policy-load kvm-functional
 
-phase1-smoke: check-prereqs abi bpf functional bench policy-load policy-semantic kernel-objects kvm-smoke
+phase1-smoke: check-prereqs result-contract abi bpf functional bench policy-load policy-semantic kernel-objects kvm-smoke
 
 experiments: experiment-agent-workspace experiment-env-cache
 
@@ -61,6 +62,10 @@ check-prereqs:
 	command -v pahole >/dev/null
 	test -r /dev/kvm
 	test -w /dev/kvm
+
+result-contract: kernel-provenance
+	$(MAKE) -C "$(ROOT_DIR)/tests/infrastructure" \
+		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" test
 
 bpf:
 	$(MAKE) -C "$(ROOT_DIR)/bpf" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
@@ -149,6 +154,7 @@ clean: kernel-clean docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/functional" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_load" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/tests/policy_semantic" BUILD_ROOT="$(BUILD_ROOT)" clean
+	$(MAKE) -C "$(ROOT_DIR)/tests/infrastructure" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/experiments/legacy_oracle" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/runner" BUILD_ROOT="$(BUILD_ROOT)" clean
 	$(MAKE) -C "$(ROOT_DIR)/experiments/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean

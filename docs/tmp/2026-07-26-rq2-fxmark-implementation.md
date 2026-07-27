@@ -22,6 +22,20 @@ The implementation follows the repository's unified infrastructure rules:
 - no checked-in shell script, policy configuration language, or second
   experiment-control schema is introduced.
 
+After the initial implementation, the suite was converged onto the shared
+infrastructure rather than retaining a benchmark-specific lifecycle:
+
+- `mk/kvm.mk` launches both stock and patched images through the same
+  image-parameterized KVM executor;
+- `mk/results.mk` owns `namei_ext.run.v1` start, completion, and validation;
+- both preflight and full runs use `layout="boot-matrix"`;
+- input sources and built artifacts have separate hash manifests; and
+- each boot must prove the selected kernel by matching in-guest kernel notes
+  and BTF hashes to the sections extracted from the selected `vmlinux`, plus
+  checking `namei_ext_lookup` symbol presence, then preserve its GNU build ID,
+  config, release, `/proc/version`, CPU snapshots, observations, launcher
+  logs, and dmesg before the root is completed.
+
 ## Source And Published Protocol
 
 The Makefile downloads the official FxMark archive at commit
@@ -210,10 +224,21 @@ order across ten blocks. Each full boot runs `MRPL`, `MRPM`, and `MRPH` at 1,
 2, and 4 workers for 30 seconds each. The lower store is a 1-GiB `noatime`
 tmpfs under the vng-provided writable `/tmp` overlay.
 
+The corrected uninstrumented implementation passed the five-boot, two-second
+KVM preflight under run
+`20260726T-unified-fxmark-preflight-v3`: all conditions passed, planned and
+observed boot/cell key sets were identical, and in-guest kernel-notes/BTF
+hashes and kernel-flavor checks matched the selected stock and patched builds.
+These results validate the experimental path only; they are not used as
+performance evidence.
+
 Raw results live under
 `results/experiments/fxmark-rq2/<RUN_ID>/boots/`. Each boot preserves its
-kernel config and commit, uname, command line, before/after `/proc/stat`,
-stdout/stderr, FUSE stats where applicable, observation JSONL, and dmesg.
+kernel config and expected commit, GNU build ID, actual kernel-notes/BTF hashes
+and kernel flavor, release, uname, command line, before/after `/proc/stat`,
+launcher stdout/stderr, FUSE stats where applicable, observation JSONL, and
+dmesg. Completion requires exact equality between the planned and observed
+boot/cell key sets, not only matching row counts.
 
 ## Analysis
 
