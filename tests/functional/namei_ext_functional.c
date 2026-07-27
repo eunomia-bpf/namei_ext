@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <linux/bpf.h>
 #include <linux/filter.h>
+#include <linux/openat2.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -95,6 +96,28 @@ static int expect_open(const char *name, const char *path, int want_errno,
 	return -1;
 }
 
+static int expect_openat2_cached(const char *name, const char *path,
+				 uint64_t flags, FILE *out)
+{
+	struct open_how how = {
+		.flags = flags,
+		.resolve = RESOLVE_CACHED,
+	};
+	int fd;
+
+	errno = 0;
+	fd = syscall(SYS_openat2, AT_FDCWD, path, &how, sizeof(how));
+	if (fd >= 0) {
+		close(fd);
+		emit_case(out, name, true, 0,
+			  "openat2 RESOLVE_CACHED succeeded");
+		return 0;
+	}
+	emit_case(out, name, false, errno,
+		  "openat2 RESOLVE_CACHED failed");
+	return -1;
+}
+
 static int expect_read_file(const char *name, const char *path,
 			    const char *want, FILE *out)
 {
@@ -122,6 +145,117 @@ static int expect_read_file(const char *name, const char *path,
 	}
 	emit_case(out, name, false, 0, "read content mismatch");
 	return -1;
+}
+
+static int register_target_path(const char *path, unsigned int target_id);
+
+static bool read_matches_either(const char *path, const char *first,
+				const char *second)
+{
+	char buf[64] = {};
+	ssize_t nread;
+	int fd;
+
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return false;
+	nread = read(fd, buf, sizeof(buf) - 1);
+	close(fd);
+	if (nread < 0)
+		return false;
+	return !strcmp(buf, first) || !strcmp(buf, second);
+}
+
+static int expect_atomic_target_replacement(const char *path,
+					    const char *first_target,
+					    const char *second_target,
+					    unsigned int target_id,
+					    FILE *out)
+{
+	const unsigned int replacements = 128;
+	int stop_pipe[2];
+	int child_status;
+	unsigned int i;
+	pid_t child;
+	char stop = 1;
+	int err = 0;
+	int flags;
+
+	if (pipe(stop_pipe)) {
+		emit_case(out, "select_concurrent_replacement", false, errno,
+			  "stop pipe failed");
+		return -1;
+	}
+	flags = fcntl(stop_pipe[0], F_GETFL);
+	if (flags < 0 ||
+	    fcntl(stop_pipe[0], F_SETFL, flags | O_NONBLOCK)) {
+		err = errno;
+		close(stop_pipe[0]);
+		close(stop_pipe[1]);
+		emit_case(out, "select_concurrent_replacement", false, err,
+			  "set nonblocking stop pipe failed");
+		return -1;
+	}
+
+	child = fork();
+	if (child < 0) {
+		err = errno;
+		close(stop_pipe[0]);
+		close(stop_pipe[1]);
+		emit_case(out, "select_concurrent_replacement", false, err,
+			  "reader fork failed");
+		return -1;
+	}
+	if (child == 0) {
+		bool failed = false;
+
+		close(stop_pipe[1]);
+		for (;;) {
+			ssize_t nread;
+
+			if (!failed &&
+			    !read_matches_either(path, "selected\n",
+						 "replacement\n"))
+				failed = true;
+			nread = read(stop_pipe[0], &stop, sizeof(stop));
+			if (nread == (ssize_t)sizeof(stop))
+				break;
+			if (nread < 0 && errno != EAGAIN &&
+			    errno != EWOULDBLOCK)
+				failed = true;
+		}
+		close(stop_pipe[0]);
+		_exit(failed ? 1 : 0);
+	}
+
+	close(stop_pipe[0]);
+	for (i = 0; i < replacements; i++) {
+		const char *target = i & 1 ? first_target : second_target;
+
+		err = register_target_path(target, target_id);
+		if (err)
+			break;
+	}
+	if (write(stop_pipe[1], &stop, sizeof(stop)) !=
+	    (ssize_t)sizeof(stop) && !err)
+		err = -errno;
+	close(stop_pipe[1]);
+	if (waitpid(child, &child_status, 0) < 0) {
+		if (!err)
+			err = -errno;
+	} else if ((!WIFEXITED(child_status) ||
+		    WEXITSTATUS(child_status)) && !err) {
+		err = -EIO;
+	}
+
+	if (err) {
+		emit_case(out, "select_concurrent_replacement", false, -err,
+			  "reader observed invalid target state");
+		return -1;
+	}
+	emit_case(out, "select_concurrent_replacement", true, 0,
+		  "each read observed one complete registered target");
+	return 0;
 }
 
 static int expect_access(const char *name, const char *path, int mode,
@@ -1085,6 +1219,12 @@ int main(int argc, char **argv)
 				       portal_payload, 0, out);
 		fails += !!expect_read_file("select_portal_payload_read",
 					    portal_payload, "selected\n", out);
+		fails += !!expect_openat2_cached(
+			"select_portal_final_cached", portal,
+			O_PATH | O_DIRECTORY | O_CLOEXEC, out);
+		fails += !!expect_openat2_cached(
+			"select_portal_payload_cached", portal_payload,
+			O_RDONLY | O_CLOEXEC, out);
 
 		err = register_target_path(replacement_target_dir, 1);
 		if (err) {
@@ -1109,6 +1249,9 @@ int main(int argc, char **argv)
 			  "original target restored");
 		fails += !!expect_read_file("select_restored_payload_read",
 					    portal_payload, "selected\n", out);
+		fails += !!expect_atomic_target_replacement(
+			portal_payload, target_dir, replacement_target_dir, 1,
+			out);
 
 		err = destroy_policy(&policy);
 		if (err) {

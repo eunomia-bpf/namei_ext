@@ -59,6 +59,21 @@ returned guarantees that no later lookup can borrow the removed record.
 This stage preserves current ref-walk application semantics. A short FxMark
 preflight isolates how much of the `SELECT` gap came from the mutex.
 
+### Stage 1 result
+
+Kernel commit `83d52c216` and source commit `0a6a092` passed the complete Phase
+1 correctness path, policy-semantic KVM run, strict checkpatch, full kernel
+build, and an independent RCU lifetime review. Functional coverage now includes
+atomic replacement and restoration of one target ID, with both selected
+payloads read through the policy path.
+
+The clean-tree six-condition preflight is
+`results/experiments/fxmark-rq2-preflight/20260727T-rcu-target-registry-stage1-v1/`.
+It measured 1.715 million `SELECT` operations/s, up from 1.619 million in the
+immediately preceding committed-tree preflight. The increase is about 5.9%,
+but `SELECT` remained only 0.85x the optimized FUSE throughput. The mutex was
+therefore a real but secondary cost; Stage 2 remains necessary.
+
 ## Stage 2: Borrowed Target During RCU Walk
 
 If Stage 1 is insufficient, an RCU pathname walk can borrow the selected
