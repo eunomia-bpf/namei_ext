@@ -347,7 +347,7 @@ __fxmark_rq2_guest:
 	done
 	cat /proc/stat >"$(FXMARK_BOOT_RESULT_DIR)/proc-stat-after.txt"
 	dmesg >"$(FXMARK_BOOT_RESULT_DIR)/dmesg.log"
-	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(FXMARK_BOOT_RESULT_DIR)/dmesg.log"
+	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(FXMARK_BOOT_RESULT_DIR)/dmesg.log)
 	umount "$(FXMARK_GUEST_MOUNT)"
 	jq -n \
 		--arg condition "$(CONDITION)" \

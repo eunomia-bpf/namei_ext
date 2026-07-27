@@ -22,9 +22,10 @@ Phase 1 policy roles:
 - `agent_workspace_view.bpf.c`: Agent workspace dependency-preflight policy
   for stable logical `ws` directory selection plus whiteout-style hiding. This
   is a preflight policy, not the full Experiment A policy matrix.
-- `table_redirect.bpf.c`: exact-map diagnostic policy for workloads where a
-  precomputed mapping is the relevant sanity check. It must stay limited to map
-  lookup plus PASS/REDIRECT.
+- `table_redirect.bpf.c`: retained legacy exact-map diagnostic. It is excluded
+  from the default current benchmark and runs only when explicitly selected
+  through `BENCH_VARIANTS`. It must stay limited to map lookup plus
+  PASS/REDIRECT.
 - `build_graph_view.bpf.c`: build graph precedence policy family.
 - `sandbox_fixture_view.bpf.c`: test/staging fixture substitution family.
 - `checkpoint_restore_view.bpf.c`: checkpoint/restore session consistency

@@ -63,6 +63,15 @@ workspace namei_ext/FUSE matrix, followed by a complete `make phase1` run. The
 standalone implementation and validation record is
 `docs/tmp/2026-07-26-unified-experiment-infrastructure-implementation.md`.
 
+A 2026-07-27 follow-up audit retained this layout and removed the remaining
+control-plane drift. The top-level formal-suite catalog is now also the source
+of KVM provenance dependencies, current suites share one fail-fast dmesg gate,
+and the default mechanism microbenchmark runs only `baseline`, `pass_only`,
+and `policy`. The retired table comparison remains available only through an
+explicit `BENCH_VARIANTS` override and is not part of the current benchmark
+default. The audit and modified-kernel KVM validation are recorded in
+`docs/tmp/2026-07-27-unified-infrastructure-followup-audit.md`.
+
 ## Current Make Control Plane
 
 The default Make path separates current validation, prototype experiment

@@ -5,4 +5,4 @@ BENCH_ITERS ?= 2000
 BENCH_LATENCY_SAMPLES ?= 0
 BENCH_LATENCY_BATCH ?= 64
 BENCH_RANDOMIZE_ORDER ?= 1
-BENCH_VARIANTS ?= baseline pass_only table_redirect_empty table_redirect_hit policy
+BENCH_VARIANTS ?= baseline pass_only policy

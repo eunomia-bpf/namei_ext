@@ -46,6 +46,6 @@ __experiment_build_action_sandboxing_preflight: __namei_ext_guest_prepare
 	jq -e 'select(.event == "build-action-sandboxing-summary" and .pass == true and .bazel_actions == 2 and .concurrent == true)' "$(BUILD_ACTION_SANDBOXING_JSON)" >/dev/null
 	! jq -e 'select(.pass == false)' "$(BUILD_ACTION_SANDBOXING_JSON)" >/dev/null
 	dmesg >"$(BUILD_ACTION_SANDBOXING_DMESG)"
-	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(BUILD_ACTION_SANDBOXING_DMESG)" >/dev/null
+	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(BUILD_ACTION_SANDBOXING_DMESG))
 	printf '{"event":"build-action-sandboxing-done","run_id":"%s","result_level":"kvm_bazel_action_preflight"}\n' "$(RUN_ID)" >>"$(BUILD_ACTION_SANDBOXING_JSON)"
 	test -s "$(BUILD_ACTION_SANDBOXING_OUTPUTS)"

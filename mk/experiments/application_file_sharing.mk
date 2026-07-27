@@ -39,5 +39,5 @@ __experiment_application_file_sharing_preflight: __namei_ext_guest_prepare
 	"$(APPLICATION_FILE_SHARING_RUNNER)" "$(APPLICATION_FILE_SHARING_POLICY)" "$(APPLICATION_FILE_SHARING_JSON)" /sys/fs/cgroup >>"$(APPLICATION_FILE_SHARING_STDOUT)" 2>>"$(APPLICATION_FILE_SHARING_STDERR)"
 	! jq -e 'select(.pass == false)' "$(APPLICATION_FILE_SHARING_JSON)" >/dev/null
 	dmesg >"$(APPLICATION_FILE_SHARING_DMESG)"
-	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(APPLICATION_FILE_SHARING_DMESG)" >/dev/null
+	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(APPLICATION_FILE_SHARING_DMESG))
 	printf '{"event":"application-file-sharing-done","run_id":"%s","result_level":"kvm_application_file_sharing_preflight"}\n' "$(RUN_ID)" >>"$(APPLICATION_FILE_SHARING_JSON)"

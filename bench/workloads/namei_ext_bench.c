@@ -1272,7 +1272,7 @@ int main(int argc, char **argv)
 
 	if (argc < 5 || argc > 10) {
 		fprintf(stderr,
-			"usage: %s RESULT_JSONL REDIRECT_POLICY_BPF_O SAMPLES ITERATIONS [CGROUP [PASS_ONLY_BPF_O [TABLE_REDIRECT_BPF_O [LATENCY_SAMPLES [LATENCY_BATCH]]]]]\n",
+			"usage: %s RESULT_JSONL REDIRECT_POLICY_BPF_O SAMPLES ITERATIONS [CGROUP [PASS_ONLY_BPF_O [TABLE_REDIRECT_BPF_O|- [LATENCY_SAMPLES [LATENCY_BATCH]]]]]\n",
 			argv[0]);
 		return 2;
 	}
@@ -1292,6 +1292,14 @@ int main(int argc, char **argv)
 	bench_run_id = getenv("NAMEI_EXT_RUN_ID");
 	if (validate_variant_filter()) {
 		fprintf(stderr, "invalid NAMEI_EXT_BENCH_VARIANTS\n");
+		return 2;
+	}
+	if (variant_filter &&
+	    (variant_requested("table_redirect_empty") ||
+	     variant_requested("table_redirect_hit")) &&
+	    (argc < 8 || !strcmp(argv[7], "-"))) {
+		fprintf(stderr,
+			"table_redirect variant requested without a policy object\n");
 		return 2;
 	}
 	init_order_seed();
@@ -1340,7 +1348,7 @@ int main(int argc, char **argv)
 			.obj_path = argv[6],
 			.redirects = false,
 		});
-	if (argc >= 8) {
+	if (argc >= 8 && strcmp(argv[7], "-")) {
 		maybe_add_variant(variants, &variant_count,
 				  &(struct variant_case) {
 			.name = "table_redirect_empty",

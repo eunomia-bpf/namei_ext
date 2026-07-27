@@ -75,5 +75,5 @@ __experiment_agent_workspace_matrix: __namei_ext_guest_prepare
 	for mechanism in namei_ext feature_equivalent_fuse custom_or_stackable_fs; do \
 		jq -e --arg mechanism "$$mechanism" 'select(.event == "agent-workspace-boundary" and .mechanism == $$mechanism)' "$(AGENT_WORKSPACE_MATRIX_JSON)" >/dev/null; \
 	done
-	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN' "$(AGENT_WORKSPACE_MATRIX_DMESG)" >/dev/null
+	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(AGENT_WORKSPACE_MATRIX_DMESG))
 	printf '{"event":"agent-workspace-matrix-done","run_id":"%s","result_level":"kvm_agent_workspace_lifecycle_matrix"}\n' "$(RUN_ID)" >>"$(AGENT_WORKSPACE_MATRIX_JSON)"

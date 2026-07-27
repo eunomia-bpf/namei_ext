@@ -7,6 +7,11 @@ BUILD_ROOT ?= $(ROOT_DIR)/.build
 CACHE_ROOT ?= $(ROOT_DIR)/.cache
 RESULT_ROOT ?= $(ROOT_DIR)/results
 
+FORMAL_EXPERIMENT_TARGETS := \
+	kvm-agent-workspace-matrix \
+	kvm-application-file-sharing-preflight \
+	kvm-build-action-sandboxing-preflight
+
 NPROC ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 JOBS ?= $(NPROC)
 ifeq ($(origin RUN_ID), undefined)
@@ -38,11 +43,6 @@ include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 	w1-oracle \
 	help clean clean-results
 .NOTPARALLEL: phase1 experiments
-
-FORMAL_EXPERIMENT_TARGETS := \
-	kvm-agent-workspace-matrix \
-	kvm-application-file-sharing-preflight \
-	kvm-build-action-sandboxing-preflight
 
 all: phase1
 
@@ -122,7 +122,7 @@ help:
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
 	@printf '%s\n' '                       run two concurrent source-derived Bazel actions through namei_ext in KVM'
 	@printf '%s\n' '  make kvm-fxmark-rq2-preflight'
-	@printf '%s\n' '                       run one real MRPL cell in five isolated stock/patched/FUSE KVM boots'
+	@printf '%s\n' '                       run one real MRPL cell in six isolated stock/patched/FUSE KVM boots'
 	@printf '%s\n' '  make kvm-fxmark-rq2'
 	@printf '%s\n' '                       run the complete paired FxMark RQ2 matrix in isolated KVM boots'
 	@printf '%s\n' '  make experiment-fxmark-rq2'
