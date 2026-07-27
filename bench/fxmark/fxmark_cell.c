@@ -56,6 +56,12 @@ struct fxmark_result {
 	double works_per_second;
 };
 
+struct policy_stats {
+	uint32_t program_id;
+	uint64_t run_time_ns;
+	uint64_t run_count;
+};
+
 static struct tree_count observed_tree;
 
 static unsigned long long monotonic_ms(void)
@@ -441,8 +447,8 @@ static int extract_u64(const char *json, const char *field,
 	return 0;
 }
 
-static int attached_program_id(struct namei_ext_harness_policy *policy,
-			       uint32_t *program_id)
+static int attached_program_stats(struct namei_ext_harness_policy *policy,
+				  struct policy_stats *stats)
 {
 	struct bpf_prog_info info = {};
 	uint32_t info_len = sizeof(info);
@@ -457,7 +463,9 @@ static int attached_program_id(struct namei_ext_harness_policy *policy,
 		return -errno;
 	if (attached_count != 1 || attached_ids[0] != info.id)
 		return -EINVAL;
-	*program_id = info.id;
+	stats->program_id = info.id;
+	stats->run_time_ns = info.run_time_ns;
+	stats->run_count = info.run_cnt;
 	return 0;
 }
 
@@ -473,8 +481,8 @@ static int write_observation(const struct cell_config *config, bool pass,
 			     const struct tree_count *expected,
 			     int fxmark_status, int fuse_status,
 			     const struct rusage *fuse_usage,
-			     uint32_t attached_before,
-			     uint32_t attached_after,
+			     const struct policy_stats *policy_before,
+			     const struct policy_stats *policy_after,
 			     unsigned long long fuse_setup,
 			     unsigned long long fuse_measured,
 			     bool cgroup_verified,
@@ -496,6 +504,10 @@ static int write_observation(const struct cell_config *config, bool pass,
 		"\"actual_directories\":%llu,\"expected_directories\":%llu,"
 		"\"attached_program_id_before\":%u,"
 		"\"attached_program_id_after\":%u,"
+		"\"policy_run_time_ns_before\":%llu,"
+		"\"policy_run_time_ns_after\":%llu,"
+		"\"policy_run_count_before\":%llu,"
+		"\"policy_run_count_after\":%llu,"
 			"\"attachment_stable\":%s,"
 			"\"select_required_for_logical_path\":%s,"
 			"\"leader_cgroup_verified\":%s,"
@@ -511,8 +523,14 @@ static int write_observation(const struct cell_config *config, bool pass,
 		config->ncore, config->duration, fxmark_status, fuse_status,
 		result->seconds, result->works, result->works_per_second,
 		actual->files, expected->files, actual->directories,
-		expected->directories, attached_before, attached_after,
-			attached_before && attached_before == attached_after ?
+		expected->directories, policy_before->program_id,
+		policy_after->program_id,
+		(unsigned long long)policy_before->run_time_ns,
+		(unsigned long long)policy_after->run_time_ns,
+		(unsigned long long)policy_before->run_count,
+		(unsigned long long)policy_after->run_count,
+			policy_before->program_id &&
+			policy_before->program_id == policy_after->program_id ?
 				"true" : "false",
 			!strcmp(config->condition, "select") ? "true" : "false",
 			cgroup_verified ? "true" : "false",
@@ -590,8 +608,8 @@ int main(int argc, char **argv)
 	char begin_command[PATH_MAX * 2];
 	char end_command[PATH_MAX * 2];
 	char fuse_stats[8192] = {};
-	uint32_t attached_before = 0;
-	uint32_t attached_after = 0;
+	struct policy_stats policy_before = {};
+	struct policy_stats policy_after = {};
 	unsigned long long fuse_setup = 0;
 	unsigned long long fuse_measured = 0;
 	pid_t fuse_pid = -1;
@@ -668,7 +686,7 @@ int main(int argc, char **argv)
 			goto cleanup;
 		}
 		policy_loaded = true;
-		if (attached_program_id(&policy, &attached_before)) {
+		if (attached_program_stats(&policy, &policy_before)) {
 			pass = false;
 			goto cleanup;
 		}
@@ -711,8 +729,8 @@ int main(int argc, char **argv)
 		pass = false;
 
 	if (policy_loaded &&
-	    (attached_program_id(&policy, &attached_after) ||
-	     attached_after != attached_before))
+	    (attached_program_stats(&policy, &policy_after) ||
+	     policy_after.program_id != policy_before.program_id))
 		pass = false;
 
 cleanup:
@@ -743,10 +761,9 @@ cleanup:
 
 	if (write_observation(&config, pass, &result, &actual, &expected,
 			      fxmark_status, fuse_status, &fuse_usage,
-			      attached_before, attached_after, fuse_setup,
-			      fuse_measured, cgroup_verified, stdout_path, stderr_path,
-			      cgroup_path,
-			      fuse_stats_path))
+			      &policy_before, &policy_after, fuse_setup,
+			      fuse_measured, cgroup_verified, stdout_path,
+			      stderr_path, cgroup_path, fuse_stats_path))
 		return 1;
 	namei_ext_remove_tree(config.work_root);
 	return pass ? 0 : 1;

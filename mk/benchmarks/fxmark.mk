@@ -100,13 +100,14 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 	$(call NAMEI_EXT_RUN_START,$(FXMARK_PREFLIGHT_RESULT_DIR),fxmark-rq2,fxmark-atc2016,kvm_fxmark_rq2_preflight,$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl,fxmark_pass.bpf.c+fxmark_select.bpf.c,fxmark_cell+fxmark_fuse)
 	jq --arg stock_kernel_commit "$(STOCK_KERNEL_COMMIT)" \
 		--argjson duration_seconds "$(FXMARK_PREFLIGHT_DURATION)" \
-		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","pass","select","fuse"],types:["MRPL"],workers:[1],repetitions:1,duration_seconds:$$duration_seconds}' \
+		--argjson bpf_stats "$(FXMARK_BPF_STATS)" \
+		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","pass","select","fuse"],types:["MRPL"],workers:[1],repetitions:1,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
 		"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json" \
 		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json.tmp"
 	mv -f "$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json.tmp" \
 		"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json"
 	printf '%s\n' \
-		'make kvm-fxmark-rq2-preflight RUN_ID=$(RUN_ID)' \
+		'make kvm-fxmark-rq2-preflight RUN_ID=$(RUN_ID) FXMARK_BPF_STATS=$(FXMARK_BPF_STATS)' \
 		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/command.txt"
 	sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
 		"$(ROOT_DIR)/mk/benchmarks/fxmark.mk" \
@@ -144,7 +145,7 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 		printf '1|%s|MRPL|1\n' "$$condition" >>"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"; \
 		boot_dir="$(FXMARK_PREFLIGHT_RESULT_DIR)/boots/block-01-$$condition"; \
 		install -d "$$boot_dir"; \
-		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=1 FXMARK_RUN_DURATION=$(FXMARK_PREFLIGHT_DURATION) FXMARK_RUN_TYPES=MRPL FXMARK_RUN_CORES=1 FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_FLAVOR=$$flavor,$$boot_dir,$(FXMARK_PREFLIGHT_RESULT_DIR)); \
+		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=1 FXMARK_RUN_DURATION=$(FXMARK_PREFLIGHT_DURATION) FXMARK_RUN_TYPES=MRPL FXMARK_RUN_CORES=1 FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_PREFLIGHT_RESULT_DIR)); \
 	done
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"
@@ -181,11 +182,12 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 		--arg types "$(FXMARK_TYPES)" \
 		--arg cores "$(FXMARK_CORES)" \
 		--argjson duration_seconds "$(FXMARK_DURATION)" \
-		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","pass","select","fuse"],types:($$types|split(" ")),workers:($$cores|split(" ")|map(tonumber)),repetitions:$$repetitions,duration_seconds:$$duration_seconds}' \
+		--argjson bpf_stats "$(FXMARK_BPF_STATS)" \
+		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","pass","select","fuse"],types:($$types|split(" ")),workers:($$cores|split(" ")|map(tonumber)),repetitions:$$repetitions,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
 		"$(FXMARK_RESULT_DIR)/run.json" \
 		>"$(FXMARK_RESULT_DIR)/run.json.tmp"
 	mv -f "$(FXMARK_RESULT_DIR)/run.json.tmp" "$(FXMARK_RESULT_DIR)/run.json"
-	printf '%s\n' 'make kvm-fxmark-rq2 RUN_ID=$(RUN_ID)' \
+	printf '%s\n' 'make kvm-fxmark-rq2 RUN_ID=$(RUN_ID) FXMARK_BPF_STATS=$(FXMARK_BPF_STATS)' \
 		>"$(FXMARK_RESULT_DIR)/command.txt"
 	lscpu >"$(FXMARK_RESULT_DIR)/host-lscpu.txt"
 	find /sys/devices/system/cpu -path '*/cpufreq/scaling_governor' \
@@ -231,7 +233,7 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 			for type in $(FXMARK_TYPES); do for workers in $(FXMARK_CORES); do printf '%s|%s|%s|%s\n' "$$repetition" "$$condition" "$$type" "$$workers" >>"$(FXMARK_RESULT_DIR)/expected-cells.txt"; done; done; \
 			boot_dir="$(FXMARK_RESULT_DIR)/boots/block-$$(printf '%02d' "$$repetition")-$$condition"; \
 			install -d "$$boot_dir"; \
-			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=$$repetition FXMARK_RUN_DURATION=$(FXMARK_DURATION) FXMARK_RUN_TYPES='$(FXMARK_TYPES)' FXMARK_RUN_CORES='$(FXMARK_CORES)' FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_FLAVOR=$$flavor,$$boot_dir,$(FXMARK_RESULT_DIR)); \
+			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=$$repetition FXMARK_RUN_DURATION=$(FXMARK_DURATION) FXMARK_RUN_TYPES='$(FXMARK_TYPES)' FXMARK_RUN_CORES='$(FXMARK_CORES)' FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_RESULT_DIR)); \
 		done; \
 	done
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-rq2-finalize \
@@ -298,10 +300,12 @@ __fxmark_rq2_guest:
 	test -n "$(FXMARK_BOOT_KERNEL_NOTES_SHA256)"
 	test -n "$(FXMARK_BOOT_KERNEL_BTF_SHA256)"
 	test -n "$(FXMARK_BOOT_KERNEL_FLAVOR)"
+	case "$(FXMARK_BPF_STATS)" in 0|1) ;; *) exit 1 ;; esac
 	install -d "$(FXMARK_BOOT_RESULT_DIR)/raw" "$(FXMARK_GUEST_MOUNT)"
 	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
 	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
 	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	printf '%s\n' "$(FXMARK_BPF_STATS)" >/proc/sys/kernel/bpf_stats_enabled
 	mount -t tmpfs -o "size=$(FXMARK_TMPFS_SIZE),noatime" tmpfs "$(FXMARK_GUEST_MOUNT)"
 	: >"$(FXMARK_BOOT_RESULT_DIR)/observations.jsonl"
 	cp "$(FXMARK_BOOT_KERNEL_CONFIG)" "$(FXMARK_BOOT_RESULT_DIR)/kernel.config"

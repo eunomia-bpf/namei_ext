@@ -60,31 +60,38 @@ Risks:
 Decision: implement first. It is necessary for kernel integration regardless
 of later active-path work and has an exact object-code gate.
 
-### B. Execute Policy During RCU Walk
+### B. Avoid A Full RCU-Walk Restart
 
-Allow the BPF decision to run in RCU walk. `PASS` can continue without retry.
-Actions that require refcounted target acquisition can return `-ECHILD` and
-run again after unlazy/restart.
+First attempt an in-place transition from RCU walk to ref-walk with the
+existing `try_to_unlazy()` helper before invoking BPF. If the current path and
+link stack can be legitimized, policy execution continues from the current
+component. If validation fails, return `-ECHILD` before invoking BPF and let
+the caller restart from the beginning.
 
 Expected effect:
 
-- removes the unconditional double walk for the common `PASS` components;
+- removes the unconditional full-path restart for an attached policy;
+- does not replay BPF execution or its map/perf side effects;
 - preserves per-lookup policy evaluation;
-- keeps `SELECT` target acquisition on the ref-walk path.
+- keeps all actions and target acquisition on the established ref-walk path.
 
 Risks:
 
-- cgroup dispatch, every permitted BPF helper/map type, parent inode reads, and
-  context initialization must be proven RCU-safe;
-- current programs may write maps or emit perf events; fallback or path-walk
-  retry can replay those side effects, so replay semantics or an RCU-fast-path
-  program restriction must be explicit;
-- a policy can observe state twice around fallback, so fail-closed semantics
-  and update races need an explicit rule;
-- redirect and hide actions need separate RCU analysis.
+- the attached path still leaves RCU walk and pays refcounting cost;
+- long paths still invoke BPF once per component;
+- `try_to_unlazy()` failure must return immediately without touching
+  `nameidata`, as required by the VFS helper contract.
 
-Decision: analyze and prototype only after Alternative A restores the inactive
-path. It is the smallest semantics-preserving active-path repair.
+Decision: implement after Alternative A. This is the smallest
+semantics-preserving active-path repair and gives a clean diagnostic before
+considering BPF execution inside RCU walk.
+
+If this does not close the active-path gap, the next alternative is to execute
+only the decision phase in RCU walk and selectively unlazy actions that require
+references. That design is wider: cgroup dispatch, every permitted helper and
+map operation, parent inode reads, and retry/replay semantics would need an
+explicit contract. It must not be described as read-only because the current
+program type permits map updates and perf output.
 
 ### C. Cache Decisions With Explicit Invalidation
 
@@ -128,9 +135,11 @@ Decision: reject.
 4. Use a short real FxMark diagnostic to verify direction. Do not promote it
    to paper evidence or rerun the eight-hour final matrix while the active path
    remains structurally unchanged.
-5. Audit and prototype the RCU-safe policy path with explicit action-specific
-   fallback.
-6. Only after inactive and active mechanisms are repaired, run the same
+5. Replace the unconditional `-ECHILD` with in-place `try_to_unlazy()` before
+   BPF invocation and run the same correctness and short diagnostic gates.
+6. If the gap remains material, audit an RCU decision phase with explicit
+   action-specific fallback and replay semantics.
+7. Only after inactive and active mechanisms are repaired, run the same
    450-cell approved matrix under a new immutable run ID and obtain a fresh
    result review.
 
@@ -193,3 +202,22 @@ dot handling, final-open behavior, `LOOKUP_CREATE` rejection, and restoration
 across common-body early returns. The review also corrected Alternative B's
 assumption: the current BPF program type is not read-only, so any RCU design
 must account for replayable map/perf side effects before implementation.
+
+## Alternatives B And RCU Decision Results
+
+The in-place-unlazy variant passed all correctness gates but improved the
+one-worker `MRPL` `PASS` result only from approximately 0.97M to 1.01M
+operations/s. Avoiding a full restart was therefore correct but insufficient.
+
+The follow-up RCU decision phase keeps `PASS` in RCU walk and unlazies only
+actions or errors that require references or terminal validation. Its
+directional preflight improved `PASS` to 1.25M and `SELECT` to 1.10M
+operations/s, but cached FUSE remained at 1.85M. Full implementation and
+validation details are recorded in
+`docs/tmp/2026-07-27-namei-ext-rcu-decision-implementation.md`.
+
+Program run-count attribution then found approximately ten BPF invocations per
+FxMark work unit and about 24 ns in the BPF body per invocation. The remaining
+problem is dispatch breadth across pathname components, not policy instruction
+cost. The raw-counter method and immutable diagnostic result are recorded in
+`docs/tmp/2026-07-27-fxmark-bpf-invocation-attribution.md`.
