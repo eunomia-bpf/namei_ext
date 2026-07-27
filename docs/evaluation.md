@@ -197,22 +197,23 @@ build/cache cases whose pathname view is the behavior under study.
 | Exact-empty invocation check | Passed in KVM: an attached PASS program remained stable and executed zero times during the measured `empty` cell | `results/experiments/fxmark-rq2-preflight/20260727T-exact-empty-run-count-v2/` |
 | Exact-empty normal preflight | Directional only: unattached 2.424M, `empty` 1.251M, `PASS` 1.222M, `SELECT` 1.109M, FUSE 2.000M ops/s; zero-invocation `empty` reached only 0.516x unattached throughput | `results/experiments/fxmark-rq2-preflight/20260727T-exact-empty-preflight-v1/` |
 | Exact-empty result review | Full matrix remains blocked; repeated pre-BPF dispatch and scope work is the next mechanism target | `docs/tmp/2026-07-27-fxmark-exact-empty-dispatch-diagnostic.md` |
+| Global parent-filter preflight | Committed directional run: stock 2.463M, unattached 2.356M, `empty` 2.403M, `PASS` 2.166M, `SELECT` 1.698M, FUSE 1.938M ops/s; `empty` recovered to 1.020x unattached and PASS reached 1.118x FUSE | `results/experiments/fxmark-rq2-preflight/20260727T-parent-fast-path-8fd1fb52f-normal/` |
+| Global parent-filter attribution | `empty` retained zero BPF runs; PASS and SELECT retained about one run per operation and about 25 ns per BPF run | `results/experiments/fxmark-rq2-preflight/20260727T-parent-fast-path-8fd1fb52f-stats/` |
+| Global parent-filter implementation | Kernel `8fd1fb52f`; complete Phase 1 and policy-semantic KVM gates passed; short preflight now justifies a fresh repeated matrix | `docs/tmp/2026-07-27-namei-ext-global-parent-fast-path-implementation.md` |
 
 These results are retained as internal mechanism evidence and are not paper
 performance claims. They do not change RQ2 or the hypothesis. Attached-only
-state and RCU fallback have been repaired, and exact-parent registration has
-reduced BPF execution count. The exact-empty diagnostic now localizes the
-remaining active cost before BPF execution: nonmatching pathname components
-still enter cgroup and scope dispatch. A cheaper negative-component fast path
-is required before another full matrix. A dynamic update/invalidation
+state, RCU fallback, exact-parent invocation count, and the negative-component
+path have now been repaired. The committed short preflight meets the mechanism
+gate for a fresh repeated matrix, but it does not replace confidence intervals
+or the broader FxMark type/core matrix. A dynamic update/invalidation
 comparison may add RQ2 evidence, but it does not replace the strong
 cached-FUSE row.
 
 ## Open Questions
 
-1. Can a VFS-owned exact-parent marker, global RCU registration filter, or
-   lookup-lifetime scope snapshot provide a cheap negative-component fast path
-   while preserving cgroup inheritance and rename/mount lifetime semantics?
+1. Does the global RCU parent filter retain the preflight recovery across the
+   complete repeated FxMark type/core matrix?
 2. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?

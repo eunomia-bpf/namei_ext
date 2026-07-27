@@ -72,6 +72,17 @@ explicit `BENCH_VARIANTS` override and is not part of the current benchmark
 default. The audit and modified-kernel KVM validation are recorded in
 `docs/tmp/2026-07-27-unified-infrastructure-followup-audit.md`.
 
+Kernel commit `8fd1fb52f` adds the next active-path optimization without
+changing the BPF ABI. A global RCU exact-parent filter and active-global counter
+let component lookup, final-component open lookup, and directory iteration
+skip namei_ext slow wrappers before context construction or cgroup discovery.
+The filter is conservative; the existing effective-owner and per-cgroup scope
+checks remain authoritative. Publication uses a raw-spinlock sequence counter
+compatible with RCU pathname walk, while scope allocation and release remain
+under the existing mutex and RCU lifetime model. The implementation and KVM
+evidence are recorded in
+`docs/tmp/2026-07-27-namei-ext-global-parent-fast-path-implementation.md`.
+
 ## Current Make Control Plane
 
 The default Make path separates current validation, prototype experiment
