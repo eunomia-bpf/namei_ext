@@ -347,6 +347,41 @@ static int expect_select_readdir(const char *path, FILE *out)
 	return -1;
 }
 
+static int register_target_path(const char *path, unsigned int target_id)
+{
+	char register_buf[64];
+	int register_fd;
+	int target_fd;
+	ssize_t nwritten;
+	int len;
+	int err = 0;
+
+	target_fd = open(path, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (target_fd < 0)
+		return -errno;
+	register_fd = open("/sys/kernel/debug/namei_ext/register_target",
+			   O_WRONLY | O_CLOEXEC);
+	if (register_fd < 0) {
+		err = -errno;
+		goto out_close_target;
+	}
+	len = snprintf(register_buf, sizeof(register_buf), "%u %d\n",
+		       target_id, target_fd);
+	if (len < 0 || (size_t)len >= sizeof(register_buf)) {
+		err = -EOVERFLOW;
+		goto out_close_register;
+	}
+	nwritten = write(register_fd, register_buf, len);
+	if (nwritten != (ssize_t)len)
+		err = errno ? -errno : -EIO;
+
+out_close_register:
+	close(register_fd);
+out_close_target:
+	close(target_fd);
+	return err;
+}
+
 static int clear_targets(FILE *out, const char *name)
 {
 	const char clear_cmd[] = "clear\n";
@@ -825,6 +860,8 @@ int main(int argc, char **argv)
 	char portal_payload[PATH_MAX];
 	char target_dir[PATH_MAX];
 	char target_payload[PATH_MAX];
+	char replacement_target_dir[PATH_MAX];
+	char replacement_target_payload[PATH_MAX];
 	char scope_other[PATH_MAX];
 	char scope_other_secret[PATH_MAX];
 	FILE *out;
@@ -872,6 +909,11 @@ int main(int argc, char **argv)
 		 "%s/visible/portal/payload", root);
 	snprintf(target_dir, sizeof(target_dir), "%s/target", root);
 	snprintf(target_payload, sizeof(target_payload), "%s/target/payload", root);
+	snprintf(replacement_target_dir, sizeof(replacement_target_dir),
+		 "%s/target-replacement", root);
+	snprintf(replacement_target_payload,
+		 sizeof(replacement_target_payload),
+		 "%s/target-replacement/payload", root);
 	snprintf(scope_other, sizeof(scope_other), "%s/other", root);
 	snprintf(scope_other_secret, sizeof(scope_other_secret),
 		 "%s/other/secret", root);
@@ -907,11 +949,20 @@ int main(int argc, char **argv)
 		setup_errno = errno;
 		setup_fails++;
 	}
+	if (mkdir(replacement_target_dir, 0755)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
 	if (mkdir(scope_other, 0755)) {
 		setup_errno = errno;
 		setup_fails++;
 	}
 	err = write_file(target_payload, "selected\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
+	err = write_file(replacement_target_payload, "replacement\n");
 	if (err) {
 		setup_errno = -err;
 		setup_fails++;
@@ -1006,41 +1057,13 @@ int main(int argc, char **argv)
 	}
 
 	if (select_obj_path) {
-		char register_buf[64];
-		int register_fd;
-		int target_fd;
-		ssize_t nwritten;
-
-		target_fd = open(target_dir, O_PATH | O_DIRECTORY | O_CLOEXEC);
-		if (target_fd < 0) {
-			emit_case(out, "select_open_target_fd", false, errno,
-				  "open target O_PATH failed");
-			fails++;
-			goto cleanup;
-		}
-		register_fd = open("/sys/kernel/debug/namei_ext/register_target",
-				   O_WRONLY | O_CLOEXEC);
-		if (register_fd < 0) {
-			emit_case(out, "select_open_register", false, errno,
-				  "open target registry failed");
-			close(target_fd);
-			fails++;
-			goto cleanup;
-		}
-		snprintf(register_buf, sizeof(register_buf), "1 %d\n",
-			 target_fd);
-		nwritten = write(register_fd, register_buf,
-				 strlen(register_buf));
-		if (nwritten != (ssize_t)strlen(register_buf)) {
-			emit_case(out, "select_register_target", false, errno,
+		err = register_target_path(target_dir, 1);
+		if (err) {
+			emit_case(out, "select_register_target", false, -err,
 				  "target registration failed");
-			close(register_fd);
-			close(target_fd);
 			fails++;
 			goto cleanup;
 		}
-		close(register_fd);
-		close(target_fd);
 		emit_case(out, "select_register_target", true, 0,
 			  "target directory registered");
 
@@ -1061,6 +1084,30 @@ int main(int argc, char **argv)
 		fails += !!expect_open("select_portal_payload_open",
 				       portal_payload, 0, out);
 		fails += !!expect_read_file("select_portal_payload_read",
+					    portal_payload, "selected\n", out);
+
+		err = register_target_path(replacement_target_dir, 1);
+		if (err) {
+			emit_case(out, "select_replace_target", false, -err,
+				  "target replacement failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_replace_target", true, 0,
+			  "target replaced atomically");
+		fails += !!expect_read_file("select_replacement_payload_read",
+					    portal_payload, "replacement\n", out);
+
+		err = register_target_path(target_dir, 1);
+		if (err) {
+			emit_case(out, "select_restore_target", false, -err,
+				  "target restore failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_restore_target", true, 0,
+			  "original target restored");
+		fails += !!expect_read_file("select_restored_payload_read",
 					    portal_payload, "selected\n", out);
 
 		err = destroy_policy(&policy);
