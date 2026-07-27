@@ -117,13 +117,21 @@ parent matching, `EXACT(empty)`, `GLOBAL`, lookup visibility, and readdir
 visibility. Captured dmesg logs contain no declared kernel failure signature.
 Both the parent and kernel diffs pass `git diff --check`.
 
-## Remaining Work And Risks
+## Performance Follow-Up And Risks
 
-The implementation is functionally validated but has not yet passed the
-unchanged FxMark performance preflight. The next run must first enable BPF
-statistics to verify that policy invocations fall from about ten per work unit
-to about one, then rerun the normal statistics-off five-condition preflight.
-The full 450-cell RQ2 matrix remains gated on that result.
+The unchanged FxMark preflights completed after this implementation. BPF
+statistics confirmed that exact-parent registration reduced policy execution
+from about ten runs per work unit to about one. The normal statistics-off
+preflight did not materially improve active throughput: `PASS` remained about
+0.61x and `SELECT` about 0.53x the cache-hot FUSE condition in one two-second
+directional sample. The full 450-cell RQ2 matrix therefore remains blocked.
+The raw results and interpretation are recorded in
+`docs/tmp/2026-07-27-policy-parent-dispatch-preflight-review.md`.
+
+The next mechanism question is the cost of the per-component cgroup,
+effective-owner, and exact-scope check that still runs before each negative
+dispatch decision. It must be isolated before selecting a cheaper
+negative-component fast path.
 
 The debugfs commands are a prototype control surface, not a proposed upstream
 ABI. Scope state is cgroup-owned and therefore survives detach and reattach in

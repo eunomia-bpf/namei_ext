@@ -192,21 +192,26 @@ build/cache cases whose pathname view is the behavior under study.
 | Attached-path ablation | `PASS` accounts for most active cost: paired `PASS`/unattached medians `0.298--0.547`; `SELECT`/`PASS` is `0.980--1.004` | Same raw root; independently recomputed |
 | Baseline engagement | FUSE setup median requests `28--195,433`, measured-phase median requests `1--18`; valid for stable cache-hot policy, not update/invalidation behavior | Same raw root |
 | Result review | Run valid; hypothesis contradicted; decisive mechanism/workload boundary; implementation redesign and fresh rerun required | `docs/tmp/2026-07-27-rq2-fxmark-result-review.md` |
+| Exact-parent invocation attribution | Directional KVM preflight passed; policy runs fell from about 10 to about 1 per work unit, with about 25 ns in the BPF body per run | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-run-count-v1/` |
+| Exact-parent normal preflight | Directional only: stock 2.471M, unattached 2.332M, `PASS` 1.235M, `SELECT` 1.085M, FUSE 2.041M ops/s; dispatch-count repair did not justify a new full matrix | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-preflight-v1/` |
+| Exact-parent result review | Full matrix remains blocked; next diagnostic isolates attached dispatch without BPF execution | `docs/tmp/2026-07-27-policy-parent-dispatch-preflight-review.md` |
 
-The current result is retained as internal negative evidence and is not a
-paper performance claim. It does not change RQ2 or the hypothesis. The next
-step is to isolate attached-only state from the inactive path, diagnose RCU
-fallback and cgroup/BPF dispatch, and rerun the same approved matrix under a
-new run ID. A dynamic update/invalidation comparison may add RQ2 evidence, but
-it does not replace the strong cached-FUSE row.
+These results are retained as internal mechanism evidence and are not paper
+performance claims. They do not change RQ2 or the hypothesis. Attached-only
+state and RCU fallback have been repaired, and exact-parent registration has
+reduced BPF execution count. The next step is to isolate the remaining
+per-component dispatch-filter cost before another full matrix. A dynamic
+update/invalidation comparison may add RQ2 evidence, but it does not replace
+the strong cached-FUSE row.
 
 ## Open Questions
 
-1. Can an out-of-line attached slow path restore the predeclared
-   patched-unattached FxMark threshold without changing semantics?
-2. How much of the attached `PASS`/`SELECT` cost comes from RCU fallback,
-   context initialization, cgroup dispatch, and BPF execution, and which
-   mechanism repair can meet the unchanged cached-FUSE comparison?
+1. Does an attached `EXACT(empty)` diagnostic remain near exact `PASS`,
+   confirming that negative-component dispatch rather than BPF execution is the
+   dominant remaining active-path cost?
+2. Can a VFS-owned exact-parent marker, global RCU registration filter, or
+   lookup-lifetime scope snapshot provide a cheap negative-component fast path
+   while preserving cgroup inheritance and rename/mount lifetime semantics?
 3. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?
