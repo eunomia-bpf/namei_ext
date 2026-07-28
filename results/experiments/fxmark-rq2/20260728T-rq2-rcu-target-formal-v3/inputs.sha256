@@ -1,0 +1,13 @@
+74576715afefb3620ed11d4d3c0627f599dffcd32b6976d12c939b4f24472ac6  /home/yunwei37/workspace/namei_ext/configs/benchmarks/fxmark.mk
+a718ac3a91829ce92a795309335546e85d4f0f4a910617200a10adadb4aab73e  /home/yunwei37/workspace/namei_ext/configs/kvm/x86_64.mk
+ba27f450fcf75e9ba9cd2effc60e10fd3d00dc6e1a1823876724f66da17c1b9c  /home/yunwei37/workspace/namei_ext/mk/benchmarks/fxmark.mk
+ed59bab43ad315fc79a6654c2facf02b40d51b7dca58f7e95d4d1b0e373d162e  /home/yunwei37/workspace/namei_ext/mk/results.mk
+613ac79b983f676a52ab69c2e64e6a152ccae78727eeda81893724ecd3e4f2c0  /home/yunwei37/workspace/namei_ext/mk/kvm.mk
+1ff8074fb9059515a7ab91865da0b50b0dd85c0cfbf4a2541d55887cb2be720c  /home/yunwei37/workspace/namei_ext/mk/kernel.mk
+3c7d82176471ff0620d3e58b1ca920e64dcf4349f69600bbab44e581258fe7ae  /home/yunwei37/workspace/namei_ext/bench/fxmark/fxmark-correctness.patch
+348ddfa9d14da9f69ed689932e2eb29c9e1a91df65f593fd8d838dadeac92896  /home/yunwei37/workspace/namei_ext/bench/fxmark/fxmark_cell.c
+dbae9905bcaa125c4f65e2f8ef73a26a8582a83eca39230fc663738e05b4be2f  /home/yunwei37/workspace/namei_ext/bench/fxmark/fxmark_fuse.c
+f475554d328f71d6a1af2209d8b07dc270973f69f9022f1d546b5bf1796647ce  /home/yunwei37/workspace/namei_ext/bpf/policies/fxmark_pass.bpf.c
+ecb68584c4c1a148ca84f65787795ecc21ff1d2e25ccb653de6fd2d0c294d34b  /home/yunwei37/workspace/namei_ext/bpf/policies/fxmark_select.bpf.c
+5d7e7766ad662a0e906df821b49bf631a691740436956fc0fe01755266d9917e  /home/yunwei37/workspace/namei_ext/analysis/fxmark/analyze.py
+1d3ad75eef07d34d6e95e5a2e48e54250bf4b65cf574ba023996abfb9baa57e5  /home/yunwei37/workspace/namei_ext/docs/tmp/2026-07-26-rq2-fxmark-experiment-plan.md

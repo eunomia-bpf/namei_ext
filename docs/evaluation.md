@@ -188,12 +188,14 @@ build/cache cases whose pathname view is the behavior under study.
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
-| Provenance-defective repeated matrix | Numerically complete: 50 fresh KVM boots and 450/450 passing observations, but invalid for publication because patched boots contain pre-commit `g83d52c2168e2-dirty` rather than recorded `bdc9a83e3` | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v2/` |
-| Patched-unattached versus stock | Diagnostic only pending clean reproduction: median ratio `0.993--1.015`; all nine cells satisfy the predeclared unused-fast-path threshold | Same raw root and `analysis/summary.csv` |
-| Attached `SELECT` versus optimized FUSE | Diagnostic only pending clean reproduction: median ratio `1.040--1.082`; all nine 95% CIs are above `1`, and SELECT wins 90/90 paired observations | Same raw root and `analysis/report.md` |
-| Current attached-path ablation | `PASS`/unattached medians are `0.900--0.930`; `SELECT`/`PASS` is `0.969--0.997`; the complete `SELECT` path retains `0.873--0.919` of unattached throughput | Same raw root; independently paired recalculation |
-| Strong FUSE engagement | The multithreaded FUSE baseline enables kernel and metadata caching; measured-phase median requests are only `1--18`, so the result does not depend on one daemon round trip per lookup | Same raw root |
-| Current result review | Matrix complete but publication-invalid; clean kernel rebuild, release matching, clocksource cleanup, and unchanged rerun required | `docs/tmp/2026-07-27-rq2-fxmark-rcu-target-rerun-review.md` |
+| Clean formal matrix | Valid and publication-usable: 50 fresh KVM boots, 450/450 unique passing observations, clean source/kernel provenance, matched stock/patched build identities, stable TSC, and no declared dmesg failure | `results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/` |
+| Patched-unattached versus stock | Mixed under the predeclared gate: all medians are `0.981--1.013`, but MRPL 2/4-worker CI lower bounds are `0.966` and `0.958`, below the required `0.97`; inconclusive, not contradicted | Same raw root and `analysis/report.md` |
+| Attached `SELECT` versus optimized FUSE | Supported in all nine cells: median throughput ratio `1.052--1.088`, every paired 95% CI above `1`; SELECT wins 89/90 individual pairs | Same raw root and `analysis/summary.json` |
+| Active-path decomposition | `PASS`/unattached medians are `0.901--0.934`; `SELECT`/`PASS` is `0.981--0.999`; the complete `SELECT` path retains `0.895--0.931` of unattached throughput | Same raw root; independently recomputed from raw JSONL |
+| Strong FUSE engagement | The multithreaded libfuse 2.9.9 baseline enables kernel and metadata caching; measured-phase requests are `0--19` per cell, so the result does not depend on one daemon round trip per lookup | Same raw root |
+| Current result review | Valid; SELECT/FUSE gate decisive, unattached fast-path gate inconclusive, overall composite verdict mixed; next step is a host-pinned MRPL confirmatory replication, not another 450-cell rerun | `docs/tmp/2026-07-28-rq2-fxmark-formal-v3-result-review.md` |
+| Prior provenance-defective matrix | Historical numerical diagnosis only: 50 boots and 450 observations, but patched binary was `g83d52c2168e2-dirty` rather than the recorded clean commit | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v2/` |
+| Prior invalid-run review | Required the clean committed-kernel reproduction now completed above | `docs/tmp/2026-07-27-rq2-fxmark-rcu-target-rerun-review.md` |
 | Interrupted full attempt | External five-hour timeout after 33/50 complete boots; preserved as raw evidence and excluded from every result | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v1/` |
 | Superseded pre-redesign matrix | Historical valid matrix on the earlier mechanism: 50 boots and 450 cells, retained as the diagnosis that motivated the mechanism repair; not a current paper performance result | `results/experiments/fxmark-rq2/20260726T-rq2-fxmark-full-v2/` |
 | Superseded result review | Earlier mechanism contradicted the hypothesis; the review required redesign and the unchanged fresh matrix that is now complete above | `docs/tmp/2026-07-27-rq2-fxmark-result-review.md` |
@@ -208,16 +210,16 @@ build/cache cases whose pathname view is the behavior under study.
 | RCU target-registry repair | Kernel `83d52c216`; lockless target reads improved directional SELECT throughput by about 5.9% but did not alone pass the FUSE gate | `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-design.md` |
 | RCU borrowed-target repair | Kernel `bdc9a83e3`; forced `RESOLVE_CACHED`, concurrent atomic replacement, complete Phase 1, independent lifetime review, and final repeated matrix all passed | `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-implementation.md` |
 
-The RCU-target matrix is numerically promising but not yet a paper-level RQ2
-result because its patched binary predates the recorded kernel commit. The
-clean rebuilt rerun must preserve the same cache-hot `stat()` scope and
-optimized cached-FUSE row. Earlier matrices and short preflights remain
-internal mechanism evidence.
+Formal-v3 is the current paper-level cache-hot `stat()` RQ2 result. It supports
+the scoped SELECT-over-cached-FUSE claim and quantifies active policy cost. It
+does not close the stricter unused-fast-path gate because two MRPL confidence
+intervals miss the predeclared threshold. Earlier matrices and short
+preflights remain internal mechanism evidence.
 
 ## Open Questions
 
-1. Does the clean committed-kernel rerun reproduce the diagnostic FxMark
-   ranges after binary-release and clocksource gates are enforced?
+1. Does a separate 20-block, host-vCPU-pinned stock/unattached MRPL
+   replication satisfy the unchanged unused-fast-path gate?
 2. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?
