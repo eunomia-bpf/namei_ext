@@ -147,3 +147,12 @@ their hashes pass.
 The result remains scoped to cache-hot FxMark `stat()` on this machine and does
 not establish other operations, cache-cold behavior, tail latency, or
 cross-machine generality.
+
+## Execution Result
+
+Formal-v1 completed from clean source commit `3372997` with all 60 boots and
+180 cells. All three worker counts passed the predeclared positive rule. The
+raw root is
+`results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/`;
+the independent result review is
+`2026-07-28-fxmark-fast-path-formal-v1-result-review.md`.

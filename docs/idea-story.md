@@ -77,20 +77,23 @@ Evidence program:
 
 ## Current Evidence Highlights
 
-- RQ2 cache-hot path-resolution diagnostic: the repeated FxMark matrix
-  (`results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v2/`)
-  completed 50 KVM boots and 450/450 passing cells. Patched-unattached/stock is
-  `0.993--1.015` in median throughput across the nine cells. Same-filesystem
-  `SELECT`/optimized FUSE is `1.040--1.082`, with every 95% confidence interval
-  above one. Attached `PASS` retains `0.900--0.930` of unattached throughput;
-  selected-target resolution adds only `0.3--3.1%` median cost beyond `PASS`.
-  Independent review found that the patched binary predates its recorded clean
-  kernel commit, so these values remain diagnostic until the fixed-provenance
-  clean rerun reproduces them.
-- Agent workspace RQ1: three terminal KVM runs
-  (`results/experiments/agent-workspace-matrix/20260722T0201*-rq1run{1,2,3}/`)
-  pass the same AgentFS-derived trace oracle for `namei_ext` and
-  feature-equivalent FUSE, with zero failed records and clean dmesg gates.
+- RQ2 cache-hot path resolution: the clean repeated FxMark matrix
+  (`results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/`)
+  completed 50 KVM boots and 450/450 passing cells. Same-filesystem
+  `SELECT`/optimized FUSE is `1.052--1.088`, with every paired 95% confidence
+  interval above one. Attached `PASS` retains `0.901--0.934` of unattached
+  throughput; selected-target resolution adds `0.1--1.9%` median cost beyond
+  `PASS`. A separate host-pinned confirmation
+  (`results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/`)
+  completed 60 boots and 180/180 cells. Patched-unattached/stock is
+  `1.0009 [0.9921, 1.0036]`, `1.0083 [0.9950, 1.0179]`, and
+  `1.0007 [0.9918, 1.0139]` at one, two, and four workers, closing the
+  predeclared unused-fast-path criterion for this host and workload.
+- Agent workspace RQ1/RQ2: formal-v3
+  (`results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/`)
+  completed 20 fresh KVM boots, 20,000/20,000 lifecycle samples, and 960/960
+  required oracles. The feature-equivalent FUSE/namei_ext paired lifecycle
+  ratio is `11.32x [11.24, 11.64]`.
 - Traditional build/cache: historical runs now aggregated by
   `make legacy-build-cache`
   (2026-07-23 hot-cache, 2026-07-24 epoch-switch) pass the Redis/nginx ccache

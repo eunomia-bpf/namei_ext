@@ -189,11 +189,12 @@ build/cache cases whose pathname view is the behavior under study.
 | Cell | Status | Raw root |
 | --- | --- | --- |
 | Clean formal matrix | Valid and publication-usable: 50 fresh KVM boots, 450/450 unique passing observations, clean source/kernel provenance, matched stock/patched build identities, stable TSC, and no declared dmesg failure | `results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/` |
-| Patched-unattached versus stock | Mixed under the predeclared gate: all medians are `0.981--1.013`, but MRPL 2/4-worker CI lower bounds are `0.966` and `0.958`, below the required `0.97`; inconclusive, not contradicted | Same raw root and `analysis/report.md` |
+| Broad patched-unattached versus stock matrix | Mixed under the predeclared gate: all medians are `0.981--1.013`, but MRPL 2/4-worker CI lower bounds are `0.966` and `0.958`, below the required `0.97`; this broad matrix motivated the isolated confirmatory run rather than supporting an unused-fast-path claim by itself | Same raw root and `analysis/report.md` |
 | Attached `SELECT` versus optimized FUSE | Supported in all nine cells: median throughput ratio `1.052--1.088`, every paired 95% CI above `1`; SELECT wins 89/90 individual pairs | Same raw root and `analysis/summary.json` |
 | Active-path decomposition | `PASS`/unattached medians are `0.901--0.934`; `SELECT`/`PASS` is `0.981--0.999`; the complete `SELECT` path retains `0.895--0.931` of unattached throughput | Same raw root; independently recomputed from raw JSONL |
 | Strong FUSE engagement | The multithreaded libfuse 2.9.9 baseline enables kernel and metadata caching; measured-phase requests are `0--19` per cell, so the result does not depend on one daemon round trip per lookup | Same raw root |
-| Current result review | Valid; SELECT/FUSE gate decisive, unattached fast-path gate inconclusive, overall composite verdict mixed; next step is a host-pinned MRPL confirmatory replication, not another 450-cell rerun | `docs/tmp/2026-07-28-rq2-fxmark-formal-v3-result-review.md` |
+| Host-pinned unused-fast-path confirmation | Supported in all three MRPL cells across 30 paired blocks and 60 fresh KVM boots: unattached/stock is `1.0009 [0.9921, 1.0036]`, `1.0083 [0.9950, 1.0179]`, and `1.0007 [0.9918, 1.0139]` at 1/2/4 workers | `results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/` |
+| Current result reviews | Both runs are valid. Formal-v3 closes the active SELECT/FUSE comparison and quantifies active-policy cost; the isolated confirmation closes the predeclared unused-fast-path gate for cache-hot MRPL on this host | `docs/tmp/2026-07-28-rq2-fxmark-formal-v3-result-review.md`; `docs/tmp/2026-07-28-fxmark-fast-path-formal-v1-result-review.md` |
 | Prior provenance-defective matrix | Historical numerical diagnosis only: 50 boots and 450 observations, but patched binary was `g83d52c2168e2-dirty` rather than the recorded clean commit | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v2/` |
 | Prior invalid-run review | Required the clean committed-kernel reproduction now completed above | `docs/tmp/2026-07-27-rq2-fxmark-rcu-target-rerun-review.md` |
 | Interrupted full attempt | External five-hour timeout after 33/50 complete boots; preserved as raw evidence and excluded from every result | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v1/` |
@@ -210,26 +211,26 @@ build/cache cases whose pathname view is the behavior under study.
 | RCU target-registry repair | Kernel `83d52c216`; lockless target reads improved directional SELECT throughput by about 5.9% but did not alone pass the FUSE gate | `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-design.md` |
 | RCU borrowed-target repair | Kernel `bdc9a83e3`; forced `RESOLVE_CACHED`, concurrent atomic replacement, complete Phase 1, independent lifetime review, and final repeated matrix all passed | `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-implementation.md` |
 
-Formal-v3 is the current paper-level cache-hot `stat()` RQ2 result. It supports
-the scoped SELECT-over-cached-FUSE claim and quantifies active policy cost. It
-does not close the stricter unused-fast-path gate because two MRPL confidence
-intervals miss the predeclared threshold. Earlier matrices and short
-preflights remain internal mechanism evidence.
+Formal-v3 and the isolated fast-path confirmation form the current paper-level
+cache-hot `stat()` mechanism result. Formal-v3 supports the scoped
+SELECT-over-cached-FUSE claim and quantifies active-policy cost. The separate
+30-block confirmation supports the unused-fast-path criterion on this host at
+one, two, and four workers. It does not prove zero overhead or generalize to
+active policy, other operations, cold caches, tails, or other machines.
+Earlier matrices and short preflights remain internal mechanism evidence.
 
 ## Open Questions
 
-1. Does a separate 20-block, host-vCPU-pinned stock/unattached MRPL
-   replication satisfy the unchanged unused-fast-path gate?
-2. What are the setup and steady-state costs of the W3 action view relative to
+1. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?
-3. Does cross-filesystem target selection preserve lower-filesystem behavior
+2. Does cross-filesystem target selection preserve lower-filesystem behavior
    well enough to replay Spindle's shared-to-local redirection without turning
    `namei_ext` into a cache or remote filesystem?
-4. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
+3. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
    application oracle while staying within existing-object selection?
-5. What do the per-workload RQ3 ownership tables show for FUSE and the
+4. What do the per-workload RQ3 ownership tables show for FUSE and the
    relevant custom/stackable source system?
-6. Does the existing ccache macro ratio survive independent-run
+5. Does the existing ccache macro ratio survive independent-run
    median/dispersion reporting and a hardened FUSE configuration with caching
    and passthrough explicitly accounted for?

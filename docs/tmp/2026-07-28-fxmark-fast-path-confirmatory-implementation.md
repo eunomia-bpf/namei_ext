@@ -89,12 +89,17 @@ mark it completed.
   successfully.
 - `git diff --check`: passes.
 
-## Remaining Gate
+## Execution Result
 
 The independent code/protocol review returned `GO`. Preflight v1 preserved a
 fail-fast guest-tool resolution failure; the frozen runtime-artifact repair is
 recorded in `2026-07-28-fxmark-fast-path-preflight-v1-failure.md`. Preflight v2
 then completed both boots, all six cells, every affinity/inventory/timestamp
 gate, analysis, and output hashing. Its record is
-`2026-07-28-fxmark-fast-path-preflight-v2.md`. The preflight proves only
-executability; the 30-block formal run is required for paper evidence.
+`2026-07-28-fxmark-fast-path-preflight-v2.md`.
+
+Formal-v1 then completed 60 of 60 boots and 180 of 180 cells from clean source
+commit `3372997`. All three host-pinned MRPL cells passed the frozen
+unused-fast-path criterion. The independently recomputed result and its scope
+are recorded in
+`2026-07-28-fxmark-fast-path-formal-v1-result-review.md`.
