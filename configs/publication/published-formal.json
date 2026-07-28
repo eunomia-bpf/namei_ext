@@ -1,0 +1,28 @@
+{
+  "schema": "namei_ext.published_formal.v1",
+  "runs": [
+    {
+      "run": "results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/run.json",
+      "analyzer": "analysis/agent_workspace/analyze.py",
+      "seed": 20260727,
+      "analysis_args": {
+        "launch_order": "launch-order.jsonl",
+        "required_oracles": "artifacts/source/rq2_required_oracles.txt"
+      }
+    },
+    {
+      "run": "results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/run.json",
+      "analyzer": "analysis/fxmark_fast_path/analyze.py",
+      "seed": 20260728,
+      "analysis_args": {
+        "launch_order": "launch-order.jsonl"
+      }
+    },
+    {
+      "run": "results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/run.json",
+      "analyzer": "analysis/fxmark/analyze.py",
+      "seed": 20260726,
+      "analysis_args": {}
+    }
+  ]
+}

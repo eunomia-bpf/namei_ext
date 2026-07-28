@@ -15,9 +15,17 @@ include $(ROOT_DIR)/mk/results.mk
 include $(ROOT_DIR)/mk/multi_boot.mk
 
 .PHONY: test validate-only create-only multi-boot-collect-only \
-	multi-boot-validate-only clean
+	multi-boot-validate-only published-result-contract clean
 
-test:
+published-result-contract:
+	PYTHONPATH="$(ROOT_DIR)/tests/infrastructure" \
+		python3 \
+		"$(ROOT_DIR)/tests/infrastructure/test_validate_published_results.py"
+	python3 "$(ROOT_DIR)/tests/infrastructure/validate_published_results.py" \
+		--repo "$(ROOT_DIR)" \
+		--index "$(ROOT_DIR)/configs/publication/published-formal.json"
+
+test: published-result-contract
 	PYTHONPATH="$(ROOT_DIR)/analysis/fxmark" \
 		python3 "$(ROOT_DIR)/analysis/fxmark/test_analyze.py"
 	PYTHONPATH="$(ROOT_DIR)/analysis/agent_workspace" \

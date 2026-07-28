@@ -1,0 +1,23 @@
+{
+  "kernel": {
+    "commit": "bdc9a83e3dfbef8ff2017f9188c7c86025962183",
+    "release": "7.1.0-rc7-gbdc9a83e3dfb",
+    "build_id": "1338078406e5c6e39afdf0ceafe13a34115038b4",
+    "notes_sha256": "3b9223515a2c9e57fc1eec195b65a865bc74bf368bc53ff7117ead932124dabf",
+    "btf_sha256": "48cedcb14ebd3530bb3d1d68c50b94bae2f841b978cfd5fb68de4ac6118e74b0",
+    "image": "artifacts/kernel/bzImage",
+    "config": "artifacts/kernel/config"
+  },
+  "runtime": {
+    "namei_ext_runner": "artifacts/runtime/namei_ext_agent_workspace",
+    "fuse_runner": "artifacts/runtime/namei_ext_agent_workspace_fuse",
+    "policy": "artifacts/runtime/agent_workspace_view.bpf.o",
+    "libfuse": "artifacts/runtime/libfuse3.so.3"
+  },
+  "source": {
+    "trace": "artifacts/source/agentfs_lifecycle_trace.txt",
+    "required_oracles": "artifacts/source/rq2_required_oracles.txt",
+    "agentfs_commit": "0a014ebd4918615baff589ed17486e557e7c6a23",
+    "libfuse_version": "3.14.0"
+  }
+}

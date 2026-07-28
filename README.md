@@ -30,6 +30,7 @@ mk/suites.mk             suite registry and evidence-level aggregates
 mk/results.mk           shared run lifecycle and raw-artifact validation
 mk/multi_boot.mk        shared multi-boot mechanics and host provenance
 analysis/               derived statistics and figures from raw observations
+configs/publication/    explicit index of published formal result bundles
 workloads/legacy/       evidence using the superseded workload numbering
 results/                raw observations, logs, hashes, and run metadata
 ```
@@ -40,11 +41,14 @@ runner for reproducibility. New experiments must use a focused runner under
 
 ## Make Entrypoints
 
-All supported workflows are owned by Make:
+Known validation and experiment entrypoints are owned by Make:
 
 ```text
 make phase1
 make experiments
+make current-experiment-gates
+make formal-case-studies
+make formal-performance
 make kvm-agent-workspace-matrix
 make kvm-application-file-sharing-preflight
 make kvm-build-action-sandboxing-preflight
@@ -58,13 +62,21 @@ make kvm-fxmark-rq2-preflight
 kernel objects, KVM boot, policy load/attach, and functional behavior. Host-only
 execution does not count as Phase 1 validation.
 
-`make experiments` is the current case-study aggregate. It runs the Agent
-workspace matrix and the implemented Application File Sharing and Build Action
-Sandboxing preflights, plus the Service Configuration Rotation preflight,
-through the shared KVM and result lifecycle. The
-historical Redis/nginx ccache matrix remains reproducible through
-`make legacy-build-cache`, but it is not a current-suite dependency and must
-not define the structure of new experiments.
+`make experiments` and `make current-experiment-gates` run the current
+development gates: the Agent workspace matrix and the implemented Application
+File Sharing and Build Action Sandboxing preflights. Paper-facing collection
+uses `make formal-case-studies` and `make formal-performance` instead. Service
+Configuration Rotation remains registered as a blocked suite so its failed
+dependency preflights stay reproducible, but it is excluded from current and
+formal aggregates. The historical Redis/nginx ccache matrix remains
+reproducible through `make legacy-build-cache`; it is not a current-suite
+dependency and must not define the structure of new experiments.
+
+Checkpoint/Restore and Migration currently has pinned DMTCP source and a
+focused implementation under `experiments/checkpoint_restore/`. It has no
+public KVM or formal-suite entrypoint because the source-native A-to-B pathvirt
+baseline has not passed its dependency preflight. It must use the existing
+suite, KVM, result, and multi-boot contracts if that blocker is resolved.
 
 Canonical KVM case-study result roots contain `run.json`,
 `observations.jsonl`, `command.txt`, source and artifact hash manifests,
@@ -80,3 +92,12 @@ directory per boot. Suite Makefiles own only their workload matrix and
 correctness gates; `mk/kvm.mk` owns execution and `mk/results.mk` owns the
 minimum result contract. Multi-boot completion also requires exact agreement
 between the declared and observed matrix and in-guest kernel identity.
+
+`configs/publication/published-formal.json` identifies result bundles intended
+for paper-facing publication. `make result-contract` requires each indexed
+bundle to include tracked top-level raw observations, source and kernel
+identities, input and artifact manifests, source-side oracle files referenced
+by `run.json`, and the derived summary. It reruns the indexed analyzer with its
+frozen seed and checks that the raw observations reproduce the tracked summary
+after removing machine-specific path fields. Failed or blocked preflight
+records are not publication bundles and remain outside this contract.
