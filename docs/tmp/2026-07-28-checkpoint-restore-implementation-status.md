@@ -143,6 +143,15 @@ the A-to-B baseline from that copied tree. The `namei_ext` and withdrawn
 conditions have not yet run on the modified kernel. There is no KVM preflight
 result review, and no formal run is authorized.
 
+The first clean-source KVM attempt,
+`results/experiments/checkpoint-restore-preflight/20260728T232936Z/`, booted the
+modified kernel and passed artifact and DMTCP installation validation. DMTCP's
+official unchanged-mapping `pathvirt` control checkpointed successfully but its
+restored worker exited with assertion code 99 before the three focused
+conditions began. The failed run remains preserved and was not analyzed. The
+next attempt enables the upstream harness's verbose mode and copies its failure
+artifact directory into the result root; it does not weaken the control.
+
 ## Next Decision
 
 The source baseline now passes as patched DMTCP PathTranslator at commit

@@ -318,12 +318,25 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 			"$(CHECKPOINT_RESTORE_GUEST_DMTCP)/bin/$$file" | \
 			awk '{print $$1}')"; \
 	done
+	upstream_status=0; \
 	timeout --signal=TERM --kill-after=10s \
 		"$(CHECKPOINT_RESTORE_GUEST_UPSTREAM_TIMEOUT)" \
 		$(MAKE) -C "$(CHECKPOINT_RESTORE_GUEST_DMTCP_SOURCE)" \
-		check-autotest AUTOTEST=pathvirt \
+		check-autotest AUTOTEST='--verbose pathvirt' \
 		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stdout.log" \
-		2>"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stderr.log"
+		2>"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stderr.log" || \
+		upstream_status=$$?; \
+	if test "$$upstream_status" -ne 0; then \
+		upstream_artifacts=$$(sed -n \
+			's/^  pathvirt[[:space:]]*artifacts=//p' \
+			"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stdout.log" | \
+			tail -n 1); \
+		test -n "$$upstream_artifacts"; \
+		test -d "$$upstream_artifacts"; \
+		cp -a "$$upstream_artifacts" \
+			"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest-artifacts"; \
+		exit "$$upstream_status"; \
+	fi
 	grep -F 'test groups: pass=1 fail=0 skipped=0 total=1' \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stdout.log"
 	"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j prog show \
