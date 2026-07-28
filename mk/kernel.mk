@@ -2,9 +2,7 @@ KERNEL_BUILD_DIR ?= $(BUILD_ROOT)/kernel
 KERNEL_CONFIG_FRAGMENT ?= $(ROOT_DIR)/configs/kernel/x86_64_phase1.config
 KERNEL_IMAGE ?= $(KERNEL_BUILD_DIR)/arch/x86/boot/bzImage
 KERNEL_COMMIT_FILE ?= $(BUILD_ROOT)/kernel-commit.txt
-ifeq ($(origin KERNEL_SOURCE_COMMIT), undefined)
-KERNEL_SOURCE_COMMIT := $(shell git -C "$(KERNEL_DIR)" rev-parse HEAD)
-endif
+KERNEL_SOURCE_COMMIT ?= $(shell git -C "$(KERNEL_DIR)" rev-parse HEAD)
 KERNEL_SOURCE_COMMIT_STAMP ?= $(KERNEL_BUILD_DIR)/.source-commit
 KERNEL_BUILT_COMMIT_FILE ?= $(KERNEL_BUILD_DIR)/.built-commit
 KERNEL_RELEASE_HEADER ?= $(KERNEL_BUILD_DIR)/include/generated/utsrelease.h
