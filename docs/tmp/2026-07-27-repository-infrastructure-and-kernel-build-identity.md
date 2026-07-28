@@ -112,17 +112,25 @@ refactor:
 - Several component Makefiles repeat libbpf archive construction. That build
   ownership can be moved into one common Make include after the formal run.
 - `results/` currently occupies about 44 GB and 1.46 million filesystem
-  entries, while the containing filesystem was measured at roughly 96% usage.
+  entries, while the containing filesystem was measured at roughly 97% usage.
   Historical raw results must be reviewed and archived deliberately before a
   long formal matrix; this change does not delete them.
 - The 61 tracked historical result files and ignored `namei_ext.run.v2` raw
   roots need a written release-snapshot policy. This is a retention and
   publication issue, not a reason to mix raw collection into source control.
+- The repository-fixed lock closes kernel build, provenance, and cleanup races,
+  but top-level `clean` is not yet serialized against every non-kernel component
+  build. Do not run cleanup concurrently with another build or experiment.
+- Kernel configuration checks and FxMark's derived artifact extraction still
+  read the build tree outside the mutation lock. They fail on interference, but
+  a shared snapshot helper should make these reads one locked transaction.
+- The concurrency regression test uses a short delay to observe a blocked Make
+  process. It covers the known bypass and cleanup windows, but should gain a
+  deterministic lock-acquired handshake before it is treated as exhaustive.
 
-The next experiment gate is a clean-tree FxMark RQ2 preflight using the rebuilt,
-locked kernel pair. A complete preflight must finish every declared boot, pass
-the workload and dmesg gates, and verify its run-local artifact checksums before
-the full matrix is started.
+The locked FxMark preflight is now complete. The next experiment gate is the
+formal FxMark RQ2 matrix, but it must not start until result retention has freed
+enough space for the declared run and its run-local kernel artifacts.
 
 ## Preflight follow-up
 
