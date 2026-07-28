@@ -1881,7 +1881,7 @@ int main(int argc, char **argv)
 		fails += !!expect_fuse_counter(out, state, "open",
 					       FUSE_COUNTER_OPEN, true);
 		fails += !!expect_fuse_counter(out, state, "create",
-					       FUSE_COUNTER_CREATE, false);
+					       FUSE_COUNTER_CREATE, rq2_mode);
 		fails += !!expect_fuse_counter(out, state, "read",
 					       FUSE_COUNTER_READ, true);
 		fails += !!expect_fuse_counter(out, state, "write",
@@ -1893,7 +1893,7 @@ int main(int argc, char **argv)
 		fails += !!expect_fuse_counter(out, state, "rename",
 					       FUSE_COUNTER_RENAME, true);
 		fails += !!expect_fuse_counter(out, state, "mknod",
-					       FUSE_COUNTER_MKNOD, rq2_mode);
+					       FUSE_COUNTER_MKNOD, false);
 		fails += !!expect_fuse_counter(out, state, "hidden_lookup",
 					       FUSE_COUNTER_HIDDEN_LOOKUP, true);
 		fails += !!expect_fuse_counter(out, state, "hidden_readdir",
