@@ -236,7 +236,9 @@ static int validate_stage(const struct app_paths *paths, bool restored,
 	bool saw_new = false;
 	int ret;
 
-	ret = read_exact_file(paths->logical_state, expected_state, &logical);
+	ret = read_cgroup(cgroup);
+	if (!ret)
+		ret = read_exact_file(paths->logical_state, expected_state, &logical);
 	if (!ret && stat(physical_state, &physical))
 		ret = -errno;
 	if (!ret && (logical.st_dev != physical.st_dev ||
@@ -248,8 +250,6 @@ static int validate_stage(const struct app_paths *paths, bool restored,
 	if (!ret)
 		ret = check_directory(paths->logical_workspace, !restored,
 				      restored, &saw_stale, &saw_new);
-	if (!ret)
-		ret = read_cgroup(cgroup);
 	if (restored)
 	{
 		typedef DmtcpGetRestartEnvErr_t (*restart_env_fn)(

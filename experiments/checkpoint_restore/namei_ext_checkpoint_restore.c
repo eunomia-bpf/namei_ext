@@ -732,21 +732,27 @@ static int record_checkpoint_image(const struct controller_config *config,
 				   const char *image)
 {
 	char hash[SHA256_HEX_LENGTH + 1];
+	const char *relative;
+	size_t result_length = strlen(config->result_dir);
 	FILE *output;
 	int ret = sha256_file(image, hash);
 
 	if (ret)
 		return ret;
+	if (strncmp(image, config->result_dir, result_length) ||
+	    image[result_length] != '/' || !image[result_length + 1])
+		return -EXDEV;
+	relative = image + result_length + 1;
 	output = fopen(config->paths.checkpoint_images, "w");
 	if (!output)
 		return -errno;
-	fprintf(output, "%s\n", image);
+	fprintf(output, "%s\n", relative);
 	if (fclose(output))
 		return -errno;
 	output = fopen(config->paths.checkpoint_hashes, "w");
 	if (!output)
 		return -errno;
-	fprintf(output, "%s  %s\n", hash, image);
+	fprintf(output, "%s  %s\n", hash, relative);
 	return fclose(output) ? -errno : 0;
 }
 

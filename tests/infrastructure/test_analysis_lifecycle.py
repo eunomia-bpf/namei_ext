@@ -80,6 +80,11 @@ class AnalysisLifecycleTest(unittest.TestCase):
                 "SERVICE_CONFIG_ROTATION_ACTIVE_DIR",
                 "SERVICE_CONFIG_ROTATION_ANALYSIS",
             ),
+            (
+                "checkpoint-restore-analyze",
+                "CHECKPOINT_RESTORE_ACTIVE_DIR",
+                "CHECKPOINT_RESTORE_ANALYSIS",
+            ),
         )
         with tempfile.TemporaryDirectory(prefix="namei-ext-analysis-lifecycle-") as temp:
             temp_root = Path(temp)
@@ -210,6 +215,13 @@ class AnalysisLifecycleTest(unittest.TestCase):
                 "service-config-rotation-finalize",
                 "NAMEI_EXT_RUN_COMPLETE",
                 "service-config-rotation-analyze",
+            ),
+            (
+                ROOT / "mk/experiments/checkpoint_restore.mk",
+                "kvm-checkpoint-restore-preflight",
+                "checkpoint-restore-finalize",
+                "NAMEI_EXT_RUN_COMPLETE",
+                "checkpoint-restore-analyze",
             ),
         )
         for path, target, *ordered_steps in cases:

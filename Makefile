@@ -20,6 +20,7 @@ include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
 include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
+include $(ROOT_DIR)/configs/benchmarks/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/results.mk
@@ -32,6 +33,7 @@ include $(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
 include $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
+include $(ROOT_DIR)/mk/experiments/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 
@@ -41,6 +43,8 @@ include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 	policy-load policy-semantic runner agent-workspace application-file-sharing \
 	build-action-sandboxing service-config-rotation checkpoint-restore \
 	checkpoint-restore-pathvirt-host-preflight \
+	kvm-checkpoint-restore-preflight checkpoint-restore-finalize \
+	checkpoint-restore-analyze checkpoint-restore-analysis-test \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
@@ -171,6 +175,8 @@ help:
 	@printf '%s\n' '                       run ten fresh nginx rotation boots and generate the RQ1 report'
 	@printf '%s\n' '  make checkpoint-restore-pathvirt-host-preflight'
 	@printf '%s\n' '                       validate patched DMTCP pathvirt restart mapping before KVM integration'
+	@printf '%s\n' '  make kvm-checkpoint-restore-preflight'
+	@printf '%s\n' '                       run patched DMTCP, namei_ext, and withdrawn control in one modified-kernel boot'
 	@printf '%s\n' '  make kvm-fxmark-rq2-preflight'
 	@printf '%s\n' '                       run one real MRPL cell in six isolated stock/patched/FUSE KVM boots'
 	@printf '%s\n' '  make kvm-fxmark-rq2'

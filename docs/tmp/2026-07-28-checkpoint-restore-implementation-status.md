@@ -14,6 +14,8 @@ The current tree contains:
 - pinned DMTCP source acquisition, checksum verification, extraction,
   configure, build, install, and provenance targets in
   `configs/benchmarks/workload-sources.mk` and `mk/workload.mk`;
+- a frozen preflight configuration in
+  `configs/benchmarks/checkpoint_restore.mk`;
 - a focused DMTCP application in
   `experiments/checkpoint_restore/checkpoint_restore_app.c`;
 - a lifecycle controller in
@@ -21,7 +23,11 @@ The current tree contains:
 - a local experiment build entrypoint in
   `experiments/checkpoint_restore/Makefile`; and
 - a lookup-only directory-selection policy in
-  `bpf/policies/checkpoint_restore_migration.bpf.c`.
+  `bpf/policies/checkpoint_restore_migration.bpf.c`;
+- a shared-lifecycle KVM suite in
+  `mk/experiments/checkpoint_restore.mk`; and
+- an independent result analyzer and focused rejection tests in
+  `analysis/checkpoint_restore/`.
 
 The application closes pathname-derived file descriptors before checkpoint and
 uses `fopen`, `fstat`, and `opendir`/`readdir` after restart. The controller
@@ -102,16 +108,40 @@ The diagnosis inspected:
 - DMTCP `test/pathvirt1.c` and the `pathvirt` autotest definition; and
 - process `execve` environments for `dmtcp_restart` and `mtcp_restart`.
 
-## Not Yet Implemented or Validated
+## Modified-Kernel Preflight Integration
+
+`make kvm-checkpoint-restore-preflight` now captures a self-contained artifact
+set and runs three conditions in one modified-kernel guest:
+
+- patched DMTCP PathTranslator maps the logical workspace from generation A to
+  generation B across restart;
+- `namei_ext` replaces registered target ID 1 from generation A with generation
+  B; and
+- the withdrawn control removes the mapping and must return `ENOENT`.
+
+The guest first runs DMTCP's official unchanged-mapping `pathvirt` autotest. It
+then runs the same focused application and lower-object oracle for all three
+conditions. Result completion requires exact condition membership, successful
+controller rows, checkpoint-image hashes, immutable lower-object evidence,
+empty before/after BPF and FUSE inventories, kernel identity, and complete
+artifact manifests. Analysis starts only after the raw run transitions to
+`completed`; failed analysis cannot rewrite that status.
+
+The analyzer independently reconstructs the application oracle, DMTCP restart
+mapping, `namei_ext` program/cgroup identity, SELECT counter change, withdrawn
+`ENOENT`, and lower-object invariance. Nine focused analyzer tests and the
+shared result-contract tests pass. A dry run validates the full Make dependency
+graph and `finalize`/`complete`/`analyze` ordering.
+
+## Not Yet Validated
 
 The host dependency preflight now uses the shared run metadata, verified
 input/artifact manifests, completion transition, and evidence checksum
 contract. It preserves the original DMTCP archive, patch, relevant source,
 complete install manifest, and a complete result-owned install tree, and runs
-the A-to-B baseline from that copied tree. The experiment is not yet connected
-to the KVM guest lifecycle, result analyzer, or formal-run configuration. The
-`namei_ext` and withdrawn conditions have not run on the modified kernel.
-There is no result review, and no formal run is authorized.
+the A-to-B baseline from that copied tree. The `namei_ext` and withdrawn
+conditions have not yet run on the modified kernel. There is no KVM preflight
+result review, and no formal run is authorized.
 
 ## Next Decision
 
@@ -121,7 +151,7 @@ An independent read-only review confirmed that the patch repairs only
 restart-environment retrieval, the provenance makes the modified baseline
 unambiguous, and the comparison remains fair. Its final verdict is `GO`.
 
-The next step is to connect the suite to the shared KVM and result lifecycle
-and run one modified-kernel preflight containing patched DMTCP PathTranslator,
-`namei_ext`, and the withdrawn negative control. A separate result review is
-required before any formal matrix.
+The next step is to commit this implementation so the clean-source gate can
+admit it, then run one modified-kernel preflight containing patched DMTCP
+PathTranslator, `namei_ext`, and the withdrawn negative control. A separate
+result review is required before any formal matrix.

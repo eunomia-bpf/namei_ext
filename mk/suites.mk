@@ -10,6 +10,7 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-application-file-sharing-preflight \
 	kvm-build-action-sandboxing-preflight \
 	kvm-agent-workspace-rq2-preflight \
+	kvm-checkpoint-restore-preflight \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-fast-path-preflight
 

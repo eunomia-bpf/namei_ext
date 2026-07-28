@@ -54,6 +54,7 @@ make kvm-application-file-sharing-preflight
 make kvm-build-action-sandboxing-preflight
 make kvm-service-config-rotation-preflight
 make experiment-service-config-rotation
+make kvm-checkpoint-restore-preflight
 make kvm-bench
 make kvm-fxmark-rq2-preflight
 ```
@@ -73,10 +74,13 @@ reproducible through `make legacy-build-cache`; it is not a current-suite
 dependency and must not define the structure of new experiments.
 
 Checkpoint/Restore and Migration currently has pinned DMTCP source and a
-focused implementation under `experiments/checkpoint_restore/`. It has no
-public KVM or formal-suite entrypoint because the source-native A-to-B pathvirt
-baseline has not passed its dependency preflight. It must use the existing
-suite, KVM, result, and multi-boot contracts if that blocker is resolved.
+focused implementation under `experiments/checkpoint_restore/`. The disclosed,
+one-line DMTCP restart-environment fix and source-native A-to-B pathvirt
+baseline have passed their host dependency preflight. The
+`kvm-checkpoint-restore-preflight` entrypoint now runs patched DMTCP
+PathTranslator, `namei_ext`, and the withdrawn fail-closed control in one
+modified-kernel boot. This entrypoint is implementation-ready but has not yet
+produced KVM evidence or authorized a formal matrix.
 
 Canonical KVM case-study result roots contain `run.json`,
 `observations.jsonl`, `command.txt`, source and artifact hash manifests,
