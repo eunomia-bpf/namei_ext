@@ -55,7 +55,7 @@ test "$$(find "$(1)/boots" -mindepth 1 -maxdepth 1 -type d | wc -l)" = \
 	"$(2)"
 test "$$(find "$(1)/boots" -mindepth 1 -maxdepth 1 ! -type d | wc -l)" = \
 	"0"
-test "$$(find "$(1)/boots" -mindepth 3 -type f \
+test "$$(find "$(1)/boots" -mindepth 3 \
 	\( -name boot.json -o -name observations.jsonl \) | wc -l)" = "0"
 endef
 
@@ -71,7 +71,10 @@ endef
 define NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES
 $(call NAMEI_EXT_MULTI_BOOT_VALIDATE_TREE,$(1),$(2))
 while IFS= read -r -d '' boot; do \
-	for file in $(3); do test -e "$$boot/$$file"; done; \
+	for file in $(3); do \
+		test -f "$$boot/$$file"; \
+		test ! -L "$$boot/$$file"; \
+	done; \
 done < <(find "$(1)/boots" -mindepth 1 -maxdepth 1 -type d -print0 | \
 	LC_ALL=C sort -z)
 endef

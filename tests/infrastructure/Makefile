@@ -211,6 +211,27 @@ test:
 		exit 1; \
 	fi
 	printf 'required\n' >"$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	rm "$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	install -d "$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
+		printf '%s\n' 'directory multi-boot artifact unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rmdir "$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	ln -s /etc/passwd "$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
+		printf '%s\n' 'symlink multi-boot artifact unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rm "$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	printf 'required\n' >"$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	ln -s ../../two/boot.json \
+		"$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json"
+	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
+		printf '%s\n' 'nested symlink boot artifact unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rm "$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json"
 	mv "$(MULTI_BOOT_ROOT)/boots/two/boot.json" \
 		"$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json"
 	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
