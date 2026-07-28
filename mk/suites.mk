@@ -4,16 +4,17 @@
 NAMEI_EXT_CURRENT_GATE_TARGETS := \
 	kvm-agent-workspace-matrix \
 	kvm-application-file-sharing-preflight \
-	kvm-build-action-sandboxing-preflight \
-	kvm-service-config-rotation-preflight
+	kvm-build-action-sandboxing-preflight
 
 NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-application-file-sharing-preflight \
 	kvm-build-action-sandboxing-preflight \
-	kvm-service-config-rotation-preflight \
 	kvm-agent-workspace-rq2-preflight \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-fast-path-preflight
+
+NAMEI_EXT_BLOCKED_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
+	kvm-service-config-rotation-preflight
 
 NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS := \
 	experiment-agent-workspace-rq2
@@ -44,6 +45,7 @@ CLEAN_SOURCE_EXPERIMENT_TARGETS := \
 	$(sort \
 		$(NAMEI_EXT_CURRENT_GATE_TARGETS) \
 		$(NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS) \
+		$(NAMEI_EXT_BLOCKED_DEPENDENCY_PREFLIGHT_ENTRYPOINTS) \
 		$(NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS) \
 		$(NAMEI_EXT_BLOCKED_FORMAL_CASE_STUDY_ENTRYPOINTS) \
 		$(NAMEI_EXT_FORMAL_PERFORMANCE_ENTRYPOINTS))
