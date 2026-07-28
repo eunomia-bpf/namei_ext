@@ -256,6 +256,7 @@ static int write_config(const char *path, const char *generation,
 		config, sizeof(config),
 		"# generation: %s\n"
 		"%s"
+		"user root;\n"
 		"worker_processes 1;\n"
 		"pid %s;\n"
 		"error_log %s notice;\n"
