@@ -1,0 +1,5 @@
+intel_pstate_no_turbo=1
+cpu=4 governor=performance driver=intel_pstate max_khz=3700000
+cpu=5 governor=performance driver=intel_pstate max_khz=3700000
+cpu=6 governor=performance driver=intel_pstate max_khz=3700000
+cpu=7 governor=performance driver=intel_pstate max_khz=3700000

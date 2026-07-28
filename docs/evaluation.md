@@ -117,7 +117,7 @@ dilutes pathname lookup overhead.
 | Case | Source/oracle fixed | `namei_ext` correctness in KVM | Feature-equivalent FUSE | RQ3 boundary record |
 | --- | --- | --- | --- | --- |
 | W1 Sandboxed Application File Sharing | Existing-object, two-application grant/revoke subset frozen from the XDG Documents portal API | Preflight passed: grant, revoke, cross-application isolation, lookup/readdir/open/stat, and unchanged lower object | Source system is FUSE; matched project implementation not run | Preflight records lower-object preservation; full ownership table open |
-| W2 Agent Workspaces | AgentFS-derived lifecycle trace fixed | Passed, three terminal runs | Correctness passed; macro timing open | Open |
+| W2 Agent Workspaces | AgentFS-derived lifecycle trace fixed | Passed, three RQ1 terminal runs plus the formal RQ2 matrix | Same-oracle formal comparison passed: 10 paired blocks, 20 KVM boots, 10,000 lifecycle samples per condition | Open |
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Preflight passed: two concurrent real Bazel actions, distinct expected outputs, undeclared input hidden, lower objects unchanged | Not run | Preflight records lower-object preservation; full ownership table open |
 | W4 Service Configuration and Secret Rotation | AtomicWriter and nginx validation oracle identified | Not run | Not run | Not written |
 | W5 Checkpoint/Restore and Migration | DMTCP plugin behavior identified | Not run | Not run | Not written |
@@ -139,7 +139,9 @@ Make entrypoint: `make kvm-application-file-sharing-preflight`.
 | Cell | Status | Raw root |
 | --- | --- | --- |
 | RQ1 correctness: AgentFS-derived trace oracle for `namei_ext` and feature-equivalent FUSE | Passed, independently reviewed; 3 terminal KVM runs, 1,176 records each, zero failures, clean dmesg | `results/experiments/agent-workspace-matrix/20260722T020120Z-rq1run1/`, `-rq1run2/`, `-rq1run3/` |
-| RQ2 timing versus FUSE | Open: no macro runtime or per-operation latency claim yet | — |
+| RQ2 controlled lifecycle timing versus FUSE | Passed and independently reviewed: lifecycle p50 5.51 us versus 62.64 us, paired FUSE/namei_ext ratio 11.32x [11.24, 11.64]; 20/20 boots, 20,000/20,000 lifecycle samples, and 960/960 required oracles passed | `results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/` |
+| RQ2 operation decomposition | Mixed by design: `open` 8.35x and `readdir` 13.59x in favor of namei_ext; cache-hit `stat` and `access` favored FUSE; `exec` was inconclusive. This is a scoped AgentFS-derived lifecycle result, not an end-to-end agent-task speedup or a generic FUSE claim | Same raw root and `analysis/report.md` |
+| RQ2 result review | Valid; predeclared hypothesis supported; admitted as an OSDI/EuroSys-quality controlled mechanism result with supporting paper value | `docs/tmp/2026-07-27-agent-workspace-rq2-formal-v3-result-review.md` |
 | RQ3 boundary table | Open: source-tied ownership rows not yet written | — |
 
 ### C. Build Action Sandboxing (supporting RQ1 breadth)
