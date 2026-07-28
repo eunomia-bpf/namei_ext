@@ -70,6 +70,10 @@ struct runner_paths {
 	char current_index[PATH_MAX];
 	char canary_index[PATH_MAX];
 	char runtime[PATH_MAX];
+	char served_current_content[PATH_MAX];
+	char served_canary_content[PATH_MAX];
+	char served_current_index[PATH_MAX];
+	char served_canary_index[PATH_MAX];
 	char prefix[PATH_MAX];
 	char prefix_logs[PATH_MAX];
 	char client_body_temp[PATH_MAX];
@@ -206,6 +210,18 @@ static int build_paths(struct runner_paths *paths, const char *result_dir,
 				paths->canary_content, "index.html") ||
 	    snprintf(paths->runtime, sizeof(paths->runtime), "%s",
 		     runtime_root) >= (int)sizeof(paths->runtime) ||
+	    namei_ext_path_join(paths->served_current_content,
+				sizeof(paths->served_current_content),
+				paths->runtime, "content-current") ||
+	    namei_ext_path_join(paths->served_canary_content,
+				sizeof(paths->served_canary_content),
+				paths->runtime, "content-canary") ||
+	    namei_ext_path_join(paths->served_current_index,
+				sizeof(paths->served_current_index),
+				paths->served_current_content, "index.html") ||
+	    namei_ext_path_join(paths->served_canary_index,
+				sizeof(paths->served_canary_index),
+				paths->served_canary_content, "index.html") ||
 	    namei_ext_path_join(paths->prefix, sizeof(paths->prefix),
 				paths->runtime, "prefix") ||
 	    namei_ext_path_join(paths->prefix_logs, sizeof(paths->prefix_logs),
@@ -1236,7 +1252,7 @@ int main(int argc, char **argv)
 		.prog_fd = -1,
 	};
 	struct runner_paths paths = {};
-	struct file_snapshot snapshots[6] = {};
+	struct file_snapshot snapshots[8] = {};
 	struct stat runtime_metadata = {};
 	char cgroup[PATH_MAX] = {};
 	char policy_resolved[PATH_MAX] = {};
@@ -1356,7 +1372,11 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 	runtime_created = true;
-	ret = make_directory(paths.prefix);
+	ret = make_directory(paths.served_current_content);
+	if (!ret)
+		ret = make_directory(paths.served_canary_content);
+	if (!ret)
+		ret = make_directory(paths.prefix);
 	if (!ret)
 		ret = make_directory(paths.prefix_logs);
 	if (!ret && stat(paths.runtime, &runtime_metadata))
@@ -1375,18 +1395,22 @@ int main(int argc, char **argv)
 	if (choose_loopback_port(&port) ||
 	    namei_ext_write_text(paths.current_index, CURRENT_BODY) ||
 	    namei_ext_write_text(paths.canary_index, CANARY_BODY) ||
+	    copy_nonempty_regular_file(paths.current_index,
+				       paths.served_current_index) ||
+	    copy_nonempty_regular_file(paths.canary_index,
+				       paths.served_canary_index) ||
 	    write_config(paths.current_config, "current",
-			 paths.current_content, paths.pid_file, paths.error_log,
-			 paths.client_body_temp, port, false) ||
+			 paths.served_current_content, paths.pid_file,
+			 paths.error_log, paths.client_body_temp, port, false) ||
 	    write_config(paths.canary_config, "canary",
-			 paths.canary_content, paths.pid_file, paths.error_log,
-			 paths.client_body_temp, port, false) ||
+			 paths.served_canary_content, paths.pid_file,
+			 paths.error_log, paths.client_body_temp, port, false) ||
 	    write_config(paths.invalid_config, "invalid",
-			 paths.canary_content, paths.pid_file, paths.error_log,
-			 paths.client_body_temp, port, true) ||
+			 paths.served_canary_content, paths.pid_file,
+			 paths.error_log, paths.client_body_temp, port, true) ||
 	    write_config(paths.rollback_config, "rollback",
-			 paths.current_content, paths.pid_file, paths.error_log,
-			 paths.client_body_temp, port, false)) {
+			 paths.served_current_content, paths.pid_file,
+			 paths.error_log, paths.client_body_temp, port, false)) {
 		emit_case(out, repetition, "fixture", false,
 			  errno ? errno : EIO, "fixture generation failed");
 		fails++;
@@ -1425,7 +1449,9 @@ int main(int argc, char **argv)
 	snapshots[3].path = paths.rollback_config;
 	snapshots[4].path = paths.current_index;
 	snapshots[5].path = paths.canary_index;
-	for (size_t index = 0; index < 6; index++) {
+	snapshots[6].path = paths.served_current_index;
+	snapshots[7].path = paths.served_canary_index;
+	for (size_t index = 0; index < 8; index++) {
 		ret = capture_snapshot(&snapshots[index]);
 		if (ret) {
 			emit_case(out, repetition, "lower_snapshot", false,
@@ -1678,7 +1704,7 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	for (size_t index = 0; index < 6; index++) {
+	for (size_t index = 0; index < 8; index++) {
 		ret = check_snapshot(&snapshots[index]);
 		if (ret)
 			break;
