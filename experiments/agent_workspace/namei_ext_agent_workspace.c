@@ -2,6 +2,15 @@
 
 #define _GNU_SOURCE
 
+#ifndef AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES
+#define AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES 20
+#define AGENT_WORKSPACE_RQ2_STAT_SAMPLES 100
+#define AGENT_WORKSPACE_RQ2_OPEN_SAMPLES 100
+#define AGENT_WORKSPACE_RQ2_ACCESS_SAMPLES 100
+#define AGENT_WORKSPACE_RQ2_READDIR_SAMPLES 50
+#define AGENT_WORKSPACE_RQ2_EXEC_SAMPLES 20
+#endif
+
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <dirent.h>
@@ -1130,8 +1139,8 @@ int main(int argc, char **argv)
 	    write_file(base_deleted, "base-deleted\n") ||
 	    write_file(upper_main, "upper-main\n") ||
 	    write_file(upper_deleted, "upper-deleted\n") ||
-	    write_file(base_denied, "denied\n") ||
-	    write_file(upper_denied, "denied\n") ||
+	    write_file(base_denied, "base-denied\n") ||
+	    write_file(upper_denied, "upper-denied\n") ||
 	    write_file(outside_deleted, "outside-deleted\n") ||
 	    write_file(base_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(upper_tool, "#!/bin/sh\nexit 0\n") ||
@@ -1148,7 +1157,7 @@ int main(int argc, char **argv)
 	}
 	if (chmod(base_tool, 0755) || chmod(upper_tool, 0755) ||
 	    chmod(upper_main, 0600) || chmod(base_denied, 0000) ||
-	    chmod(upper_denied, 0000)) {
+	    chmod(upper_denied, 0100)) {
 		emit_case(out, "setup_executable_tools", false, errno,
 			  "chmod executable tool failed");
 		fails++;
@@ -1169,9 +1178,13 @@ int main(int argc, char **argv)
 						   base, false);
 	fails += !!expect_parent_readdir_ws(out, "nohook_parent_lists_ws", view);
 	fails += !!measure_stat_latency(out, "nohook_stat_base_main_ns",
-					base_main, 0, 100);
+					base_main, 0,
+					rq2_mode ?
+					AGENT_WORKSPACE_RQ2_STAT_SAMPLES : 100);
 	fails += !!measure_readdir_latency(out, "nohook_readdir_base_ns",
-					   base, 50);
+					   base, rq2_mode ?
+					   AGENT_WORKSPACE_RQ2_READDIR_SAMPLES :
+					   50);
 	fails += !!expect_stat_errno(out, "logical_before_attach",
 				     logical_main, ENOENT);
 
@@ -1201,6 +1214,8 @@ int main(int argc, char **argv)
 	fails += !!expect_mode(out, "base_epoch_main_mode", logical_main, 0644);
 	fails += !!expect_unprivileged_access_denied(
 		out, "base_epoch_denied_access", logical_denied);
+	fails += !!expect_mode(out, "base_epoch_denied_mode",
+			       logical_denied, 0000);
 	fails += !!expect_read_file(out, "base_epoch_src_app",
 				    logical_src_app, "base-app\n");
 	fails += !!expect_read_file(out, "base_epoch_git_head",
@@ -1219,6 +1234,10 @@ int main(int argc, char **argv)
 	fails += !!expect_read_file(out, "upper_epoch_main", logical_main,
 				    "upper-main\n");
 	fails += !!expect_mode(out, "upper_epoch_main_mode", logical_main, 0600);
+	fails += !!expect_unprivileged_access_denied(
+		out, "upper_epoch_denied_access", logical_denied);
+	fails += !!expect_mode(out, "upper_epoch_denied_mode",
+			       logical_denied, 0100);
 	fails += !!expect_read_file(out, "upper_epoch_src_app",
 				    logical_src_app, "agent-edited-app\n");
 	fails += !!expect_read_file(out, "upper_epoch_git_head",
@@ -1315,17 +1334,25 @@ int main(int argc, char **argv)
 	if (rq2_mode)
 		fails += !!measure_workspace_lifecycle(
 			out, "namei_ext_lifecycle_ns",
-			logical_lifecycle_created, logical_lifecycle_renamed, 20);
+			logical_lifecycle_created, logical_lifecycle_renamed,
+			AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES);
 	fails += !!measure_stat_latency(out, "namei_ext_stat_main_ns",
-					logical_main, 0, 100);
+					logical_main, 0, rq2_mode ?
+					AGENT_WORKSPACE_RQ2_STAT_SAMPLES : 100);
 	fails += !!measure_open_latency(out, "namei_ext_open_main_ns",
-					logical_main, 100);
+					logical_main, rq2_mode ?
+					AGENT_WORKSPACE_RQ2_OPEN_SAMPLES : 100);
 	fails += !!measure_access_latency(out, "namei_ext_access_main_ns",
-					  logical_main, R_OK, 100);
+					  logical_main, R_OK, rq2_mode ?
+					  AGENT_WORKSPACE_RQ2_ACCESS_SAMPLES :
+					  100);
 	fails += !!measure_exec_latency(out, "namei_ext_exec_tool_ns",
-					logical_tool, 20);
+					logical_tool, rq2_mode ?
+					AGENT_WORKSPACE_RQ2_EXEC_SAMPLES : 20);
 	fails += !!measure_readdir_latency(out, "namei_ext_readdir_ws_ns",
-					   logical_root, 50);
+					   logical_root, rq2_mode ?
+					   AGENT_WORKSPACE_RQ2_READDIR_SAMPLES :
+					   50);
 
 	fails += !!expect_policy_counter(out, &policy, "total",
 					 AW_COUNTER_TOTAL, true);

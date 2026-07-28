@@ -10,6 +10,7 @@ namei_ext case base_epoch_readdir
 namei_ext case base_epoch_main
 namei_ext case base_epoch_main_mode
 namei_ext case base_epoch_denied_access
+namei_ext case base_epoch_denied_mode
 namei_ext case base_epoch_src_app
 namei_ext case base_epoch_git_head
 namei_ext case base_epoch_whiteout
@@ -18,6 +19,8 @@ namei_ext case register_upper_target
 namei_ext case upper_epoch_readdir_before_write
 namei_ext case upper_epoch_main
 namei_ext case upper_epoch_main_mode
+namei_ext case upper_epoch_denied_access
+namei_ext case upper_epoch_denied_mode
 namei_ext case upper_epoch_src_app
 namei_ext case upper_epoch_git_head
 namei_ext case upper_epoch_whiteout
@@ -52,6 +55,7 @@ fuse case fuse_base_epoch_readdir
 fuse case fuse_base_epoch_main
 fuse case fuse_base_epoch_main_mode
 fuse case fuse_base_epoch_denied_access
+fuse case fuse_base_epoch_denied_mode
 fuse case fuse_base_epoch_src_app
 fuse case fuse_base_epoch_git_head
 fuse case fuse_base_epoch_whiteout
@@ -60,6 +64,8 @@ fuse case fuse_epoch_switch_invalidated
 fuse case fuse_upper_epoch_readdir_before_write
 fuse case fuse_upper_epoch_main
 fuse case fuse_upper_epoch_main_mode
+fuse case fuse_upper_epoch_denied_access
+fuse case fuse_upper_epoch_denied_mode
 fuse case fuse_upper_epoch_src_app
 fuse case fuse_upper_epoch_git_head
 fuse case fuse_upper_epoch_whiteout
@@ -82,7 +88,9 @@ fuse manifest fuse_final_tree_manifest
 fuse case fuse_base_main_preserved
 fuse case fuse_base_deleted_preserved
 fuse case fuse_base_cached_negative_unmodified
+fuse case fuse_resource_pre_drain
 fuse case fuse_resource_window_start
+fuse case fuse_resource_post_drain
 fuse case fuse_resource_window_end
 fuse case fuse_unmount
 fuse case fuse_agent_workspace_rq2_summary

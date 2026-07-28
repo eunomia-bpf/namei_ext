@@ -3,6 +3,15 @@
 #define _GNU_SOURCE
 #define FUSE_USE_VERSION 314
 
+#ifndef AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES
+#define AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES 20
+#define AGENT_WORKSPACE_RQ2_STAT_SAMPLES 100
+#define AGENT_WORKSPACE_RQ2_OPEN_SAMPLES 100
+#define AGENT_WORKSPACE_RQ2_ACCESS_SAMPLES 100
+#define AGENT_WORKSPACE_RQ2_READDIR_SAMPLES 50
+#define AGENT_WORKSPACE_RQ2_EXEC_SAMPLES 20
+#endif
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -38,7 +47,12 @@ enum fuse_workspace_counter {
 	FUSE_COUNTER_MKNOD = 11,
 	FUSE_COUNTER_INVALIDATE_ATTEMPT = 12,
 	FUSE_COUNTER_INVALIDATE_ERROR = 13,
-	FUSE_COUNTER_MAX = 14,
+	FUSE_COUNTER_TRUNCATE = 14,
+	FUSE_COUNTER_RELEASE = 15,
+	FUSE_COUNTER_REQUEST_TOTAL = 16,
+	FUSE_COUNTER_HANDLE_OPENED = 17,
+	FUSE_COUNTER_RELEASE_COMPLETED = 18,
+	FUSE_COUNTER_MAX = 19,
 };
 
 struct fuse_workspace_state {
@@ -73,9 +87,13 @@ struct fuse_control_thread {
 struct fuse_resource_sample {
 	unsigned long long user_ticks;
 	unsigned long long system_ticks;
+	unsigned long long cpu_runtime_ns;
+	unsigned long long runqueue_wait_ns;
+	unsigned long long timeslices;
 	unsigned long long voluntary_switches;
 	unsigned long long involuntary_switches;
 	unsigned long long requests;
+	unsigned long long threads;
 };
 
 static const char *result_event = "agent-workspace-preflight";
@@ -160,22 +178,33 @@ static void emit_fuse_resource(FILE *out,
 			       const struct fuse_resource_sample *after,
 			       bool pass)
 {
+#define RESOURCE_DELTA(field) \
+	(after->field >= before->field ? after->field - before->field : 0)
 	fprintf(out,
 		"{\"event\":\"agent-workspace-fuse-resource\","
 		"\"result_level\":\"%s\",\"window\":\"rq2-measurement\","
 		"\"user_ticks\":%llu,\"system_ticks\":%llu,"
+		"\"cpu_runtime_ns\":%llu,\"runqueue_wait_ns\":%llu,"
+		"\"timeslices\":%llu,"
 		"\"voluntary_context_switches\":%llu,"
 		"\"involuntary_context_switches\":%llu,"
-		"\"requests\":%llu,\"clock_ticks_per_second\":%ld,"
+		"\"callback_requests\":%llu,"
+		"\"threads_before\":%llu,\"threads_after\":%llu,"
+		"\"clock_ticks_per_second\":%ld,"
 		"\"pass\":%s}\n",
 		result_level,
-		after->user_ticks - before->user_ticks,
-		after->system_ticks - before->system_ticks,
-		after->voluntary_switches - before->voluntary_switches,
-		after->involuntary_switches - before->involuntary_switches,
-		after->requests - before->requests,
+		RESOURCE_DELTA(user_ticks),
+		RESOURCE_DELTA(system_ticks),
+		RESOURCE_DELTA(cpu_runtime_ns),
+		RESOURCE_DELTA(runqueue_wait_ns),
+		RESOURCE_DELTA(timeslices),
+		RESOURCE_DELTA(voluntary_switches),
+		RESOURCE_DELTA(involuntary_switches),
+		RESOURCE_DELTA(requests),
+		before->threads, after->threads,
 		sysconf(_SC_CLK_TCK), pass ? "true" : "false");
 	fflush(out);
+#undef RESOURCE_DELTA
 }
 
 static unsigned long long nsec_now(void)
@@ -780,26 +809,78 @@ static void fuse_count(unsigned int key)
 	fuse_count_state(fuse_state(), key);
 }
 
+static void fuse_count_request(unsigned int key)
+{
+	struct fuse_workspace_state *state = fuse_state();
+
+	fuse_count_state(state, FUSE_COUNTER_REQUEST_TOTAL);
+	fuse_count_state(state, key);
+}
+
 static unsigned long long fuse_request_count(
 	const struct fuse_workspace_state *state)
 {
-	unsigned long long total = 0;
-	unsigned int i;
+	return state->counters[FUSE_COUNTER_REQUEST_TOTAL];
+}
 
-	for (i = 0; i < FUSE_COUNTER_INVALIDATE_ATTEMPT; i++)
-		total += state->counters[i];
-	return total;
+static int read_task_resource(pid_t pid, const char *task,
+			      struct fuse_resource_sample *sample)
+{
+	unsigned long long cpu_runtime_ns;
+	unsigned long long runqueue_wait_ns;
+	unsigned long long timeslices;
+	char path[PATH_MAX];
+	char line[4096];
+	FILE *file;
+
+	snprintf(path, sizeof(path), "/proc/%d/task/%s/schedstat", pid, task);
+	file = fopen(path, "r");
+	if (!file)
+		return -errno;
+	if (fscanf(file, "%llu %llu %llu", &cpu_runtime_ns,
+		   &runqueue_wait_ns, &timeslices) != 3) {
+		fclose(file);
+		return -EINVAL;
+	}
+	fclose(file);
+	sample->cpu_runtime_ns += cpu_runtime_ns;
+	sample->runqueue_wait_ns += runqueue_wait_ns;
+	sample->timeslices += timeslices;
+
+	snprintf(path, sizeof(path), "/proc/%d/task/%s/status", pid, task);
+	file = fopen(path, "r");
+	if (!file)
+		return -errno;
+	while (fgets(line, sizeof(line), file)) {
+		unsigned long long value;
+
+		if (sscanf(line, "voluntary_ctxt_switches: %llu", &value) == 1)
+			sample->voluntary_switches += value;
+		if (sscanf(line, "nonvoluntary_ctxt_switches: %llu", &value) == 1)
+			sample->involuntary_switches += value;
+	}
+	if (ferror(file)) {
+		int err = errno ? errno : EIO;
+
+		fclose(file);
+		return -err;
+	}
+	fclose(file);
+	sample->threads++;
+	return 0;
 }
 
 static int read_fuse_resource(pid_t pid,
 			      const struct fuse_workspace_state *state,
 			      struct fuse_resource_sample *sample)
 {
-	char path[64];
+	struct dirent *entry;
+	char path[PATH_MAX];
 	char line[4096];
 	char *after_comm;
 	char process_state;
 	long long ignored[10];
+	DIR *tasks;
 	FILE *file;
 	int matched;
 
@@ -829,25 +910,97 @@ static int read_fuse_resource(pid_t pid,
 		return -EINVAL;
 	(void)process_state;
 
-	snprintf(path, sizeof(path), "/proc/%d/status", pid);
-	file = fopen(path, "r");
-	if (!file)
+	snprintf(path, sizeof(path), "/proc/%d/task", pid);
+	tasks = opendir(path);
+	if (!tasks)
 		return -errno;
-	while (fgets(line, sizeof(line), file)) {
-		sscanf(line, "voluntary_ctxt_switches: %llu",
-		       &sample->voluntary_switches);
-		sscanf(line, "nonvoluntary_ctxt_switches: %llu",
-		       &sample->involuntary_switches);
-	}
-	if (ferror(file)) {
-		int err = errno ? errno : EIO;
+	for (;;) {
+		const char *cursor;
+		int ret;
 
-		fclose(file);
-		return -err;
+		errno = 0;
+		entry = readdir(tasks);
+		if (!entry) {
+			if (errno) {
+				ret = -errno;
+				closedir(tasks);
+				return ret;
+			}
+			break;
+		}
+		cursor = entry->d_name;
+		if (!*cursor)
+			continue;
+		while (*cursor >= '0' && *cursor <= '9')
+			cursor++;
+		if (*cursor)
+			continue;
+		ret = read_task_resource(pid, entry->d_name, sample);
+		if (ret) {
+			closedir(tasks);
+			return ret;
+		}
 	}
-	fclose(file);
+	if (closedir(tasks))
+		return -errno;
+	if (!sample->threads)
+		return -ESRCH;
 	sample->requests = fuse_request_count(state);
 	return 0;
+}
+
+static bool fuse_resource_monotonic(
+	const struct fuse_resource_sample *before,
+	const struct fuse_resource_sample *after)
+{
+	return after->user_ticks >= before->user_ticks &&
+	       after->system_ticks >= before->system_ticks &&
+	       after->cpu_runtime_ns >= before->cpu_runtime_ns &&
+	       after->runqueue_wait_ns >= before->runqueue_wait_ns &&
+	       after->timeslices >= before->timeslices &&
+	       after->voluntary_switches >= before->voluntary_switches &&
+	       after->involuntary_switches >= before->involuntary_switches &&
+	       after->requests >= before->requests &&
+	       before->threads == after->threads;
+}
+
+static int wait_fuse_quiescent(const struct fuse_workspace_state *state)
+{
+	const unsigned long long stable_ns = 20000000ull;
+	const unsigned long long deadline = nsec_now() + 5000000000ull;
+	struct timespec delay = {
+		.tv_sec = 0,
+		.tv_nsec = 1000000,
+	};
+	unsigned long long stable_since = 0;
+	unsigned long long previous_total = ULLONG_MAX;
+
+	while (nsec_now() < deadline) {
+		unsigned long long handle_count;
+		unsigned long long release_count;
+		unsigned long long total;
+		unsigned long long now;
+
+		__sync_synchronize();
+		handle_count = state->counters[FUSE_COUNTER_HANDLE_OPENED];
+		release_count = state->counters[FUSE_COUNTER_RELEASE_COMPLETED];
+		total = state->counters[FUSE_COUNTER_REQUEST_TOTAL];
+		now = nsec_now();
+		if (release_count > handle_count)
+			return -EOVERFLOW;
+		if (release_count == handle_count &&
+		    total == previous_total) {
+			if (!stable_since)
+				stable_since = now;
+			else if (now - stable_since >= stable_ns)
+				return 0;
+		} else {
+			stable_since = 0;
+		}
+		previous_total = total;
+		nanosleep(&delay, NULL);
+	}
+	return -ETIMEDOUT;
 }
 
 static const char *active_target(const struct fuse_workspace_state *state)
@@ -901,7 +1054,7 @@ static int agent_fuse_getattr(const char *path, struct stat *st,
 	int ret;
 
 	(void)fi;
-	fuse_count(FUSE_COUNTER_GETATTR);
+	fuse_count_request(FUSE_COUNTER_GETATTR);
 	memset(st, 0, sizeof(*st));
 	if (!strcmp(path, "/")) {
 		st->st_mode = S_IFDIR | 0755;
@@ -930,7 +1083,7 @@ static int agent_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t fille
 	(void)fi;
 	(void)flags;
 
-	fuse_count(FUSE_COUNTER_READDIR);
+	fuse_count_request(FUSE_COUNTER_READDIR);
 	filler(buf, ".", NULL, 0, 0);
 	filler(buf, "..", NULL, 0, 0);
 	if (!strcmp(path, "/")) {
@@ -963,7 +1116,7 @@ static int agent_fuse_open(const char *path, struct fuse_file_info *fi)
 	int fd;
 	int ret;
 
-	fuse_count(FUSE_COUNTER_OPEN);
+	fuse_count_request(FUSE_COUNTER_OPEN);
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
@@ -971,6 +1124,7 @@ static int agent_fuse_open(const char *path, struct fuse_file_info *fi)
 	if (fd < 0)
 		return -errno;
 	fi->fh = (uint64_t)fd;
+	fuse_count(FUSE_COUNTER_HANDLE_OPENED);
 	return 0;
 }
 
@@ -981,7 +1135,7 @@ static int agent_fuse_create(const char *path, mode_t mode,
 	int fd;
 	int ret;
 
-	fuse_count(FUSE_COUNTER_CREATE);
+	fuse_count_request(FUSE_COUNTER_CREATE);
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
@@ -989,6 +1143,7 @@ static int agent_fuse_create(const char *path, mode_t mode,
 	if (fd < 0)
 		return -errno;
 	fi->fh = (uint64_t)fd;
+	fuse_count(FUSE_COUNTER_HANDLE_OPENED);
 	return 0;
 }
 
@@ -997,7 +1152,7 @@ static int agent_fuse_mknod(const char *path, mode_t mode, dev_t rdev)
 	char backing[PATH_MAX];
 	int ret;
 
-	fuse_count(FUSE_COUNTER_MKNOD);
+	fuse_count_request(FUSE_COUNTER_MKNOD);
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
@@ -1012,7 +1167,7 @@ static int agent_fuse_read(const char *path, char *buf, size_t size, off_t off,
 	ssize_t nread;
 	int fd = (int)fi->fh;
 
-	fuse_count(FUSE_COUNTER_READ);
+	fuse_count_request(FUSE_COUNTER_READ);
 	(void)path;
 	nread = pread(fd, buf, size, off);
 	if (nread < 0)
@@ -1026,7 +1181,7 @@ static int agent_fuse_write(const char *path, const char *buf, size_t size,
 	ssize_t nwritten;
 	int fd = (int)fi->fh;
 
-	fuse_count(FUSE_COUNTER_WRITE);
+	fuse_count_request(FUSE_COUNTER_WRITE);
 	(void)path;
 	nwritten = pwrite(fd, buf, size, off);
 	if (nwritten < 0)
@@ -1041,6 +1196,7 @@ static int agent_fuse_truncate(const char *path, off_t size,
 	int ret;
 
 	(void)fi;
+	fuse_count_request(FUSE_COUNTER_TRUNCATE);
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
@@ -1055,7 +1211,7 @@ static int agent_fuse_readlink(const char *path, char *buf, size_t size)
 	ssize_t nread;
 	int ret;
 
-	fuse_count(FUSE_COUNTER_READLINK);
+	fuse_count_request(FUSE_COUNTER_READLINK);
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
@@ -1071,7 +1227,7 @@ static int agent_fuse_unlink(const char *path)
 	char backing[PATH_MAX];
 	int ret;
 
-	fuse_count(FUSE_COUNTER_UNLINK);
+	fuse_count_request(FUSE_COUNTER_UNLINK);
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
@@ -1087,7 +1243,7 @@ static int agent_fuse_rename(const char *from, const char *to,
 	char backing_to[PATH_MAX];
 	int ret;
 
-	fuse_count(FUSE_COUNTER_RENAME);
+	fuse_count_request(FUSE_COUNTER_RENAME);
 	if (flags)
 		return -EINVAL;
 	ret = backing_path(from, backing_from, sizeof(backing_from));
@@ -1103,9 +1259,15 @@ static int agent_fuse_rename(const char *from, const char *to,
 
 static int agent_fuse_release(const char *path, struct fuse_file_info *fi)
 {
+	int saved_errno;
+	int ret;
+
+	fuse_count_request(FUSE_COUNTER_RELEASE);
 	(void)path;
-	close((int)fi->fh);
-	return 0;
+	ret = close((int)fi->fh);
+	saved_errno = ret ? errno : 0;
+	fuse_count(FUSE_COUNTER_RELEASE_COMPLETED);
+	return ret ? -saved_errno : 0;
 }
 
 static struct fuse_operations agent_fuse_ops = {
@@ -1168,6 +1330,7 @@ static void *fuse_control_loop(void *arg)
 		"/ws/src/app.txt",
 		"/ws/.git/HEAD",
 		"/ws/link.txt",
+		"/ws/denied.txt",
 	};
 	struct fuse_control_thread *control = arg;
 
@@ -1586,8 +1749,8 @@ int main(int argc, char **argv)
 	    write_file(base_deleted, "base-deleted\n") ||
 	    write_file(upper_main, "upper-main\n") ||
 	    write_file(upper_deleted, "upper-deleted\n") ||
-	    write_file(base_denied, "denied\n") ||
-	    write_file(upper_denied, "denied\n") ||
+	    write_file(base_denied, "base-denied\n") ||
+	    write_file(upper_denied, "upper-denied\n") ||
 	    write_file(base_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(upper_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(base_src_app, "base-app\n") ||
@@ -1603,7 +1766,7 @@ int main(int argc, char **argv)
 	}
 	if (chmod(base_tool, 0755) || chmod(upper_tool, 0755) ||
 	    chmod(upper_main, 0600) || chmod(base_denied, 0000) ||
-	    chmod(upper_denied, 0000)) {
+	    chmod(upper_denied, 0100)) {
 		emit_case(out, "fuse_setup_executable_tools", false, errno,
 			  "chmod executable tool failed");
 		fails++;
@@ -1623,9 +1786,13 @@ int main(int argc, char **argv)
 	fails += !!expect_native_workspace_readdir(out, "fuse_nohook_base_readdir",
 						   base, false);
 	fails += !!measure_stat_latency(out, "fuse_nohook_stat_base_main_ns",
-					base_main, 0, 100);
+					base_main, 0,
+					rq2_mode ?
+					AGENT_WORKSPACE_RQ2_STAT_SAMPLES : 100);
 	fails += !!measure_readdir_latency(out, "fuse_nohook_readdir_base_ns",
-					   base, 50);
+					   base, rq2_mode ?
+					   AGENT_WORKSPACE_RQ2_READDIR_SAMPLES :
+					   50);
 
 	state = mmap(NULL, sizeof(*state), PROT_READ | PROT_WRITE,
 		     MAP_SHARED | MAP_ANONYMOUS, -1, 0);
@@ -1689,6 +1856,8 @@ int main(int argc, char **argv)
 			       logical_main, 0644);
 	fails += !!expect_unprivileged_access_denied(
 		out, "fuse_base_epoch_denied_access", logical_denied);
+	fails += !!expect_mode(out, "fuse_base_epoch_denied_mode",
+			       logical_denied, 0000);
 	fails += !!expect_read_file(out, "fuse_base_epoch_src_app",
 				    logical_src_app, "base-app\n");
 	fails += !!expect_read_file(out, "fuse_base_epoch_git_head",
@@ -1707,9 +1876,9 @@ int main(int argc, char **argv)
 					   FUSE_CONTROL_SET_EPOCH, 1,
 					   &invalidations);
 		emit_case(out, "fuse_epoch_switch_invalidated",
-			  !err && invalidations == 5, err ? -err : 0,
-			  "epoch switched after five targeted inode invalidations");
-		if (err || invalidations != 5) {
+			  !err && invalidations == 6, err ? -err : 0,
+			  "epoch switched after six targeted inode invalidations");
+		if (err || invalidations != 6) {
 			fails++;
 			goto cleanup;
 		}
@@ -1721,6 +1890,10 @@ int main(int argc, char **argv)
 				    "upper-main\n");
 	fails += !!expect_mode(out, "fuse_upper_epoch_main_mode",
 			       logical_main, 0600);
+	fails += !!expect_unprivileged_access_denied(
+		out, "fuse_upper_epoch_denied_access", logical_denied);
+	fails += !!expect_mode(out, "fuse_upper_epoch_denied_mode",
+			       logical_denied, 0100);
 	fails += !!expect_read_file(out, "fuse_upper_epoch_src_app",
 				    logical_src_app, "agent-edited-app\n");
 	fails += !!expect_read_file(out, "fuse_upper_epoch_git_head",
@@ -1822,7 +1995,13 @@ int main(int argc, char **argv)
 	fails += !!expect_stat_errno(out, "fuse_base_cached_negative_unmodified",
 				     base_cached_negative, ENOENT);
 	if (rq2_mode) {
-		err = read_fuse_resource(fuse_pid, state, &resource_before);
+		err = wait_fuse_quiescent(state);
+		emit_case(out, "fuse_resource_pre_drain", !err,
+			  err ? -err : 0,
+			  "prior successful file handles reached matching release callbacks and the callback count stayed stable");
+		if (!err)
+			err = read_fuse_resource(fuse_pid, state,
+						 &resource_before);
 		emit_case(out, "fuse_resource_window_start", !err,
 			  err ? -err : 0,
 			  "FUSE daemon resource window started");
@@ -1834,27 +2013,46 @@ int main(int argc, char **argv)
 	if (rq2_mode)
 		fails += !!measure_workspace_lifecycle(
 			out, "fuse_lifecycle_ns",
-			logical_lifecycle_created, logical_lifecycle_renamed, 20);
+			logical_lifecycle_created, logical_lifecycle_renamed,
+			AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES);
 	fails += !!measure_stat_latency(out, "fuse_stat_main_ns",
-					logical_main, 0, 100);
+					logical_main, 0, rq2_mode ?
+					AGENT_WORKSPACE_RQ2_STAT_SAMPLES : 100);
 	fails += !!measure_open_latency(out, "fuse_open_main_ns",
-					logical_main, 100);
+					logical_main, rq2_mode ?
+					AGENT_WORKSPACE_RQ2_OPEN_SAMPLES : 100);
 	fails += !!measure_access_latency(out, "fuse_access_main_ns",
-					  logical_main, R_OK, 100);
+					  logical_main, R_OK, rq2_mode ?
+					  AGENT_WORKSPACE_RQ2_ACCESS_SAMPLES :
+					  100);
 	fails += !!measure_exec_latency(out, "fuse_exec_tool_ns",
-					logical_tool, 20);
+					logical_tool, rq2_mode ?
+					AGENT_WORKSPACE_RQ2_EXEC_SAMPLES : 20);
 	fails += !!measure_readdir_latency(out, "fuse_readdir_ws_ns",
-					   logical_root, 50);
+					   logical_root, rq2_mode ?
+					   AGENT_WORKSPACE_RQ2_READDIR_SAMPLES :
+					   50);
 	if (rq2_mode) {
-		err = read_fuse_resource(fuse_pid, state, &resource_after);
+		err = wait_fuse_quiescent(state);
+		emit_case(out, "fuse_resource_post_drain", !err,
+			  err ? -err : 0,
+			  "timed successful file handles reached matching release callbacks and the callback count stayed stable");
+		if (!err)
+			err = read_fuse_resource(fuse_pid, state,
+						 &resource_after);
 		emit_case(out, "fuse_resource_window_end",
 			  resource_window_started && !err, err ? -err : 0,
 			  "FUSE daemon resource window ended");
 		if (!resource_window_started || err) {
 			fails++;
 		} else {
+			bool resource_pass = fuse_resource_monotonic(
+				&resource_before, &resource_after);
+
 			emit_fuse_resource(out, &resource_before, &resource_after,
-					   true);
+					   resource_pass);
+			if (!resource_pass)
+				fails++;
 		}
 	}
 
@@ -1894,6 +2092,16 @@ int main(int argc, char **argv)
 					       FUSE_COUNTER_RENAME, true);
 		fails += !!expect_fuse_counter(out, state, "mknod",
 					       FUSE_COUNTER_MKNOD, false);
+		fails += !!expect_fuse_counter(out, state, "truncate",
+					       FUSE_COUNTER_TRUNCATE, false);
+		fails += !!expect_fuse_counter(out, state, "release",
+					       FUSE_COUNTER_RELEASE, true);
+		fails += !!expect_fuse_counter(out, state, "request_total",
+					       FUSE_COUNTER_REQUEST_TOTAL, true);
+		fails += !!expect_fuse_counter(out, state, "handle_opened",
+					       FUSE_COUNTER_HANDLE_OPENED, true);
+		fails += !!expect_fuse_counter(out, state, "release_completed",
+					       FUSE_COUNTER_RELEASE_COMPLETED, true);
 		fails += !!expect_fuse_counter(out, state, "hidden_lookup",
 					       FUSE_COUNTER_HIDDEN_LOOKUP, true);
 		fails += !!expect_fuse_counter(out, state, "hidden_readdir",
@@ -1902,7 +2110,7 @@ int main(int argc, char **argv)
 					       FUSE_COUNTER_INVALIDATE_ATTEMPT, true);
 		fails += !!expect_fuse_counter(out, state, "invalidate_error",
 					       FUSE_COUNTER_INVALIDATE_ERROR, false);
-		if (state->counters[FUSE_COUNTER_INVALIDATE_ATTEMPT] != 5 ||
+		if (state->counters[FUSE_COUNTER_INVALIDATE_ATTEMPT] != 6 ||
 		    state->counters[FUSE_COUNTER_INVALIDATE_ERROR] != 0)
 			fails++;
 	}

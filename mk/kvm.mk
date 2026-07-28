@@ -13,9 +13,10 @@ NAMEI_EXT_BENCH_VARIANTS_NORMALIZED := $(subst :,$(NAMEI_EXT_SPACE),$(subst $(NA
 TABLE_REDIRECT_BENCH_VARIANTS := $(filter table_redirect_empty table_redirect_hit,$(NAMEI_EXT_BENCH_VARIANTS_NORMALIZED))
 TABLE_REDIRECT_BENCH_ARG := $(if $(TABLE_REDIRECT_BENCH_VARIANTS),$(TABLE_REDIRECT_POLICY),-)
 NAMEI_EXT_DMESG_FAILURE_PATTERN := BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN|clocksource: Watchdog .*read timed out|Marking clocksource .* unstable
+NAMEI_EXT_VCPU_AFFINITY_VERIFY ?= $(ROOT_DIR)/tools/kvm/verify_vcpu_affinity.py
 
 define NAMEI_EXT_KVM_RUN_IMAGE
-$(VNG) --run "$(1)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) $(2) RUN_ID=$(RUN_ID) $(3)"
+$(VNG) $(if $(4),--pin "$(4)") --run "$(1)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) $(2) RUN_ID=$(RUN_ID) $(3)"
 endef
 
 define NAMEI_EXT_KVM_RUN
@@ -23,7 +24,7 @@ $(call NAMEI_EXT_KVM_RUN_IMAGE,$(KERNEL_IMAGE),$(1),$(2))
 endef
 
 define NAMEI_EXT_KVM_RUN_CAPTURE
-if ! $(call NAMEI_EXT_KVM_RUN_IMAGE,$(1),$(2),$(3)) >"$(4)/launcher.stdout.log" 2>"$(4)/launcher.stderr.log"; then failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); jq --arg failed_at "$$failed_at" '.status = "failed" | .failed_at = $$failed_at | .failure = "kvm-launch-or-guest-command"' "$(5)/run.json" >"$(5)/run.json.tmp"; mv -f "$(5)/run.json.tmp" "$(5)/run.json"; exit 1; fi
+if test -n "$(6)"; then launcher_status=0; affinity_status=0; $(call NAMEI_EXT_KVM_RUN_IMAGE,$(1),$(2),$(3),$(6)) >"$(4)/launcher.stdout.log" 2>"$(4)/launcher.stderr.log" & launcher_pid=$$!; python3 "$(NAMEI_EXT_VCPU_AFFINITY_VERIFY)" --expected "$(6)" --output "$(4)/vcpu-affinity.json" || affinity_status=$$?; wait "$$launcher_pid" || launcher_status=$$?; if test "$$launcher_status" -ne 0 || test "$$affinity_status" -ne 0; then failure=kvm-launch-or-guest-command; if test "$$affinity_status" -ne 0; then failure=vcpu-affinity-verification; fi; failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); jq --arg failed_at "$$failed_at" --arg failure "$$failure" '.status = "failed" | .failed_at = $$failed_at | .failure = $$failure' "$(5)/run.json" >"$(5)/run.json.tmp"; mv -f "$(5)/run.json.tmp" "$(5)/run.json"; exit 1; fi; else if ! $(call NAMEI_EXT_KVM_RUN_IMAGE,$(1),$(2),$(3)) >"$(4)/launcher.stdout.log" 2>"$(4)/launcher.stderr.log"; then failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); jq --arg failed_at "$$failed_at" '.status = "failed" | .failed_at = $$failed_at | .failure = "kvm-launch-or-guest-command"' "$(5)/run.json" >"$(5)/run.json.tmp"; mv -f "$(5)/run.json.tmp" "$(5)/run.json"; exit 1; fi; fi
 endef
 
 define NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN
