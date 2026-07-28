@@ -85,6 +85,21 @@ static void emit_sample(FILE *out, const char *name, unsigned int iteration,
 	fflush(out);
 }
 
+static void emit_lifecycle_sample(FILE *out, const char *name,
+				  unsigned int iteration,
+				  unsigned long long value, int err,
+				  const char *error_stage)
+{
+	fprintf(out,
+		"{\"event\":\"agent-workspace-lifecycle-sample\","
+		"\"result_level\":\"%s\",\"metric\":\"%s\",\"iteration\":%u,"
+		"\"value\":%llu,\"unit\":\"ns\",\"pass\":%s,\"errno\":%d,"
+		"\"error_stage\":\"%s\"}\n",
+		result_level, name, iteration, value,
+		err ? "false" : "true", err, error_stage);
+	fflush(out);
+}
+
 static void emit_manifest(FILE *out, const char *name, bool pass,
 			  const char *detail)
 {
@@ -151,12 +166,27 @@ static int expect_source_trace(FILE *out, const char *name, const char *path)
 	bool pass;
 
 	pass = file_contains_token(path, "TRACE_ID=agentfs-bash-git-workspace-v1") &&
-	       file_contains_token(path, "rename generated.txt renamed.txt") &&
-	       file_contains_token(path, "unlink cached-negative.txt") &&
-	       file_contains_token(path, "git-head agent");
+	       file_contains_token(path,
+				   "UPSTREAM_COMMIT=0a014ebd4918615baff589ed17486e557e7c6a23") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-run-bash.sh:6-25") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-run-git.sh:9-30") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-overlay-whiteout.sh:60-123") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-symlinks.sh:19-68") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-fuse-cache-invalidation.sh:134-158") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-fuse-cache-invalidation.sh:109-132") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-fuse-cache-invalidation.sh:60-90") &&
+	       file_contains_token(path,
+				   "ORACLE=base-object-unchanged");
 	emit_case(out, name, pass, pass ? 0 : EINVAL,
-		  pass ? "AgentFS-derived source trace artifact matched" :
-			 "AgentFS-derived source trace artifact missing required tokens");
+		  pass ? "fixed-commit AgentFS source bindings matched" :
+			 "AgentFS trace is missing fixed upstream bindings");
 	return pass ? 0 : -1;
 }
 
@@ -203,6 +233,57 @@ static int expect_stat_errno(FILE *out, const char *name, const char *path,
 		return 0;
 	}
 	emit_case(out, name, false, errno, "stat mismatch");
+	return -1;
+}
+
+static int expect_mode(FILE *out, const char *name, const char *path,
+		       mode_t want_mode)
+{
+	struct stat st;
+	bool pass;
+
+	if (stat(path, &st)) {
+		emit_case(out, name, false, errno, "stat for mode oracle failed");
+		return -1;
+	}
+	pass = (st.st_mode & 0777) == want_mode;
+	emit_case(out, name, pass, pass ? 0 : EINVAL,
+		  pass ? "logical path mode matched selected object" :
+			 "logical path mode did not match selected object");
+	return pass ? 0 : -1;
+}
+
+static int expect_unprivileged_access_denied(FILE *out, const char *name,
+					     const char *path)
+{
+	pid_t pid;
+	int status;
+
+	pid = fork();
+	if (pid < 0) {
+		emit_case(out, name, false, errno, "fork for access oracle failed");
+		return -1;
+	}
+	if (!pid) {
+		if (setgid(65534) || setuid(65534))
+			_exit(2);
+		errno = 0;
+		_exit(access(path, R_OK) && errno == EACCES ? 0 : 1);
+	}
+	while (waitpid(pid, &status, 0) < 0) {
+		if (errno == EINTR)
+			continue;
+		emit_case(out, name, false, errno,
+			  "wait for access oracle failed");
+		return -1;
+	}
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+		emit_case(out, name, true, EACCES,
+			  "unprivileged read access was denied");
+		return 0;
+	}
+	emit_case(out, name, false, EACCES,
+		  "unprivileged read access was not denied as expected");
 	return -1;
 }
 
@@ -532,6 +613,69 @@ static int measure_readdir_latency(FILE *out, const char *name,
 	return 0;
 }
 
+static int remove_if_present(const char *path)
+{
+	if (!unlink(path) || errno == ENOENT)
+		return 0;
+	return -errno;
+}
+
+static int measure_workspace_lifecycle(FILE *out, const char *name,
+				       const char *created_path,
+				       const char *renamed_path,
+				       unsigned int reps)
+{
+	unsigned int i;
+	int failures = 0;
+
+	for (i = 0; i < reps; i++) {
+		unsigned long long start;
+		unsigned long long elapsed;
+		const char *stage = "none";
+		struct stat st;
+		int err = 0;
+
+		if (remove_if_present(created_path) ||
+		    remove_if_present(renamed_path) ||
+		    !stat_errno_quiet(created_path, ENOENT) ||
+		    !stat_errno_quiet(renamed_path, ENOENT))
+			return -1;
+
+		start = nsec_now();
+		errno = 0;
+		if (!stat(created_path, &st) || errno != ENOENT) {
+			err = errno ? errno : EEXIST;
+			stage = "negative_lookup";
+		} else if (mknod(created_path, S_IFREG | 0644, 0)) {
+			err = errno;
+			stage = "create";
+		}
+		if (!err && rename(created_path, renamed_path)) {
+			err = errno;
+			stage = "rename";
+		}
+		if (!err && unlink(renamed_path)) {
+			err = errno;
+			stage = "unlink";
+		}
+		elapsed = nsec_now() - start;
+
+		if (!stat_errno_quiet(created_path, ENOENT) ||
+		    !stat_errno_quiet(renamed_path, ENOENT)) {
+			if (!err) {
+				err = EIO;
+				stage = "postcondition";
+			}
+			remove_if_present(created_path);
+			remove_if_present(renamed_path);
+		}
+		emit_lifecycle_sample(out, name, i, elapsed, err, stage);
+		if (err)
+			failures++;
+	}
+	return failures ? -1 : 0;
+}
+
 static int expect_final_manifest(FILE *out, const char *logical_main,
 				 const char *logical_deleted,
 				 const char *logical_generated,
@@ -741,6 +885,9 @@ int main(int argc, char **argv)
 	char logical_generated[PATH_MAX];
 	char logical_renamed[PATH_MAX];
 	char logical_cached_negative[PATH_MAX];
+	char logical_lifecycle_created[PATH_MAX];
+	char logical_lifecycle_renamed[PATH_MAX];
+	char logical_denied[PATH_MAX];
 	char logical_tool[PATH_MAX];
 	char base_main[PATH_MAX];
 	char base_deleted[PATH_MAX];
@@ -748,6 +895,7 @@ int main(int argc, char **argv)
 	char base_generated[PATH_MAX];
 	char base_renamed[PATH_MAX];
 	char base_cached_negative[PATH_MAX];
+	char base_denied[PATH_MAX];
 	char base_tool[PATH_MAX];
 	char upper_main[PATH_MAX];
 	char upper_deleted[PATH_MAX];
@@ -755,6 +903,7 @@ int main(int argc, char **argv)
 	char upper_generated[PATH_MAX];
 	char upper_renamed[PATH_MAX];
 	char upper_cached_negative[PATH_MAX];
+	char upper_denied[PATH_MAX];
 	char upper_tool[PATH_MAX];
 	char logical_src_app[PATH_MAX];
 	char logical_git_head[PATH_MAX];
@@ -768,6 +917,7 @@ int main(int argc, char **argv)
 	char upper_git_head[PATH_MAX];
 	FILE *out;
 	bool matrix_mode = false;
+	bool rq2_mode = false;
 	int fails = 0;
 	int err;
 	int argi = 1;
@@ -777,11 +927,16 @@ int main(int argc, char **argv)
 		result_event = "agent-workspace-matrix";
 		result_level = "kvm_agent_workspace_lifecycle_matrix";
 		argi++;
+	} else if (argi < argc && !strcmp(argv[argi], "--rq2")) {
+		rq2_mode = true;
+		result_event = "agent-workspace-rq2";
+		result_level = "kvm_agent_workspace_rq2_boot";
+		argi++;
 	}
 
 	if (argc - argi < 2 || argc - argi > 4) {
 		fprintf(stderr,
-			"usage: %s [--matrix] AGENT_WORKSPACE_POLICY_BPF_O RESULT_JSONL [CGROUP] [SOURCE_TRACE]\n",
+			"usage: %s [--matrix|--rq2] AGENT_WORKSPACE_POLICY_BPF_O RESULT_JSONL [CGROUP] [SOURCE_TRACE]\n",
 			argv[0]);
 		return 2;
 	}
@@ -805,6 +960,12 @@ int main(int argc, char **argv)
 		fclose(out);
 		return 1;
 	}
+	if (chmod(root, 0755)) {
+		emit_case(out, "setup_root_mode", false, errno,
+			  "workspace root chmod failed");
+		fclose(out);
+		return 1;
+	}
 
 	if (set_path(view, sizeof(view), root, "view") ||
 	    set_path(base, sizeof(base), root, "base") ||
@@ -818,8 +979,16 @@ int main(int argc, char **argv)
 		     "ws/generated.txt") ||
 	    set_path(logical_renamed, sizeof(logical_renamed), view,
 		     "ws/renamed.txt") ||
-	    set_path(logical_cached_negative, sizeof(logical_cached_negative),
-		     view, "ws/cached-negative.txt") ||
+		    set_path(logical_cached_negative, sizeof(logical_cached_negative),
+			     view, "ws/cached-negative.txt") ||
+		    set_path(logical_lifecycle_created,
+			     sizeof(logical_lifecycle_created), view,
+			     "ws/lifecycle-created.txt") ||
+		    set_path(logical_lifecycle_renamed,
+			     sizeof(logical_lifecycle_renamed), view,
+			     "ws/lifecycle-renamed.txt") ||
+		    set_path(logical_denied, sizeof(logical_denied), view,
+			     "ws/denied.txt") ||
 	    set_path(logical_tool, sizeof(logical_tool), view, "ws/tool.sh") ||
 	    set_path(base_main, sizeof(base_main), base, "main.txt") ||
 	    set_path(base_deleted, sizeof(base_deleted), base, "deleted.txt") ||
@@ -827,8 +996,10 @@ int main(int argc, char **argv)
 	    set_path(base_generated, sizeof(base_generated), base,
 		     "generated.txt") ||
 	    set_path(base_renamed, sizeof(base_renamed), base, "renamed.txt") ||
-	    set_path(base_cached_negative, sizeof(base_cached_negative), base,
-		     "cached-negative.txt") ||
+		    set_path(base_cached_negative, sizeof(base_cached_negative), base,
+			     "cached-negative.txt") ||
+		    set_path(base_denied, sizeof(base_denied), base,
+			     "denied.txt") ||
 	    set_path(base_tool, sizeof(base_tool), base, "tool.sh") ||
 	    set_path(upper_main, sizeof(upper_main), upper, "main.txt") ||
 	    set_path(upper_deleted, sizeof(upper_deleted), upper,
@@ -838,8 +1009,10 @@ int main(int argc, char **argv)
 		     "generated.txt") ||
 	    set_path(upper_renamed, sizeof(upper_renamed), upper,
 		     "renamed.txt") ||
-	    set_path(upper_cached_negative, sizeof(upper_cached_negative),
-		     upper, "cached-negative.txt") ||
+		    set_path(upper_cached_negative, sizeof(upper_cached_negative),
+			     upper, "cached-negative.txt") ||
+		    set_path(upper_denied, sizeof(upper_denied), upper,
+			     "denied.txt") ||
 	    set_path(upper_tool, sizeof(upper_tool), upper, "tool.sh") ||
 	    set_path(logical_src_app, sizeof(logical_src_app), view,
 		     "ws/src/app.txt") ||
@@ -879,7 +1052,7 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "setup_source_dirs", true, 0,
 		  "source-like src and .git directories created");
-	if (matrix_mode) {
+	if (matrix_mode || rq2_mode) {
 		if (!source_trace_path) {
 			emit_case(out, "agentfs_source_trace_artifact", false,
 				  EINVAL, "source trace path missing");
@@ -898,6 +1071,8 @@ int main(int argc, char **argv)
 	    write_file(base_deleted, "base-deleted\n") ||
 	    write_file(upper_main, "upper-main\n") ||
 	    write_file(upper_deleted, "upper-deleted\n") ||
+	    write_file(base_denied, "denied\n") ||
+	    write_file(upper_denied, "denied\n") ||
 	    write_file(base_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(upper_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(base_src_app, "base-app\n") ||
@@ -911,7 +1086,9 @@ int main(int argc, char **argv)
 		fails++;
 		goto cleanup;
 	}
-	if (chmod(base_tool, 0755) || chmod(upper_tool, 0755)) {
+	if (chmod(base_tool, 0755) || chmod(upper_tool, 0755) ||
+	    chmod(upper_main, 0600) || chmod(base_denied, 0000) ||
+	    chmod(upper_denied, 0000)) {
 		emit_case(out, "setup_executable_tools", false, errno,
 			  "chmod executable tool failed");
 		fails++;
@@ -955,6 +1132,9 @@ int main(int argc, char **argv)
 					    logical_root, false);
 	fails += !!expect_read_file(out, "base_epoch_main", logical_main,
 				    "base-main\n");
+	fails += !!expect_mode(out, "base_epoch_main_mode", logical_main, 0644);
+	fails += !!expect_unprivileged_access_denied(
+		out, "base_epoch_denied_access", logical_denied);
 	fails += !!expect_read_file(out, "base_epoch_src_app",
 				    logical_src_app, "base-app\n");
 	fails += !!expect_read_file(out, "base_epoch_git_head",
@@ -972,6 +1152,7 @@ int main(int argc, char **argv)
 					    logical_root, false);
 	fails += !!expect_read_file(out, "upper_epoch_main", logical_main,
 				    "upper-main\n");
+	fails += !!expect_mode(out, "upper_epoch_main_mode", logical_main, 0600);
 	fails += !!expect_read_file(out, "upper_epoch_src_app",
 				    logical_src_app, "agent-edited-app\n");
 	fails += !!expect_read_file(out, "upper_epoch_git_head",
@@ -1014,12 +1195,15 @@ int main(int argc, char **argv)
 			  "cached-negative create through logical path failed");
 		fails++;
 	} else {
-		emit_case(out, "agentfs_cached_negative_create", true, 0,
-			  "cached-negative create became visible");
-		fails += !!expect_read_file(out,
-					    "agentfs_cached_negative_visible",
-					    upper_cached_negative,
-					    "cached-negative-created\n");
+			emit_case(out, "agentfs_cached_negative_create", true, 0,
+				  "cached-negative create became visible");
+			fails += !!expect_stat_errno(
+				out, "agentfs_cached_negative_logical_stat",
+				logical_cached_negative, 0);
+			fails += !!expect_read_file(out,
+						    "agentfs_cached_negative_visible",
+						    logical_cached_negative,
+						    "cached-negative-created\n");
 	}
 	if (rename(logical_generated, logical_renamed)) {
 		emit_case(out, "agentfs_rename_generated_to_renamed", false,
@@ -1031,10 +1215,10 @@ int main(int argc, char **argv)
 		fails += !!expect_stat_errno(out,
 					     "agentfs_rename_generated_old_absent",
 					     logical_generated, ENOENT);
-		fails += !!expect_read_file(out,
-					    "agentfs_rename_generated_new_visible",
-					    upper_renamed,
-					    "generated-in-upper\n");
+			fails += !!expect_read_file(out,
+						    "agentfs_rename_generated_new_visible",
+						    logical_renamed,
+						    "generated-in-upper\n");
 		if (rename(logical_renamed, logical_generated)) {
 			emit_case(out, "agentfs_rename_restored_generated",
 				  false, errno, "logical rename restore failed");
@@ -1062,6 +1246,16 @@ int main(int argc, char **argv)
 	}
 	fails += !!expect_final_manifest(out, logical_main, logical_deleted,
 					 logical_generated, base_generated);
+	fails += !!expect_read_file(out, "base_main_preserved", base_main,
+				    "base-main\n");
+	fails += !!expect_read_file(out, "base_deleted_preserved", base_deleted,
+				    "base-deleted\n");
+	fails += !!expect_stat_errno(out, "base_cached_negative_unmodified",
+				     base_cached_negative, ENOENT);
+	if (rq2_mode)
+		fails += !!measure_workspace_lifecycle(
+			out, "namei_ext_lifecycle_ns",
+			logical_lifecycle_created, logical_lifecycle_renamed, 20);
 	fails += !!measure_stat_latency(out, "namei_ext_stat_main_ns",
 					logical_main, 0, 100);
 	fails += !!measure_open_latency(out, "namei_ext_open_main_ns",
@@ -1130,6 +1324,7 @@ cleanup:
 	unlink(base_generated);
 	unlink(base_renamed);
 	unlink(base_cached_negative);
+	unlink(base_denied);
 	unlink(base_tool);
 	unlink(base_src_app);
 	unlink(base_git_head);
@@ -1139,6 +1334,7 @@ cleanup:
 	unlink(upper_generated);
 	unlink(upper_renamed);
 	unlink(upper_cached_negative);
+	unlink(upper_denied);
 	unlink(upper_tool);
 	unlink(upper_src_app);
 	unlink(upper_git_head);
@@ -1152,12 +1348,15 @@ cleanup:
 	rmdir(upper);
 	rmdir(root);
 	emit_case(out,
+		  rq2_mode ? "agent_workspace_rq2_summary" :
 		  matrix_mode ? "agent_workspace_matrix_summary" :
 				"agent_workspace_preflight_summary",
 		  fails == 0, fails,
-		  fails ? (matrix_mode ? "agent workspace matrix failures" :
+		  fails ? (rq2_mode ? "agent workspace RQ2 failures" :
+			   matrix_mode ? "agent workspace matrix failures" :
 					 "agent workspace preflight failures") :
-			  (matrix_mode ? "agent workspace matrix passed" :
+			  (rq2_mode ? "agent workspace RQ2 passed" :
+			   matrix_mode ? "agent workspace matrix passed" :
 					 "agent workspace preflight passed"));
 	fclose(out);
 	return fails ? 1 : 0;

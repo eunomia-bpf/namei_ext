@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0
 
 #define _GNU_SOURCE
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 314
 
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
 #include <limits.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,7 +35,10 @@ enum fuse_workspace_counter {
 	FUSE_COUNTER_HIDDEN_READDIR = 8,
 	FUSE_COUNTER_UNLINK = 9,
 	FUSE_COUNTER_RENAME = 10,
-	FUSE_COUNTER_MAX = 11,
+	FUSE_COUNTER_MKNOD = 11,
+	FUSE_COUNTER_INVALIDATE_ATTEMPT = 12,
+	FUSE_COUNTER_INVALIDATE_ERROR = 13,
+	FUSE_COUNTER_MAX = 14,
 };
 
 struct fuse_workspace_state {
@@ -41,6 +46,36 @@ struct fuse_workspace_state {
 	char upper[PATH_MAX];
 	volatile int active_epoch;
 	volatile unsigned long long counters[FUSE_COUNTER_MAX];
+};
+
+enum fuse_control_command {
+	FUSE_CONTROL_SET_EPOCH = 1,
+	FUSE_CONTROL_STOP = 2,
+};
+
+struct fuse_control_request {
+	int command;
+	int epoch;
+};
+
+struct fuse_control_response {
+	int status;
+	unsigned int invalidations;
+};
+
+struct fuse_control_thread {
+	struct fuse *fuse;
+	struct fuse_workspace_state *state;
+	int request_fd;
+	int response_fd;
+};
+
+struct fuse_resource_sample {
+	unsigned long long user_ticks;
+	unsigned long long system_ticks;
+	unsigned long long voluntary_switches;
+	unsigned long long involuntary_switches;
+	unsigned long long requests;
 };
 
 static const char *result_event = "agent-workspace-preflight";
@@ -94,6 +129,21 @@ static void emit_sample(FILE *out, const char *name, unsigned int iteration,
 	fflush(out);
 }
 
+static void emit_lifecycle_sample(FILE *out, const char *name,
+				  unsigned int iteration,
+				  unsigned long long value, int err,
+				  const char *error_stage)
+{
+	fprintf(out,
+		"{\"event\":\"agent-workspace-lifecycle-sample\","
+		"\"result_level\":\"%s\",\"metric\":\"%s\",\"iteration\":%u,"
+		"\"value\":%llu,\"unit\":\"ns\",\"pass\":%s,\"errno\":%d,"
+		"\"error_stage\":\"%s\"}\n",
+		result_level, name, iteration, value,
+		err ? "false" : "true", err, error_stage);
+	fflush(out);
+}
+
 static void emit_manifest(FILE *out, const char *name, bool pass,
 			  const char *detail)
 {
@@ -102,6 +152,29 @@ static void emit_manifest(FILE *out, const char *name, bool pass,
 		"\"result_level\":\"%s\",\"manifest\":\"%s\",\"pass\":%s,"
 		"\"detail\":\"%s\"}\n",
 		result_level, name, pass ? "true" : "false", detail);
+	fflush(out);
+}
+
+static void emit_fuse_resource(FILE *out,
+			       const struct fuse_resource_sample *before,
+			       const struct fuse_resource_sample *after,
+			       bool pass)
+{
+	fprintf(out,
+		"{\"event\":\"agent-workspace-fuse-resource\","
+		"\"result_level\":\"%s\",\"window\":\"rq2-measurement\","
+		"\"user_ticks\":%llu,\"system_ticks\":%llu,"
+		"\"voluntary_context_switches\":%llu,"
+		"\"involuntary_context_switches\":%llu,"
+		"\"requests\":%llu,\"clock_ticks_per_second\":%ld,"
+		"\"pass\":%s}\n",
+		result_level,
+		after->user_ticks - before->user_ticks,
+		after->system_ticks - before->system_ticks,
+		after->voluntary_switches - before->voluntary_switches,
+		after->involuntary_switches - before->involuntary_switches,
+		after->requests - before->requests,
+		sysconf(_SC_CLK_TCK), pass ? "true" : "false");
 	fflush(out);
 }
 
@@ -163,12 +236,27 @@ static int expect_source_trace(FILE *out, const char *name, const char *path)
 	bool pass;
 
 	pass = file_contains_token(path, "TRACE_ID=agentfs-bash-git-workspace-v1") &&
-	       file_contains_token(path, "rename generated.txt renamed.txt") &&
-	       file_contains_token(path, "unlink cached-negative.txt") &&
-	       file_contains_token(path, "git-head agent");
+	       file_contains_token(path,
+				   "UPSTREAM_COMMIT=0a014ebd4918615baff589ed17486e557e7c6a23") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-run-bash.sh:6-25") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-run-git.sh:9-30") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-overlay-whiteout.sh:60-123") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-symlinks.sh:19-68") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-fuse-cache-invalidation.sh:134-158") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-fuse-cache-invalidation.sh:109-132") &&
+	       file_contains_token(path,
+				   "SOURCE=cli/tests/test-fuse-cache-invalidation.sh:60-90") &&
+	       file_contains_token(path,
+				   "ORACLE=base-object-unchanged");
 	emit_case(out, name, pass, pass ? 0 : EINVAL,
-		  pass ? "AgentFS-derived source trace artifact matched" :
-			 "AgentFS-derived source trace artifact missing required tokens");
+		  pass ? "fixed-commit AgentFS source bindings matched" :
+			 "AgentFS trace is missing fixed upstream bindings");
 	return pass ? 0 : -1;
 }
 
@@ -215,6 +303,57 @@ static int expect_stat_errno(FILE *out, const char *name, const char *path,
 		return 0;
 	}
 	emit_case(out, name, false, errno, "stat mismatch");
+	return -1;
+}
+
+static int expect_mode(FILE *out, const char *name, const char *path,
+		       mode_t want_mode)
+{
+	struct stat st;
+	bool pass;
+
+	if (stat(path, &st)) {
+		emit_case(out, name, false, errno, "stat for mode oracle failed");
+		return -1;
+	}
+	pass = (st.st_mode & 0777) == want_mode;
+	emit_case(out, name, pass, pass ? 0 : EINVAL,
+		  pass ? "logical path mode matched selected object" :
+			 "logical path mode did not match selected object");
+	return pass ? 0 : -1;
+}
+
+static int expect_unprivileged_access_denied(FILE *out, const char *name,
+					     const char *path)
+{
+	pid_t pid;
+	int status;
+
+	pid = fork();
+	if (pid < 0) {
+		emit_case(out, name, false, errno, "fork for access oracle failed");
+		return -1;
+	}
+	if (!pid) {
+		if (setgid(65534) || setuid(65534))
+			_exit(2);
+		errno = 0;
+		_exit(access(path, R_OK) && errno == EACCES ? 0 : 1);
+	}
+	while (waitpid(pid, &status, 0) < 0) {
+		if (errno == EINTR)
+			continue;
+		emit_case(out, name, false, errno,
+			  "wait for access oracle failed");
+		return -1;
+	}
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+		emit_case(out, name, true, EACCES,
+			  "unprivileged read access was denied");
+		return 0;
+	}
+	emit_case(out, name, false, EACCES,
+		  "unprivileged read access was not denied as expected");
 	return -1;
 }
 
@@ -544,6 +683,69 @@ static int measure_readdir_latency(FILE *out, const char *name,
 	return 0;
 }
 
+static int remove_if_present(const char *path)
+{
+	if (!unlink(path) || errno == ENOENT)
+		return 0;
+	return -errno;
+}
+
+static int measure_workspace_lifecycle(FILE *out, const char *name,
+				       const char *created_path,
+				       const char *renamed_path,
+				       unsigned int reps)
+{
+	unsigned int i;
+	int failures = 0;
+
+	for (i = 0; i < reps; i++) {
+		unsigned long long start;
+		unsigned long long elapsed;
+		const char *stage = "none";
+		struct stat st;
+		int err = 0;
+
+		if (remove_if_present(created_path) ||
+		    remove_if_present(renamed_path) ||
+		    !stat_errno_quiet(created_path, ENOENT) ||
+		    !stat_errno_quiet(renamed_path, ENOENT))
+			return -1;
+
+		start = nsec_now();
+		errno = 0;
+		if (!stat(created_path, &st) || errno != ENOENT) {
+			err = errno ? errno : EEXIST;
+			stage = "negative_lookup";
+		} else if (mknod(created_path, S_IFREG | 0644, 0)) {
+			err = errno;
+			stage = "create";
+		}
+		if (!err && rename(created_path, renamed_path)) {
+			err = errno;
+			stage = "rename";
+		}
+		if (!err && unlink(renamed_path)) {
+			err = errno;
+			stage = "unlink";
+		}
+		elapsed = nsec_now() - start;
+
+		if (!stat_errno_quiet(created_path, ENOENT) ||
+		    !stat_errno_quiet(renamed_path, ENOENT)) {
+			if (!err) {
+				err = EIO;
+				stage = "postcondition";
+			}
+			remove_if_present(created_path);
+			remove_if_present(renamed_path);
+		}
+		emit_lifecycle_sample(out, name, i, elapsed, err, stage);
+		if (err)
+			failures++;
+	}
+	return failures ? -1 : 0;
+}
+
 static int expect_final_manifest(FILE *out, const char *logical_main,
 				 const char *logical_deleted,
 				 const char *logical_generated,
@@ -576,6 +778,76 @@ static void fuse_count_state(struct fuse_workspace_state *state, unsigned int ke
 static void fuse_count(unsigned int key)
 {
 	fuse_count_state(fuse_state(), key);
+}
+
+static unsigned long long fuse_request_count(
+	const struct fuse_workspace_state *state)
+{
+	unsigned long long total = 0;
+	unsigned int i;
+
+	for (i = 0; i < FUSE_COUNTER_INVALIDATE_ATTEMPT; i++)
+		total += state->counters[i];
+	return total;
+}
+
+static int read_fuse_resource(pid_t pid,
+			      const struct fuse_workspace_state *state,
+			      struct fuse_resource_sample *sample)
+{
+	char path[64];
+	char line[4096];
+	char *after_comm;
+	char process_state;
+	long long ignored[10];
+	FILE *file;
+	int matched;
+
+	memset(sample, 0, sizeof(*sample));
+	snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+	file = fopen(path, "r");
+	if (!file)
+		return -errno;
+	if (!fgets(line, sizeof(line), file)) {
+		int err = errno ? errno : EIO;
+
+		fclose(file);
+		return -err;
+	}
+	fclose(file);
+	after_comm = strrchr(line, ')');
+	if (!after_comm || after_comm[1] != ' ')
+		return -EINVAL;
+	matched = sscanf(after_comm + 2,
+			 "%c %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld %llu %llu",
+			 &process_state,
+			 &ignored[0], &ignored[1], &ignored[2], &ignored[3],
+			 &ignored[4], &ignored[5], &ignored[6], &ignored[7],
+			 &ignored[8], &ignored[9], &sample->user_ticks,
+			 &sample->system_ticks);
+	if (matched != 13)
+		return -EINVAL;
+	(void)process_state;
+
+	snprintf(path, sizeof(path), "/proc/%d/status", pid);
+	file = fopen(path, "r");
+	if (!file)
+		return -errno;
+	while (fgets(line, sizeof(line), file)) {
+		sscanf(line, "voluntary_ctxt_switches: %llu",
+		       &sample->voluntary_switches);
+		sscanf(line, "nonvoluntary_ctxt_switches: %llu",
+		       &sample->involuntary_switches);
+	}
+	if (ferror(file)) {
+		int err = errno ? errno : EIO;
+
+		fclose(file);
+		return -err;
+	}
+	fclose(file);
+	sample->requests = fuse_request_count(state);
+	return 0;
 }
 
 static const char *active_target(const struct fuse_workspace_state *state)
@@ -622,11 +894,13 @@ static int backing_path(const char *path, char *dst, size_t size)
 	return 0;
 }
 
-static int agent_fuse_getattr(const char *path, struct stat *st)
+static int agent_fuse_getattr(const char *path, struct stat *st,
+			      struct fuse_file_info *fi)
 {
 	char backing[PATH_MAX];
 	int ret;
 
+	(void)fi;
 	fuse_count(FUSE_COUNTER_GETATTR);
 	memset(st, 0, sizeof(*st));
 	if (!strcmp(path, "/")) {
@@ -644,7 +918,8 @@ static int agent_fuse_getattr(const char *path, struct stat *st)
 }
 
 static int agent_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-			      off_t off, struct fuse_file_info *fi)
+			      off_t off, struct fuse_file_info *fi,
+			      enum fuse_readdir_flags flags)
 {
 	char backing[PATH_MAX];
 	struct dirent *de;
@@ -653,12 +928,13 @@ static int agent_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t fille
 
 	(void)off;
 	(void)fi;
+	(void)flags;
 
 	fuse_count(FUSE_COUNTER_READDIR);
-	filler(buf, ".", NULL, 0);
-	filler(buf, "..", NULL, 0);
+	filler(buf, ".", NULL, 0, 0);
+	filler(buf, "..", NULL, 0, 0);
 	if (!strcmp(path, "/")) {
-		filler(buf, "ws", NULL, 0);
+		filler(buf, "ws", NULL, 0, 0);
 		return 0;
 	}
 
@@ -675,7 +951,7 @@ static int agent_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t fille
 			fuse_count(FUSE_COUNTER_HIDDEN_READDIR);
 			continue;
 		}
-		filler(buf, de->d_name, NULL, 0);
+		filler(buf, de->d_name, NULL, 0, 0);
 	}
 	closedir(dir);
 	return 0;
@@ -719,19 +995,12 @@ static int agent_fuse_create(const char *path, mode_t mode,
 static int agent_fuse_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	char backing[PATH_MAX];
-	int fd;
 	int ret;
 
+	fuse_count(FUSE_COUNTER_MKNOD);
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
-	if (S_ISREG(mode)) {
-		fd = open(backing, O_CREAT | O_EXCL | O_WRONLY, mode);
-		if (fd < 0)
-			return -errno;
-		close(fd);
-		return 0;
-	}
 	if (mknod(backing, mode, rdev))
 		return -errno;
 	return 0;
@@ -765,11 +1034,13 @@ static int agent_fuse_write(const char *path, const char *buf, size_t size,
 	return (int)nwritten;
 }
 
-static int agent_fuse_truncate(const char *path, off_t size)
+static int agent_fuse_truncate(const char *path, off_t size,
+			       struct fuse_file_info *fi)
 {
 	char backing[PATH_MAX];
 	int ret;
 
+	(void)fi;
 	ret = backing_path(path, backing, sizeof(backing));
 	if (ret)
 		return ret;
@@ -809,13 +1080,16 @@ static int agent_fuse_unlink(const char *path)
 	return 0;
 }
 
-static int agent_fuse_rename(const char *from, const char *to)
+static int agent_fuse_rename(const char *from, const char *to,
+			     unsigned int flags)
 {
 	char backing_from[PATH_MAX];
 	char backing_to[PATH_MAX];
 	int ret;
 
 	fuse_count(FUSE_COUNTER_RENAME);
+	if (flags)
+		return -EINVAL;
 	ret = backing_path(from, backing_from, sizeof(backing_from));
 	if (ret)
 		return ret;
@@ -849,6 +1123,170 @@ static struct fuse_operations agent_fuse_ops = {
 	.release = agent_fuse_release,
 };
 
+static int read_full(int fd, void *buf, size_t size)
+{
+	size_t offset = 0;
+
+	while (offset < size) {
+		ssize_t nread = read(fd, (char *)buf + offset, size - offset);
+
+		if (!nread)
+			return -EPIPE;
+		if (nread < 0) {
+			if (errno == EINTR)
+				continue;
+			return -errno;
+		}
+		offset += (size_t)nread;
+	}
+	return 0;
+}
+
+static int write_full(int fd, const void *buf, size_t size)
+{
+	size_t offset = 0;
+
+	while (offset < size) {
+		ssize_t nwritten = write(fd, (const char *)buf + offset,
+					 size - offset);
+
+		if (nwritten < 0) {
+			if (errno == EINTR)
+				continue;
+			return -errno;
+		}
+		offset += (size_t)nwritten;
+	}
+	return 0;
+}
+
+static void *fuse_control_loop(void *arg)
+{
+	static const char *const epoch_paths[] = {
+		"/ws",
+		"/ws/main.txt",
+		"/ws/src/app.txt",
+		"/ws/.git/HEAD",
+		"/ws/link.txt",
+	};
+	struct fuse_control_thread *control = arg;
+
+	for (;;) {
+		struct fuse_control_request request;
+		struct fuse_control_response response = {};
+		size_t i;
+		int ret;
+
+		ret = read_full(control->request_fd, &request, sizeof(request));
+		if (ret)
+			return (void *)(intptr_t)ret;
+		if (request.command == FUSE_CONTROL_STOP) {
+			ret = write_full(control->response_fd, &response,
+					 sizeof(response));
+			return (void *)(intptr_t)ret;
+		}
+		if (request.command != FUSE_CONTROL_SET_EPOCH ||
+		    (request.epoch != 0 && request.epoch != 1)) {
+			response.status = -EINVAL;
+		} else {
+			control->state->active_epoch = request.epoch;
+			__sync_synchronize();
+			for (i = 0; i < sizeof(epoch_paths) /
+					     sizeof(epoch_paths[0]); i++) {
+				ret = fuse_invalidate_path(control->fuse,
+							   epoch_paths[i]);
+				fuse_count_state(
+					control->state,
+					FUSE_COUNTER_INVALIDATE_ATTEMPT);
+				response.invalidations++;
+				if (ret) {
+					fuse_count_state(
+						control->state,
+						FUSE_COUNTER_INVALIDATE_ERROR);
+					if (!response.status)
+						response.status = ret;
+				}
+			}
+		}
+		ret = write_full(control->response_fd, &response, sizeof(response));
+		if (ret)
+			return (void *)(intptr_t)ret;
+	}
+}
+
+static int run_fuse_daemon(struct fuse_workspace_state *state,
+			   const char *mountpoint, int request_fd,
+			   int response_fd)
+{
+	char *fuse_argv[] = {
+		"namei_ext_agent_workspace_fuse",
+		"-o",
+		"attr_timeout=3600,entry_timeout=3600,negative_timeout=3600,default_permissions",
+		NULL,
+	};
+	struct fuse_args args = FUSE_ARGS_INIT(3, fuse_argv);
+	struct fuse_control_thread control;
+	struct fuse *fuse;
+	pthread_t control_thread;
+	void *thread_status = NULL;
+	int loop_status;
+	int ret;
+
+	fuse = fuse_new(&args, &agent_fuse_ops, sizeof(agent_fuse_ops), state);
+	if (!fuse) {
+		fuse_opt_free_args(&args);
+		return 2;
+	}
+	if (fuse_mount(fuse, mountpoint)) {
+		fuse_destroy(fuse);
+		fuse_opt_free_args(&args);
+		return 2;
+	}
+	control = (struct fuse_control_thread) {
+		.fuse = fuse,
+		.state = state,
+		.request_fd = request_fd,
+		.response_fd = response_fd,
+	};
+	ret = pthread_create(&control_thread, NULL, fuse_control_loop, &control);
+	if (ret) {
+		fuse_unmount(fuse);
+		fuse_destroy(fuse);
+		fuse_opt_free_args(&args);
+		return 2;
+	}
+	loop_status = fuse_loop(fuse);
+	ret = pthread_join(control_thread, &thread_status);
+	fuse_unmount(fuse);
+	fuse_destroy(fuse);
+	fuse_opt_free_args(&args);
+	if (loop_status || ret || (intptr_t)thread_status)
+		return 1;
+	return 0;
+}
+
+static int request_fuse_control(int request_fd, int response_fd,
+				int command, int epoch,
+				unsigned int *invalidations)
+{
+	struct fuse_control_request request = {
+		.command = command,
+		.epoch = epoch,
+	};
+	struct fuse_control_response response;
+	int ret;
+
+	ret = write_full(request_fd, &request, sizeof(request));
+	if (ret)
+		return ret;
+	ret = read_full(response_fd, &response, sizeof(response));
+	if (ret)
+		return ret;
+	if (invalidations)
+		*invalidations = response.invalidations;
+	return response.status;
+}
+
 static int wait_for_fuse_ready(const char *ready_path, pid_t fuse_pid)
 {
 	struct timespec delay = {
@@ -874,28 +1312,53 @@ static int wait_for_fuse_ready(const char *ready_path, pid_t fuse_pid)
 	return -ETIMEDOUT;
 }
 
-static int stop_fuse(const char *mountpoint, pid_t fuse_pid)
+static int stop_fuse(const char *mountpoint, pid_t fuse_pid, int request_fd,
+		     int response_fd)
 {
+	struct timespec delay = {
+		.tv_sec = 0,
+		.tv_nsec = 10000000,
+	};
 	int first_error = 0;
 	int status;
 	int ret;
+	int i;
 
+	if (request_fd >= 0 && response_fd >= 0) {
+		ret = request_fuse_control(request_fd, response_fd,
+					   FUSE_CONTROL_STOP, 0, NULL);
+		if (ret)
+			first_error = ret;
+	}
 	if (umount(mountpoint) && errno != EINVAL)
-		first_error = -errno;
+		if (!first_error)
+			first_error = -errno;
 
 	if (fuse_pid > 0) {
-		ret = waitpid(fuse_pid, &status, WNOHANG);
-		if (ret == 0) {
-			kill(fuse_pid, SIGTERM);
-			while (waitpid(fuse_pid, &status, 0) < 0) {
+		for (i = 0; i < 100; i++) {
+			ret = waitpid(fuse_pid, &status, WNOHANG);
+			if (ret == fuse_pid)
+				break;
+			if (ret < 0) {
 				if (errno == EINTR)
 					continue;
-				if (!first_error)
+				if (errno != ECHILD && !first_error)
 					first_error = -errno;
 				break;
 			}
-		} else if (ret < 0 && errno != ECHILD && !first_error) {
-			first_error = -errno;
+			nanosleep(&delay, NULL);
+		}
+		if (ret == 0) {
+			kill(fuse_pid, SIGTERM);
+			while (waitpid(fuse_pid, &status, 0) < 0 &&
+			       errno == EINTR)
+				;
+			if (!first_error)
+				first_error = -ETIMEDOUT;
+		} else if (ret == fuse_pid &&
+			   (!WIFEXITED(status) || WEXITSTATUS(status)) &&
+			   !first_error) {
+			first_error = -EIO;
 		}
 	}
 	return first_error;
@@ -935,6 +1398,9 @@ int main(int argc, char **argv)
 	char logical_generated[PATH_MAX];
 	char logical_renamed[PATH_MAX];
 	char logical_cached_negative[PATH_MAX];
+	char logical_lifecycle_created[PATH_MAX];
+	char logical_lifecycle_renamed[PATH_MAX];
+	char logical_denied[PATH_MAX];
 	char logical_tool[PATH_MAX];
 	char base_main[PATH_MAX];
 	char base_deleted[PATH_MAX];
@@ -942,6 +1408,7 @@ int main(int argc, char **argv)
 	char base_generated[PATH_MAX];
 	char base_renamed[PATH_MAX];
 	char base_cached_negative[PATH_MAX];
+	char base_denied[PATH_MAX];
 	char base_tool[PATH_MAX];
 	char upper_main[PATH_MAX];
 	char upper_deleted[PATH_MAX];
@@ -949,6 +1416,7 @@ int main(int argc, char **argv)
 	char upper_generated[PATH_MAX];
 	char upper_renamed[PATH_MAX];
 	char upper_cached_negative[PATH_MAX];
+	char upper_denied[PATH_MAX];
 	char upper_tool[PATH_MAX];
 	char logical_src_app[PATH_MAX];
 	char logical_git_head[PATH_MAX];
@@ -961,9 +1429,17 @@ int main(int argc, char **argv)
 	char base_git_head[PATH_MAX];
 	char upper_git_head[PATH_MAX];
 	struct fuse_workspace_state *state = MAP_FAILED;
+	struct fuse_resource_sample resource_before = {};
+	struct fuse_resource_sample resource_after = {};
+	bool resource_window_started = false;
 	FILE *out;
 	pid_t fuse_pid = -1;
+	int control_request_fd = -1;
+	int control_response_fd = -1;
+	int request_pipe[2] = { -1, -1 };
+	int response_pipe[2] = { -1, -1 };
 	bool matrix_mode = false;
+	bool rq2_mode = false;
 	int fails = 0;
 	int err;
 	int argi = 1;
@@ -973,19 +1449,24 @@ int main(int argc, char **argv)
 		result_event = "agent-workspace-matrix";
 		result_level = "kvm_agent_workspace_lifecycle_matrix";
 		argi++;
+	} else if (argi < argc && !strcmp(argv[argi], "--rq2")) {
+		rq2_mode = true;
+		result_event = "agent-workspace-rq2";
+		result_level = "kvm_agent_workspace_rq2_boot";
+		argi++;
 	}
 
 	if (argc - argi < 1 || argc - argi > 2) {
 		fprintf(stderr,
-			"usage: %s [--matrix] RESULT_JSONL [SOURCE_TRACE]\n",
+			"usage: %s [--matrix|--rq2] RESULT_JSONL [SOURCE_TRACE]\n",
 			argv[0]);
 		return 2;
 	}
 	result_path = argv[argi];
 	if (argc - argi == 2)
 		source_trace_path = argv[argi + 1];
-	if (matrix_mode && !source_trace_path) {
-		fprintf(stderr, "matrix mode requires SOURCE_TRACE\n");
+	if ((matrix_mode || rq2_mode) && !source_trace_path) {
+		fprintf(stderr, "matrix and RQ2 modes require SOURCE_TRACE\n");
 		return 2;
 	}
 
@@ -997,6 +1478,12 @@ int main(int argc, char **argv)
 
 	if (!mkdtemp(root)) {
 		emit_case(out, "fuse_mkdtemp", false, errno, "mkdtemp failed");
+		fclose(out);
+		return 1;
+	}
+	if (chmod(root, 0755)) {
+		emit_case(out, "fuse_setup_root_mode", false, errno,
+			  "workspace root chmod failed");
 		fclose(out);
 		return 1;
 	}
@@ -1017,6 +1504,14 @@ int main(int argc, char **argv)
 		     "ws/renamed.txt") ||
 	    set_path(logical_cached_negative, sizeof(logical_cached_negative),
 		     mountpoint, "ws/cached-negative.txt") ||
+	    set_path(logical_lifecycle_created,
+		     sizeof(logical_lifecycle_created), mountpoint,
+		     "ws/lifecycle-created.txt") ||
+	    set_path(logical_lifecycle_renamed,
+		     sizeof(logical_lifecycle_renamed), mountpoint,
+		     "ws/lifecycle-renamed.txt") ||
+	    set_path(logical_denied, sizeof(logical_denied), mountpoint,
+		     "ws/denied.txt") ||
 	    set_path(logical_tool, sizeof(logical_tool), mountpoint,
 		     "ws/tool.sh") ||
 	    set_path(base_main, sizeof(base_main), base, "main.txt") ||
@@ -1027,6 +1522,7 @@ int main(int argc, char **argv)
 	    set_path(base_renamed, sizeof(base_renamed), base, "renamed.txt") ||
 	    set_path(base_cached_negative, sizeof(base_cached_negative), base,
 		     "cached-negative.txt") ||
+	    set_path(base_denied, sizeof(base_denied), base, "denied.txt") ||
 	    set_path(base_tool, sizeof(base_tool), base, "tool.sh") ||
 	    set_path(upper_main, sizeof(upper_main), upper, "main.txt") ||
 	    set_path(upper_deleted, sizeof(upper_deleted), upper,
@@ -1038,6 +1534,7 @@ int main(int argc, char **argv)
 		     "renamed.txt") ||
 	    set_path(upper_cached_negative, sizeof(upper_cached_negative),
 		     upper, "cached-negative.txt") ||
+	    set_path(upper_denied, sizeof(upper_denied), upper, "denied.txt") ||
 	    set_path(upper_tool, sizeof(upper_tool), upper, "tool.sh") ||
 	    set_path(logical_src_app, sizeof(logical_src_app), mountpoint,
 		     "ws/src/app.txt") ||
@@ -1076,7 +1573,7 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "fuse_setup_source_dirs", true, 0,
 		  "source-like src and .git directories created");
-	if (matrix_mode) {
+	if (matrix_mode || rq2_mode) {
 		fails += !!expect_source_trace(out,
 					       "fuse_agentfs_source_trace_artifact",
 					       source_trace_path);
@@ -1089,6 +1586,8 @@ int main(int argc, char **argv)
 	    write_file(base_deleted, "base-deleted\n") ||
 	    write_file(upper_main, "upper-main\n") ||
 	    write_file(upper_deleted, "upper-deleted\n") ||
+	    write_file(base_denied, "denied\n") ||
+	    write_file(upper_denied, "denied\n") ||
 	    write_file(base_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(upper_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(base_src_app, "base-app\n") ||
@@ -1102,7 +1601,9 @@ int main(int argc, char **argv)
 		fails++;
 		goto cleanup;
 	}
-	if (chmod(base_tool, 0755) || chmod(upper_tool, 0755)) {
+	if (chmod(base_tool, 0755) || chmod(upper_tool, 0755) ||
+	    chmod(upper_main, 0600) || chmod(base_denied, 0000) ||
+	    chmod(upper_denied, 0000)) {
 		emit_case(out, "fuse_setup_executable_tools", false, errno,
 			  "chmod executable tool failed");
 		fails++;
@@ -1137,6 +1638,12 @@ int main(int argc, char **argv)
 	snprintf(state->upper, sizeof(state->upper), "%s", upper);
 	state->active_epoch = 0;
 
+	if (pipe(request_pipe) || pipe(response_pipe)) {
+		emit_case(out, "fuse_control_pipe", false, errno,
+			  "FUSE control pipe creation failed");
+		fails++;
+		goto cleanup;
+	}
 	fuse_pid = fork();
 	if (fuse_pid < 0) {
 		emit_case(out, "fuse_fork", false, errno, "fork failed");
@@ -1144,20 +1651,21 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 	if (fuse_pid == 0) {
-		char *fuse_argv[] = {
-			"namei_ext_agent_workspace_fuse",
-			"-f",
-			"-s",
-			"-o",
-			"attr_timeout=0,entry_timeout=0,negative_timeout=0",
-			mountpoint,
-			NULL,
-		};
-
-		_exit(fuse_main(6, fuse_argv, &agent_fuse_ops, state));
+		close(request_pipe[1]);
+		close(response_pipe[0]);
+		_exit(run_fuse_daemon(state, mountpoint, request_pipe[0],
+				      response_pipe[1]));
 	}
+	close(request_pipe[0]);
+	request_pipe[0] = -1;
+	close(response_pipe[1]);
+	response_pipe[1] = -1;
+	control_request_fd = request_pipe[1];
+	control_response_fd = response_pipe[0];
+	request_pipe[1] = -1;
+	response_pipe[0] = -1;
 	emit_case(out, "fuse_options_recorded", true, 0,
-		  "foreground=true,single_threaded=true,attr_timeout=0,entry_timeout=0,negative_timeout=0");
+		  "single_threaded=true,attr_timeout=3600,entry_timeout=3600,negative_timeout=3600,default_permissions=true,kernel_cache=false");
 
 	err = wait_for_fuse_ready(logical_root, fuse_pid);
 	if (err) {
@@ -1177,6 +1685,10 @@ int main(int argc, char **argv)
 					    logical_root, false);
 	fails += !!expect_read_file(out, "fuse_base_epoch_main", logical_main,
 				    "base-main\n");
+	fails += !!expect_mode(out, "fuse_base_epoch_main_mode",
+			       logical_main, 0644);
+	fails += !!expect_unprivileged_access_denied(
+		out, "fuse_base_epoch_denied_access", logical_denied);
 	fails += !!expect_read_file(out, "fuse_base_epoch_src_app",
 				    logical_src_app, "base-app\n");
 	fails += !!expect_read_file(out, "fuse_base_epoch_git_head",
@@ -1187,12 +1699,28 @@ int main(int argc, char **argv)
 	fails += !!expect_symlink_read(out, "fuse_base_epoch_symlink",
 				       logical_link, "main.txt");
 
-	state->active_epoch = 1;
+	{
+		unsigned int invalidations = 0;
+
+		err = request_fuse_control(control_request_fd,
+					   control_response_fd,
+					   FUSE_CONTROL_SET_EPOCH, 1,
+					   &invalidations);
+		emit_case(out, "fuse_epoch_switch_invalidated",
+			  !err && invalidations == 5, err ? -err : 0,
+			  "epoch switched after five targeted inode invalidations");
+		if (err || invalidations != 5) {
+			fails++;
+			goto cleanup;
+		}
+	}
 	fails += !!expect_workspace_readdir(out,
 					    "fuse_upper_epoch_readdir_before_write",
 					    logical_root, false);
 	fails += !!expect_read_file(out, "fuse_upper_epoch_main", logical_main,
 				    "upper-main\n");
+	fails += !!expect_mode(out, "fuse_upper_epoch_main_mode",
+			       logical_main, 0600);
 	fails += !!expect_read_file(out, "fuse_upper_epoch_src_app",
 				    logical_src_app, "agent-edited-app\n");
 	fails += !!expect_read_file(out, "fuse_upper_epoch_git_head",
@@ -1237,11 +1765,15 @@ int main(int argc, char **argv)
 			  "cached-negative create through FUSE path failed");
 		fails++;
 	} else {
-		emit_case(out, "fuse_agentfs_cached_negative_create", true, 0,
-			  "cached-negative create became visible");
-		fails += !!expect_read_file(
-			out, "fuse_agentfs_cached_negative_visible",
-			upper_cached_negative, "cached-negative-created\n");
+			emit_case(out, "fuse_agentfs_cached_negative_create", true, 0,
+				  "cached-negative create became visible");
+			fails += !!expect_stat_errno(
+				out, "fuse_agentfs_cached_negative_logical_stat",
+				logical_cached_negative, 0);
+			fails += !!expect_read_file(
+				out, "fuse_agentfs_cached_negative_visible",
+				logical_cached_negative,
+				"cached-negative-created\n");
 	}
 	if (rename(logical_generated, logical_renamed)) {
 		emit_case(out, "fuse_agentfs_rename_generated_to_renamed",
@@ -1253,9 +1785,9 @@ int main(int argc, char **argv)
 		fails += !!expect_stat_errno(
 			out, "fuse_agentfs_rename_generated_old_absent",
 			logical_generated, ENOENT);
-		fails += !!expect_read_file(
-			out, "fuse_agentfs_rename_generated_new_visible",
-			upper_renamed, "generated-in-upper\n");
+			fails += !!expect_read_file(
+				out, "fuse_agentfs_rename_generated_new_visible",
+				logical_renamed, "generated-in-upper\n");
 		if (rename(logical_renamed, logical_generated)) {
 			emit_case(out, "fuse_agentfs_rename_restored_generated",
 				  false, errno, "logical rename restore failed");
@@ -1283,6 +1815,26 @@ int main(int argc, char **argv)
 	}
 	fails += !!expect_final_manifest(out, logical_main, logical_deleted,
 					 logical_generated, base_generated);
+	fails += !!expect_read_file(out, "fuse_base_main_preserved", base_main,
+				    "base-main\n");
+	fails += !!expect_read_file(out, "fuse_base_deleted_preserved",
+				    base_deleted, "base-deleted\n");
+	fails += !!expect_stat_errno(out, "fuse_base_cached_negative_unmodified",
+				     base_cached_negative, ENOENT);
+	if (rq2_mode) {
+		err = read_fuse_resource(fuse_pid, state, &resource_before);
+		emit_case(out, "fuse_resource_window_start", !err,
+			  err ? -err : 0,
+			  "FUSE daemon resource window started");
+		if (err)
+			fails++;
+		else
+			resource_window_started = true;
+	}
+	if (rq2_mode)
+		fails += !!measure_workspace_lifecycle(
+			out, "fuse_lifecycle_ns",
+			logical_lifecycle_created, logical_lifecycle_renamed, 20);
 	fails += !!measure_stat_latency(out, "fuse_stat_main_ns",
 					logical_main, 0, 100);
 	fails += !!measure_open_latency(out, "fuse_open_main_ns",
@@ -1293,9 +1845,26 @@ int main(int argc, char **argv)
 					logical_tool, 20);
 	fails += !!measure_readdir_latency(out, "fuse_readdir_ws_ns",
 					   logical_root, 50);
+	if (rq2_mode) {
+		err = read_fuse_resource(fuse_pid, state, &resource_after);
+		emit_case(out, "fuse_resource_window_end",
+			  resource_window_started && !err, err ? -err : 0,
+			  "FUSE daemon resource window ended");
+		if (!resource_window_started || err) {
+			fails++;
+		} else {
+			emit_fuse_resource(out, &resource_before, &resource_after,
+					   true);
+		}
+	}
 
-	err = stop_fuse(mountpoint, fuse_pid);
+	err = stop_fuse(mountpoint, fuse_pid, control_request_fd,
+			control_response_fd);
 	fuse_pid = -1;
+	close(control_request_fd);
+	close(control_response_fd);
+	control_request_fd = -1;
+	control_response_fd = -1;
 	if (err) {
 		emit_case(out, "fuse_unmount", false, -err,
 			  "FUSE unmount failed");
@@ -1323,21 +1892,46 @@ int main(int argc, char **argv)
 					       FUSE_COUNTER_UNLINK, true);
 		fails += !!expect_fuse_counter(out, state, "rename",
 					       FUSE_COUNTER_RENAME, true);
+		fails += !!expect_fuse_counter(out, state, "mknod",
+					       FUSE_COUNTER_MKNOD, rq2_mode);
 		fails += !!expect_fuse_counter(out, state, "hidden_lookup",
 					       FUSE_COUNTER_HIDDEN_LOOKUP, true);
 		fails += !!expect_fuse_counter(out, state, "hidden_readdir",
 					       FUSE_COUNTER_HIDDEN_READDIR, true);
+		fails += !!expect_fuse_counter(out, state, "invalidate_attempt",
+					       FUSE_COUNTER_INVALIDATE_ATTEMPT, true);
+		fails += !!expect_fuse_counter(out, state, "invalidate_error",
+					       FUSE_COUNTER_INVALIDATE_ERROR, false);
+		if (state->counters[FUSE_COUNTER_INVALIDATE_ATTEMPT] != 5 ||
+		    state->counters[FUSE_COUNTER_INVALIDATE_ERROR] != 0)
+			fails++;
 	}
 
 cleanup:
 	if (fuse_pid > 0)
-		stop_fuse(mountpoint, fuse_pid);
+		stop_fuse(mountpoint, fuse_pid, control_request_fd,
+			  control_response_fd);
+	if (control_request_fd >= 0)
+		close(control_request_fd);
+	if (control_response_fd >= 0)
+		close(control_response_fd);
+	if (request_pipe[0] >= 0)
+		close(request_pipe[0]);
+	if (request_pipe[1] >= 0 &&
+	    request_pipe[1] != control_request_fd)
+		close(request_pipe[1]);
+	if (response_pipe[0] >= 0 &&
+	    response_pipe[0] != control_response_fd)
+		close(response_pipe[0]);
+	if (response_pipe[1] >= 0)
+		close(response_pipe[1]);
 	unlink(base_main);
 	unlink(base_deleted);
 	unlink(base_link);
 	unlink(base_generated);
 	unlink(base_renamed);
 	unlink(base_cached_negative);
+	unlink(base_denied);
 	unlink(base_tool);
 	unlink(base_src_app);
 	unlink(base_git_head);
@@ -1347,6 +1941,7 @@ cleanup:
 	unlink(upper_generated);
 	unlink(upper_renamed);
 	unlink(upper_cached_negative);
+	unlink(upper_denied);
 	unlink(upper_tool);
 	unlink(upper_src_app);
 	unlink(upper_git_head);
@@ -1361,13 +1956,16 @@ cleanup:
 	if (state != MAP_FAILED)
 		munmap(state, sizeof(*state));
 	emit_case(out,
+		  rq2_mode ? "fuse_agent_workspace_rq2_summary" :
 		  matrix_mode ? "fuse_agent_workspace_matrix_summary" :
 				"fuse_agent_workspace_preflight_summary",
 		  fails == 0, fails,
-		  fails ? (matrix_mode ?
+		  fails ? (rq2_mode ? "FUSE agent workspace RQ2 failures" :
+			   matrix_mode ?
 				   "FUSE agent workspace matrix failures" :
 				   "FUSE agent workspace preflight failures") :
-			  (matrix_mode ? "FUSE agent workspace matrix passed" :
+			  (rq2_mode ? "FUSE agent workspace RQ2 passed" :
+			   matrix_mode ? "FUSE agent workspace matrix passed" :
 					 "FUSE agent workspace preflight passed"));
 	fclose(out);
 	return fails ? 1 : 0;

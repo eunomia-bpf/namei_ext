@@ -13,6 +13,9 @@ CURRENT_EXPERIMENT_TARGETS := \
 	kvm-build-action-sandboxing-preflight
 CLEAN_SOURCE_EXPERIMENT_TARGETS := \
 	$(CURRENT_EXPERIMENT_TARGETS) \
+	kvm-agent-workspace-rq2-preflight \
+	kvm-agent-workspace-rq2 \
+	experiment-agent-workspace-rq2 \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 \
 	experiment-fxmark-rq2
@@ -26,6 +29,7 @@ endif
 include $(ROOT_DIR)/configs/kvm/x86_64.mk
 include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
+include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/results.mk
@@ -33,6 +37,7 @@ include $(ROOT_DIR)/mk/kvm.mk
 include $(ROOT_DIR)/mk/workload.mk
 include $(ROOT_DIR)/mk/experiments/legacy_build_cache.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace.mk
+include $(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
@@ -126,6 +131,10 @@ help:
 	@printf '%s\n' '                       run the Agent workspace lifecycle matrix with namei_ext and FUSE'
 	@printf '%s\n' '  make kvm-agent-workspace-preflight'
 	@printf '%s\n' '                       boot KVM and run the Agent workspace dependency preflight'
+	@printf '%s\n' '  make kvm-agent-workspace-rq2-preflight'
+	@printf '%s\n' '                       run the paired two-boot Agent workspace RQ2 preflight'
+	@printf '%s\n' '  make experiment-agent-workspace-rq2'
+	@printf '%s\n' '                       run ten paired namei_ext/FUSE boots and generate the RQ2 report'
 	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
 	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'

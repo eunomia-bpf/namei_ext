@@ -1,6 +1,18 @@
 TRACE_ID=agentfs-bash-git-workspace-v1
+UPSTREAM_REPOSITORY=https://github.com/tursodatabase/agentfs
+UPSTREAM_COMMIT=0a014ebd4918615baff589ed17486e557e7c6a23
 SOURCE_RECORD=docs/tmp/2026-07-02-agentfs-official-workload-reproduction.md
 SOURCE_BEHAVIOR=bash/git overlay actions over AgentFS COW sandbox
+PHASE base-tree SOURCE=cli/tests/test-overlay-delta-in-base-dir.sh:25-28 OP=create-base-git-tree ORACLE=base-git-files-visible
+PHASE epoch-view SOURCE=cli/tests/test-run-git.sh:9-30 OP=run-git-in-agent-overlay ORACLE=git-state-not-materialized-on-host
+PHASE edit SOURCE=cli/tests/test-run-bash.sh:6-25 OP=create-and-read-agent-file ORACLE=agent-file-not-materialized-on-host
+PHASE whiteout SOURCE=cli/tests/test-overlay-whiteout.sh:60-123 OP=hide-base-file ORACLE=logical-absence-and-base-preservation
+PHASE symlink SOURCE=cli/tests/test-symlinks.sh:19-68 OP=read-and-create-symlinks ORACLE=link-target-and-host-target-preserved
+PHASE generated SOURCE=cli/tests/test-overlay-delta-in-base-dir.sh:74-107 OP=create-delta-file-in-base-directory ORACLE=base-and-delta-entries-visible
+PHASE cached-negative SOURCE=cli/tests/test-fuse-cache-invalidation.sh:134-158 OP=negative-lookup-then-create ORACLE=logical-stat-read-and-readdir-visible
+PHASE rename SOURCE=cli/tests/test-fuse-cache-invalidation.sh:109-132 OP=rename-generated-to-renamed ORACLE=old-name-absent-new-name-visible
+PHASE unlink SOURCE=cli/tests/test-fuse-cache-invalidation.sh:60-90 OP=unlink-cached-name ORACLE=logical-enoent-and-readdir-absence
+PHASE lower-preservation SOURCE=cli/tests/test-overlay-whiteout.sh:117-123 OP=inspect-base-after-overlay-mutation ORACLE=base-object-unchanged
 STEP 01 git-head base ref: refs/heads/main
 STEP 02 git-head agent ref: refs/heads/agent
 STEP 03 edit src/app.txt agent-edited-app
