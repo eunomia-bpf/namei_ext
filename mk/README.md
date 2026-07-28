@@ -6,6 +6,7 @@ suite files own workload semantics.
 ## Ownership
 
 - `kernel.mk`: patched and matched-stock kernel construction and provenance.
+- `suites.mk`: public suite registry and evidence-level aggregate membership.
 - `docker.mk`: runtime image construction.
 - `kvm.mk`: KVM execution and common guest preparation.
 - `results.mk`: `namei_ext.run.v2` lifecycle, source-state gates, and minimum
@@ -15,11 +16,12 @@ suite files own workload semantics.
 - `benchmarks/*.mk`: standard performance matrices and their analysis entrypoints.
 
 Legacy suites may remain isolated for reproducibility, but new experiments
-must not call their runners or extend their result formats. The top-level
-`CURRENT_EXPERIMENT_TARGETS` list is the authoritative implemented-suite
-aggregate; legacy suites must have explicitly named reproduction targets and
-must not be dependencies of `make experiments`. A target should be named and
-documented as a preflight until it implements the complete planned matrix.
+must not call their runners or extend their result formats. `mk/suites.mk` is
+the authoritative registry for dependency gates, formal case studies, formal
+performance experiments, and historical reproduction. Legacy suites must have
+explicitly named reproduction targets and must not be dependencies of
+`make experiments`. A target should be named and documented as a preflight
+until it implements the complete planned matrix.
 
 ## Suite Contract
 

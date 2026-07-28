@@ -7,31 +7,13 @@ BUILD_ROOT ?= $(ROOT_DIR)/.build
 CACHE_ROOT ?= $(ROOT_DIR)/.cache
 RESULT_ROOT ?= $(ROOT_DIR)/results
 
-CURRENT_EXPERIMENT_TARGETS := \
-	kvm-agent-workspace-matrix \
-	kvm-application-file-sharing-preflight \
-	kvm-build-action-sandboxing-preflight \
-	kvm-service-config-rotation-preflight
-CLEAN_SOURCE_EXPERIMENT_TARGETS := \
-	$(CURRENT_EXPERIMENT_TARGETS) \
-	kvm-agent-workspace-rq2-preflight \
-	kvm-agent-workspace-rq2 \
-	experiment-agent-workspace-rq2 \
-	kvm-fxmark-rq2-preflight \
-	kvm-fxmark-rq2 \
-	experiment-fxmark-rq2 \
-	kvm-fxmark-fast-path-preflight \
-	kvm-fxmark-fast-path \
-	experiment-fxmark-fast-path \
-	kvm-service-config-rotation \
-	experiment-service-config-rotation
-
 NPROC ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 JOBS ?= $(NPROC)
 ifeq ($(origin RUN_ID), undefined)
 RUN_ID := $(shell date -u +%Y%m%dT%H%M%SZ)-$(shell od -An -N4 -tx4 /dev/urandom 2>/dev/null | tr -d ' \n')
 endif
 
+include $(ROOT_DIR)/mk/suites.mk
 include $(ROOT_DIR)/configs/kvm/x86_64.mk
 include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
@@ -63,10 +45,12 @@ include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 	fxmark-fast-path-report experiment-fxmark-fast-path \
 	kvm-service-config-rotation-preflight kvm-service-config-rotation \
 	service-config-rotation-report experiment-service-config-rotation \
-	experiments legacy-build-cache \
+	experiments current-experiment-gates formal-case-studies formal-performance \
+	$(NAMEI_EXT_HISTORICAL_TARGETS) \
 	w1-oracle \
 	help clean clean-results
-.NOTPARALLEL: phase1 experiments
+.NOTPARALLEL: phase1 experiments current-experiment-gates formal-case-studies \
+	formal-performance
 
 $(CLEAN_SOURCE_EXPERIMENT_TARGETS): NAMEI_EXT_REQUIRE_CLEAN = 1
 $(CLEAN_SOURCE_EXPERIMENT_TARGETS): experiment-source-clean
@@ -78,6 +62,12 @@ phase1: phase1-smoke kvm-policy-load kvm-functional
 phase1-smoke: check-prereqs result-contract abi bpf functional bench policy-load policy-semantic kernel-objects kvm-smoke
 
 experiments: $(CURRENT_EXPERIMENT_TARGETS)
+
+current-experiment-gates: $(NAMEI_EXT_CURRENT_GATE_TARGETS)
+
+formal-case-studies: $(NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS)
+
+formal-performance: $(NAMEI_EXT_FORMAL_PERFORMANCE_TARGETS)
 
 legacy-build-cache: kvm-build-cache-matrix
 
@@ -144,6 +134,12 @@ help:
 	@printf '%s\n' 'Formal experiment lifecycle:'
 	@printf '%s\n' '  make experiments'
 	@printf '%s\n' '                       run every current case-study matrix or preflight through the shared KVM/result lifecycle'
+	@printf '%s\n' '  make current-experiment-gates'
+	@printf '%s\n' '                       run the currently implemented dependency and case-study gates'
+	@printf '%s\n' '  make formal-case-studies'
+	@printf '%s\n' '                       run formal case studies whose dependency gates are complete'
+	@printf '%s\n' '  make formal-performance'
+	@printf '%s\n' '                       run formal FxMark attached-path and unused-fast-path matrices'
 	@printf '%s\n' '  make kvm-agent-workspace-matrix'
 	@printf '%s\n' '                       run the Agent workspace lifecycle matrix with namei_ext and FUSE'
 	@printf '%s\n' '  make kvm-agent-workspace-preflight'

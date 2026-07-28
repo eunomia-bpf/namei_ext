@@ -26,6 +26,7 @@ tests/                  ABI, policy-load, semantic, and functional regressions
 bench/                  VFS performance workloads
 mk/experiments/         Make-owned KVM suites for individual case studies
 mk/benchmarks/          Make-owned standard performance matrices
+mk/suites.mk             suite registry and evidence-level aggregates
 mk/results.mk           shared run lifecycle and raw-artifact validation
 analysis/               derived statistics and figures from raw observations
 workloads/legacy/       evidence using the superseded workload numbering
