@@ -129,7 +129,7 @@ artifact manifests. Analysis starts only after the raw run transitions to
 
 The analyzer independently reconstructs the application oracle, DMTCP restart
 mapping, `namei_ext` program/cgroup identity, SELECT counter change, withdrawn
-`ENOENT`, and lower-object invariance. Nine focused analyzer tests and the
+`ENOENT`, and lower-object invariance. Ten focused analyzer tests and the
 shared result-contract tests pass. A dry run validates the full Make dependency
 graph and `finalize`/`complete`/`analyze` ordering.
 
@@ -151,6 +151,16 @@ restored worker exited with assertion code 99 before the three focused
 conditions began. The failed run remains preserved and was not analyzed. The
 next attempt enables the upstream harness's verbose mode and copies its failure
 artifact directory into the result root; it does not weaken the control.
+
+The second clean-source KVM attempt,
+`results/experiments/checkpoint-restore-preflight/20260728T233617Z/`, preserved
+the exact DMTCP assertion. The guest process ran as UID 0 while the checkpoint
+image in the host-shared result tree was owned by UID 1000. DMTCP's strict
+restart ownership check rejected that mismatch. The next repair keeps strict
+checking: the root controller retains BPF and cgroup setup, then launches all
+DMTCP children as the UID/GID that owns the result directory. The upstream
+control uses the same identity, and application rows plus the analyzer record
+and verify it.
 
 ## Next Decision
 

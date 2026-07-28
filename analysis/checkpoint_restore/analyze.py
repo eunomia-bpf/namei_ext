@@ -218,7 +218,7 @@ def validate_controller_rows(rows):
     return lifecycles
 
 
-def validate_application_rows(result, condition):
+def validate_application_rows(result, condition, runtime_identity):
     rows = load_jsonl(result / "application-observations.jsonl")
     if len(rows) != 2 or any(
             row.get("event") != "checkpoint-restore-application"
@@ -228,6 +228,10 @@ def validate_application_rows(result, condition):
               stage="pre-checkpoint")
     post = one(rows, "checkpoint-restore-application",
                stage="post-restart")
+    for row in rows:
+        if row.get("uid") != runtime_identity["uid"] or \
+                row.get("gid") != runtime_identity["gid"]:
+            raise ValueError(f"runtime identity mismatch for {condition}")
     if not isinstance(pre.get("logical_path"), str) or \
             pre["logical_path"] != post.get("logical_path"):
         raise ValueError(f"logical path changed for {condition}")
@@ -356,6 +360,14 @@ def validate_inventories(boot):
         raise ValueError("upstream unchanged-mapping test did not pass")
 
 
+def validate_runtime_identity(boot):
+    identity = load_json(boot / "runtime-identity.json")
+    for field in ("uid", "gid"):
+        if type(identity.get(field)) is not int or identity[field] < 0:
+            raise ValueError(f"invalid runtime {field}")
+    return identity
+
+
 def analyze_result(result):
     result = Path(result)
     run = load_json(result / "run.json")
@@ -369,11 +381,12 @@ def analyze_result(result):
             boot_json.get("conditions") != list(CONDITIONS):
         raise ValueError("invalid boot record")
     validate_inventories(boot)
+    runtime_identity = validate_runtime_identity(boot)
     applications = {}
     for condition in CONDITIONS:
         condition_result = boot / "conditions" / condition
         applications[condition] = validate_application_rows(
-            condition_result, condition
+            condition_result, condition, runtime_identity
         )
         validate_lower_objects(condition_result, condition)
         validate_checkpoint_artifact(condition_result, condition)
@@ -390,6 +403,7 @@ def analyze_result(result):
             "lower_objects_unchanged": True,
             "bpf_inventory_clean": True,
             "fuse_inventory_clean": True,
+            "runtime_identity_consistent": True,
         },
         "timing_ns": {
             condition: {
@@ -407,6 +421,7 @@ def analyze_result(result):
             "pathvirt": "patched DMTCP PathTranslator",
             "namei_ext": "bounded existing-directory selection",
             "withdrawn": "causal control",
+            "runtime_identity": runtime_identity,
             "same_logical_path": applications["pathvirt"]["pre"][
                 "logical_path"
             ] == applications["pathvirt"]["post"]["logical_path"]

@@ -28,7 +28,8 @@ CHECKPOINT_RESTORE_BOOT_FILES := \
 	fuse-mounts-before.txt fuse-mounts-after.txt \
 	fuse-open-fds-before.txt fuse-open-fds-after.txt \
 	kernel.config kernel-commit.txt kernel-release.txt uname.txt \
-	proc-version.txt kernel-cmdline.txt dmesg.log evidence.sha256
+	proc-version.txt kernel-cmdline.txt runtime-identity.json dmesg.log \
+	evidence.sha256
 
 define CHECKPOINT_RESTORE_CAPTURE_ARTIFACTS
 install -d "$(1)/artifacts/kernel" "$(1)/artifacts/runtime" \
@@ -177,6 +178,7 @@ kvm-checkpoint-restore-preflight: kernel kernel-provenance bpf \
 	command -v timeout >/dev/null
 	command -v findmnt >/dev/null
 	command -v lsof >/dev/null
+	command -v setpriv >/dev/null
 	test -x "$(CHECKPOINT_RESTORE_BPFTOOL)"
 	$(call CHECKPOINT_RESTORE_START,$(CHECKPOINT_RESTORE_PREFLIGHT_RESULT_DIR),make kvm-checkpoint-restore-preflight RUN_ID=$(RUN_ID))
 	manifest="$(CHECKPOINT_RESTORE_PREFLIGHT_RESULT_DIR)/artifacts/manifest.json"; \
@@ -284,6 +286,7 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 	test -f "$(CHECKPOINT_RESTORE_GUEST_DMTCP_SOURCE)/Makefile"
 	command -v findmnt >/dev/null
 	command -v lsof >/dev/null
+	command -v setpriv >/dev/null
 	test -c /dev/fuse
 	install -d "$(CHECKPOINT_RESTORE_BOOT_DIR)/conditions"
 	cp "$(CHECKPOINT_RESTORE_GUEST_KERNEL_CONFIG)" \
@@ -298,6 +301,11 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 	uname -a >"$(CHECKPOINT_RESTORE_BOOT_DIR)/uname.txt"
 	cat /proc/version >"$(CHECKPOINT_RESTORE_BOOT_DIR)/proc-version.txt"
 	cat /proc/cmdline >"$(CHECKPOINT_RESTORE_BOOT_DIR)/kernel-cmdline.txt"
+	runtime_uid=$$(stat -c %u "$(CHECKPOINT_RESTORE_BOOT_DIR)"); \
+	runtime_gid=$$(stat -c %g "$(CHECKPOINT_RESTORE_BOOT_DIR)"); \
+	jq -n --argjson uid "$$runtime_uid" --argjson gid "$$runtime_gid" \
+		'{uid:$$uid,gid:$$gid}' \
+		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/runtime-identity.json"
 	(cd "$(CHECKPOINT_RESTORE_GUEST_DMTCP)" && \
 		sha256sum -c \
 			"$(ROOT_DIR)/$(CHECKPOINT_RESTORE_GUEST_INSTALL_MANIFEST)")
@@ -321,6 +329,8 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 	upstream_status=0; \
 	timeout --signal=TERM --kill-after=10s \
 		"$(CHECKPOINT_RESTORE_GUEST_UPSTREAM_TIMEOUT)" \
+		setpriv --reuid="$$runtime_uid" --regid="$$runtime_gid" \
+		--clear-groups \
 		$(MAKE) -C "$(CHECKPOINT_RESTORE_GUEST_DMTCP_SOURCE)" \
 		check-autotest AUTOTEST='--verbose pathvirt' \
 		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stdout.log" \

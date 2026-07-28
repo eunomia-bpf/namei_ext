@@ -193,6 +193,7 @@ static void emit_observation(const struct app_paths *paths, const char *stage,
 		"\"stage\":\"%s\",\"generation\":\"%s\","
 		"\"logical_path\":\"%s/state.txt\","
 		"\"checkpoints\":%d,\"restarts\":%d,"
+		"\"uid\":%llu,\"gid\":%llu,"
 		"\"logical_dev\":%llu,\"logical_ino\":%llu,"
 		"\"physical_dev\":%llu,\"physical_ino\":%llu,"
 		"\"saw_stale\":%s,\"saw_new\":%s,"
@@ -202,7 +203,9 @@ static void emit_observation(const struct app_paths *paths, const char *stage,
 		"\"checkpoint_mapping\":\"%s\","
 		"\"expected_failure\":%s,\"pass\":%s}\n",
 		stage, generation, paths->logical_workspace, checkpoints,
-		restarts, (unsigned long long)(logical ? logical->st_dev : 0),
+		restarts, (unsigned long long)getuid(),
+		(unsigned long long)getgid(),
+		(unsigned long long)(logical ? logical->st_dev : 0),
 		(unsigned long long)(logical ? logical->st_ino : 0),
 		(unsigned long long)(physical ? physical->st_dev : 0),
 		(unsigned long long)(physical ? physical->st_ino : 0),

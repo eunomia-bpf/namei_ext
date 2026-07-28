@@ -118,6 +118,8 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             "generation": "a",
             "logical_path": logical,
             "restarts": 0,
+            "uid": 1000,
+            "gid": 1000,
             "logical_dev": 1,
             "logical_ino": 10,
             "physical_dev": 1,
@@ -200,6 +202,9 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                 "conditions": list(analyze.CONDITIONS),
             }),
             encoding="utf-8",
+        )
+        (boot / "runtime-identity.json").write_text(
+            json.dumps({"uid": 1000, "gid": 1000}), encoding="utf-8"
         )
         for name in (
             "bpf-programs-before.json",
@@ -326,6 +331,19 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             rows[1]["cgroup"] = ""
             self.write_jsonl(path, rows)
             with self.assertRaisesRegex(ValueError, "cgroup attribution"):
+                analyze.analyze_result(root)
+
+    def test_application_runtime_identity_mismatch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory)
+            path = (
+                root / "boots/preflight/conditions/namei_ext/"
+                "application-observations.jsonl"
+            )
+            rows = analyze.load_jsonl(path)
+            rows[1]["uid"] = 0
+            self.write_jsonl(path, rows)
+            with self.assertRaisesRegex(ValueError, "runtime identity"):
                 analyze.analyze_result(root)
 
     def test_changed_lower_object_is_rejected(self):

@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <limits.h>
 #include <linux/bpf.h>
 #include <namei_ext_harness.h>
@@ -82,6 +83,8 @@ struct controller_config {
 	const char *app_path;
 	const char *cgroup_root;
 	unsigned int timeout_seconds;
+	uid_t runtime_uid;
+	gid_t runtime_gid;
 	char coordinator[PATH_MAX];
 	char launch[PATH_MAX];
 	char command[PATH_MAX];
@@ -548,6 +551,15 @@ static pid_t spawn_process(const struct controller_config *config,
 		close(stdout_fd);
 		close(stderr_fd);
 		set_child_environment(config, port, restart_phase);
+		if (geteuid() == 0) {
+			if (setgroups(0, NULL) ||
+			    setgid(config->runtime_gid) ||
+			    setuid(config->runtime_uid))
+				_exit(128);
+		} else if (geteuid() != config->runtime_uid ||
+			   getegid() != config->runtime_gid) {
+			_exit(128);
+		}
 		execv(argv[0], argv);
 		_exit(127);
 	}
@@ -1153,6 +1165,7 @@ static int build_runtime_paths(struct controller_config *config)
 int main(int argc, char **argv)
 {
 	struct controller_config config = {};
+	struct stat result_metadata;
 	FILE *output;
 	char *end = NULL;
 	unsigned long timeout;
@@ -1179,6 +1192,12 @@ int main(int argc, char **argv)
 	config.timeout_seconds = timeout;
 	if (build_runtime_paths(&config) || build_paths(&config))
 		return 2;
+	if (stat(config.result_dir, &result_metadata)) {
+		perror("checkpoint_restore result directory");
+		return 2;
+	}
+	config.runtime_uid = result_metadata.st_uid;
+	config.runtime_gid = result_metadata.st_gid;
 	if (access(config.coordinator, X_OK) ||
 	    access(config.launch, X_OK) ||
 	    access(config.command, X_OK) ||
