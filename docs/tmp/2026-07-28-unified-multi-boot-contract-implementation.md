@@ -57,8 +57,20 @@ required oracle observations remained present and passing.
 
 ## Remaining Work
 
+The migrated suite passed:
+
+```text
+make kvm-agent-workspace-rq2-preflight \
+  RUN_ID=20260728T-multi-boot-agent-rq2-preflight-v1
+```
+
+The clean modified-kernel run completed two independent boots, one for
+namei_ext and one for FUSE. Both used kernel
+`bdc9a83e3dfbef8ff2017f9188c7c86025962183`, TSC, and exact host CPU pin
+`4-7`. The aggregate retained 16,169 raw rows, including 2,000 lifecycle
+samples, with zero failed observations. Expected and observed boot keys,
+input and artifact hashes, affinity records, and both dmesg gates passed.
+
 FxMark and Service Configuration Rotation are not migrated in this change.
-They should move only after the Agent suite passes local contract tests,
-historical-result reanalysis, and a real KVM preflight. Positional KVM launch
-arguments remain a separate follow-up because changing that interface has a
-larger blast radius.
+Positional KVM launch arguments remain a separate follow-up because changing
+that interface has a larger blast radius.
