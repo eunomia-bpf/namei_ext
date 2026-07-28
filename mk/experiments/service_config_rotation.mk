@@ -100,6 +100,7 @@ sha256sum \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-preflight-attempt-1.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-preflight-attempt-2.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-preflight-attempt-3.md" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-v2-preflight-attempt-1.md" \
 	>"$(1)/inputs.sha256"
 endef
 

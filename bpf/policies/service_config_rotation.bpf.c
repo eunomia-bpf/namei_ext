@@ -47,9 +47,10 @@ int namei_ext_policy(struct bpf_namei_ext_ctx *ctx)
 	struct namei_ext_component_key key = {};
 	__u8 *managed;
 	__u32 *target_id;
+	__u64 cgroup_id = ctx->cgroup_id;
 
 	managed = bpf_map_lookup_elem(&service_config_rotation_cgroups,
-				      &ctx->cgroup_id);
+				      &cgroup_id);
 	if (!managed || !*managed)
 		return BPF_NAMEI_EXT_PASS;
 
