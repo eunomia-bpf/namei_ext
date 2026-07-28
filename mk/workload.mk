@@ -20,6 +20,21 @@ NGINX_PROVENANCE := $(WORKLOAD_RESULT_ROOT)/nginx-source.json
 
 BAZEL_BINARY := $(WORKLOAD_CACHE_ROOT)/$(BAZEL_BINARY_NAME)
 
+DMTCP_ARCHIVE := $(WORKLOAD_CACHE_ROOT)/$(DMTCP_ARCHIVE_NAME)
+DMTCP_WORK_ROOT := $(WORKLOAD_BUILD_ROOT)/dmtcp-$(DMTCP_COMMIT_SHORT)
+DMTCP_SRC := $(DMTCP_WORK_ROOT)/$(DMTCP_SOURCE_DIR_NAME)
+DMTCP_INSTALL_ROOT := $(DMTCP_WORK_ROOT)/install
+DMTCP_EXTRACT_STAMP := $(DMTCP_WORK_ROOT)/.extract.ok
+DMTCP_CONFIGURE_STAMP := $(DMTCP_WORK_ROOT)/.configure.ok
+DMTCP_COMPILE_STAMP := $(DMTCP_WORK_ROOT)/.compile.ok
+DMTCP_INSTALL_STAMP := $(DMTCP_WORK_ROOT)/.install.ok
+DMTCP_BUILD_RECORD_DIR := $(WORKLOAD_PROVENANCE_ROOT)/build/dmtcp-$(DMTCP_COMMIT_SHORT)
+DMTCP_CONFIGURE_LOG := $(DMTCP_BUILD_RECORD_DIR)/configure.log
+DMTCP_BUILD_LOG := $(DMTCP_BUILD_RECORD_DIR)/build.log
+DMTCP_INSTALL_LOG := $(DMTCP_BUILD_RECORD_DIR)/install.log
+DMTCP_INSTALL_MANIFEST := $(DMTCP_BUILD_RECORD_DIR)/install-tree.sha256
+DMTCP_BUILD_PROVENANCE := $(DMTCP_BUILD_RECORD_DIR)/build.json
+
 REDIS_BUILD_WORK_ROOT := $(WORKLOAD_BUILD_ROOT)/runs/$(RUN_ID)/w1-redis-build
 REDIS_BUILD_SRC := $(REDIS_BUILD_WORK_ROOT)/src
 REDIS_BUILD_STAMP := $(REDIS_BUILD_SRC)/.workload-source.ok
@@ -36,7 +51,10 @@ NGINX_CONFIGURE_LOG := $(NGINX_BUILD_RESULT_DIR)/configure.log
 NGINX_BUILD_LOG := $(NGINX_BUILD_RESULT_DIR)/build.log
 NGINX_BUILD_JSON := $(NGINX_BUILD_RESULT_DIR)/build.json
 
-.PHONY: workload-redis-build workload-nginx-build workload-bazel
+.PHONY: workload-redis-build workload-nginx-build workload-bazel \
+	workload-dmtcp-acquire workload-dmtcp-verify workload-dmtcp-extract \
+	workload-dmtcp-configure workload-dmtcp-compile workload-dmtcp-install \
+	workload-dmtcp-provenance workload-dmtcp-build
 
 workload-redis-build: $(REDIS_BUILD_JSON)
 
@@ -44,10 +62,56 @@ workload-nginx-build: $(NGINX_BUILD_JSON)
 
 workload-bazel: $(BAZEL_BINARY)
 
+workload-dmtcp-acquire: $(DMTCP_ARCHIVE)
+	test -s "$(DMTCP_ARCHIVE)"
+
+workload-dmtcp-verify: $(DMTCP_ARCHIVE)
+	printf '%s  %s\n' "$(DMTCP_ARCHIVE_SHA256)" "$(DMTCP_ARCHIVE)" | sha256sum -c -
+
+workload-dmtcp-extract: workload-dmtcp-verify $(DMTCP_EXTRACT_STAMP)
+	test -x "$(DMTCP_SRC)/configure"
+	test -f "$(DMTCP_SRC)/$(DMTCP_LICENSE_PATH)"
+
+workload-dmtcp-configure: $(DMTCP_CONFIGURE_STAMP)
+	test -s "$(DMTCP_CONFIGURE_LOG)"
+	test -f "$(DMTCP_SRC)/Makefile"
+
+workload-dmtcp-compile: $(DMTCP_COMPILE_STAMP)
+	test -s "$(DMTCP_BUILD_LOG)"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_launch"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_coordinator"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_command"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_restart"
+	test -f "$(DMTCP_SRC)/lib/dmtcp/libdmtcp.so"
+
+workload-dmtcp-install: $(DMTCP_INSTALL_STAMP)
+	test -s "$(DMTCP_INSTALL_LOG)"
+	test -s "$(DMTCP_INSTALL_MANIFEST)"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_launch"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_coordinator"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_command"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_restart"
+	test -f "$(DMTCP_INSTALL_ROOT)/lib/dmtcp/libdmtcp.so"
+
+workload-dmtcp-provenance: $(DMTCP_BUILD_PROVENANCE)
+	jq -e '.schema == "namei_ext.workload_build_provenance.v1" and .project == "dmtcp"' \
+		"$(DMTCP_BUILD_PROVENANCE)" >/dev/null
+
+workload-dmtcp-build: workload-dmtcp-verify workload-dmtcp-provenance
+	test -s "$(DMTCP_CONFIGURE_LOG)"
+	test -s "$(DMTCP_BUILD_LOG)"
+	test -s "$(DMTCP_INSTALL_LOG)"
+	test -s "$(DMTCP_INSTALL_MANIFEST)"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_launch"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_coordinator"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_command"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_restart"
+	test -f "$(DMTCP_INSTALL_ROOT)/lib/dmtcp/libdmtcp.so"
+
 $(WORKLOAD_CACHE_ROOT) $(WORKLOAD_BUILD_ROOT) $(WORKLOAD_RESULT_ROOT):
 	install -d "$@"
 
-$(WORKLOAD_RUN_ROOT) $(REDIS_BUILD_RESULT_DIR) $(NGINX_BUILD_RESULT_DIR):
+$(WORKLOAD_RUN_ROOT) $(REDIS_BUILD_RESULT_DIR) $(NGINX_BUILD_RESULT_DIR) $(DMTCP_BUILD_RECORD_DIR):
 	install -d "$@"
 
 $(REDIS_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
@@ -64,6 +128,106 @@ $(BAZEL_BINARY): | $(WORKLOAD_CACHE_ROOT)
 	curl -fL --retry 3 --connect-timeout 30 -o "$@.tmp" "$(BAZEL_URL)"
 	printf '%s  %s\n' "$(BAZEL_BINARY_SHA256)" "$@.tmp" | sha256sum -c -
 	chmod 0755 "$@.tmp"
+	mv -f "$@.tmp" "$@"
+
+$(DMTCP_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
+	curl -fL --retry 3 --connect-timeout 30 -o "$@.tmp" "$(DMTCP_URL)"
+	printf '%s  %s\n' "$(DMTCP_ARCHIVE_SHA256)" "$@.tmp" | sha256sum -c -
+	mv -f "$@.tmp" "$@"
+
+$(DMTCP_EXTRACT_STAMP): $(DMTCP_ARCHIVE) | $(WORKLOAD_BUILD_ROOT)
+	rm -rf "$(DMTCP_WORK_ROOT)"
+	install -d "$(DMTCP_WORK_ROOT)"
+	printf '%s  %s\n' "$(DMTCP_ARCHIVE_SHA256)" "$(DMTCP_ARCHIVE)" | sha256sum -c -
+	tar -xzf "$(DMTCP_ARCHIVE)" -C "$(DMTCP_WORK_ROOT)"
+	test -d "$(DMTCP_SRC)"
+	test -x "$(DMTCP_SRC)/configure"
+	test -f "$(DMTCP_SRC)/$(DMTCP_LICENSE_PATH)"
+	test -f "$(DMTCP_SRC)/src/plugin_pathtranslator.cpp"
+	test -f "$(DMTCP_SRC)/test/pathvirt1.c"
+	test -f "$(DMTCP_SRC)/test/autotest.py"
+	touch "$@"
+
+$(DMTCP_CONFIGURE_STAMP): $(DMTCP_EXTRACT_STAMP) | $(DMTCP_BUILD_RECORD_DIR)
+	command -v cc >/dev/null
+	command -v c++ >/dev/null
+	command -v make >/dev/null
+	cd "$(DMTCP_SRC)" && \
+		./configure --prefix="$(DMTCP_INSTALL_ROOT)" >"$(DMTCP_CONFIGURE_LOG)" 2>&1
+	test -s "$(DMTCP_CONFIGURE_LOG)"
+	test -f "$(DMTCP_SRC)/Makefile"
+	touch "$@"
+
+$(DMTCP_COMPILE_STAMP): $(DMTCP_CONFIGURE_STAMP) | $(DMTCP_BUILD_RECORD_DIR)
+	$(MAKE) -C "$(DMTCP_SRC)" -j"$(JOBS)" >"$(DMTCP_BUILD_LOG)" 2>&1
+	test -s "$(DMTCP_BUILD_LOG)"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_launch"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_coordinator"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_command"
+	test -x "$(DMTCP_SRC)/bin/dmtcp_restart"
+	test -f "$(DMTCP_SRC)/lib/dmtcp/libdmtcp.so"
+	touch "$@"
+
+$(DMTCP_INSTALL_STAMP): $(DMTCP_COMPILE_STAMP) | $(DMTCP_BUILD_RECORD_DIR)
+	rm -rf "$(DMTCP_INSTALL_ROOT)"
+	install -d "$(DMTCP_INSTALL_ROOT)"
+	$(MAKE) -C "$(DMTCP_SRC)" install >"$(DMTCP_INSTALL_LOG)" 2>&1
+	test -s "$(DMTCP_INSTALL_LOG)"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_launch"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_coordinator"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_command"
+	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_restart"
+	test -f "$(DMTCP_INSTALL_ROOT)/lib/dmtcp/libdmtcp.so"
+	cd "$(DMTCP_INSTALL_ROOT)" && \
+		find . -type f -print0 | sort -z | xargs -0 sha256sum >"$(DMTCP_INSTALL_MANIFEST).tmp"
+	test -s "$(DMTCP_INSTALL_MANIFEST).tmp"
+	mv -f "$(DMTCP_INSTALL_MANIFEST).tmp" "$(DMTCP_INSTALL_MANIFEST)"
+	touch "$@"
+
+$(DMTCP_BUILD_PROVENANCE): $(DMTCP_INSTALL_STAMP) | $(DMTCP_BUILD_RECORD_DIR)
+	printf '%s  %s\n' "$(DMTCP_ARCHIVE_SHA256)" "$(DMTCP_ARCHIVE)" | sha256sum -c -
+	jq -n \
+		--arg schema "namei_ext.workload_build_provenance.v1" \
+		--arg project "dmtcp" \
+		--arg commit "$(DMTCP_COMMIT)" \
+		--arg commit_short "$(DMTCP_COMMIT_SHORT)" \
+		--arg url "$(DMTCP_URL)" \
+		--arg archive "$(DMTCP_ARCHIVE)" \
+		--arg expected_archive_sha256 "$(DMTCP_ARCHIVE_SHA256)" \
+		--arg archive_sha256 "$$(sha256sum "$(DMTCP_ARCHIVE)" | awk '{print $$1}')" \
+		--arg source_dir "$(DMTCP_SRC)" \
+		--arg install_dir "$(DMTCP_INSTALL_ROOT)" \
+		--arg license "$(DMTCP_LICENSE)" \
+		--arg license_path "$(DMTCP_LICENSE_PATH)" \
+		--arg license_sha256 "$$(sha256sum "$(DMTCP_SRC)/$(DMTCP_LICENSE_PATH)" | awk '{print $$1}')" \
+		--arg pathtranslator_sha256 "$$(sha256sum "$(DMTCP_SRC)/src/plugin_pathtranslator.cpp" | awk '{print $$1}')" \
+		--arg pathvirt1_sha256 "$$(sha256sum "$(DMTCP_SRC)/test/pathvirt1.c" | awk '{print $$1}')" \
+		--arg autotest_sha256 "$$(sha256sum "$(DMTCP_SRC)/test/autotest.py" | awk '{print $$1}')" \
+		--arg configure_log "$(DMTCP_CONFIGURE_LOG)" \
+		--arg configure_log_sha256 "$$(sha256sum "$(DMTCP_CONFIGURE_LOG)" | awk '{print $$1}')" \
+		--arg build_log "$(DMTCP_BUILD_LOG)" \
+		--arg build_log_sha256 "$$(sha256sum "$(DMTCP_BUILD_LOG)" | awk '{print $$1}')" \
+		--arg install_log "$(DMTCP_INSTALL_LOG)" \
+		--arg install_log_sha256 "$$(sha256sum "$(DMTCP_INSTALL_LOG)" | awk '{print $$1}')" \
+		--arg install_manifest "$(DMTCP_INSTALL_MANIFEST)" \
+		--arg install_manifest_sha256 "$$(sha256sum "$(DMTCP_INSTALL_MANIFEST)" | awk '{print $$1}')" \
+		--arg cc_version "$$(cc --version | sed -n '1p')" \
+		--arg cxx_version "$$(c++ --version | sed -n '1p')" \
+		--arg make_version "$$(make --version | sed -n '1p')" \
+		--arg jobs "$(JOBS)" \
+		--arg launch_sha256 "$$(sha256sum "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_launch" | awk '{print $$1}')" \
+		--arg coordinator_sha256 "$$(sha256sum "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_coordinator" | awk '{print $$1}')" \
+		--arg command_sha256 "$$(sha256sum "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_command" | awk '{print $$1}')" \
+		--arg restart_sha256 "$$(sha256sum "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_restart" | awk '{print $$1}')" \
+		--arg libdmtcp_sha256 "$$(sha256sum "$(DMTCP_INSTALL_ROOT)/lib/dmtcp/libdmtcp.so" | awk '{print $$1}')" \
+		--argjson install_file_count "$$(find "$(DMTCP_INSTALL_ROOT)" -type f | wc -l)" \
+		'{schema:$$schema, project:$$project, commit:$$commit, commit_short:$$commit_short, source:{url:$$url, archive:$$archive, expected_archive_sha256:$$expected_archive_sha256, archive_sha256:$$archive_sha256, source_dir:$$source_dir, license:{spdx:$$license, path:$$license_path, sha256:$$license_sha256}, pinned_files:{"src/plugin_pathtranslator.cpp":$$pathtranslator_sha256, "test/pathvirt1.c":$$pathvirt1_sha256, "test/autotest.py":$$autotest_sha256}}, build:{configure_command:["./configure", ("--prefix=" + $$install_dir)], make_jobs:$$jobs, toolchain:{cc:$$cc_version, cxx:$$cxx_version, make:$$make_version}, logs:{configure:{path:$$configure_log, sha256:$$configure_log_sha256}, build:{path:$$build_log, sha256:$$build_log_sha256}, install:{path:$$install_log, sha256:$$install_log_sha256}}}, install:{root:$$install_dir, file_count:$$install_file_count, manifest:{path:$$install_manifest, sha256:$$install_manifest_sha256}, artifacts:{dmtcp_launch:$$launch_sha256, dmtcp_coordinator:$$coordinator_sha256, dmtcp_command:$$command_sha256, dmtcp_restart:$$restart_sha256, "lib/dmtcp/libdmtcp.so":$$libdmtcp_sha256}}}' \
+		>"$@.tmp"
+	jq -e \
+		--arg commit "$(DMTCP_COMMIT)" \
+		--arg archive_sha256 "$(DMTCP_ARCHIVE_SHA256)" \
+		'.schema == "namei_ext.workload_build_provenance.v1" and .commit == $$commit and .source.archive_sha256 == $$archive_sha256 and .install.file_count > 0' \
+		"$@.tmp" >/dev/null
 	mv -f "$@.tmp" "$@"
 
 $(REDIS_STAMP): $(REDIS_ARCHIVE) | $(WORKLOAD_BUILD_ROOT)
