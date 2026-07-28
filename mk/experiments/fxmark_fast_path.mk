@@ -313,6 +313,7 @@ kvm-fxmark-fast-path-preflight: fxmark-kernel-pair fxmark-rq2-build bpf \
 	$(call FXMARK_FAST_PATH_START,$(FXMARK_FAST_PATH_PREFLIGHT_RESULT_DIR),$(FXMARK_FAST_PATH_PREFLIGHT_REPETITIONS),$(FXMARK_FAST_PATH_PREFLIGHT_DURATION),make kvm-fxmark-fast-path-preflight RUN_ID=$(RUN_ID))
 	$(call FXMARK_FAST_PATH_RUN_MATRIX,$(FXMARK_FAST_PATH_PREFLIGHT_RESULT_DIR),$(FXMARK_FAST_PATH_PREFLIGHT_REPETITIONS),$(FXMARK_FAST_PATH_PREFLIGHT_DURATION))
 	$(call FXMARK_FAST_PATH_FINALIZE,$(FXMARK_FAST_PATH_PREFLIGHT_RESULT_DIR),$(FXMARK_FAST_PATH_PREFLIGHT_REPETITIONS),$(FXMARK_FAST_PATH_PREFLIGHT_DURATION))
+	$(call NAMEI_EXT_RUN_COMPLETE,$(FXMARK_FAST_PATH_PREFLIGHT_RESULT_DIR))
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-fast-path-analyze \
 		RUN_ID="$(RUN_ID)" \
 		FXMARK_FAST_PATH_ACTIVE_DIR="$(FXMARK_FAST_PATH_PREFLIGHT_RESULT_DIR)"
@@ -323,6 +324,7 @@ kvm-fxmark-fast-path: fxmark-kernel-pair fxmark-rq2-build bpf \
 	$(call FXMARK_FAST_PATH_START,$(FXMARK_FAST_PATH_RESULT_DIR),$(FXMARK_FAST_PATH_REPETITIONS),$(FXMARK_FAST_PATH_DURATION),make experiment-fxmark-fast-path RUN_ID=$(RUN_ID))
 	$(call FXMARK_FAST_PATH_RUN_MATRIX,$(FXMARK_FAST_PATH_RESULT_DIR),$(FXMARK_FAST_PATH_REPETITIONS),$(FXMARK_FAST_PATH_DURATION))
 	$(call FXMARK_FAST_PATH_FINALIZE,$(FXMARK_FAST_PATH_RESULT_DIR),$(FXMARK_FAST_PATH_REPETITIONS),$(FXMARK_FAST_PATH_DURATION))
+	$(call NAMEI_EXT_RUN_COMPLETE,$(FXMARK_FAST_PATH_RESULT_DIR))
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-fast-path-analyze \
 		RUN_ID="$(RUN_ID)" \
 		FXMARK_FAST_PATH_ACTIVE_DIR="$(FXMARK_FAST_PATH_RESULT_DIR)"
@@ -330,51 +332,37 @@ kvm-fxmark-fast-path: fxmark-kernel-pair fxmark-rq2-build bpf \
 fxmark-fast-path-analyze:
 	result="$(FXMARK_FAST_PATH_ACTIVE_DIR)"; \
 	test -n "$$result"; \
-	on_exit() { \
-		status=$$?; \
-		trap - EXIT; \
-		if test "$$status" -ne 0 && test -s "$$result/run.json" && \
-				jq -e '.status == "running"' "$$result/run.json" >/dev/null 2>&1; then \
-			failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-			jq --arg failed_at "$$failed_at" \
-				'.status = "failed" | .failed_at = $$failed_at | .failure = "fast-path-analysis"' \
-				"$$result/run.json" >"$$result/run.json.tmp"; \
-			mv -f "$$result/run.json.tmp" "$$result/run.json"; \
-		fi; \
-		exit "$$status"; \
-	}; \
-	trap on_exit EXIT; \
-	jq -e '.status == "running" and (.completed_at | not) and (.failed_at | not)' \
-		"$$result/run.json" >/dev/null; \
+	$(call NAMEI_EXT_RUN_VALIDATE_COMPLETE,$$result); \
 	sha256sum -c "$$result/inputs.sha256"; \
 	sha256sum -c "$$result/artifacts.sha256"; \
+	analysis="$$result/analysis"; \
+	$(call NAMEI_EXT_ANALYSIS_PREPARE,$$analysis); \
 	python3 "$(FXMARK_FAST_PATH_ANALYSIS)" \
 		--input "$$result/observations.jsonl" \
 		--launch-order "$$result/launch-order.jsonl" \
 		--run "$$result/run.json" \
-		--output "$$result/analysis" \
+		--output "$$analysis.tmp" \
 		--seed "$(FXMARK_FAST_PATH_ANALYSIS_SEED)"; \
 	for file in summary.json summary.csv report.md fast-path.png \
 			fast-path.pdf; do \
-		test -s "$$result/analysis/$$file"; \
+		test -s "$$analysis.tmp/$$file"; \
 	done; \
-	sha256sum "$$result/analysis/summary.json" \
-		"$$result/analysis/summary.csv" \
-		"$$result/analysis/report.md" \
-		"$$result/analysis/fast-path.png" \
-		"$$result/analysis/fast-path.pdf" \
-		>"$$result/analysis.sha256.tmp"; \
-	mv -f "$$result/analysis.sha256.tmp" "$$result/analysis.sha256"; \
-	sha256sum -c "$$result/analysis.sha256"; \
-	$(call NAMEI_EXT_RUN_COMPLETE,$$result); \
-	trap - EXIT
+	jq -e '.schema == "namei_ext.fxmark-fast-path.analysis.v1" and (.verdict == "supported" or .verdict == "contradicted" or .verdict == "inconclusive")' \
+		"$$analysis.tmp/summary.json" >/dev/null; \
+	(cd "$$analysis.tmp" && \
+		sha256sum summary.json summary.csv report.md fast-path.png \
+			fast-path.pdf >analysis.sha256.tmp && \
+		mv -f analysis.sha256.tmp analysis.sha256 && \
+		sha256sum -c analysis.sha256); \
+	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$$analysis)
 
 fxmark-fast-path-report:
 	jq -e '.status == "completed" and (.completed_at | type == "string" and length > 0)' \
 		"$(FXMARK_FAST_PATH_RESULT_DIR)/run.json" >/dev/null
 	sha256sum -c "$(FXMARK_FAST_PATH_RESULT_DIR)/inputs.sha256"
 	sha256sum -c "$(FXMARK_FAST_PATH_RESULT_DIR)/artifacts.sha256"
-	sha256sum -c "$(FXMARK_FAST_PATH_RESULT_DIR)/analysis.sha256"
+	(cd "$(FXMARK_FAST_PATH_RESULT_DIR)/analysis" && \
+		sha256sum -c analysis.sha256)
 	jq -e '.schema == "namei_ext.fxmark-fast-path.analysis.v1" and (.verdict == "supported" or .verdict == "contradicted" or .verdict == "inconclusive")' \
 		"$(FXMARK_FAST_PATH_RESULT_DIR)/analysis/summary.json" >/dev/null
 

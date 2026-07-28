@@ -123,6 +123,12 @@ with a stable suite migration, parity tests, and a fresh KVM preflight. They do
 not justify a directory reshuffle, but the collection/analysis status split
 should be repaired before the next new formal run.
 
+The collection/analysis status split was repaired later on 2026-07-28. Agent
+workspace, FxMark fast-path, and Service Configuration Rotation now complete
+the validated raw run before starting analysis, and analysis failure no longer
+rewrites the collection state. The implementation and validation are recorded
+in `docs/tmp/2026-07-28-raw-analysis-lifecycle-separation.md`.
+
 For Checkpoint/Restore and Migration, the correct order is:
 
 1. resolve or close the source-native DMTCP A-to-B pathvirt baseline;

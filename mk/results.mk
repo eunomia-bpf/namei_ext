@@ -57,6 +57,29 @@ define NAMEI_EXT_RUN_COMPLETE
 jq -e '.status == "running" and (.completed_at | not)' "$(1)/run.json" >/dev/null; completed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); jq --arg completed_at "$$completed_at" '.status = "completed" | .completed_at = $$completed_at' "$(1)/run.json" >"$(1)/run.json.tmp"; jq -e --arg schema "$(NAMEI_EXT_RUN_SCHEMA)" --arg run_id "$(RUN_ID)" '.schema == $$schema and .run_id == $$run_id and .status == "completed" and (.completed_at | type == "string" and length > 0)' "$(1)/run.json.tmp" >/dev/null; mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 endef
 
+define NAMEI_EXT_RUN_VALIDATE_COMPLETE
+jq -e --arg schema "$(NAMEI_EXT_RUN_SCHEMA)" '.schema == $$schema and .status == "completed" and (.completed_at | type == "string" and length > 0) and (.run_id | type == "string" and length > 0) and (.observations | type == "string" and length > 0) and (.source.commit | type == "string" and length == 40) and (.source.dirty | type == "boolean") and (.kernel.commit | type == "string" and length == 40) and (.kernel.dirty | type == "boolean") and .kernel_commit == .kernel.commit' "$(1)/run.json" >/dev/null
+endef
+
+define NAMEI_EXT_ANALYSIS_PREPARE
+if test ! -e "$(1)" && test -e "$(1).old"; then \
+	mv "$(1).old" "$(1)"; \
+fi; \
+if test -e "$(1)" && test -e "$(1).old"; then \
+	rm -rf "$(1).old"; \
+fi; \
+rm -rf "$(1).tmp"
+endef
+
+define NAMEI_EXT_ANALYSIS_PUBLISH
+if test -e "$(1)"; then mv "$(1)" "$(1).old"; fi; \
+if ! mv "$(1).tmp" "$(1)"; then \
+	if test -e "$(1).old"; then mv "$(1).old" "$(1)"; fi; \
+	exit 1; \
+fi; \
+rm -rf "$(1).old"
+endef
+
 define NAMEI_EXT_RUN_VALIDATE_BASE
 jq -e --arg schema "$(NAMEI_EXT_RUN_SCHEMA)" --arg run_id "$(RUN_ID)" --arg observations "$(notdir $(2))" '.schema == $$schema and .run_id == $$run_id and .status == "running" and (.completed_at | not) and .observations == $$observations and (.source.commit | type == "string" and length == 40) and (.source.dirty | type == "boolean") and (.kernel.commit | type == "string" and length == 40) and (.kernel.dirty | type == "boolean") and .kernel_commit == .kernel.commit' "$(1)/run.json" >/dev/null
 test -s "$(1)/run.json"

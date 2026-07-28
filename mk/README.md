@@ -36,12 +36,19 @@ A new formal suite must:
 3. create a new result root, start its lifecycle on the host, and refuse an
    existing `RUN_ID`;
 4. use `NAMEI_EXT_KVM_RUN_CAPTURE` so launcher failures and logs are preserved;
-5. validate the run while it is `running`, then use
-   `NAMEI_EXT_RUN_COMPLETE`;
+5. validate raw observations and artifacts while the run is `running`, then
+   use `NAMEI_EXT_RUN_COMPLETE` before starting analysis;
 6. separate `inputs.sha256` from `artifacts.sha256`;
 7. fail correctness and mechanism-engagement gates before reporting
    performance; and
 8. leave statistical aggregation and figures to `analysis/`.
+
+`run.json.status = "completed"` means that collection and the raw evidence
+contract completed. Analysis is a repeatable derived step: it consumes only a
+completed run and must not rewrite the run status when analysis or figure
+generation fails. Analysis targets write to a temporary sibling directory and
+publish the complete derived output only after every required file passes its
+suite contract.
 
 The top-level current experiment targets also depend on
 `experiment-source-clean`. Runs therefore start only from clean main and kernel

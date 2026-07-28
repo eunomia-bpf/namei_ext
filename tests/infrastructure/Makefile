@@ -15,12 +15,20 @@ include $(ROOT_DIR)/mk/results.mk
 include $(ROOT_DIR)/mk/multi_boot.mk
 
 .PHONY: test validate-only create-only multi-boot-collect-only \
-	multi-boot-validate-only published-result-contract clean
+	multi-boot-validate-only analysis-publish-only \
+	published-result-contract clean
+
+analysis-publish-only:
+	test -n "$(ANALYSIS_PATH)"
+	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$(ANALYSIS_PATH))
 
 published-result-contract:
 	PYTHONPATH="$(ROOT_DIR)/tests/infrastructure" \
 		python3 \
 		"$(ROOT_DIR)/tests/infrastructure/test_validate_published_results.py"
+	PYTHONPATH="$(ROOT_DIR)/tests/infrastructure" \
+		python3 \
+		"$(ROOT_DIR)/tests/infrastructure/test_analysis_lifecycle.py"
 	python3 "$(ROOT_DIR)/tests/infrastructure/validate_published_results.py" \
 		--repo "$(ROOT_DIR)" \
 		--index "$(ROOT_DIR)/configs/publication/published-formal.json"
@@ -173,7 +181,7 @@ test: published-result-contract
 	mv "$(OUTPUT)/dmesg.log.saved" "$(OUTPUT)/dmesg.log"
 	$(call NAMEI_EXT_RUN_VALIDATE_CANONICAL,$(OUTPUT),$(RESULT_JSON))
 	$(call NAMEI_EXT_RUN_COMPLETE,$(OUTPUT))
-	jq -e '.status == "completed" and (.completed_at | type == "string" and length > 0)' "$(OUTPUT)/run.json" >/dev/null
+	$(call NAMEI_EXT_RUN_VALIDATE_COMPLETE,$(OUTPUT))
 	if $(MAKE) --no-print-directory create-only \
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" \
 		OUTPUT="$(OUTPUT)" RUN_ID="$(RUN_ID)"; then \

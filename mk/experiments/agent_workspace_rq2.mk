@@ -146,7 +146,6 @@ endef
 	kvm-agent-workspace-rq2-preflight experiment-agent-workspace-rq2 \
 	kvm-agent-workspace-rq2 agent-workspace-rq2-run-matrix \
 	agent-workspace-rq2-finalize agent-workspace-rq2-mark-complete \
-	agent-workspace-rq2-mark-failed \
 	agent-workspace-rq2-report \
 	__agent_workspace_rq2_guest
 
@@ -241,6 +240,9 @@ kvm-agent-workspace-rq2: kernel kernel-provenance bpf agent-workspace \
 		RUN_ID="$(RUN_ID)" \
 		AGENT_WORKSPACE_RQ2_ACTIVE_DIR="$(AGENT_WORKSPACE_RQ2_RESULT_DIR)" \
 		AGENT_WORKSPACE_RQ2_ACTIVE_REPETITIONS="$(AGENT_WORKSPACE_RQ2_REPETITIONS)"
+	$(MAKE) -C "$(ROOT_DIR)" agent-workspace-rq2-mark-complete \
+		RUN_ID="$(RUN_ID)" \
+		AGENT_WORKSPACE_RQ2_ACTIVE_DIR="$(AGENT_WORKSPACE_RQ2_RESULT_DIR)"
 	$(MAKE) -C "$(ROOT_DIR)" agent-workspace-rq2-report RUN_ID="$(RUN_ID)"
 
 agent-workspace-rq2-run-matrix:
@@ -362,50 +364,27 @@ agent-workspace-rq2-mark-complete:
 		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/run.json" >/dev/null
 	$(call NAMEI_EXT_RUN_COMPLETE,$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR))
 
-agent-workspace-rq2-mark-failed:
-	test -n "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)"
-	test -n "$(AGENT_WORKSPACE_RQ2_FAILURE)"
-	jq -e '.status == "running" and (.failed_at | not)' \
-		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/run.json" >/dev/null
-	failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-	jq --arg failed_at "$$failed_at" \
-		--arg failure "$(AGENT_WORKSPACE_RQ2_FAILURE)" \
-		'.status = "failed" | .failed_at = $$failed_at | .failure = $$failure' \
-		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/run.json" \
-		>"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/run.json.tmp"
-	mv -f "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/run.json.tmp" \
-		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/run.json"
-
 agent-workspace-rq2-report:
-	jq -e '.status == "running" and (.failed_at | not)' \
-		"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/run.json" >/dev/null
+	$(call NAMEI_EXT_RUN_VALIDATE_COMPLETE,$(AGENT_WORKSPACE_RQ2_RESULT_DIR))
 	sha256sum -c "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/inputs.sha256"
 	sha256sum -c "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/artifacts.sha256"
-	if ! python3 "$(AGENT_WORKSPACE_RQ2_ANALYSIS)" \
+	$(call NAMEI_EXT_ANALYSIS_PREPARE,$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis)
+	python3 "$(AGENT_WORKSPACE_RQ2_ANALYSIS)" \
 		--input "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/observations.jsonl" \
 		--run "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/run.json" \
 		--launch-order \
 			"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/launch-order.jsonl" \
 		--required-oracles \
 			"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/artifacts/source/rq2_required_oracles.txt" \
-		--output "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis" \
-		--seed "$(AGENT_WORKSPACE_RQ2_ANALYSIS_SEED)"; then \
-		failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-		jq --arg failed_at "$$failed_at" \
-			'.status = "failed" | .failed_at = $$failed_at | .failure = "analysis-or-artifact-contract"' \
-			"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/run.json" \
-			>"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/run.json.tmp"; \
-		mv -f "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/run.json.tmp" \
-			"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/run.json"; \
-		exit 1; \
-	fi
+		--output "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis.tmp" \
+		--seed "$(AGENT_WORKSPACE_RQ2_ANALYSIS_SEED)"
 	for file in summary.json summary.csv report.md latency-ratios.png \
 		latency-ratios.pdf; do \
-		test -s "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis/$$file"; \
+		test -s "$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis.tmp/$$file"; \
 	done
 	jq -e '.schema == "namei_ext.agent_workspace_rq2.summary.v2" and (.verdict.tested_hypothesis == "supported" or .verdict.tested_hypothesis == "contradicted" or .verdict.tested_hypothesis == "inconclusive")' \
-		"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis/summary.json" >/dev/null
-	$(call NAMEI_EXT_RUN_COMPLETE,$(AGENT_WORKSPACE_RQ2_RESULT_DIR))
+		"$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis.tmp/summary.json" >/dev/null
+	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$(AGENT_WORKSPACE_RQ2_RESULT_DIR)/analysis)
 
 experiment-agent-workspace-rq2: kvm-agent-workspace-rq2
 

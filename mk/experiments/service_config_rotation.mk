@@ -150,6 +150,7 @@ kvm-service-config-rotation-preflight: kernel kernel-provenance bpf \
 		RUN_ID="$(RUN_ID)" \
 		SERVICE_CONFIG_ROTATION_ACTIVE_DIR="$(SERVICE_CONFIG_ROTATION_PREFLIGHT_RESULT_DIR)" \
 		SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS=1
+	$(call NAMEI_EXT_RUN_COMPLETE,$(SERVICE_CONFIG_ROTATION_PREFLIGHT_RESULT_DIR))
 	$(MAKE) -C "$(ROOT_DIR)" service-config-rotation-analyze \
 		RUN_ID="$(RUN_ID)" \
 		SERVICE_CONFIG_ROTATION_ACTIVE_DIR="$(SERVICE_CONFIG_ROTATION_PREFLIGHT_RESULT_DIR)"
@@ -170,6 +171,7 @@ kvm-service-config-rotation: kernel kernel-provenance bpf \
 		RUN_ID="$(RUN_ID)" \
 		SERVICE_CONFIG_ROTATION_ACTIVE_DIR="$(SERVICE_CONFIG_ROTATION_RESULT_DIR)" \
 		SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS="$(SERVICE_CONFIG_ROTATION_REPETITIONS)"
+	$(call NAMEI_EXT_RUN_COMPLETE,$(SERVICE_CONFIG_ROTATION_RESULT_DIR))
 	$(MAKE) -C "$(ROOT_DIR)" service-config-rotation-analyze \
 		RUN_ID="$(RUN_ID)" \
 		SERVICE_CONFIG_ROTATION_ACTIVE_DIR="$(SERVICE_CONFIG_ROTATION_RESULT_DIR)"
@@ -272,18 +274,18 @@ service-config-rotation-finalize:
 
 service-config-rotation-analyze:
 	test -n "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)"
-	jq -e '.status == "running" and (.failed_at | not)' \
-		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/run.json" >/dev/null
+	$(call NAMEI_EXT_RUN_VALIDATE_COMPLETE,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR))
+	$(call NAMEI_EXT_ANALYSIS_PREPARE,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis)
 	python3 "$(SERVICE_CONFIG_ROTATION_ANALYSIS)" \
 		--input "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/observations.jsonl" \
 		--run "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/run.json" \
-		--output "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis"
+		--output "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis.tmp"
 	for file in summary.json summary.csv report.md; do \
-		test -s "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis/$$file"; \
+		test -s "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis.tmp/$$file"; \
 	done
 	jq -e '.schema == "namei_ext.service_config_rotation.summary.v2" and .correctness.all_boots_passed == true and (if .correctness.boots_expected == 10 then .verdict.tested_hypothesis == "supported" and .verdict.evidence_role == "formal" else .correctness.boots_expected == 1 and .verdict.tested_hypothesis == "not_tested" and .verdict.evidence_role == "dependency_preflight" end)' \
-		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis/summary.json" >/dev/null
-	$(call NAMEI_EXT_RUN_COMPLETE,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR))
+		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis.tmp/summary.json" >/dev/null
+	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis)
 
 service-config-rotation-report:
 	jq -e '.status == "completed" and .protocol_schema == "namei_ext.service_config_rotation.protocol.v2" and .matrix.repetitions == 10' \
