@@ -13,7 +13,7 @@
   after migration as a checkpoint/restart problem. Its path-virtualization
   plugin wraps pathname operations and translates remembered virtual paths to
   current physical paths. Current upstream DMTCP includes both the path
-  translator and a restart test for that behavior.
+  translator and an unchanged-mapping restart test.
 
 This experiment does not test whether pathname remapping is needed, whether a
 table is sufficient, or whether `namei_ext` can replace DMTCP. It tests the
@@ -28,7 +28,7 @@ and FxMark results:
 - it adds a traditional, non-agent source workload;
 - it exercises a real process checkpoint and restart, rather than a simulated
   epoch switch;
-- it has an upstream implementation and a source-native baseline;
+- it has an upstream implementation from which to derive a natural baseline;
 - its correctness oracle is application-visible and independent of timing;
 - it isolates a pathname-resolution responsibility that DMTCP currently
   implements by wrapping pathname operations.
@@ -48,15 +48,28 @@ mechanism. DMTCP provides a narrower source-derived comparison.
   `e2f15525073fc631efd994640ef645461f2c910843da60f9e8929d593ed49c7e`
 - Source implementation:
   `src/plugin_pathtranslator.cpp`
+- Disclosed correctness patch:
+  `thirdparty/patches/dmtcp/restart-env-scan-count.patch`
+- Patch SHA-256:
+  `7c945ba6f4bfc375b3c83f5714ed9546660a164a4c9e235999f1e9e55ca3c127`
 - Upstream test shape:
   `test/pathvirt1.c` and the `pathvirt` case in `test/autotest.py`
 - Paper:
   `docs/reference/cluster16-ansel-dmtcp-path-virtualization.pdf`
 
-The repository will acquire, verify, build, package, and invoke DMTCP only
-through Make targets. The upstream archive, build identity, source files used
-as workload evidence, and built binary hashes are captured in every result
-root.
+The repository will acquire, verify, patch, build, package, and invoke DMTCP
+only through Make targets. The patch changes only the byte bound used by
+`dmtcp_get_restart_env()` when it scans DMTCP's flattened restart environment;
+it does not implement pathname translation. The baseline is **patched DMTCP
+PathTranslator at commit `068559d9b14c`, with a disclosed one-line restart-
+environment scan-bound fix**. It must never be called stock or unmodified
+DMTCP.
+
+Every result root preserves the original archive, patch, patched and unmodified
+source files used by the workload, build provenance, complete install manifest,
+and built binary hashes. The host dependency result additionally copies and
+executes a complete DMTCP install tree from its own result root. Formal KVM
+roots must preserve the same self-contained source and runtime boundary.
 
 ## Source-Derived Lifecycle
 
@@ -75,7 +88,8 @@ Two immutable existing directory trees model the old and restored mount:
 
 The lifecycle is:
 
-1. Start the unmodified DMTCP checkpoint engine.
+1. Start the pinned DMTCP checkpoint engine with the disclosed restart-
+   environment scan fix.
 2. Before checkpoint, the remembered logical path resolves to generation A.
 3. The application opens `state.txt` through `fopen`, records the expected
    generation-A bytes and `fstat` object identity, enumerates the directory
@@ -96,7 +110,7 @@ restore files.
 
 ## Conditions
 
-### DMTCP Pathvirt
+### Patched DMTCP Pathvirt
 
 - Launch with upstream `--pathvirt`. `dmtcp_restart` has no `--pathvirt`
   option; the checkpoint image restores the enabled plugin.
@@ -107,7 +121,10 @@ restore files.
 - The restored plugin handles its restart event and reads that new environment.
 - No BPF program is loaded or attached.
 
-This is the source-native behavior and primary baseline.
+This is patched DMTCP PathTranslator at commit `068559d9b14c`, with the
+disclosed one-line restart-environment scan-bound fix. It is the primary
+natural baseline. The fix lets the plugin read the restart mapping already
+passed by `dmtcp_restart`; it does not add or alter the mapping policy.
 
 ### namei_ext
 
@@ -193,7 +210,7 @@ checkpoint machinery remain outside the policy.
 
 The result report must separate observed implementation ownership:
 
-| Responsibility | DMTCP pathvirt | namei_ext condition |
+| Responsibility | DMTCP PathTranslator + scan-bound fix | namei_ext condition |
 | --- | --- | --- |
 | Process checkpoint/restart | DMTCP | DMTCP |
 | Restart coordination | DMTCP | DMTCP |
@@ -213,8 +230,9 @@ infer general safety or maintenance cost from lines of code alone.
 
 - One fresh modified-kernel KVM boot.
 - Run the upstream DMTCP `pathvirt` autotest through its Make entrypoint first.
-- Run one DMTCP pathvirt lifecycle, one `namei_ext` lifecycle, and the negative
-  control in the same boot, with isolated directories and coordinators.
+- Run one patched DMTCP PathTranslator lifecycle, one `namei_ext` lifecycle,
+  and the negative control in the same boot, with isolated directories and
+  coordinators.
 - The preflight validates source build/package compatibility, real checkpoint
   image creation, restart, cgroup inheritance, policy lifetime, A-to-B update,
   and complete artifact collection.
@@ -228,7 +246,8 @@ result reviewer returns `GO`.
 ### Formal Matrix
 
 - Three paired blocks.
-- Each block uses two fresh KVM boots: DMTCP pathvirt and `namei_ext`.
+- Each block uses two fresh KVM boots: DMTCP PathTranslator + scan-bound fix
+  and `namei_ext`.
 - Alternate condition order by block.
 - Each boot performs exactly one checkpoint/restart lifecycle.
 - Do not replace a failed boot inside the result root.
@@ -244,6 +263,7 @@ declared.
 ```text
 results/experiments/checkpoint-restore-preflight/<RUN_ID>/
 results/experiments/checkpoint-restore/<RUN_ID>/
+results/workloads/preflight/checkpoint-restore-pathvirt/<RUN_ID>/
 ```
 
 Each root follows the shared raw artifact contract and contains immutable
@@ -285,6 +305,7 @@ New project-owned files are limited to:
 - one bounded BPF policy under `bpf/policies/`;
 - one analyzer and focused tests under `analysis/checkpoint_restore/`;
 - one pinned DMTCP source entry in the workload-source configuration;
+- one checksum-pinned DMTCP correctness patch under `thirdparty/patches/`;
 - standalone implementation, preflight, and result-review records under
   `docs/tmp/`.
 
@@ -294,20 +315,41 @@ targets. No project-owned shell control script is added.
 
 ## Expected And Alternative Outcomes
 
-- Expected: both DMTCP pathvirt and `namei_ext` pass all source-derived restart
-  oracles; `namei_ext` records only a bounded directory-target selection while
-  DMTCP and the lower filesystem retain their responsibilities.
+- Expected: both patched DMTCP pathvirt and `namei_ext` pass all source-derived
+  restart oracles; `namei_ext` records only a bounded directory-target
+  selection while DMTCP and the lower filesystem retain their responsibilities.
 - Dependency failure: current DMTCP cannot checkpoint/restart in the KVM image,
   cgroup membership is not preserved or reconstructed, or required artifacts
   cannot be collected. Preserve the root and close the preflight after the
   bounded attempts.
-- Mechanism contradiction: DMTCP pathvirt passes but `namei_ext` cannot make
-  the restored process resolve the selected directory while preserving the
-  lower-object oracle. Diagnose the mechanism; do not weaken the hypothesis or
-  substitute a simulated restart.
+- Mechanism contradiction: DMTCP PathTranslator + scan-bound fix passes but
+  `namei_ext` cannot make the restored process resolve the selected directory
+  while preserving the lower-object oracle. Diagnose the mechanism; do not
+  weaken the hypothesis or substitute a simulated restart.
 - Source-baseline contradiction: pathvirt itself fails the pinned upstream
   workload. Do not treat a `namei_ext` pass as paper evidence until the source
   baseline is repaired or the experiment is rejected.
+
+## Baseline Amendment
+
+The first A-to-B host preflight exposed a bug below PathTranslator:
+`dmtcp_get_restart_env()` scanned only `sizeof(env_buf)` bytes even though
+`env_buf` is a pointer. Consequently the restart process received the B mapping
+but the restored plugin could not retrieve it. The checksum-pinned one-line
+patch changes that bound to `count`, the number of bytes returned by DMTCP's
+own `readLine()` call.
+
+The baseline remains admissible only under these labels and gates:
+
+- report it as patched DMTCP PathTranslator;
+- preserve the original archive and patch independently in provenance;
+- run the upstream unchanged-mapping pathvirt test after applying the patch;
+- require the source-derived A-to-B oracle to pass before any `namei_ext`
+  comparison; and
+- do not use this host dependency result as Phase 1 or paper evidence.
+
+The root-cause and causal preflight evidence are recorded in
+`2026-07-28-dmtcp-restart-env-root-cause.md`.
 
 ## Paper Decision
 

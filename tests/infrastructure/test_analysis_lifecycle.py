@@ -218,6 +218,31 @@ class AnalysisLifecycleTest(unittest.TestCase):
                 positions = [block.index(step) for step in ordered_steps]
                 self.assertEqual(positions, sorted(positions))
 
+    def test_checkpoint_host_verifies_manifests_before_completion(self):
+        block = self.target_block(
+            ROOT / "experiments/checkpoint_restore/Makefile",
+            "pathvirt-host-preflight",
+        )
+        ordered_steps = (
+            "sha256sum -c evidence.sha256",
+            "sha256sum -c checkpoint-images.sha256",
+            "sha256sum -c inputs.sha256",
+            "sha256sum -c artifacts.sha256",
+            "NAMEI_EXT_RUN_VALIDATE_BASE",
+            "NAMEI_EXT_RUN_COMPLETE",
+            "NAMEI_EXT_RUN_VALIDATE_COMPLETE",
+        )
+        positions = [block.index(step) for step in ordered_steps]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn(
+            '"$(PATHVIRT_HOST_RESULT_DIR)/dmtcp-install"',
+            block,
+        )
+        self.assertIn(
+            '"$(PATHVIRT_HOST_RESULT_DIR)/runtime/namei_ext_checkpoint_restore"',
+            block,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

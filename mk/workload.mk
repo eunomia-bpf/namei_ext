@@ -71,6 +71,10 @@ workload-dmtcp-verify: $(DMTCP_ARCHIVE)
 workload-dmtcp-extract: workload-dmtcp-verify $(DMTCP_EXTRACT_STAMP)
 	test -x "$(DMTCP_SRC)/configure"
 	test -f "$(DMTCP_SRC)/$(DMTCP_LICENSE_PATH)"
+	test "$$(grep -F -c 'while (start_ptr - env_buf < count)' \
+		"$(DMTCP_SRC)/src/dmtcpplugin.cpp")" = 1
+	! grep -F 'while (start_ptr - env_buf < (int)sizeof(env_buf))' \
+		"$(DMTCP_SRC)/src/dmtcpplugin.cpp"
 
 workload-dmtcp-configure: $(DMTCP_CONFIGURE_STAMP)
 	test -s "$(DMTCP_CONFIGURE_LOG)"
@@ -94,7 +98,14 @@ workload-dmtcp-install: $(DMTCP_INSTALL_STAMP)
 	test -f "$(DMTCP_INSTALL_ROOT)/lib/dmtcp/libdmtcp.so"
 
 workload-dmtcp-provenance: $(DMTCP_BUILD_PROVENANCE)
-	jq -e '.schema == "namei_ext.workload_build_provenance.v1" and .project == "dmtcp"' \
+	printf '%s  %s\n' "$(DMTCP_RESTART_ENV_PATCH_SHA256)" \
+		"$(DMTCP_RESTART_ENV_PATCH)" | sha256sum -c -
+	jq -e \
+		--arg commit "$(DMTCP_COMMIT)" \
+		--arg archive_sha256 "$(DMTCP_ARCHIVE_SHA256)" \
+		--arg patch_path "$(DMTCP_RESTART_ENV_PATCH)" \
+		--arg patch_sha256 "$(DMTCP_RESTART_ENV_PATCH_SHA256)" \
+		'.schema == "namei_ext.workload_build_provenance.v1" and .project == "dmtcp" and .commit == $$commit and .source.archive_sha256 == $$archive_sha256 and .source.patches == [{path:$$patch_path, expected_sha256:$$patch_sha256, sha256:$$patch_sha256, purpose:"fix dmtcp_get_restart_env flattened-environment scan bound"}] and (.source.pinned_files["src/dmtcpplugin.cpp"] | length == 64) and .install.file_count > 0' \
 		"$(DMTCP_BUILD_PROVENANCE)" >/dev/null
 
 workload-dmtcp-build: workload-dmtcp-verify workload-dmtcp-provenance
@@ -107,6 +118,7 @@ workload-dmtcp-build: workload-dmtcp-verify workload-dmtcp-provenance
 	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_command"
 	test -x "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_restart"
 	test -f "$(DMTCP_INSTALL_ROOT)/lib/dmtcp/libdmtcp.so"
+	(cd "$(DMTCP_INSTALL_ROOT)" && sha256sum -c "$(DMTCP_INSTALL_MANIFEST)")
 
 $(WORKLOAD_CACHE_ROOT) $(WORKLOAD_BUILD_ROOT) $(WORKLOAD_RESULT_ROOT):
 	install -d "$@"
@@ -135,17 +147,26 @@ $(DMTCP_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
 	printf '%s  %s\n' "$(DMTCP_ARCHIVE_SHA256)" "$@.tmp" | sha256sum -c -
 	mv -f "$@.tmp" "$@"
 
-$(DMTCP_EXTRACT_STAMP): $(DMTCP_ARCHIVE) | $(WORKLOAD_BUILD_ROOT)
+$(DMTCP_EXTRACT_STAMP): $(DMTCP_ARCHIVE) $(DMTCP_RESTART_ENV_PATCH) | $(WORKLOAD_BUILD_ROOT)
 	rm -rf "$(DMTCP_WORK_ROOT)"
 	install -d "$(DMTCP_WORK_ROOT)"
 	printf '%s  %s\n' "$(DMTCP_ARCHIVE_SHA256)" "$(DMTCP_ARCHIVE)" | sha256sum -c -
+	printf '%s  %s\n' "$(DMTCP_RESTART_ENV_PATCH_SHA256)" \
+		"$(DMTCP_RESTART_ENV_PATCH)" | sha256sum -c -
 	tar -xzf "$(DMTCP_ARCHIVE)" -C "$(DMTCP_WORK_ROOT)"
 	test -d "$(DMTCP_SRC)"
 	test -x "$(DMTCP_SRC)/configure"
 	test -f "$(DMTCP_SRC)/$(DMTCP_LICENSE_PATH)"
+	test -f "$(DMTCP_SRC)/src/dmtcpplugin.cpp"
 	test -f "$(DMTCP_SRC)/src/plugin_pathtranslator.cpp"
 	test -f "$(DMTCP_SRC)/test/pathvirt1.c"
 	test -f "$(DMTCP_SRC)/test/autotest.py"
+	patch --batch --forward --fuzz=0 -d "$(DMTCP_SRC)" -p1 \
+		<"$(DMTCP_RESTART_ENV_PATCH)"
+	test "$$(grep -F -c 'while (start_ptr - env_buf < count)' \
+		"$(DMTCP_SRC)/src/dmtcpplugin.cpp")" = 1
+	! grep -F 'while (start_ptr - env_buf < (int)sizeof(env_buf))' \
+		"$(DMTCP_SRC)/src/dmtcpplugin.cpp"
 	touch "$@"
 
 $(DMTCP_CONFIGURE_STAMP): $(DMTCP_EXTRACT_STAMP) | $(DMTCP_BUILD_RECORD_DIR)
@@ -200,6 +221,10 @@ $(DMTCP_BUILD_PROVENANCE): $(DMTCP_INSTALL_STAMP) | $(DMTCP_BUILD_RECORD_DIR)
 		--arg license "$(DMTCP_LICENSE)" \
 		--arg license_path "$(DMTCP_LICENSE_PATH)" \
 		--arg license_sha256 "$$(sha256sum "$(DMTCP_SRC)/$(DMTCP_LICENSE_PATH)" | awk '{print $$1}')" \
+		--arg restart_env_patch "$(DMTCP_RESTART_ENV_PATCH)" \
+		--arg expected_restart_env_patch_sha256 "$(DMTCP_RESTART_ENV_PATCH_SHA256)" \
+		--arg restart_env_patch_sha256 "$$(sha256sum "$(DMTCP_RESTART_ENV_PATCH)" | awk '{print $$1}')" \
+		--arg dmtcpplugin_sha256 "$$(sha256sum "$(DMTCP_SRC)/src/dmtcpplugin.cpp" | awk '{print $$1}')" \
 		--arg pathtranslator_sha256 "$$(sha256sum "$(DMTCP_SRC)/src/plugin_pathtranslator.cpp" | awk '{print $$1}')" \
 		--arg pathvirt1_sha256 "$$(sha256sum "$(DMTCP_SRC)/test/pathvirt1.c" | awk '{print $$1}')" \
 		--arg autotest_sha256 "$$(sha256sum "$(DMTCP_SRC)/test/autotest.py" | awk '{print $$1}')" \
@@ -221,12 +246,14 @@ $(DMTCP_BUILD_PROVENANCE): $(DMTCP_INSTALL_STAMP) | $(DMTCP_BUILD_RECORD_DIR)
 		--arg restart_sha256 "$$(sha256sum "$(DMTCP_INSTALL_ROOT)/bin/dmtcp_restart" | awk '{print $$1}')" \
 		--arg libdmtcp_sha256 "$$(sha256sum "$(DMTCP_INSTALL_ROOT)/lib/dmtcp/libdmtcp.so" | awk '{print $$1}')" \
 		--argjson install_file_count "$$(find "$(DMTCP_INSTALL_ROOT)" -type f | wc -l)" \
-		'{schema:$$schema, project:$$project, commit:$$commit, commit_short:$$commit_short, source:{url:$$url, archive:$$archive, expected_archive_sha256:$$expected_archive_sha256, archive_sha256:$$archive_sha256, source_dir:$$source_dir, license:{spdx:$$license, path:$$license_path, sha256:$$license_sha256}, pinned_files:{"src/plugin_pathtranslator.cpp":$$pathtranslator_sha256, "test/pathvirt1.c":$$pathvirt1_sha256, "test/autotest.py":$$autotest_sha256}}, build:{configure_command:["./configure", ("--prefix=" + $$install_dir)], make_jobs:$$jobs, toolchain:{cc:$$cc_version, cxx:$$cxx_version, make:$$make_version}, logs:{configure:{path:$$configure_log, sha256:$$configure_log_sha256}, build:{path:$$build_log, sha256:$$build_log_sha256}, install:{path:$$install_log, sha256:$$install_log_sha256}}}, install:{root:$$install_dir, file_count:$$install_file_count, manifest:{path:$$install_manifest, sha256:$$install_manifest_sha256}, artifacts:{dmtcp_launch:$$launch_sha256, dmtcp_coordinator:$$coordinator_sha256, dmtcp_command:$$command_sha256, dmtcp_restart:$$restart_sha256, "lib/dmtcp/libdmtcp.so":$$libdmtcp_sha256}}}' \
+		'{schema:$$schema, project:$$project, commit:$$commit, commit_short:$$commit_short, source:{url:$$url, archive:$$archive, expected_archive_sha256:$$expected_archive_sha256, archive_sha256:$$archive_sha256, source_dir:$$source_dir, license:{spdx:$$license, path:$$license_path, sha256:$$license_sha256}, patches:[{path:$$restart_env_patch, expected_sha256:$$expected_restart_env_patch_sha256, sha256:$$restart_env_patch_sha256, purpose:"fix dmtcp_get_restart_env flattened-environment scan bound"}], pinned_files:{"src/dmtcpplugin.cpp":$$dmtcpplugin_sha256, "src/plugin_pathtranslator.cpp":$$pathtranslator_sha256, "test/pathvirt1.c":$$pathvirt1_sha256, "test/autotest.py":$$autotest_sha256}}, build:{configure_command:["./configure", ("--prefix=" + $$install_dir)], make_jobs:$$jobs, toolchain:{cc:$$cc_version, cxx:$$cxx_version, make:$$make_version}, logs:{configure:{path:$$configure_log, sha256:$$configure_log_sha256}, build:{path:$$build_log, sha256:$$build_log_sha256}, install:{path:$$install_log, sha256:$$install_log_sha256}}}, install:{root:$$install_dir, file_count:$$install_file_count, manifest:{path:$$install_manifest, sha256:$$install_manifest_sha256}, artifacts:{dmtcp_launch:$$launch_sha256, dmtcp_coordinator:$$coordinator_sha256, dmtcp_command:$$command_sha256, dmtcp_restart:$$restart_sha256, "lib/dmtcp/libdmtcp.so":$$libdmtcp_sha256}}}' \
 		>"$@.tmp"
 	jq -e \
 		--arg commit "$(DMTCP_COMMIT)" \
 		--arg archive_sha256 "$(DMTCP_ARCHIVE_SHA256)" \
-		'.schema == "namei_ext.workload_build_provenance.v1" and .commit == $$commit and .source.archive_sha256 == $$archive_sha256 and .install.file_count > 0' \
+		--arg patch_path "$(DMTCP_RESTART_ENV_PATCH)" \
+		--arg patch_sha256 "$(DMTCP_RESTART_ENV_PATCH_SHA256)" \
+		'.schema == "namei_ext.workload_build_provenance.v1" and .commit == $$commit and .source.archive_sha256 == $$archive_sha256 and .source.patches == [{path:$$patch_path, expected_sha256:$$patch_sha256, sha256:$$patch_sha256, purpose:"fix dmtcp_get_restart_env flattened-environment scan bound"}] and (.source.pinned_files["src/dmtcpplugin.cpp"] | length == 64) and .install.file_count > 0' \
 		"$@.tmp" >/dev/null
 	mv -f "$@.tmp" "$@"
 

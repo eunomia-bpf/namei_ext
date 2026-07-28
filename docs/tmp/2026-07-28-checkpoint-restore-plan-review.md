@@ -124,3 +124,46 @@ blocked until:
 
 No formal run is authorized before a valid KVM preflight and independent result
 review.
+
+## Baseline-Amendment Review
+
+After the initial A-to-B failure was attributed to
+`dmtcp_get_restart_env()`, an independent read-only reviewer inspected the
+patch, original archive, acquisition/build Make paths, host result contract,
+and all checkpoint/restore planning records.
+
+The reviewer confirmed:
+
+- the patch changes only the flattened restart-environment scan bound from
+  pointer size to bytes read;
+- `plugin_pathtranslator.cpp`, `test/pathvirt1.c`, and the controller and
+  application oracles are unchanged;
+- the patch does not implement pathname remapping or create an artificial
+  advantage for `namei_ext`;
+- the baseline is fair only when labeled patched DMTCP PathTranslator at
+  commit `068559d9b14c`, with a disclosed one-line restart-environment
+  scan-bound fix; and
+- the resulting claim remains limited to the exact A-to-B,
+  closed-descriptor, `fopen`/`fstat`/`opendir`/`readdir` oracle and observed
+  responsibility boundary.
+
+The first verdict was `GO-with-repairs`. It identified four repairs:
+
+1. verify `inputs.sha256` and `artifacts.sha256` before the shared run enters
+   `completed`;
+2. include the actually used `mtcp_restart`, complete install manifest,
+   source archive, patch, relevant source, and complete runtime tree in the
+   result-owned provenance boundary;
+3. use one patched-baseline name throughout; and
+4. state explicitly that the upstream test covers an unchanged mapping.
+
+All four repairs are implemented. The repaired host run is
+`20260728T-dmtcp-pathvirt-contract-v4`; both manifests, the complete install
+tree, runtime evidence, and checkpoint image validate before completion.
+
+The second read-only review found no remaining submission blocker and returned
+`GO`. It independently verified that the restart script and controller execute
+the result-owned DMTCP runtime, the five checksum layers pass, the A-to-B oracle
+holds, and the result remains labeled dirty-source host dependency evidence.
+The suite may proceed to modified-kernel KVM preflight integration. This is not
+authorization for a formal run.

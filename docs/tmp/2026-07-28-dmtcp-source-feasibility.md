@@ -4,7 +4,8 @@
 
 This record checks whether the exact DMTCP source proposed for the
 Checkpoint/Restore and Migration experiment is available, buildable, and
-contains a working source-native path-virtualization checkpoint/restart test.
+contains a working upstream unchanged-mapping path-virtualization
+checkpoint/restart test.
 It is a host-side dependency check, not Phase 1 evidence for `namei_ext`.
 
 ## Source
@@ -82,7 +83,8 @@ test groups: pass=1 fail=0 skipped=0 total=1
 ```
 
 The test ran on the host kernel. It confirms only that the pinned source and
-source-native baseline are usable enough to admit a KVM dependency preflight.
+upstream unchanged-mapping behavior are usable enough to admit a KVM
+dependency preflight.
 
 ## Design Consequences
 
@@ -95,8 +97,8 @@ source-native baseline are usable enough to admit a KVM dependency preflight.
   `getpid()` inequality, to prove that a restart occurred.
 - Upstream exposes plugin enablement but no per-pathvirt-wrapper invocation
   counter. The result must not promise such a counter.
-- The complete DMTCP install tree and exact source files must be packaged in
-  each result root.
+- The complete DMTCP install tree, original archive, disclosed patch, and exact
+  source files must be packaged in each checkpoint/restore result root.
 
 ## Remaining Risks
 
@@ -118,3 +120,27 @@ source-native baseline are usable enough to admit a KVM dependency preflight.
 The source dependency check is `GO` for plan review and implementation. It is
 not authorization for a formal run and must not be cited as `namei_ext`
 evidence.
+
+## Patched-Source Revalidation
+
+The later A-to-B audit found a pointer-size scan-bound defect in
+`dmtcp_get_restart_env()`. The repository now applies the checksum-pinned
+one-line repair described in
+`2026-07-28-dmtcp-restart-env-root-cause.md`. After applying it, the same
+official command:
+
+```text
+make check-autotest AUTOTEST=pathvirt
+```
+
+again reported:
+
+```text
+test groups: pass=1 fail=0 skipped=0 total=1
+```
+
+The patched-source log is preserved in
+`results/workloads/preflight/checkpoint-restore-pathvirt/20260728T-dmtcp-pathvirt-contract-v4/`.
+This revalidation confirms that the narrow repair preserves the source's
+unchanged-mapping pathvirt test. The baseline must nevertheless be labeled
+patched DMTCP.
