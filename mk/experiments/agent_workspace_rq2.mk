@@ -146,6 +146,7 @@ sha256sum "$(ROOT_DIR)/configs/benchmarks/agent_workspace.mk" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-27-agent-workspace-rq2-experiment-plan.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-27-agent-workspace-rq2-formal-v1-review.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-27-agent-workspace-rq2-publication-control-repair.md" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-27-agent-workspace-rq2-control-preflight.md" \
 	>"$(1)/inputs.sha256"
 endef
 
