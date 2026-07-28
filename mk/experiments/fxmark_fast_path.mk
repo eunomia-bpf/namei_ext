@@ -114,6 +114,7 @@ sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-rq2-fxmark-fast-path-plan-review.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-fxmark-fast-path-confirmatory-implementation.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-fxmark-fast-path-preflight-v1-failure.md" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-28-fxmark-fast-path-preflight-v2.md" \
 	>"$(1)/inputs.sha256"
 : >"$(1)/expected-boots.txt"
 : >"$(1)/expected-cells.txt"

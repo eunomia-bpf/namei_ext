@@ -91,9 +91,10 @@ mark it completed.
 
 ## Remaining Gate
 
-The independent code/protocol review returned `GO`. The implementation still
-requires a successful real two-boot KVM preflight. Preflight v1 preserved a
+The independent code/protocol review returned `GO`. Preflight v1 preserved a
 fail-fast guest-tool resolution failure; the frozen runtime-artifact repair is
-recorded in `2026-07-28-fxmark-fast-path-preflight-v1-failure.md`. A successful
-preflight proves only executability; the 30-block formal run is required for
-paper evidence.
+recorded in `2026-07-28-fxmark-fast-path-preflight-v1-failure.md`. Preflight v2
+then completed both boots, all six cells, every affinity/inventory/timestamp
+gate, analysis, and output hashing. Its record is
+`2026-07-28-fxmark-fast-path-preflight-v2.md`. The preflight proves only
+executability; the 30-block formal run is required for paper evidence.
