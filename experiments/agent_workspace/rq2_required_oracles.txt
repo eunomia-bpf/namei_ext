@@ -1,6 +1,10 @@
 namei_ext case agentfs_source_trace_artifact
 namei_ext case agentfs_source_trace_replayed
 namei_ext case attach_policy
+namei_ext case policy_scope_exact_view
+namei_ext case policy_scope_add_base
+namei_ext case policy_scope_add_upper
+namei_ext case policy_scope_outside_deleted_visible
 namei_ext case register_base_target
 namei_ext case base_epoch_readdir
 namei_ext case base_epoch_main
@@ -38,6 +42,7 @@ namei_ext case base_deleted_preserved
 namei_ext case base_cached_negative_unmodified
 namei_ext case detach_policy
 namei_ext case invalid_unregistered_target_contained
+namei_ext case policy_scope_restore_global
 namei_ext case agent_workspace_rq2_summary
 fuse case fuse_agentfs_source_trace_artifact
 fuse case fuse_agentfs_source_trace_replayed

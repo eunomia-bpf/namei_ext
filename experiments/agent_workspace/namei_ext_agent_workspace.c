@@ -834,6 +834,62 @@ static int clear_targets(FILE *out, const char *name)
 	return 0;
 }
 
+static int set_policy_parent(FILE *out, const char *name, const char *command,
+			     const char *parent_dir)
+{
+	char command_buf[64];
+	int control_fd;
+	int parent_fd = -1;
+	int len;
+	ssize_t nwritten;
+
+	if (parent_dir) {
+		parent_fd = open(parent_dir, O_PATH | O_DIRECTORY | O_CLOEXEC);
+		if (parent_fd < 0) {
+			emit_case(out, name, false, errno,
+				  "open policy parent failed");
+			return -1;
+		}
+		len = snprintf(command_buf, sizeof(command_buf), "%s %d\n",
+			       command, parent_fd);
+	} else {
+		len = snprintf(command_buf, sizeof(command_buf), "%s\n", command);
+	}
+	if (len < 0 || (size_t)len >= sizeof(command_buf)) {
+		emit_case(out, name, false, EOVERFLOW,
+			  "policy parent command overflow");
+		if (parent_fd >= 0)
+			close(parent_fd);
+		return -1;
+	}
+
+	control_fd = open("/sys/kernel/debug/namei_ext/policy_parent",
+			  O_WRONLY | O_CLOEXEC);
+	if (control_fd < 0) {
+		emit_case(out, name, false, errno,
+			  "open policy parent control failed");
+		if (parent_fd >= 0)
+			close(parent_fd);
+		return -1;
+	}
+	nwritten = write(control_fd, command_buf, len);
+	if (nwritten != len) {
+		int err = nwritten < 0 ? errno : EIO;
+
+		emit_case(out, name, false, err,
+			  "policy parent command failed");
+		close(control_fd);
+		if (parent_fd >= 0)
+			close(parent_fd);
+		return -1;
+	}
+	close(control_fd);
+	if (parent_fd >= 0)
+		close(parent_fd);
+	emit_case(out, name, true, 0, "policy parent configured");
+	return 0;
+}
+
 static int expect_policy_counter(FILE *out, struct attached_policy *policy,
 				 const char *name, __u32 key,
 				 bool require_nonzero)
@@ -897,6 +953,7 @@ int main(int argc, char **argv)
 	char base_cached_negative[PATH_MAX];
 	char base_denied[PATH_MAX];
 	char base_tool[PATH_MAX];
+	char outside_deleted[PATH_MAX];
 	char upper_main[PATH_MAX];
 	char upper_deleted[PATH_MAX];
 	char upper_link[PATH_MAX];
@@ -1001,6 +1058,8 @@ int main(int argc, char **argv)
 		    set_path(base_denied, sizeof(base_denied), base,
 			     "denied.txt") ||
 	    set_path(base_tool, sizeof(base_tool), base, "tool.sh") ||
+	    set_path(outside_deleted, sizeof(outside_deleted), root,
+		     "deleted.txt") ||
 	    set_path(upper_main, sizeof(upper_main), upper, "main.txt") ||
 	    set_path(upper_deleted, sizeof(upper_deleted), upper,
 		     "deleted.txt") ||
@@ -1073,6 +1132,7 @@ int main(int argc, char **argv)
 	    write_file(upper_deleted, "upper-deleted\n") ||
 	    write_file(base_denied, "denied\n") ||
 	    write_file(upper_denied, "denied\n") ||
+	    write_file(outside_deleted, "outside-deleted\n") ||
 	    write_file(base_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(upper_tool, "#!/bin/sh\nexit 0\n") ||
 	    write_file(base_src_app, "base-app\n") ||
@@ -1123,6 +1183,12 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "attach_policy", true, 0, "policy attached");
 
+	fails += !!set_policy_parent(out, "policy_scope_exact_view", "exact",
+				     view);
+	fails += !!set_policy_parent(out, "policy_scope_add_base", "add", base);
+	fails += !!set_policy_parent(out, "policy_scope_add_upper", "add", upper);
+	fails += !!expect_read_file(out, "policy_scope_outside_deleted_visible",
+				    outside_deleted, "outside-deleted\n");
 	fails += !!expect_stat_errno(out, "view_root_native", view, 0);
 	fails += !!expect_parent_readdir_ws(out, "policy_parent_lists_ws", view);
 	fails += !!register_target(out, "register_base_target", 1, base);
@@ -1246,12 +1312,6 @@ int main(int argc, char **argv)
 	}
 	fails += !!expect_final_manifest(out, logical_main, logical_deleted,
 					 logical_generated, base_generated);
-	fails += !!expect_read_file(out, "base_main_preserved", base_main,
-				    "base-main\n");
-	fails += !!expect_read_file(out, "base_deleted_preserved", base_deleted,
-				    "base-deleted\n");
-	fails += !!expect_stat_errno(out, "base_cached_negative_unmodified",
-				     base_cached_negative, ENOENT);
 	if (rq2_mode)
 		fails += !!measure_workspace_lifecycle(
 			out, "namei_ext_lifecycle_ns",
@@ -1291,6 +1351,13 @@ int main(int argc, char **argv)
 		emit_case(out, "detach_policy", true, 0, "policy detached");
 		fails += !!expect_stat_errno(out, "logical_after_detach",
 					     logical_main, ENOENT);
+		fails += !!expect_read_file(out, "base_main_preserved", base_main,
+					    "base-main\n");
+		fails += !!expect_read_file(out, "base_deleted_preserved",
+					    base_deleted, "base-deleted\n");
+		fails += !!expect_stat_errno(out,
+					     "base_cached_negative_unmodified",
+					     base_cached_negative, ENOENT);
 		fails += !!clear_targets(out, "clear_targets_after_detach");
 	}
 
@@ -1304,6 +1371,8 @@ int main(int argc, char **argv)
 		fails += !!expect_stat_errno(out,
 					     "invalid_unregistered_target_contained",
 					     logical_main, ENOENT);
+		fails += !!set_policy_parent(out, "policy_scope_restore_global",
+					     "global", NULL);
 		err = destroy_policy(&policy);
 		if (err) {
 			emit_case(out, "detach_after_containment", false, -err,
@@ -1326,6 +1395,7 @@ cleanup:
 	unlink(base_cached_negative);
 	unlink(base_denied);
 	unlink(base_tool);
+	unlink(outside_deleted);
 	unlink(base_src_app);
 	unlink(base_git_head);
 	unlink(upper_main);
