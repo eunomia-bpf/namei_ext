@@ -8,6 +8,7 @@ OUTPUT_ROOT ?= $(BUILD_ROOT)/tests/result-contract
 OUTPUT ?= $(OUTPUT_ROOT)/$(RUN_ID)
 RESULT_JSON ?= $(OUTPUT)/observations.jsonl
 SOURCE_FIXTURE_ROOT ?= $(OUTPUT_ROOT)/source-state-fixture
+KERNEL_IDENTITY_ROOT ?= $(OUTPUT_ROOT)/kernel-identity
 
 include $(ROOT_DIR)/mk/results.mk
 
@@ -87,6 +88,31 @@ test:
 		exit 1; \
 	fi
 	rm -rf "$(SOURCE_FIXTURE_ROOT)"
+	rm -rf "$(KERNEL_IDENTITY_ROOT)"
+	install -d "$(KERNEL_IDENTITY_ROOT)/build/kernel"
+	printf '%s\n' "$$(printf '1%.0s' {1..40})" \
+		>"$(KERNEL_IDENTITY_ROOT)/build/kernel/.source-commit"
+	printf '%s\n' stale >"$(KERNEL_IDENTITY_ROOT)/build/kernel/stale-object"
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" kernel-source-identity \
+		BUILD_ROOT="$(KERNEL_IDENTITY_ROOT)/build" \
+		CACHE_ROOT="$(KERNEL_IDENTITY_ROOT)/cache" \
+		KERNEL_SOURCE_COMMIT="$$(printf '2%.0s' {1..40})"
+	test ! -e "$(KERNEL_IDENTITY_ROOT)/build/kernel/stale-object"
+	test "$$(cat "$(KERNEL_IDENTITY_ROOT)/build/kernel/.source-commit")" = \
+		"$$(printf '2%.0s' {1..40})"
+	printf '%s\n' current >"$(KERNEL_IDENTITY_ROOT)/build/kernel/current-object"
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" kernel-source-identity \
+		BUILD_ROOT="$(KERNEL_IDENTITY_ROOT)/build" \
+		CACHE_ROOT="$(KERNEL_IDENTITY_ROOT)/cache" \
+		KERNEL_SOURCE_COMMIT="$$(printf '2%.0s' {1..40})"
+	test -e "$(KERNEL_IDENTITY_ROOT)/build/kernel/current-object"
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" kernel-source-identity \
+		BUILD_ROOT="$(KERNEL_IDENTITY_ROOT)/build" \
+		CACHE_ROOT="$(KERNEL_IDENTITY_ROOT)/cache" \
+		KERNEL_SOURCE_COMMIT="$$(printf '3%.0s' {1..40})"
+	test ! -e "$(KERNEL_IDENTITY_ROOT)/build/kernel/current-object"
+	test "$$(cat "$(KERNEL_IDENTITY_ROOT)/build/kernel/.source-commit")" = \
+		"$$(printf '3%.0s' {1..40})"
 	mv "$(OUTPUT)/dmesg.log" "$(OUTPUT)/dmesg.log.saved"
 	if $(MAKE) --no-print-directory validate-only \
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" \

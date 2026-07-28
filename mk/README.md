@@ -44,6 +44,13 @@ The top-level current experiment targets also depend on
 trees. The result root still preserves both commits and both status files so
 the clean state is part of the raw contract rather than an external assumption.
 
+Patched and matched-stock kernel construction shares one cross-process lock.
+The patched build tree is bound to the current kernel commit: changing that
+commit invalidates the complete build tree before configuration or compilation.
+The source and built commit stamps are independent provenance gates; neither
+may be synthesized after a build from another commit. Kernel construction,
+cleanup, and provenance must continue to go through `mk/kernel.mk`.
+
 Single-guest suites use `NAMEI_EXT_RUN_VALIDATE_CANONICAL`. Multi-boot matrices
 use `NAMEI_EXT_RUN_VALIDATE_BASE` and additionally require one immutable boot
 directory with kernel identity, configuration, raw observations, and dmesg for

@@ -66,6 +66,7 @@ check-prereqs:
 	command -v make >/dev/null
 	command -v clang >/dev/null
 	command -v docker >/dev/null
+	command -v flock >/dev/null
 	command -v jq >/dev/null
 	command -v patch >/dev/null
 	command -v pkg-config >/dev/null
