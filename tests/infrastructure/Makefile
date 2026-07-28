@@ -113,6 +113,41 @@ test:
 	test ! -e "$(KERNEL_IDENTITY_ROOT)/build/kernel/current-object"
 	test "$$(cat "$(KERNEL_IDENTITY_ROOT)/build/kernel/.source-commit")" = \
 		"$$(printf '3%.0s' {1..40})"
+	install -d "$(ROOT_DIR)/.cache/locks"
+	rm -rf "$(KERNEL_IDENTITY_ROOT)/locked-build" \
+		"$(KERNEL_IDENTITY_ROOT)/alternate-cache"
+	exec 8>"$(ROOT_DIR)/.cache/locks/kernel-build.lock"; \
+	flock 8; \
+	(exec 8>&-; $(MAKE) --no-print-directory -C "$(ROOT_DIR)" kernel-source-identity \
+		BUILD_ROOT="$(KERNEL_IDENTITY_ROOT)/locked-build" \
+		CACHE_ROOT="$(KERNEL_IDENTITY_ROOT)/alternate-cache" \
+		KERNEL_SOURCE_COMMIT="$$(printf '4%.0s' {1..40})" \
+		>"$(KERNEL_IDENTITY_ROOT)/locked-identity.log" 2>&1) & \
+	pid=$$!; \
+	sleep 0.2; \
+	kill -0 "$$pid"; \
+	test ! -e "$(KERNEL_IDENTITY_ROOT)/locked-build/kernel/.source-commit"; \
+	flock -u 8; \
+	wait "$$pid"
+	test "$$(cat "$(KERNEL_IDENTITY_ROOT)/locked-build/kernel/.source-commit")" = \
+		"$$(printf '4%.0s' {1..40})"
+	rm -rf "$(KERNEL_IDENTITY_ROOT)/clean-build" \
+		"$(KERNEL_IDENTITY_ROOT)/clean-cache"
+	install -d "$(KERNEL_IDENTITY_ROOT)/clean-build"
+	printf '%s\n' sentinel >"$(KERNEL_IDENTITY_ROOT)/clean-build/sentinel"
+	exec 8>"$(ROOT_DIR)/.cache/locks/kernel-build.lock"; \
+	flock 8; \
+	(exec 8>&-; $(MAKE) --no-print-directory -C "$(ROOT_DIR)" clean \
+		BUILD_ROOT="$(KERNEL_IDENTITY_ROOT)/clean-build" \
+		CACHE_ROOT="$(KERNEL_IDENTITY_ROOT)/clean-cache" \
+		>"$(KERNEL_IDENTITY_ROOT)/locked-clean.log" 2>&1) & \
+	pid=$$!; \
+	sleep 0.2; \
+	kill -0 "$$pid"; \
+	test -e "$(KERNEL_IDENTITY_ROOT)/clean-build/sentinel"; \
+	flock -u 8; \
+	wait "$$pid"
+	test ! -e "$(KERNEL_IDENTITY_ROOT)/clean-build"
 	mv "$(OUTPUT)/dmesg.log" "$(OUTPUT)/dmesg.log.saved"
 	if $(MAKE) --no-print-directory validate-only \
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" \

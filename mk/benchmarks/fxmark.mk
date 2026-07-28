@@ -96,7 +96,8 @@ printf '%s := %s\n' \
 	'FXMARK_BPF_STATS' "$(FXMARK_BPF_STATS)" \
 	>"$$guest_makefile"; \
 test "$$(wc -l <"$$guest_makefile")" = "19"; \
-! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null
+! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null; \
+(cd "$$boot_dir" && sha256sum guest.mk >guest.mk.sha256)
 endef
 
 .PHONY: fxmark-source fxmark-rq2-build fxmark-kernel-pair \
@@ -255,9 +256,10 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 	find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | \
 		xargs -0 jq -s -e 'group_by(.kernel_flavor) | length == 2 and all(.[]; ([.[] | [.kernel_commit,.kernel_build_id,.kernel_notes_sha256,.kernel_btf_sha256,.kernel_release]] | unique | length) == 1)' >/dev/null
 	for boot in "$(FXMARK_PREFLIGHT_RESULT_DIR)"/boots/*; do \
-		for file in guest.mk launcher.stdout.log launcher.stderr.log; do \
+		for file in guest.mk guest.mk.sha256 launcher.stdout.log launcher.stderr.log; do \
 			test -e "$$boot/$$file"; \
 		done; \
+		(cd "$$boot" && sha256sum -c guest.mk.sha256); \
 		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
 			test -s "$$boot/$$file"; \
 		done; \
@@ -370,9 +372,10 @@ fxmark-rq2-finalize:
 	find "$(FXMARK_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | \
 		xargs -0 jq -s -e 'group_by(.kernel_flavor) | length == 2 and all(.[]; ([.[] | [.kernel_commit,.kernel_build_id,.kernel_notes_sha256,.kernel_btf_sha256,.kernel_release]] | unique | length) == 1)' >/dev/null
 	for boot in "$(FXMARK_RESULT_DIR)"/boots/*; do \
-		for file in guest.mk launcher.stdout.log launcher.stderr.log; do \
+		for file in guest.mk guest.mk.sha256 launcher.stdout.log launcher.stderr.log; do \
 			test -e "$$boot/$$file"; \
 		done; \
+		(cd "$$boot" && sha256sum -c guest.mk.sha256); \
 		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
 			test -s "$$boot/$$file"; \
 		done; \
@@ -401,6 +404,8 @@ experiment-fxmark-rq2: kvm-fxmark-rq2
 		RUN_ID="$(RUN_ID)"
 
 __fxmark_rq2_guest:
+	test "$(notdir $(lastword $(MAKEFILE_LIST)))" = guest.mk
+	(cd "$(dir $(lastword $(MAKEFILE_LIST)))" && sha256sum -c guest.mk.sha256)
 	test -n "$(CONDITION)"
 	test -n "$(REPETITION)"
 	test -n "$(FXMARK_RUN_DURATION)"

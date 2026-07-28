@@ -59,9 +59,12 @@ QEMU CPU-model, or `namei_ext` semantic defect.
 
 ## Infrastructure change
 
-`mk/kernel.mk` now owns one lock under `.cache/locks/` for all patched and stock
-kernel mutations. Separate top-level Make invocations can no longer configure,
-compile, clean, or validate the shared kernel build trees concurrently.
+`mk/kernel.mk` now owns one repository-fixed lock under `.cache/locks/` for all
+patched and stock kernel mutations. The lock location does not change when a
+caller overrides `CACHE_ROOT`. Separate top-level Make invocations can no
+longer configure, compile, clean, or validate the shared kernel build trees
+concurrently. The top-level `clean` recipe holds the same lock until all
+component cleanup and the final `BUILD_ROOT` removal have completed.
 
 The patched build tree is also bound to the current kernel commit before any
 configuration or compilation:
@@ -77,7 +80,8 @@ configuration or compilation:
 
 The stock source remains an archive of its pinned ancestor commit. Its source
 creation, configuration, build, provenance, and cleanup now use the same lock.
-`flock` is an explicit Phase 1 prerequisite.
+The provenance recipe keeps source verification and commit publication in the
+same shell that acquired the lock. `flock` is an explicit Phase 1 prerequisite.
 
 ## Validation
 
@@ -148,3 +152,12 @@ select it over the higher-rated `kvm-clock`. The configuration now also passes
 the standard `clocksource=tsc` parameter so the boot contract and the existing
 `current_clocksource == tsc` gate agree. The failed run remains preserved and
 does not contribute measurements.
+
+`20260727T-guest-config-preflight-v2` completed the six-condition preflight:
+stock, patched-unattached, empty policy, pass policy, select policy, and FUSE.
+All six MRPL observations passed their correctness checks. Each boot verified
+its run-local kernel image identity, retained `tsc` before and after
+measurement, produced the required raw artifacts, and passed the dmesg,
+checksum, expected-cell, and expected-boot gates. This is infrastructure
+validation only; the two-second, single-worker observations are not paper
+performance results.

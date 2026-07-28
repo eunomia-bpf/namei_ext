@@ -7,8 +7,8 @@ KERNEL_SOURCE_COMMIT_STAMP ?= $(KERNEL_BUILD_DIR)/.source-commit
 KERNEL_BUILT_COMMIT_FILE ?= $(KERNEL_BUILD_DIR)/.built-commit
 KERNEL_RELEASE_HEADER ?= $(KERNEL_BUILD_DIR)/include/generated/utsrelease.h
 KERNEL_MERGE_CONFIG ?= $(KERNEL_DIR)/scripts/kconfig/merge_config.sh
-KERNEL_LOCK_ROOT ?= $(CACHE_ROOT)/locks
-KERNEL_BUILD_LOCK ?= $(KERNEL_LOCK_ROOT)/kernel-build.lock
+override KERNEL_LOCK_ROOT := $(ROOT_DIR)/.cache/locks
+override KERNEL_BUILD_LOCK := $(KERNEL_LOCK_ROOT)/kernel-build.lock
 STOCK_KERNEL_COMMIT ?= 062871f1371b2e02a272ff5279c6479aff0a37ef
 STOCK_KERNEL_SOURCE_DIR ?= $(BUILD_ROOT)/kernel-stock-src
 STOCK_KERNEL_BUILD_DIR ?= $(BUILD_ROOT)/kernel-stock
@@ -166,8 +166,8 @@ kernel-stock-provenance: $(STOCK_KERNEL_IMAGE)
 	test -n "$$release"; \
 	case "$$release" in (*-dirty*) exit 1;; esac; \
 	grep -aF "Linux version $$release " "$(STOCK_KERNEL_BUILD_DIR)/vmlinux" >/dev/null; \
-	printf '%s\n' "$$commit" >"$(STOCK_KERNEL_COMMIT_FILE).tmp"
-	$(call STOCK_KERNEL_VERIFY_SOURCE)
+	printf '%s\n' "$$commit" >"$(STOCK_KERNEL_COMMIT_FILE).tmp"; \
+	$(call STOCK_KERNEL_VERIFY_SOURCE); \
 	if test -r "$(STOCK_KERNEL_COMMIT_FILE)" && cmp -s "$(STOCK_KERNEL_COMMIT_FILE).tmp" "$(STOCK_KERNEL_COMMIT_FILE)"; then \
 		rm -f "$(STOCK_KERNEL_COMMIT_FILE).tmp"; \
 	else \
