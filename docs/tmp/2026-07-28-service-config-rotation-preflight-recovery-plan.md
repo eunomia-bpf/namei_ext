@@ -67,7 +67,9 @@ nginx's mutable runtime state will move to a unique guest-local directory:
 The four physical configuration generations and both content roots remain
 under the result boot directory. Each configuration references the guest-local
 pid and error-log paths. The default nginx worker identity remains unchanged;
-the generated `user root;` directive is removed.
+the generated `user root;` directive is removed. The runtime root uses mode
+`0711`: only the owner can list or modify it, while the nginx worker can
+traverse to service-owned temporary directories.
 
 ## Preserved Evidence
 
@@ -94,6 +96,24 @@ Before runner exit:
 
 The guest-local prefix contains only ephemeral service machinery and is not a
 paper output.
+
+## Implementation-Review Amendments
+
+Before the first V2 preflight, independent implementation review added three
+correctness gates without changing the state-transition hypothesis:
+
+1. A 64 KiB request body must be stored by the default nginx worker in the
+   guest-local `client_body_temp` directory. The retained file must be a
+   non-empty regular file of the expected size and owned by the worker's
+   effective UID. This checks that moving runtime state did not preserve only
+   the static-GET path while breaking normal worker I/O.
+2. Graceful or forced shutdown must return checked kill and wait results and
+   establish that the master was reaped before logs are copied or runtime state
+   is removed.
+3. Every direct nginx validation/daemon log and boot artifact must be a regular
+   non-symlink file covered by a per-boot evidence hash. Formal report
+   generation must revalidate those hashes and deterministically recompute the
+   analysis from the per-boot raw observations.
 
 ## Acceptance Gate
 

@@ -5,7 +5,25 @@ SERVICE_CONFIG_ROTATION_RUNNER_SOURCE ?= $(ROOT_DIR)/experiments/service_config_
 SERVICE_CONFIG_ROTATION_NGINX ?= $(NGINX_BUILD_SRC)/objs/nginx
 SERVICE_CONFIG_ROTATION_PLAN ?= $(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-experiment-plan.md
 SERVICE_CONFIG_ROTATION_PLAN_REVIEW ?= $(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-plan-review.md
+SERVICE_CONFIG_ROTATION_V2_PLAN ?= $(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-preflight-recovery-plan.md
+SERVICE_CONFIG_ROTATION_V2_PLAN_REVIEW ?= $(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-v2-plan-review.md
+SERVICE_CONFIG_ROTATION_V2_IMPLEMENTATION ?= $(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-v2-implementation.md
+SERVICE_CONFIG_ROTATION_V2_IMPLEMENTATION_REVIEW ?= $(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-v2-implementation-review.md
 SERVICE_CONFIG_ROTATION_SUITE_MAKE ?= $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
+SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES := \
+	guest.mk guest.mk.sha256 launcher.stdout.log launcher.stderr.log \
+	boot.json raw-runner.jsonl observations.jsonl stdout.log stderr.log \
+	outputs.sha256 nginx.error.log nginx.stdout.log nginx.stderr.log \
+	nginx-current-test.stdout.log nginx-current-test.stderr.log \
+	nginx-canary-test.stdout.log nginx-canary-test.stderr.log \
+	nginx-invalid-test.stdout.log nginx-invalid-test.stderr.log \
+	nginx-rollback-test.stdout.log nginx-rollback-test.stderr.log \
+	nginx-version.txt kernel.config \
+	uname.txt proc-version.txt kernel-cmdline.txt dmesg.log
+SERVICE_CONFIG_ROTATION_BOOT_FILES := \
+	$(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES) evidence.sha256
+SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS ?= \
+	$(BUILD_ROOT)/report-validation/service-config-rotation/$(RUN_ID)
 
 define SERVICE_CONFIG_ROTATION_CAPTURE_ARTIFACTS
 install -d "$(1)/artifacts/kernel" "$(1)/artifacts/runtime" \
@@ -42,14 +60,14 @@ endef
 
 define SERVICE_CONFIG_ROTATION_START
 $(call NAMEI_EXT_RESULT_ROOT_CREATE,$(1))
-install -d "$(1)/boots"
+$(call NAMEI_EXT_MULTI_BOOT_INIT,$(1))
 $(call NAMEI_EXT_RUN_START,$(1),service-config-rotation,kubernetes-atomic-writer+nginx,kvm_service_config_rotation,$(1)/observations.jsonl,service_config_rotation.bpf.c,namei_ext_service_config_rotation+nginx)
 $(call SERVICE_CONFIG_ROTATION_CAPTURE_ARTIFACTS,$(1))
 jq --slurpfile artifacts "$(1)/artifacts/manifest.json" \
 	--argjson repetitions "$(2)" \
 	--argjson timeout_seconds "$(SERVICE_CONFIG_ROTATION_TIMEOUT_SECONDS)" \
 	--arg kvm_timeout "$(SERVICE_CONFIG_ROTATION_KVM_TIMEOUT_SECONDS)" \
-	'.protocol_schema = "namei_ext.service_config_rotation.protocol.v1" | .layout = "fresh-boot-matrix" | .artifacts = $$artifacts[0] | .matrix = {states:["current","canary","invalid","rollback"],repetitions:$$repetitions,timeout_seconds:$$timeout_seconds,kvm_timeout:$$kvm_timeout,all_boots_must_pass:true}' \
+	'.protocol_schema = "namei_ext.service_config_rotation.protocol.v2" | .layout = "fresh-boot-matrix" | .artifacts = $$artifacts[0] | .matrix = {states:["current","canary","invalid","rollback"],repetitions:$$repetitions,timeout_seconds:$$timeout_seconds,kvm_timeout:$$kvm_timeout,all_boots_must_pass:true}' \
 	"$(1)/run.json" >"$(1)/run.json.tmp"
 mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 jq -e '.kernel.commit == .artifacts.kernel.commit and .kernel_commit == .artifacts.kernel.commit' \
@@ -63,7 +81,8 @@ sha256sum \
 	"$(ROOT_DIR)/configs/benchmarks/workload-sources.mk" \
 	"$(ROOT_DIR)/configs/kvm/x86_64.mk" \
 	"$(SERVICE_CONFIG_ROTATION_SUITE_MAKE)" \
-	"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/kvm.mk" \
+	"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/multi_boot.mk" \
+	"$(ROOT_DIR)/mk/kvm.mk" \
 	"$(ROOT_DIR)/mk/workload.mk" \
 	"$(ROOT_DIR)/experiments/service_config_rotation/Makefile" \
 	"$(SERVICE_CONFIG_ROTATION_RUNNER_SOURCE)" \
@@ -74,6 +93,13 @@ sha256sum \
 	"$(ROOT_DIR)/analysis/service_config_rotation/test_analyze.py" \
 	"$(SERVICE_CONFIG_ROTATION_PLAN)" \
 	"$(SERVICE_CONFIG_ROTATION_PLAN_REVIEW)" \
+	"$(SERVICE_CONFIG_ROTATION_V2_PLAN)" \
+	"$(SERVICE_CONFIG_ROTATION_V2_PLAN_REVIEW)" \
+	"$(SERVICE_CONFIG_ROTATION_V2_IMPLEMENTATION)" \
+	"$(SERVICE_CONFIG_ROTATION_V2_IMPLEMENTATION_REVIEW)" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-preflight-attempt-1.md" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-preflight-attempt-2.md" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-28-service-config-rotation-preflight-attempt-3.md" \
 	>"$(1)/inputs.sha256"
 endef
 
@@ -90,9 +116,7 @@ printf '%s := %s\n' \
 	'SERVICE_CONFIG_ROTATION_GUEST_TIMEOUT' \
 		"$(SERVICE_CONFIG_ROTATION_TIMEOUT_SECONDS)" \
 	>"$$guest_makefile"; \
-test "$$(wc -l <"$$guest_makefile")" = "9"; \
-! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null; \
-(cd "$$boot_dir" && sha256sum guest.mk >guest.mk.sha256)
+	$(call NAMEI_EXT_MULTI_BOOT_SEAL_GUEST_MAKEFILE,$$guest_makefile,9)
 endef
 
 .PHONY: service-config-rotation-analysis-test \
@@ -176,22 +200,28 @@ service-config-rotation-run-matrix:
 		host_started_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
 		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __service_config_rotation_guest,,$$boot_dir,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR),,$(SERVICE_CONFIG_ROTATION_KVM_TIMEOUT_SECONDS)); \
 		host_completed_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
-		jq --arg started_at "$$host_started_at" \
-			--arg completed_at "$$host_completed_at" \
-			'.host_launch = {started_at:$$started_at,completed_at:$$completed_at}' \
-			"$$boot_dir/boot.json" >"$$boot_dir/boot.json.tmp"; \
-		mv -f "$$boot_dir/boot.json.tmp" "$$boot_dir/boot.json"; \
-	done
+			jq --arg started_at "$$host_started_at" \
+				--arg completed_at "$$host_completed_at" \
+				'.host_launch = {started_at:$$started_at,completed_at:$$completed_at}' \
+				"$$boot_dir/boot.json" >"$$boot_dir/boot.json.tmp"; \
+			mv -f "$$boot_dir/boot.json.tmp" "$$boot_dir/boot.json"; \
+			(cd "$$boot_dir" && \
+				for file in $(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES); do \
+					test -f "$$file"; \
+					test ! -L "$$file"; \
+				done && \
+				sha256sum $(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES) \
+					>evidence.sha256); \
+		done
 
 service-config-rotation-finalize:
 	test -n "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)"
 	test -n "$(SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS)"
 	jq -e '.status == "running" and (.failed_at | not)' \
 		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/run.json" >/dev/null
+	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR),$(SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS))
 	find "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/boots" \
-		-name observations.jsonl -print0 | sort -z | xargs -0 cat \
-		>"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/observations.jsonl"
-	find "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/boots" -name boot.json \
+		-mindepth 2 -maxdepth 2 -name boot.json -type f \
 		-print0 | sort -z | xargs -0 jq -r '.repetition' | \
 		LC_ALL=C sort -n \
 		>"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/observed-boots.txt"
@@ -209,9 +239,6 @@ service-config-rotation-finalize:
 		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/observed-boots.txt"
 	cmp "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/expected-states.txt" \
 		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/observed-states.txt"
-	test "$$(find "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/boots" \
-		-name boot.json -type f | wc -l)" = \
-		"$(SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS)"
 	test "$$(jq -s '[.[] | select(.event == "service-config-rotation-state")] | length' \
 		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/observations.jsonl")" = \
 		"$$((4 * $(SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS)))"
@@ -221,23 +248,22 @@ service-config-rotation-finalize:
 	(cd "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)" && \
 		sha256sum -c artifacts.sha256)
 	test -s "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/nginx-ldd.txt"
-	for boot in "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)"/boots/*; do \
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR),$(SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS),$(SERVICE_CONFIG_ROTATION_BOOT_FILES))
+	while IFS= read -r -d '' boot; do \
 		(cd "$$boot" && sha256sum -c guest.mk.sha256); \
-		for file in guest.mk guest.mk.sha256 launcher.stdout.log \
-			launcher.stderr.log boot.json raw-runner.jsonl \
-			observations.jsonl stdout.log stderr.log outputs.sha256 \
-			nginx-version.txt kernel.config uname.txt proc-version.txt \
-			kernel-cmdline.txt dmesg.log; do \
-			test -e "$$boot/$$file"; \
-		done; \
+		(cd "$$boot" && sha256sum -c evidence.sha256); \
+		test -s "$$boot/nginx.error.log"; \
+		(cd "$(ROOT_DIR)" && \
+			sha256sum -c "$${boot#$(ROOT_DIR)/}/outputs.sha256"); \
 		jq -e '.schema == "namei_ext.service_config_rotation.boot.v1" and .status == "completed" and (.host_launch.started_at | type == "string" and length > 0) and (.host_launch.completed_at | type == "string" and length > 0)' \
 			"$$boot/boot.json" >/dev/null; \
-	done
+	done < <(find "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/boots" \
+		-mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z)
 	$(call NAMEI_EXT_RUN_VALIDATE_BASE,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR),$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/observations.jsonl)
 	jq -e --argjson repetitions "$(SERVICE_CONFIG_ROTATION_ACTIVE_REPETITIONS)" \
 		--argjson timeout "$(SERVICE_CONFIG_ROTATION_TIMEOUT_SECONDS)" \
 		--arg kvm_timeout "$(SERVICE_CONFIG_ROTATION_KVM_TIMEOUT_SECONDS)" \
-		'.protocol_schema == "namei_ext.service_config_rotation.protocol.v1" and .layout == "fresh-boot-matrix" and .matrix.states == ["current","canary","invalid","rollback"] and .matrix.repetitions == $$repetitions and .matrix.timeout_seconds == $$timeout and .matrix.kvm_timeout == $$kvm_timeout and .matrix.all_boots_must_pass == true' \
+		'.protocol_schema == "namei_ext.service_config_rotation.protocol.v2" and .layout == "fresh-boot-matrix" and .matrix.states == ["current","canary","invalid","rollback"] and .matrix.repetitions == $$repetitions and .matrix.timeout_seconds == $$timeout and .matrix.kvm_timeout == $$kvm_timeout and .matrix.all_boots_must_pass == true' \
 		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/run.json" >/dev/null
 
 service-config-rotation-analyze:
@@ -251,16 +277,55 @@ service-config-rotation-analyze:
 	for file in summary.json summary.csv report.md; do \
 		test -s "$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis/$$file"; \
 	done
-	jq -e '.schema == "namei_ext.service_config_rotation.summary.v1" and .correctness.all_boots_passed == true and (if .correctness.boots_expected == 10 then .verdict.tested_hypothesis == "supported" and .verdict.evidence_role == "formal" else .correctness.boots_expected == 1 and .verdict.tested_hypothesis == "not_tested" and .verdict.evidence_role == "dependency_preflight" end)' \
+	jq -e '.schema == "namei_ext.service_config_rotation.summary.v2" and .correctness.all_boots_passed == true and (if .correctness.boots_expected == 10 then .verdict.tested_hypothesis == "supported" and .verdict.evidence_role == "formal" else .correctness.boots_expected == 1 and .verdict.tested_hypothesis == "not_tested" and .verdict.evidence_role == "dependency_preflight" end)' \
 		"$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)/analysis/summary.json" >/dev/null
 	$(call NAMEI_EXT_RUN_COMPLETE,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR))
 
 service-config-rotation-report:
-	jq -e '.status == "completed"' \
+	jq -e '.status == "completed" and .protocol_schema == "namei_ext.service_config_rotation.protocol.v2" and .matrix.repetitions == 10' \
 		"$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/run.json" >/dev/null
-	jq -e '.schema == "namei_ext.service_config_rotation.summary.v1" and .verdict.tested_hypothesis == "supported"' \
+	test ! -s "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/source-status.txt"
+	test ! -s "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/kernel-status.txt"
+	test "$$(cat "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/source-commit.txt")" = \
+		"$$(jq -r '.source.commit' "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/run.json")"
+	test "$$(cat "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/kernel-commit.txt")" = \
+		"$$(jq -r '.kernel.commit' "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/run.json")"
+	sha256sum -c "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/inputs.sha256"
+	(cd "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)" && \
+		sha256sum -c artifacts.sha256)
+	test -s "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/nginx-ldd.txt"
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(SERVICE_CONFIG_ROTATION_RESULT_DIR),$(SERVICE_CONFIG_ROTATION_REPETITIONS),$(SERVICE_CONFIG_ROTATION_BOOT_FILES))
+	rm -rf "$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)"
+	install -d "$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)"
+	: >"$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)/observations.jsonl"
+	while IFS= read -r -d '' boot; do \
+		(cd "$$boot" && sha256sum -c guest.mk.sha256); \
+		(cd "$$boot" && sha256sum -c evidence.sha256); \
+		test -s "$$boot/nginx.error.log"; \
+		(cd "$(ROOT_DIR)" && \
+			sha256sum -c "$${boot#$(ROOT_DIR)/}/outputs.sha256"); \
+		jq -e '.schema == "namei_ext.service_config_rotation.boot.v1" and .status == "completed" and (.host_launch.started_at | type == "string" and length > 0) and (.host_launch.completed_at | type == "string" and length > 0)' \
+			"$$boot/boot.json" >/dev/null; \
+		cat "$$boot/observations.jsonl" \
+			>>"$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)/observations.jsonl"; \
+	done < <(find "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/boots" \
+		-mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z)
+	cmp "$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)/observations.jsonl" \
+		"$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/observations.jsonl"
+	python3 "$(SERVICE_CONFIG_ROTATION_ANALYSIS)" \
+		--input "$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)/observations.jsonl" \
+		--run "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/run.json" \
+		--output "$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)/analysis"
+	for file in summary.json summary.csv report.md; do \
+		test -f "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/analysis/$$file"; \
+		test ! -L "$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/analysis/$$file"; \
+		cmp "$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)/analysis/$$file" \
+			"$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/analysis/$$file"; \
+	done
+	jq -e '.schema == "namei_ext.service_config_rotation.summary.v2" and .verdict.tested_hypothesis == "supported"' \
 		"$(SERVICE_CONFIG_ROTATION_RESULT_DIR)/analysis/summary.json" \
 		>/dev/null
+	rm -rf "$(SERVICE_CONFIG_ROTATION_REPORT_REANALYSIS)"
 
 experiment-service-config-rotation: kvm-service-config-rotation
 
@@ -300,6 +365,7 @@ __service_config_rotation_guest: __namei_ext_guest_prepare
 		/sys/fs/cgroup \
 		>>"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/stdout.log" \
 		2>>"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/stderr.log"
+	test -s "$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/nginx.error.log"
 	cp "$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/raw-runner.jsonl" \
 		"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/observations.jsonl"
 	test "$$(jq -s '[.[] | select(.event == "service-config-rotation-state")] | length' \
@@ -316,6 +382,8 @@ __service_config_rotation_guest: __namei_ext_guest_prepare
 	find "$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/fixture" \
 		-type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum \
 		>"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/outputs.sha256"
+	sha256sum "$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/nginx.error.log" \
+		>>"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/outputs.sha256"
 	dmesg >"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/dmesg.log"
 	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/dmesg.log)
 	jq -n --argjson repetition "$(REPETITION)" \

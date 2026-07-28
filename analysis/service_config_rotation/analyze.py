@@ -37,10 +37,14 @@ REQUIRED_CASES = (
     "canary",
     "invalid",
     "rollback",
+    "runtime_boundary",
     "attach_policy",
     "scope_policy",
+    "worker_runtime_io",
     "lower_objects_unchanged",
     "graceful_shutdown",
+    "capture_error_log",
+    "remove_runtime",
     "detach_policy",
     "clear_targets",
     "remove_cgroup",
@@ -86,10 +90,35 @@ def validate_run(run, repetitions):
     if run.get("schema") != "namei_ext.run.v2":
         raise ValueError("unexpected run schema")
     if run.get("protocol_schema") != \
-            "namei_ext.service_config_rotation.protocol.v1":
+            "namei_ext.service_config_rotation.protocol.v2":
         raise ValueError("unexpected protocol schema")
     if run.get("layout") != "fresh-boot-matrix":
         raise ValueError("unexpected run layout")
+    expected_identity = {
+        "suite": "service-config-rotation",
+        "source_system": "kubernetes-atomic-writer+nginx",
+        "result_level": "kvm_service_config_rotation",
+        "observations": "observations.jsonl",
+        "policy": "service_config_rotation.bpf.c",
+        "runner": "namei_ext_service_config_rotation+nginx",
+    }
+    for field, expected in expected_identity.items():
+        if run.get(field) != expected:
+            raise ValueError(f"unexpected run {field}")
+    run_id = run.get("run_id")
+    if not isinstance(run_id, str) or not run_id:
+        raise ValueError("invalid run id")
+    for field in ("source", "kernel"):
+        identity = run.get(field)
+        if not isinstance(identity, dict) or identity.get("dirty") is not False:
+            raise ValueError(f"invalid {field} cleanliness")
+        commit = identity.get("commit")
+        if not isinstance(commit, str) or len(commit) != 40 or \
+                any(character not in "0123456789abcdef"
+                    for character in commit):
+            raise ValueError(f"invalid {field} commit")
+    if run.get("kernel_commit") != run["kernel"]["commit"]:
+        raise ValueError("kernel commit mismatch")
     if run.get("status") not in ("running", "completed"):
         raise ValueError("run is not analyzable")
     matrix = run.get("matrix")
@@ -103,9 +132,8 @@ def validate_run(run, repetitions):
         raise ValueError("unexpected state sequence")
     if matrix.get("all_boots_must_pass") is not True:
         raise ValueError("missing all-pass gate")
-    timeout = matrix.get("timeout_seconds")
-    if type(timeout) is not int or timeout <= 0:
-        raise ValueError("invalid transition timeout")
+    if matrix.get("timeout_seconds") != 5:
+        raise ValueError("unexpected transition timeout")
     if matrix.get("kvm_timeout") != "120s":
         raise ValueError("unexpected KVM timeout")
 
@@ -125,17 +153,23 @@ def one(rows, event, repetition, field, value):
 
 
 def validate(rows, repetitions):
-    failed = [row for row in rows if "pass" in row and row["pass"] is not True]
-    if failed:
-        raise ValueError(f"{len(failed)} failed or malformed observations")
-
     expected_counts = {
+        "service-config-rotation-start": repetitions,
         "service-config-rotation-state": repetitions * len(STATES),
         "service-config-rotation-case": repetitions * len(REQUIRED_CASES),
         "service-config-rotation-policy-counter":
             repetitions * len(REQUIRED_COUNTERS),
         "service-config-rotation-summary": repetitions,
     }
+    unexpected = [
+        row for row in rows if row.get("event") not in expected_counts
+    ]
+    if unexpected:
+        raise ValueError(f"{len(unexpected)} unexpected observations")
+    failed = [row for row in rows if row.get("pass") is not True]
+    if failed:
+        raise ValueError(f"{len(failed)} failed or malformed observations")
+
     expected_repetitions = set(range(1, repetitions + 1))
     for event, expected_count in expected_counts.items():
         event_rows = [row for row in rows if row.get("event") == event]
@@ -312,8 +346,9 @@ def write_report(path, summary):
         f"{correctness['boots_expected']}.",
         f"- State transitions: {correctness['states_completed']}/"
         f"{correctness['states_expected']}.",
-        "- Current, canary, invalid reload, rollback, lower-object, policy, "
-        "and cleanup oracles passed in every boot.",
+        "- Current, canary, invalid reload, rollback, default-worker runtime, "
+        "lower-object, policy, evidence-capture, and cleanup oracles passed "
+        "in every boot.",
         "",
         "## Transition Latency",
         "",
@@ -365,7 +400,7 @@ def main():
     rows = load_jsonl(arguments.input)
     correctness, latency, _, _ = validate(rows, repetitions)
     summary = {
-        "schema": "namei_ext.service_config_rotation.summary.v1",
+        "schema": "namei_ext.service_config_rotation.summary.v2",
         "source_system": "kubernetes-atomic-writer+nginx",
         "verdict": classify(repetitions),
         "correctness": correctness,

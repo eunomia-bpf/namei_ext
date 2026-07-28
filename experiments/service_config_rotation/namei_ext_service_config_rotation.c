@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <ftw.h>
 #include <limits.h>
 #include <namei_ext_harness.h>
 #include <netinet/in.h>
@@ -33,6 +34,7 @@
 #define INVALID_DIRECTIVE "namei_ext_invalid_directive"
 #define MAX_HTTP_RESPONSE 16384
 #define MAX_CONFIG_SIZE 8192
+#define WORKER_BODY_SIZE 65536
 #define SHA256_HEX_LENGTH 64
 #define PROCESS_TIMEOUT_SECONDS 5
 
@@ -70,8 +72,10 @@ struct runner_paths {
 	char runtime[PATH_MAX];
 	char prefix[PATH_MAX];
 	char prefix_logs[PATH_MAX];
+	char client_body_temp[PATH_MAX];
 	char pid_file[PATH_MAX];
 	char error_log[PATH_MAX];
+	char captured_error_log[PATH_MAX];
 	char nginx_stdout[PATH_MAX];
 	char nginx_stderr[PATH_MAX];
 };
@@ -155,7 +159,8 @@ static int make_directory(const char *path)
 	return errno == EEXIST ? 0 : -errno;
 }
 
-static int build_paths(struct runner_paths *paths, const char *result_dir)
+static int build_paths(struct runner_paths *paths, const char *result_dir,
+		       const char *runtime_root)
 {
 	if (namei_ext_path_join(paths->fixture, sizeof(paths->fixture),
 				result_dir, "fixture") ||
@@ -199,16 +204,22 @@ static int build_paths(struct runner_paths *paths, const char *result_dir)
 	    namei_ext_path_join(paths->canary_index,
 				sizeof(paths->canary_index),
 				paths->canary_content, "index.html") ||
-	    namei_ext_path_join(paths->runtime, sizeof(paths->runtime),
-				paths->fixture, "runtime") ||
+	    snprintf(paths->runtime, sizeof(paths->runtime), "%s",
+		     runtime_root) >= (int)sizeof(paths->runtime) ||
 	    namei_ext_path_join(paths->prefix, sizeof(paths->prefix),
 				paths->runtime, "prefix") ||
 	    namei_ext_path_join(paths->prefix_logs, sizeof(paths->prefix_logs),
 				paths->prefix, "logs") ||
+	    namei_ext_path_join(paths->client_body_temp,
+				sizeof(paths->client_body_temp), paths->prefix,
+				"client_body_temp") ||
 	    namei_ext_path_join(paths->pid_file, sizeof(paths->pid_file),
 				paths->runtime, "nginx.pid") ||
 	    namei_ext_path_join(paths->error_log, sizeof(paths->error_log),
 				paths->runtime, "error.log") ||
+	    namei_ext_path_join(paths->captured_error_log,
+				sizeof(paths->captured_error_log), result_dir,
+				"nginx.error.log") ||
 	    namei_ext_path_join(paths->nginx_stdout,
 				sizeof(paths->nginx_stdout), result_dir,
 				"nginx.stdout.log") ||
@@ -216,6 +227,106 @@ static int build_paths(struct runner_paths *paths, const char *result_dir)
 				sizeof(paths->nginx_stderr), result_dir,
 				"nginx.stderr.log"))
 		return -ENAMETOOLONG;
+	return 0;
+}
+
+static int copy_nonempty_regular_file(const char *source,
+				      const char *destination)
+{
+	struct stat source_stat;
+	struct stat destination_stat;
+	char buffer[16384];
+	int source_fd = -1;
+	int destination_fd = -1;
+	int ret = 0;
+	bool destination_created = false;
+
+	if (stat(source, &source_stat))
+		return -errno;
+	if (!S_ISREG(source_stat.st_mode) || source_stat.st_size <= 0)
+		return -EINVAL;
+	source_fd = open(source, O_RDONLY | O_CLOEXEC);
+	if (source_fd < 0)
+		return -errno;
+	destination_fd = open(destination,
+			      O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0644);
+	if (destination_fd < 0) {
+		ret = -errno;
+		goto out;
+	}
+	destination_created = true;
+	for (;;) {
+		ssize_t read_count = read(source_fd, buffer, sizeof(buffer));
+
+		if (!read_count)
+			break;
+		if (read_count < 0) {
+			if (errno == EINTR)
+				continue;
+			ret = -errno;
+			goto out;
+		}
+		for (ssize_t written = 0; written < read_count;) {
+			ssize_t write_count = write(destination_fd,
+						    buffer + written,
+						    read_count - written);
+
+			if (write_count < 0) {
+				if (errno == EINTR)
+					continue;
+				ret = -errno;
+				goto out;
+			}
+			if (!write_count) {
+				ret = -EIO;
+				goto out;
+			}
+			written += write_count;
+		}
+	}
+	if (fsync(destination_fd)) {
+		ret = -errno;
+		goto out;
+	}
+	if (close(destination_fd)) {
+		destination_fd = -1;
+		ret = -errno;
+		goto out;
+	}
+	destination_fd = -1;
+	if (stat(destination, &destination_stat)) {
+		ret = -errno;
+		goto out;
+	}
+	if (!S_ISREG(destination_stat.st_mode) ||
+	    destination_stat.st_size != source_stat.st_size ||
+	    destination_stat.st_size <= 0)
+		ret = -EIO;
+
+out:
+	if (destination_fd >= 0 && close(destination_fd) && !ret)
+		ret = -errno;
+	if (source_fd >= 0 && close(source_fd) && !ret)
+		ret = -errno;
+	if (ret && destination_created)
+		unlink(destination);
+	return ret;
+}
+
+static int remove_tree_entry(const char *path, const struct stat *metadata,
+			     int type, struct FTW *walk)
+{
+	(void)metadata;
+	(void)type;
+	(void)walk;
+
+	return remove(path);
+}
+
+static int remove_tree(const char *path)
+{
+	if (nftw(path, remove_tree_entry, 32, FTW_DEPTH | FTW_PHYS))
+		return -errno;
 	return 0;
 }
 
@@ -246,8 +357,8 @@ static int choose_loopback_port(unsigned short *port_out)
 
 static int write_config(const char *path, const char *generation,
 			const char *content_root, const char *pid_file,
-			const char *error_log, unsigned short port,
-			bool invalid)
+			const char *error_log, const char *client_body_temp,
+			unsigned short port, bool invalid)
 {
 	char config[MAX_CONFIG_SIZE];
 	int length;
@@ -256,22 +367,26 @@ static int write_config(const char *path, const char *generation,
 		config, sizeof(config),
 		"# generation: %s\n"
 		"%s"
-		"user root;\n"
 		"worker_processes 1;\n"
 		"pid %s;\n"
 		"error_log %s notice;\n"
 		"events { worker_connections 64; }\n"
 		"http {\n"
 		"    access_log off;\n"
+		"    client_body_temp_path %s;\n"
 		"    server {\n"
 		"        listen 127.0.0.1:%u;\n"
 		"        server_name localhost;\n"
 		"        location / { root %s; }\n"
+		"        location = /upload {\n"
+		"            client_body_in_file_only on;\n"
+		"            proxy_pass http://127.0.0.1:%u/index.html;\n"
+		"        }\n"
 		"    }\n"
 		"}\n",
 		generation,
 		invalid ? INVALID_DIRECTIVE " on;\n" : "",
-		pid_file, error_log, port, content_root);
+		pid_file, error_log, client_body_temp, port, content_root, port);
 	if (length < 0 || (size_t)length >= sizeof(config))
 		return -ENAMETOOLONG;
 	return namei_ext_write_text(path, config);
@@ -316,6 +431,56 @@ static int wait_pid_deadline(pid_t pid, unsigned int timeout_seconds,
 	return wait_pid_until(
 		pid, monotonic_ns() +
 		(uint64_t)timeout_seconds * 1000000000ULL, status_out);
+}
+
+static int stop_nginx_master(pid_t pid, unsigned int timeout_seconds,
+			     int *status_out, bool *reaped_out)
+{
+	uint64_t deadline;
+	int force_ret;
+	int initial_error = 0;
+	pid_t waited;
+
+	*reaped_out = false;
+	waited = waitpid(pid, status_out, WNOHANG);
+	if (waited == pid) {
+		*reaped_out = true;
+		return -ECHILD;
+	}
+	if (waited < 0) {
+		initial_error = -errno;
+		goto force;
+	}
+	if (kill(pid, SIGQUIT)) {
+		initial_error = -errno;
+		goto force;
+	}
+	deadline = monotonic_ns() +
+		(uint64_t)timeout_seconds * 1000000000ULL;
+	while (monotonic_ns() < deadline) {
+		waited = waitpid(pid, status_out, WNOHANG);
+		if (waited == pid) {
+			*reaped_out = true;
+			if (WIFEXITED(*status_out) &&
+			    !WEXITSTATUS(*status_out))
+				return 0;
+			return -ECHILD;
+		}
+		if (waited < 0 && errno != EINTR) {
+			initial_error = -errno;
+			goto force;
+		}
+		sleep_milliseconds(10);
+	}
+	initial_error = -ETIMEDOUT;
+
+force:
+	force_ret = terminate_child(pid, status_out);
+
+	if (force_ret)
+		return force_ret;
+	*reaped_out = true;
+	return initial_error ? initial_error : -ECHILD;
 }
 
 static int run_nginx_validation(const char *nginx, const char *config,
@@ -512,6 +677,26 @@ static int logical_identity(const char *cgroup_path, const char *logical_dir,
 	return directory_probe(cgroup_path, logical_dir);
 }
 
+static int write_all(int fd, const void *buffer, size_t length)
+{
+	const char *cursor = buffer;
+
+	while (length) {
+		ssize_t written = write(fd, cursor, length);
+
+		if (written < 0) {
+			if (errno == EINTR)
+				continue;
+			return -errno;
+		}
+		if (!written)
+			return -EIO;
+		cursor += written;
+		length -= (size_t)written;
+	}
+	return 0;
+}
+
 static int http_body_once(unsigned short port, char *body, size_t body_size)
 {
 	static const char request[] =
@@ -542,13 +727,16 @@ static int http_body_once(unsigned short port, char *body, size_t body_size)
 		close(fd);
 		return -saved_errno;
 	}
-	if (connect(fd, (struct sockaddr *)&address, sizeof(address)) ||
-	    write(fd, request, sizeof(request) - 1) !=
-		    (ssize_t)sizeof(request) - 1) {
+	if (connect(fd, (struct sockaddr *)&address, sizeof(address))) {
 		int saved_errno = errno;
 
 		close(fd);
 		return -saved_errno;
+	}
+	int ret = write_all(fd, request, sizeof(request) - 1);
+	if (ret) {
+		close(fd);
+		return ret;
 	}
 	while (total < MAX_HTTP_RESPONSE) {
 		ssize_t nread = read(fd, response + total,
@@ -577,6 +765,164 @@ static int http_body_once(unsigned short port, char *body, size_t body_size)
 		return -ENOSPC;
 	strcpy(body, separator);
 	return 0;
+}
+
+static int exercise_worker_temp_io(unsigned short port)
+{
+	static const char body_chunk[4096] = {
+		[0 ... sizeof(body_chunk) - 1] = 'x',
+	};
+	struct timeval timeout = {
+		.tv_sec = 2,
+		.tv_usec = 0,
+	};
+	struct sockaddr_in address = {
+		.sin_family = AF_INET,
+		.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
+	};
+	char header[512];
+	char response[MAX_HTTP_RESPONSE + 1] = {};
+	size_t remaining = WORKER_BODY_SIZE;
+	size_t total = 0;
+	int length;
+	int fd;
+	int ret;
+
+	length = snprintf(
+		header, sizeof(header),
+		"POST /upload HTTP/1.0\r\nHost: localhost\r\n"
+		"Content-Type: application/octet-stream\r\n"
+		"Content-Length: %u\r\nConnection: close\r\n\r\n",
+		(unsigned int)WORKER_BODY_SIZE);
+	if (length < 0 || length >= (int)sizeof(header))
+		return -ENAMETOOLONG;
+	address.sin_port = htons(port);
+	fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return -errno;
+	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout,
+		       sizeof(timeout)) ||
+	    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout,
+		       sizeof(timeout)) ||
+	    connect(fd, (struct sockaddr *)&address, sizeof(address))) {
+		ret = -errno;
+		goto out;
+	}
+	ret = write_all(fd, header, (size_t)length);
+	while (!ret && remaining) {
+		size_t chunk = remaining < sizeof(body_chunk) ?
+			remaining : sizeof(body_chunk);
+
+		ret = write_all(fd, body_chunk, chunk);
+		remaining -= chunk;
+	}
+	if (ret)
+		goto out;
+	if (shutdown(fd, SHUT_WR)) {
+		ret = -errno;
+		goto out;
+	}
+	while (total < MAX_HTTP_RESPONSE) {
+		ssize_t nread = read(fd, response + total,
+				    MAX_HTTP_RESPONSE - total);
+
+		if (nread < 0) {
+			if (errno == EINTR)
+				continue;
+			ret = -errno;
+			goto out;
+		}
+		if (!nread)
+			break;
+		total += (size_t)nread;
+	}
+	response[total] = '\0';
+	if (strncmp(response, "HTTP/1.1 405 ", 13) &&
+	    strncmp(response, "HTTP/1.0 405 ", 13))
+		ret = -EIO;
+
+out:
+	if (close(fd) && !ret)
+		ret = -errno;
+	return ret;
+}
+
+static int worker_effective_uid(pid_t worker, uid_t *uid_out)
+{
+	char path[128];
+	char line[256];
+	FILE *status;
+	unsigned long real_uid;
+	unsigned long effective_uid;
+
+	if (snprintf(path, sizeof(path), "/proc/%ld/status", (long)worker) >=
+	    (int)sizeof(path))
+		return -ENAMETOOLONG;
+	status = fopen(path, "r");
+	if (!status)
+		return -errno;
+	while (fgets(line, sizeof(line), status)) {
+		if (sscanf(line, "Uid:\t%lu\t%lu", &real_uid,
+			   &effective_uid) == 2) {
+			int ret = 0;
+
+			(void)real_uid;
+			if (effective_uid > UINT_MAX)
+				ret = -ERANGE;
+			else
+				*uid_out = (uid_t)effective_uid;
+			if (fclose(status) && !ret)
+				ret = -errno;
+			return ret;
+		}
+	}
+	if (fclose(status))
+		return -errno;
+	return -EINVAL;
+}
+
+static int verify_worker_temp_file(const char *directory, pid_t worker)
+{
+	struct dirent *entry;
+	struct stat metadata;
+	uid_t worker_uid = 0;
+	DIR *stream;
+	unsigned int matches = 0;
+	int ret;
+
+	ret = worker_effective_uid(worker, &worker_uid);
+	if (ret)
+		return ret;
+	stream = opendir(directory);
+	if (!stream)
+		return -errno;
+	errno = 0;
+	while ((entry = readdir(stream))) {
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+			continue;
+		if (fstatat(dirfd(stream), entry->d_name, &metadata,
+			    AT_SYMLINK_NOFOLLOW)) {
+			ret = -errno;
+			goto out;
+		}
+		if (!S_ISREG(metadata.st_mode) ||
+		    metadata.st_size != WORKER_BODY_SIZE ||
+		    metadata.st_uid != worker_uid) {
+			ret = -EINVAL;
+			goto out;
+		}
+		matches++;
+	}
+	if (errno) {
+		ret = -errno;
+		goto out;
+	}
+	ret = matches == 1 ? 0 : -EINVAL;
+
+out:
+	if (closedir(stream) && !ret)
+		ret = -errno;
+	return ret;
 }
 
 static int observed_http_body(unsigned short port, const char *expected,
@@ -891,11 +1237,13 @@ int main(int argc, char **argv)
 	};
 	struct runner_paths paths = {};
 	struct file_snapshot snapshots[6] = {};
+	struct stat runtime_metadata = {};
 	char cgroup[PATH_MAX] = {};
 	char policy_resolved[PATH_MAX] = {};
 	char nginx_resolved[PATH_MAX] = {};
 	char result_path_resolved[PATH_MAX] = {};
 	char result_dir_resolved[PATH_MAX] = {};
+	char runtime_root[PATH_MAX] = {};
 	char validation_stdout[4][PATH_MAX] = {};
 	char validation_stderr[4][PATH_MAX] = {};
 	char logical_sha256[SHA256_HEX_LENGTH + 1] = {};
@@ -917,7 +1265,9 @@ int main(int argc, char **argv)
 	pid_t rollback_worker = 0;
 	bool targets_registered = false;
 	bool nginx_started = false;
+	bool nginx_reaped = false;
 	bool cgroup_created = false;
+	bool runtime_created = false;
 	FILE *out;
 	int fails = 0;
 	int ret;
@@ -952,8 +1302,10 @@ int main(int argc, char **argv)
 		perror("fopen result");
 		return 2;
 	}
-	ret = build_paths(&paths, result_dir);
-	if (ret ||
+	ret = snprintf(runtime_root, sizeof(runtime_root),
+		       "/tmp/namei-ext-service-config-%ld", (long)getpid());
+	if (ret < 0 || ret >= (int)sizeof(runtime_root) ||
+	    build_paths(&paths, result_dir, runtime_root) ||
 	    snprintf(cgroup, sizeof(cgroup),
 		     "%s/namei-ext-service-config-%ld", cgroup_root,
 		     (long)getpid()) >= (int)sizeof(cgroup)) {
@@ -988,25 +1340,53 @@ int main(int argc, char **argv)
 	      make_directory(paths.invalid_dir) ||
 	      make_directory(paths.rollback_dir) ||
 	      make_directory(paths.current_content) ||
-	      make_directory(paths.canary_content) ||
-	      make_directory(paths.runtime) ||
-	      make_directory(paths.prefix) ||
-	      make_directory(paths.prefix_logs);
-	if (ret || choose_loopback_port(&port) ||
+	      make_directory(paths.canary_content);
+	if (ret) {
+		emit_case(out, repetition, "fixture", false,
+			  errno ? errno : EIO,
+			  "persistent fixture directory setup failed");
+		fails++;
+		goto cleanup;
+	}
+	if (mkdir(paths.runtime, 0711)) {
+		emit_case(out, repetition, "fixture", false,
+			  errno ? errno : EIO,
+			  "guest-local runtime directory setup failed");
+		fails++;
+		goto cleanup;
+	}
+	runtime_created = true;
+	ret = make_directory(paths.prefix);
+	if (!ret)
+		ret = make_directory(paths.prefix_logs);
+	if (!ret && stat(paths.runtime, &runtime_metadata))
+		ret = -errno;
+	if (!ret && (!S_ISDIR(runtime_metadata.st_mode) ||
+		     (runtime_metadata.st_mode & 0777) != 0711 ||
+		     runtime_metadata.st_uid != geteuid()))
+		ret = -EINVAL;
+	emit_case(out, repetition, "runtime_boundary", !ret,
+		  ret ? -ret : 0,
+		  "guest-local runtime root is owner-controlled and traversable");
+	if (ret) {
+		fails++;
+		goto cleanup;
+	}
+	if (choose_loopback_port(&port) ||
 	    namei_ext_write_text(paths.current_index, CURRENT_BODY) ||
 	    namei_ext_write_text(paths.canary_index, CANARY_BODY) ||
 	    write_config(paths.current_config, "current",
 			 paths.current_content, paths.pid_file, paths.error_log,
-			 port, false) ||
+			 paths.client_body_temp, port, false) ||
 	    write_config(paths.canary_config, "canary",
 			 paths.canary_content, paths.pid_file, paths.error_log,
-			 port, false) ||
+			 paths.client_body_temp, port, false) ||
 	    write_config(paths.invalid_config, "invalid",
 			 paths.canary_content, paths.pid_file, paths.error_log,
-			 port, true) ||
+			 paths.client_body_temp, port, true) ||
 	    write_config(paths.rollback_config, "rollback",
 			 paths.current_content, paths.pid_file, paths.error_log,
-			 port, false)) {
+			 paths.client_body_temp, port, false)) {
 		emit_case(out, repetition, "fixture", false,
 			  errno ? errno : EIO, "fixture generation failed");
 		fails++;
@@ -1123,7 +1503,6 @@ int main(int argc, char **argv)
 		fails++;
 		goto cleanup;
 	}
-
 	logical_sha256[0] = '\0';
 	latency_ns = 0;
 	attempts = 0;
@@ -1160,6 +1539,17 @@ int main(int argc, char **argv)
 		   logical_sha256, physical_sha256[0], observed_body,
 		   master_pid, 0, current_worker, latency_ns, attempts,
 		   false, !ret);
+	if (ret) {
+		fails++;
+		goto cleanup;
+	}
+	ret = exercise_worker_temp_io(port);
+	if (!ret)
+		ret = verify_worker_temp_file(paths.client_body_temp,
+					      current_worker);
+	emit_case(out, repetition, "worker_runtime_io", !ret,
+		  ret ? -ret : 0,
+		  "default nginx worker stored a request body in guest-local runtime");
 	if (ret) {
 		fails++;
 		goto cleanup;
@@ -1305,36 +1695,39 @@ int main(int argc, char **argv)
 				 SCR_COUNTER_SELECT);
 
 cleanup:
-	if (nginx_started && process_alive(master_pid)) {
-		pid_t waited = waitpid(master_pid, &status, WNOHANG);
-
-		if (!waited) {
-			ret = kill(master_pid, SIGQUIT) ? -errno : 0;
-			if (!ret)
-				ret = wait_pid_deadline(master_pid, timeout_seconds,
-							&status);
-		} else {
-			ret = waited == master_pid ? -ECHILD : -errno;
-		}
-		if (ret || !WIFEXITED(status) || WEXITSTATUS(status)) {
-			emit_case(out, repetition, "graceful_shutdown", false,
-				  ret ? -ret : ECHILD,
-				  "nginx master failed graceful shutdown");
-			fails++;
-			if (process_alive(master_pid)) {
-				kill(master_pid, SIGKILL);
-				waitpid(master_pid, &status, 0);
-			}
-		} else {
-			emit_case(out, repetition, "graceful_shutdown", true, 0,
-				  "nginx master exited after SIGQUIT");
-		}
+	if (nginx_started) {
+		ret = stop_nginx_master(master_pid, timeout_seconds, &status,
+					&nginx_reaped);
+		emit_case(out, repetition, "graceful_shutdown", !ret,
+			  ret ? -ret : 0,
+			  ret ? "nginx master required checked forced shutdown" :
+			  "nginx master was reaped after SIGQUIT");
+		fails += !!ret;
 	} else {
-		emit_case(out, repetition, "graceful_shutdown",
-			  !nginx_started, nginx_started ? ESRCH : 0,
-			  nginx_started ? "nginx master exited unexpectedly" :
+		nginx_reaped = true;
+		emit_case(out, repetition, "graceful_shutdown", true, 0,
 			  "nginx was not started");
-		fails += nginx_started;
+	}
+	if (runtime_created) {
+		if (!nginx_reaped) {
+			emit_case(out, repetition, "capture_error_log", false,
+				  EBUSY, "nginx master was not reaped");
+			emit_case(out, repetition, "remove_runtime", false,
+				  EBUSY, "live nginx runtime tree retained");
+			fails += 2;
+		} else {
+			ret = copy_nonempty_regular_file(paths.error_log,
+						       paths.captured_error_log);
+			emit_case(out, repetition, "capture_error_log", !ret,
+				  ret ? -ret : 0,
+				  "non-empty nginx error log captured in result tree");
+			fails += !!ret;
+			ret = remove_tree(paths.runtime);
+			emit_case(out, repetition, "remove_runtime", !ret,
+				  ret ? -ret : 0,
+				  "guest-local nginx runtime tree removed");
+			fails += !!ret;
+		}
 	}
 	if (policy.attached) {
 		ret = namei_ext_policy_destroy(&policy);
