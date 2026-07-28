@@ -138,3 +138,13 @@ and `RUN_ID`. Each generated file must have exactly 19 lines and must not
 contain the absolute repository prefix. Finalization requires the file for
 every declared boot. This both keeps the kernel command line bounded and
 preserves the exact guest inputs beside the raw boot observations.
+
+The next run, `20260727T-guest-config-preflight-v1`, confirmed that the bounded
+guest command reached the hidden Make target and verified the stock kernel
+image, build ID, notes, BTF, release, and flavor. It then failed the declared
+clocksource gate before measurement. The KVM configuration used
+`tsc=reliable`, but that parameter only marks the TSC reliable; it does not
+select it over the higher-rated `kvm-clock`. The configuration now also passes
+the standard `clocksource=tsc` parameter so the boot contract and the existing
+`current_clocksource == tsc` gate agree. The failed run remains preserved and
+does not contribute measurements.
