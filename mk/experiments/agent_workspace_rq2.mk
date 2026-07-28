@@ -10,23 +10,7 @@ AGENT_WORKSPACE_RQ2_ANALYSIS ?= $(ROOT_DIR)/analysis/agent_workspace/analyze.py
 AGENT_WORKSPACE_RQ2_REQUIRED_ORACLES ?= $(ROOT_DIR)/experiments/agent_workspace/rq2_required_oracles.txt
 
 define AGENT_WORKSPACE_RQ2_VALIDATE_HOST_PIN
-printf '%s\n' "$(AGENT_WORKSPACE_RQ2_HOST_CPUS)" | grep -Eq '^[0-9]+-[0-9]+$$'; \
-pin_start=$$(printf '%s\n' "$(AGENT_WORKSPACE_RQ2_HOST_CPUS)" | cut -d- -f1); \
-pin_end=$$(printf '%s\n' "$(AGENT_WORKSPACE_RQ2_HOST_CPUS)" | cut -d- -f2); \
-test "$$pin_end" -ge "$$pin_start"; \
-test "$$((pin_end - pin_start + 1))" = "$(KVM_CPUS)"; \
-test "$$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)" = "1"; \
-pin_frequency=; \
-for cpu in $$(seq "$$pin_start" "$$pin_end"); do \
-	test -d "/sys/devices/system/cpu/cpu$$cpu"; \
-	if test -f "/sys/devices/system/cpu/cpu$$cpu/online"; then \
-		test "$$(cat "/sys/devices/system/cpu/cpu$$cpu/online")" = "1"; \
-	fi; \
-	frequency=$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/cpuinfo_max_freq"); \
-	test "$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/scaling_governor")" = "performance"; \
-	if test -z "$$pin_frequency"; then pin_frequency="$$frequency"; fi; \
-	test "$$frequency" = "$$pin_frequency"; \
-done
+$(call NAMEI_EXT_VALIDATE_HOST_CPU_PIN,$(AGENT_WORKSPACE_RQ2_HOST_CPUS),$(KVM_CPUS))
 endef
 
 define AGENT_WORKSPACE_RQ2_CAPTURE_ARTIFACTS
@@ -388,7 +372,7 @@ agent-workspace-rq2-finalize:
 			"$$boot/boot.json" >/dev/null; \
 		jq -e --slurpfile expected "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/host-cpu-pin.json" \
 			--argjson kvm_cpus "$(KVM_CPUS)" \
-			'.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified" and .expected_host_cpus == $$expected[0] and (.expected_host_cpus | length) == $$kvm_cpus and (.vcpus | length) == (.expected_host_cpus | length) and ([.vcpus[].cpus_allowed | length] | all(. == 1)) and ([.vcpus[].cpus_allowed[0]] | sort) == (.expected_host_cpus | sort)' \
+			'.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified" and .expected_host_cpus == $$expected[0] and (.expected_host_cpus | length) == $$kvm_cpus and (.vcpus | length) == (.expected_host_cpus | length) and .expected_vcpu_mapping == [range(0; ($$expected[0] | length)) as $$index | {vcpu_index:$$index,host_cpu:$$expected[0][$$index]}] and [.vcpus[] | [.vcpu_index,.cpus_allowed]] == [range(0; ($$expected[0] | length)) as $$index | [$$index,[$$expected[0][$$index]]]]' \
 			"$$boot/vcpu-affinity.json" >/dev/null; \
 		! grep -E 'WARNING: Failed to pin vCPUs|Permission denied: cannot set affinity|not enough host CPUs|QMP .*failed|No vCPU threads found|TID .* does not exist' \
 			"$$boot/launcher.stderr.log" >/dev/null; \

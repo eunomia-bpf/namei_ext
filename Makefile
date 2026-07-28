@@ -18,7 +18,10 @@ CLEAN_SOURCE_EXPERIMENT_TARGETS := \
 	experiment-agent-workspace-rq2 \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 \
-	experiment-fxmark-rq2
+	experiment-fxmark-rq2 \
+	kvm-fxmark-fast-path-preflight \
+	kvm-fxmark-fast-path \
+	experiment-fxmark-fast-path
 
 NPROC ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 JOBS ?= $(NPROC)
@@ -29,6 +32,7 @@ endif
 include $(ROOT_DIR)/configs/kvm/x86_64.mk
 include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
+include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
@@ -41,6 +45,7 @@ include $(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
+include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 
 .DEFAULT_GOAL := phase1
 
@@ -49,6 +54,8 @@ include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 	build-action-sandboxing \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
+	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
+	fxmark-fast-path-report experiment-fxmark-fast-path \
 	experiments legacy-build-cache \
 	w1-oracle \
 	help clean clean-results
@@ -145,6 +152,10 @@ help:
 	@printf '%s\n' '                       run the complete paired FxMark RQ2 matrix in isolated KVM boots'
 	@printf '%s\n' '  make experiment-fxmark-rq2'
 	@printf '%s\n' '                       run the complete FxMark matrix and generate its statistical report and figure'
+	@printf '%s\n' '  make kvm-fxmark-fast-path-preflight'
+	@printf '%s\n' '                       run one host-pinned stock/unattached paired FxMark block'
+	@printf '%s\n' '  make experiment-fxmark-fast-path'
+	@printf '%s\n' '                       run the frozen 30-block unused-fast-path confirmation and report'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Historical experiment reproduction:'
 	@printf '%s\n' '  make legacy-build-cache'

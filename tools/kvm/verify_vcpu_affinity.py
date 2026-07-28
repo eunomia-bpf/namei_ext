@@ -86,9 +86,12 @@ def observe_affinity(host, port):
 def affinity_matches(observations, expected):
     if len(observations) != len(expected):
         return False
-    allowed = [item["cpus_allowed"] for item in observations]
-    return all(len(cpus) == 1 for cpus in allowed) and \
-        sorted(cpus[0] for cpus in allowed) == sorted(expected)
+    for index, (observation, host_cpu) in enumerate(
+            zip(observations, expected)):
+        if observation.get("vcpu_index") != index or \
+                observation.get("cpus_allowed") != [host_cpu]:
+            return False
+    return True
 
 
 def utc_now():
@@ -118,6 +121,10 @@ def verify_until(host, port, expected, timeout_seconds, poll_seconds=0.1):
                     "verified_at": utc_now(),
                     "qmp": {"host": host, "port": port},
                     "expected_host_cpus": expected,
+                    "expected_vcpu_mapping": [
+                        {"vcpu_index": index, "host_cpu": host_cpu}
+                        for index, host_cpu in enumerate(expected)
+                    ],
                     "vcpus": last_observations,
                     "attempts": attempts,
                 }
@@ -133,6 +140,10 @@ def verify_until(host, port, expected, timeout_seconds, poll_seconds=0.1):
         "failed_at": utc_now(),
         "qmp": {"host": host, "port": port},
         "expected_host_cpus": expected,
+        "expected_vcpu_mapping": [
+            {"vcpu_index": index, "host_cpu": host_cpu}
+            for index, host_cpu in enumerate(expected)
+        ],
         "last_vcpus": last_observations,
         "attempts": attempts,
         "error": last_error,

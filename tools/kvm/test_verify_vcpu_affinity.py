@@ -19,15 +19,29 @@ class VcpuAffinityTests(unittest.TestCase):
 
     def test_affinity_requires_distinct_singletons(self):
         observations = [
-            {"cpus_allowed": [4]},
-            {"cpus_allowed": [5]},
-            {"cpus_allowed": [6]},
-            {"cpus_allowed": [7]},
+            {"vcpu_index": 0, "cpus_allowed": [4]},
+            {"vcpu_index": 1, "cpus_allowed": [5]},
+            {"vcpu_index": 2, "cpus_allowed": [6]},
+            {"vcpu_index": 3, "cpus_allowed": [7]},
         ]
         self.assertTrue(verify.affinity_matches(observations, [4, 5, 6, 7]))
         observations[3]["cpus_allowed"] = [6, 7]
         self.assertFalse(verify.affinity_matches(
             observations, [4, 5, 6, 7]))
+
+    def test_affinity_rejects_permuted_vcpu_mapping(self):
+        observations = [
+            {"vcpu_index": 0, "cpus_allowed": [5]},
+            {"vcpu_index": 1, "cpus_allowed": [4]},
+        ]
+        self.assertFalse(verify.affinity_matches(observations, [4, 5]))
+
+    def test_affinity_rejects_missing_or_duplicate_vcpu_index(self):
+        observations = [
+            {"vcpu_index": 0, "cpus_allowed": [4]},
+            {"vcpu_index": 0, "cpus_allowed": [5]},
+        ]
+        self.assertFalse(verify.affinity_matches(observations, [4, 5]))
 
     def test_query_vcpus_uses_qmp_handshake(self):
         listener = socket.socket()

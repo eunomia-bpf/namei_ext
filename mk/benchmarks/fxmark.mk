@@ -94,8 +94,9 @@ printf '%s := %s\n' \
 	'FXMARK_BOOT_KERNEL_RELEASE' "$$release" \
 	'FXMARK_BOOT_KERNEL_FLAVOR' "$$flavor" \
 	'FXMARK_BPF_STATS' "$(FXMARK_BPF_STATS)" \
+	'FXMARK_REQUIRE_AFFINITY' "$(if $(strip $(4)),$(4),0)" \
 	>"$$guest_makefile"; \
-test "$$(wc -l <"$$guest_makefile")" = "19"; \
+test "$$(wc -l <"$$guest_makefile")" = "20"; \
 ! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null; \
 (cd "$$boot_dir" && sha256sum guest.mk >guest.mk.sha256)
 endef
@@ -263,7 +264,7 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
 			test -s "$$boot/$$file"; \
 		done; \
-		jq -e '.status == "completed" and .clocksource == "tsc"' "$$boot/boot.json" >/dev/null; \
+		jq -e '.status == "completed" and .clocksource == "tsc" and (.completed_at | type == "string" and length > 0)' "$$boot/boot.json" >/dev/null; \
 	done
 	for file in fuse-version.txt fxmark-fuse-ldd.txt; do test -s "$(FXMARK_PREFLIGHT_RESULT_DIR)/$$file"; done
 	$(call NAMEI_EXT_RUN_VALIDATE_BASE,$(FXMARK_PREFLIGHT_RESULT_DIR),$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl)
@@ -379,7 +380,7 @@ fxmark-rq2-finalize:
 		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
 			test -s "$$boot/$$file"; \
 		done; \
-		jq -e '.status == "completed" and .clocksource == "tsc"' "$$boot/boot.json" >/dev/null; \
+		jq -e '.status == "completed" and .clocksource == "tsc" and (.completed_at | type == "string" and length > 0)' "$$boot/boot.json" >/dev/null; \
 	done
 	for file in host-lscpu.txt host-governors.txt fuse-version.txt fxmark-fuse-ldd.txt; do test -s "$(FXMARK_RESULT_DIR)/$$file"; done
 	$(call NAMEI_EXT_RUN_VALIDATE_BASE,$(FXMARK_RESULT_DIR),$(FXMARK_RESULT_DIR)/observations.jsonl)
@@ -425,10 +426,64 @@ __fxmark_rq2_guest:
 	test -n "$(FXMARK_BOOT_KERNEL_RELEASE)"
 	test -n "$(FXMARK_BOOT_KERNEL_FLAVOR)"
 	case "$(FXMARK_BPF_STATS)" in 0|1) ;; *) exit 1 ;; esac
+	case "$(FXMARK_REQUIRE_AFFINITY)" in 0|1) ;; *) exit 1 ;; esac
+	affinity_verified_at=; \
+	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
+		affinity_status=waiting; \
+		for attempt in $$(seq 1 500); do \
+			if test -s "$(FXMARK_BOOT_RESULT_DIR)/vcpu-affinity.json"; then \
+				if jq -e '.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified"' \
+						"$(FXMARK_BOOT_RESULT_DIR)/vcpu-affinity.json" >/dev/null 2>&1; then \
+					affinity_status=verified; \
+					break; \
+				fi; \
+				if jq -e '.schema == "namei_ext.vcpu_affinity.v1" and .status == "failed"' \
+						"$(FXMARK_BOOT_RESULT_DIR)/vcpu-affinity.json" >/dev/null 2>&1; then \
+					cat "$(FXMARK_BOOT_RESULT_DIR)/vcpu-affinity.json" >&2; \
+					exit 1; \
+				fi; \
+			fi; \
+			sleep 0.05; \
+		done; \
+		test "$$affinity_status" = verified; \
+		affinity_verified_at=$$(jq -r '.verified_at' \
+			"$(FXMARK_BOOT_RESULT_DIR)/vcpu-affinity.json"); \
+		test -n "$$affinity_verified_at"; \
+		guest_barrier_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
+		test -n "$$guest_barrier_at"; \
+		printf '%s\n' "$$affinity_verified_at" \
+			>"$(FXMARK_BOOT_RESULT_DIR)/affinity-verified-at.txt"; \
+		printf '%s\n' "$$guest_barrier_at" \
+			>"$(FXMARK_BOOT_RESULT_DIR)/affinity-barrier.txt"; \
+	fi
 	install -d "$(FXMARK_BOOT_RESULT_DIR)/raw" "$(FXMARK_GUEST_MOUNT)"
 	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
 	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
 	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
+		command -v bpftool >/dev/null; \
+		command -v findmnt >/dev/null; \
+		command -v lsof >/dev/null; \
+		test -c /dev/fuse; \
+		bpftool -j prog show \
+			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-before.json"; \
+		bpftool -j cgroup tree \
+			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-before.json"; \
+		jq -e 'type == "array" and length == 0' \
+			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-before.json" >/dev/null; \
+		jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' \
+			"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-before.json" >/dev/null; \
+		findmnt -rn -o FSTYPE,TARGET | \
+			awk '$$1 == "fuse" || $$1 == "fuseblk" || index($$1, "fuse.") == 1' \
+			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-before.txt"; \
+		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-before.txt"; \
+		lsof_status=0; \
+		lsof -Fpc /dev/fuse \
+			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.txt" || \
+			lsof_status=$$?; \
+		test "$$lsof_status" = 1; \
+		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.txt"; \
+	fi
 	printf '%s\n' "$(FXMARK_BPF_STATS)" >/proc/sys/kernel/bpf_stats_enabled
 	mount -t tmpfs -o "size=$(FXMARK_TMPFS_SIZE),noatime" tmpfs "$(FXMARK_GUEST_MOUNT)"
 	: >"$(FXMARK_BOOT_RESULT_DIR)/observations.jsonl"
@@ -475,13 +530,54 @@ __fxmark_rq2_guest:
 		done; \
 	done
 	cat /proc/stat >"$(FXMARK_BOOT_RESULT_DIR)/proc-stat-after.txt"
+	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
+		bpftool -j prog show \
+			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json"; \
+		bpftool -j cgroup tree \
+			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-after.json"; \
+		jq -e 'type == "array" and length == 0' \
+			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json" >/dev/null; \
+		jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' \
+			"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-after.json" >/dev/null; \
+		cmp "$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-before.json" \
+			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json"; \
+		cmp "$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-before.json" \
+			"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-after.json"; \
+		findmnt -rn -o FSTYPE,TARGET | \
+			awk '$$1 == "fuse" || $$1 == "fuseblk" || index($$1, "fuse.") == 1' \
+			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-after.txt"; \
+		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-after.txt"; \
+		lsof_status=0; \
+		lsof -Fpc /dev/fuse \
+			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.txt" || \
+			lsof_status=$$?; \
+		test "$$lsof_status" = 1; \
+		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.txt"; \
+		cmp "$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-before.txt" \
+			"$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-after.txt"; \
+		cmp "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.txt" \
+			"$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.txt"; \
+	fi
 	clocksource=$$(cat /sys/devices/system/clocksource/clocksource0/current_clocksource); \
 	test "$$clocksource" = "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/clocksource-before.txt")"; \
 	printf '%s\n' "$$clocksource" >"$(FXMARK_BOOT_RESULT_DIR)/clocksource-after.txt"
 	dmesg >"$(FXMARK_BOOT_RESULT_DIR)/dmesg.log"
 	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(FXMARK_BOOT_RESULT_DIR)/dmesg.log)
 	umount "$(FXMARK_GUEST_MOUNT)"
+	completed_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
+	test -n "$$completed_at"; \
+	affinity_verified_at=; \
+	guest_barrier_at=; \
+	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
+		affinity_verified_at=$$(cat \
+			"$(FXMARK_BOOT_RESULT_DIR)/affinity-verified-at.txt"); \
+		test -n "$$affinity_verified_at"; \
+		guest_barrier_at=$$(cat \
+			"$(FXMARK_BOOT_RESULT_DIR)/affinity-barrier.txt"); \
+		test -n "$$guest_barrier_at"; \
+	fi; \
 	jq -n \
+		--arg schema "namei_ext.fxmark.boot.v2" \
 		--arg condition "$(CONDITION)" \
 		--argjson repetition "$(REPETITION)" \
 		--arg kernel_commit "$(FXMARK_BOOT_KERNEL_COMMIT)" \
@@ -491,9 +587,15 @@ __fxmark_rq2_guest:
 		--arg kernel_flavor "$(FXMARK_BOOT_KERNEL_FLAVOR)" \
 		--arg kernel_release "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/kernel-release.txt")" \
 		--arg clocksource "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/clocksource-after.txt")" \
-		--arg completed_at "$$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-		'{condition:$$condition,repetition:$$repetition,kernel_commit:$$kernel_commit,kernel_build_id:$$kernel_build_id,kernel_notes_sha256:$$kernel_notes_sha256,kernel_btf_sha256:$$kernel_btf_sha256,kernel_flavor:$$kernel_flavor,kernel_release:$$kernel_release,clocksource:$$clocksource,status:"completed",completed_at:$$completed_at}' \
-		>"$(FXMARK_BOOT_RESULT_DIR)/boot.json"
+		--arg affinity_verified_at "$$affinity_verified_at" \
+		--arg guest_barrier_at "$$guest_barrier_at" \
+		--arg completed_at "$$completed_at" \
+		'{schema:$$schema,condition:$$condition,repetition:$$repetition,kernel_commit:$$kernel_commit,kernel_build_id:$$kernel_build_id,kernel_notes_sha256:$$kernel_notes_sha256,kernel_btf_sha256:$$kernel_btf_sha256,kernel_flavor:$$kernel_flavor,kernel_release:$$kernel_release,clocksource:$$clocksource,affinity_verified_at:$$affinity_verified_at,guest_barrier_at:$$guest_barrier_at,status:"completed",completed_at:$$completed_at}' \
+		>"$(FXMARK_BOOT_RESULT_DIR)/boot.json.tmp"; \
+	mv -f "$(FXMARK_BOOT_RESULT_DIR)/boot.json.tmp" \
+		"$(FXMARK_BOOT_RESULT_DIR)/boot.json"; \
+	jq -e '.schema == "namei_ext.fxmark.boot.v2" and .status == "completed" and (.completed_at | type == "string" and length > 0)' \
+		"$(FXMARK_BOOT_RESULT_DIR)/boot.json" >/dev/null
 
 fxmark-rq2-clean:
 	$(MAKE) -C "$(ROOT_DIR)/bench/fxmark" \

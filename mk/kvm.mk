@@ -15,6 +15,26 @@ TABLE_REDIRECT_BENCH_ARG := $(if $(TABLE_REDIRECT_BENCH_VARIANTS),$(TABLE_REDIRE
 NAMEI_EXT_DMESG_FAILURE_PATTERN := BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN|clocksource: Watchdog .*read timed out|Marking clocksource .* unstable
 NAMEI_EXT_VCPU_AFFINITY_VERIFY ?= $(ROOT_DIR)/tools/kvm/verify_vcpu_affinity.py
 
+define NAMEI_EXT_VALIDATE_HOST_CPU_PIN
+printf '%s\n' "$(1)" | grep -Eq '^[0-9]+-[0-9]+$$'; \
+pin_start=$$(printf '%s\n' "$(1)" | cut -d- -f1); \
+pin_end=$$(printf '%s\n' "$(1)" | cut -d- -f2); \
+test "$$pin_end" -ge "$$pin_start"; \
+test "$$((pin_end - pin_start + 1))" = "$(2)"; \
+test "$$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)" = "1"; \
+pin_frequency=; \
+for cpu in $$(seq "$$pin_start" "$$pin_end"); do \
+	test -d "/sys/devices/system/cpu/cpu$$cpu"; \
+	if test -f "/sys/devices/system/cpu/cpu$$cpu/online"; then \
+		test "$$(cat "/sys/devices/system/cpu/cpu$$cpu/online")" = "1"; \
+	fi; \
+	frequency=$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/cpuinfo_max_freq"); \
+	test "$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/scaling_governor")" = "performance"; \
+	if test -z "$$pin_frequency"; then pin_frequency="$$frequency"; fi; \
+	test "$$frequency" = "$$pin_frequency"; \
+done
+endef
+
 define NAMEI_EXT_KVM_RUN_IMAGE
 $(VNG) $(if $(4),--pin "$(4)") --run "$(1)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) $(2) RUN_ID=$(RUN_ID) $(3)"
 endef
