@@ -1,6 +1,6 @@
 # Idea And Hypothesis
 
-Last updated: 2026-07-25
+Last updated: 2026-07-27
 
 The full historical version of this file, including the orchestrator process
 tables (Claim Evolution, Narrative Evolution, Hypothesis Frontier), is archived
@@ -77,6 +77,16 @@ Evidence program:
 
 ## Current Evidence Highlights
 
+- RQ2 cache-hot path-resolution diagnostic: the repeated FxMark matrix
+  (`results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v2/`)
+  completed 50 KVM boots and 450/450 passing cells. Patched-unattached/stock is
+  `0.993--1.015` in median throughput across the nine cells. Same-filesystem
+  `SELECT`/optimized FUSE is `1.040--1.082`, with every 95% confidence interval
+  above one. Attached `PASS` retains `0.900--0.930` of unattached throughput;
+  selected-target resolution adds only `0.3--3.1%` median cost beyond `PASS`.
+  Independent review found that the patched binary predates its recorded clean
+  kernel commit, so these values remain diagnostic until the fixed-provenance
+  clean rerun reproduces them.
 - Agent workspace RQ1: three terminal KVM runs
   (`results/experiments/agent-workspace-matrix/20260722T0201*-rq1run{1,2,3}/`)
   pass the same AgentFS-derived trace oracle for `namei_ext` and

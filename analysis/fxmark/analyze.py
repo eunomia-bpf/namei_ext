@@ -16,6 +16,7 @@ CONDITIONS = ("stock", "unattached", "pass", "select", "fuse")
 TYPES = ("MRPL", "MRPM", "MRPH")
 WORKERS = (1, 2, 4)
 BOOTSTRAP_SAMPLES = 10000
+FUSE_SUPER_MAGIC = 0x65735546
 
 
 def percentile(sorted_values, probability):
@@ -57,7 +58,51 @@ def load_rows(path):
     return rows
 
 
-def validate(rows, repetitions):
+def load_plan(path):
+    with path.open(encoding="utf-8") as source:
+        run = json.load(source)
+    if run.get("schema") != "namei_ext.run.v2":
+        raise ValueError("unsupported run schema")
+    if run.get("suite") != "fxmark-rq2" or \
+            run.get("layout") != "boot-matrix" or \
+            run.get("status") != "completed":
+        raise ValueError("run is not a completed FxMark RQ2 matrix")
+    matrix = run.get("matrix")
+    if not isinstance(matrix, dict):
+        raise ValueError("missing run matrix")
+    plan = {
+        "conditions": tuple(matrix.get("conditions", ())),
+        "types": tuple(matrix.get("types", ())),
+        "workers": tuple(matrix.get("workers", ())),
+        "repetitions": matrix.get("repetitions"),
+        "duration_seconds": matrix.get("duration_seconds"),
+        "bpf_stats": matrix.get("bpf_stats"),
+    }
+    if plan["conditions"] != CONDITIONS or plan["types"] != TYPES or \
+            plan["workers"] != WORKERS:
+        raise ValueError("run matrix does not match the declared RQ2 protocol")
+    if type(plan["repetitions"]) is not int or \
+            plan["repetitions"] < 1:
+        raise ValueError("invalid repetition count")
+    if type(plan["duration_seconds"]) is not int or \
+            plan["duration_seconds"] < 1:
+        raise ValueError("invalid measured duration")
+    if plan["bpf_stats"] != 0:
+        raise ValueError("formal RQ2 analysis requires bpf_stats=0")
+    return plan
+
+
+def expected_tree(benchmark, workers):
+    if benchmark == "MRPL":
+        return workers, 1 + 4 * workers
+    if benchmark in ("MRPM", "MRPH"):
+        return 32768, 4681
+    raise ValueError(f"unknown benchmark: {benchmark}")
+
+
+def validate(rows, plan):
+    repetitions = plan["repetitions"]
+    duration = plan["duration_seconds"]
     expected_count = repetitions * len(CONDITIONS) * len(TYPES) * len(WORKERS)
     if len(rows) != expected_count:
         raise ValueError(f"expected {expected_count} rows, found {len(rows)}")
@@ -75,6 +120,26 @@ def validate(rows, repetitions):
             raise ValueError(f"unplanned workload: {key}")
         if row.get("leader_cgroup_verified") is not True:
             raise ValueError(f"unverified benchmark cgroup: {key}")
+        if row.get("fxmark_status") != 0:
+            raise ValueError(f"failed FxMark process: {key}")
+        if row.get("duration_seconds") != duration:
+            raise ValueError(f"wrong declared duration: {key}")
+        if row.get("seconds", 0) < duration * 0.9 or \
+                row.get("seconds", 0) > duration * 1.2:
+            raise ValueError(f"out-of-bounds measured duration: {key}")
+        if row.get("works", 0) <= 0:
+            raise ValueError(f"invalid completed work: {key}")
+        expected_files, expected_directories = expected_tree(
+            row["type"], row["workers"])
+        if row.get("expected_files") != expected_files or \
+                row.get("expected_directories") != expected_directories or \
+                row.get("actual_files") != expected_files or \
+                row.get("actual_directories") != expected_directories:
+            raise ValueError(f"tree cardinality mismatch: {key}")
+        computed_rate = row["works"] / row["seconds"]
+        if not math.isclose(computed_rate, row["works_per_second"],
+                            rel_tol=1e-6):
+            raise ValueError(f"throughput arithmetic mismatch: {key}")
         if row["condition"] in ("pass", "select"):
             if row.get("attachment_stable") is not True:
                 raise ValueError(f"unstable BPF attachment: {key}")
@@ -82,9 +147,28 @@ def validate(rows, repetitions):
                     row.get("attached_program_id_after", 0) != \
                     row["attached_program_id_before"]:
                 raise ValueError(f"invalid BPF program identity: {key}")
+        else:
+            if row.get("attached_program_id_before", 0) != 0 or \
+                    row.get("attached_program_id_after", 0) != 0:
+                raise ValueError(f"unexpected BPF attachment: {key}")
         if row["condition"] == "select" and \
                 row.get("select_required_for_logical_path") is not True:
             raise ValueError(f"unverified SELECT view: {key}")
+        if row["condition"] == "fuse":
+            if row.get("fuse_status") != 0:
+                raise ValueError(f"failed FUSE process: {key}")
+            if row.get("fuse_setup_requests", 0) <= 0:
+                raise ValueError(f"unverified FUSE setup: {key}")
+            if row.get("fuse_measured_requests", -1) < 0:
+                raise ValueError(f"invalid FUSE request count: {key}")
+            if row.get("fuse_f_type_before") != FUSE_SUPER_MAGIC or \
+                    row.get("fuse_f_type_after") != FUSE_SUPER_MAGIC:
+                raise ValueError(f"unverified FUSE mount identity: {key}")
+        elif row.get("fuse_status") != -1:
+            raise ValueError(f"unexpected FUSE process: {key}")
+        elif row.get("fuse_f_type_before", 0) != 0 or \
+                row.get("fuse_f_type_after", 0) != 0:
+            raise ValueError(f"unexpected FUSE mount identity: {key}")
         if not math.isfinite(row["works_per_second"]) or \
                 row["works_per_second"] <= 0:
             raise ValueError(f"invalid throughput: {key}")
@@ -143,6 +227,30 @@ def summarize(indexed, repetitions, seed):
                 for repetition in range(1, repetitions + 1)
             ]
             sf_low, sf_high = bootstrap_median_ci(select_fuse, rng)
+            select_pass = [
+                indexed[(repetition, "select", benchmark, workers)]
+                ["works_per_second"] /
+                indexed[(repetition, "pass", benchmark, workers)]
+                ["works_per_second"]
+                for repetition in range(1, repetitions + 1)
+            ]
+            sp_low, sp_high = bootstrap_median_ci(select_pass, rng)
+            pass_unattached = [
+                indexed[(repetition, "pass", benchmark, workers)]
+                ["works_per_second"] /
+                indexed[(repetition, "unattached", benchmark, workers)]
+                ["works_per_second"]
+                for repetition in range(1, repetitions + 1)
+            ]
+            pu_low, pu_high = bootstrap_median_ci(pass_unattached, rng)
+            select_unattached = [
+                indexed[(repetition, "select", benchmark, workers)]
+                ["works_per_second"] /
+                indexed[(repetition, "unattached", benchmark, workers)]
+                ["works_per_second"]
+                for repetition in range(1, repetitions + 1)
+            ]
+            su_low, su_high = bootstrap_median_ci(select_unattached, rng)
             fuse_setup = [
                 indexed[(repetition, "fuse", benchmark, workers)]
                 ["fuse_setup_requests"]
@@ -162,6 +270,21 @@ def summarize(indexed, repetitions, seed):
                     "median": statistics.median(select_fuse),
                     "ci_low": sf_low,
                     "ci_high": sf_high,
+                },
+                "select_over_pass": {
+                    "median": statistics.median(select_pass),
+                    "ci_low": sp_low,
+                    "ci_high": sp_high,
+                },
+                "pass_over_unattached": {
+                    "median": statistics.median(pass_unattached),
+                    "ci_low": pu_low,
+                    "ci_high": pu_high,
+                },
+                "select_over_unattached": {
+                    "median": statistics.median(select_unattached),
+                    "ci_low": su_low,
+                    "ci_high": su_high,
                 },
                 "fuse_setup_requests_median":
                     statistics.median(fuse_setup),
@@ -196,6 +319,8 @@ def classify(summaries):
     else:
         hypothesis = "inconclusive_or_mixed"
     return {
+        "classification_scope":
+            "predeclared unattached-fast-path and SELECT-over-FUSE gates",
         "tested_hypothesis": hypothesis,
         "fast_path_positive_all_cells": fast_path_positive,
         "select_over_fuse_positive_all_cells": select_positive,
@@ -214,6 +339,19 @@ def write_csv(path, summaries):
         "unattached_over_stock_median",
         "unattached_over_stock_ci_low",
         "unattached_over_stock_ci_high",
+        "pass_over_stock_median", "pass_over_stock_ci_low",
+        "pass_over_stock_ci_high",
+        "select_over_stock_median", "select_over_stock_ci_low",
+        "select_over_stock_ci_high",
+        "fuse_over_stock_median", "fuse_over_stock_ci_low",
+        "fuse_over_stock_ci_high",
+        "pass_over_unattached_median", "pass_over_unattached_ci_low",
+        "pass_over_unattached_ci_high",
+        "select_over_pass_median", "select_over_pass_ci_low",
+        "select_over_pass_ci_high",
+        "select_over_unattached_median",
+        "select_over_unattached_ci_low",
+        "select_over_unattached_ci_high",
         "select_over_fuse_median", "select_over_fuse_ci_low",
         "select_over_fuse_ci_high",
         "fuse_setup_requests_median", "fuse_measured_requests_median",
@@ -236,6 +374,19 @@ def write_csv(path, summaries):
                     row["normalized_to_stock"]["unattached"]["ci_low"],
                 "unattached_over_stock_ci_high":
                     row["normalized_to_stock"]["unattached"]["ci_high"],
+                **{
+                    f"{condition}_over_stock_{field}":
+                        row["normalized_to_stock"][condition][field]
+                    for condition in ("pass", "select", "fuse")
+                    for field in ("median", "ci_low", "ci_high")
+                },
+                **{
+                    f"{name}_{field}": row[name][field]
+                    for name in ("pass_over_unattached",
+                                 "select_over_pass",
+                                 "select_over_unattached")
+                    for field in ("median", "ci_low", "ci_high")
+                },
                 "select_over_fuse_median":
                     row["select_over_fuse"]["median"],
                 "select_over_fuse_ci_low":
@@ -256,7 +407,7 @@ def write_markdown(path, summaries, verdict, repetitions, seed):
         f"- Repetitions: {repetitions} paired five-boot blocks",
         f"- Bootstrap samples: {BOOTSTRAP_SAMPLES}",
         f"- Bootstrap seed: {seed}",
-        f"- Tested hypothesis: **{verdict['tested_hypothesis']}**",
+        f"- Predeclared gate verdict: **{verdict['tested_hypothesis']}**",
         "",
         "| Test | Workers | Unattached / stock (95% CI) | "
         "SELECT / FUSE (95% CI) | FUSE measured requests |",
@@ -276,6 +427,36 @@ def write_markdown(path, summaries, verdict, repetitions, seed):
             f"{row['fuse_measured_requests_median']:.0f} |"
         )
     lines.extend([
+        "",
+        "## Active Policy Cost",
+        "",
+        "| Test | Workers | PASS / stock (95% CI) | "
+        "SELECT / stock (95% CI) | FUSE / stock (95% CI) | "
+        "SELECT / PASS (95% CI) |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ])
+    for row in summaries:
+        passed = row["normalized_to_stock"]["pass"]
+        selected = row["normalized_to_stock"]["select"]
+        fuse = row["normalized_to_stock"]["fuse"]
+        select_pass = row["select_over_pass"]
+        lines.append(
+            f"| {row['type']} | {row['workers']} | "
+            f"{passed['median']:.3f} "
+            f"[{passed['ci_low']:.3f}, {passed['ci_high']:.3f}] | "
+            f"{selected['median']:.3f} "
+            f"[{selected['ci_low']:.3f}, {selected['ci_high']:.3f}] | "
+            f"{fuse['median']:.3f} "
+            f"[{fuse['ci_low']:.3f}, {fuse['ci_high']:.3f}] | "
+            f"{select_pass['median']:.3f} "
+            f"[{select_pass['ci_low']:.3f}, "
+            f"{select_pass['ci_high']:.3f}] |"
+        )
+    lines.extend([
+        "",
+        "The verdict above covers only the two predeclared admission gates. "
+        "The active-policy table reports the full throughput cost and must be "
+        "interpreted with the primary table.",
         "",
         "This report is generated from the complete raw JSONL matrix. "
         "It is scoped to cache-hot `stat()` path resolution in the pinned "
@@ -346,18 +527,22 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--repetitions", required=True, type=int)
+    parser.add_argument("--run", required=True, type=Path)
     parser.add_argument("--seed", required=True, type=int)
     args = parser.parse_args()
 
     args.output.mkdir(parents=True, exist_ok=True)
+    plan = load_plan(args.run)
     rows = load_rows(args.input)
-    indexed = validate(rows, args.repetitions)
-    summaries = summarize(indexed, args.repetitions, args.seed)
+    indexed = validate(rows, plan)
+    summaries = summarize(indexed, plan["repetitions"], args.seed)
     verdict = classify(summaries)
     result = {
         "input": str(args.input),
-        "repetitions": args.repetitions,
+        "run": str(args.run),
+        "repetitions": plan["repetitions"],
+        "duration_seconds": plan["duration_seconds"],
+        "bpf_stats": plan["bpf_stats"],
         "bootstrap_samples": BOOTSTRAP_SAMPLES,
         "bootstrap_seed": args.seed,
         "verdict": verdict,
@@ -368,7 +553,7 @@ def main():
         output.write("\n")
     write_csv(args.output / "summary.csv", summaries)
     write_markdown(args.output / "report.md", summaries, verdict,
-                   args.repetitions, args.seed)
+                   plan["repetitions"], args.seed)
     write_figure(args.output, summaries)
 
 

@@ -485,6 +485,8 @@ static int write_observation(const struct cell_config *config, bool pass,
 			     const struct policy_stats *policy_after,
 			     unsigned long long fuse_setup,
 			     unsigned long long fuse_measured,
+			     unsigned long fuse_f_type_before,
+			     unsigned long fuse_f_type_after,
 			     bool cgroup_verified,
 			     const char *stdout_path, const char *stderr_path,
 			     const char *cgroup_path,
@@ -512,9 +514,11 @@ static int write_observation(const struct cell_config *config, bool pass,
 			"\"select_required_for_logical_path\":%s,"
 			"\"leader_cgroup_verified\":%s,"
 			"\"fuse_setup_requests\":%llu,"
-		"\"fuse_measured_requests\":%llu,"
-		"\"fuse_user_ns\":%llu,\"fuse_system_ns\":%llu,"
-		"\"fuse_voluntary_context_switches\":%ld,"
+			"\"fuse_measured_requests\":%llu,"
+			"\"fuse_f_type_before\":%lu,"
+			"\"fuse_f_type_after\":%lu,"
+			"\"fuse_user_ns\":%llu,\"fuse_system_ns\":%llu,"
+			"\"fuse_voluntary_context_switches\":%ld,"
 			"\"fuse_involuntary_context_switches\":%ld,"
 			"\"stdout\":\"%s\",\"stderr\":\"%s\","
 			"\"leader_cgroup\":\"%s\","
@@ -534,7 +538,8 @@ static int write_observation(const struct cell_config *config, bool pass,
 				"true" : "false",
 			!strcmp(config->condition, "select") ? "true" : "false",
 			cgroup_verified ? "true" : "false",
-			fuse_setup, fuse_measured, timeval_ns(fuse_usage->ru_utime),
+			fuse_setup, fuse_measured, fuse_f_type_before,
+			fuse_f_type_after, timeval_ns(fuse_usage->ru_utime),
 			timeval_ns(fuse_usage->ru_stime), fuse_usage->ru_nvcsw,
 			fuse_usage->ru_nivcsw, stdout_path, stderr_path,
 			cgroup_path, fuse_stats_path, pass ? "true" : "false");
@@ -613,6 +618,8 @@ int main(int argc, char **argv)
 	struct policy_stats policy_after = {};
 	unsigned long long fuse_setup = 0;
 	unsigned long long fuse_measured = 0;
+	unsigned long fuse_f_type_before = 0;
+	unsigned long fuse_f_type_after = 0;
 	pid_t fuse_pid = -1;
 	bool policy_loaded = false;
 	bool policy_parent_configured = false;
@@ -704,12 +711,20 @@ int main(int argc, char **argv)
 		snprintf(begin_command, sizeof(begin_command), "/bin/true");
 		snprintf(end_command, sizeof(end_command), "/bin/true");
 	} else if (!strcmp(config.condition, "fuse")) {
+		struct statfs fs;
+
 		if (mkdir_p(view) ||
 		    start_fuse(&config, lower, view, fuse_stats_path, &fuse_pid)) {
 			pass = false;
 			goto cleanup;
 		}
 		fuse_mounted = true;
+		if (statfs(view, &fs) ||
+		    (unsigned long)fs.f_type != FUSE_SUPER_MAGIC) {
+			pass = false;
+			goto cleanup;
+		}
+		fuse_f_type_before = (unsigned long)fs.f_type;
 		if (path_format(begin_command, sizeof(begin_command),
 				"/bin/kill -USR1 %ld", (long)fuse_pid) ||
 		    path_format(end_command, sizeof(end_command),
@@ -752,8 +767,11 @@ cleanup:
 		struct statfs fs;
 
 		if (statfs(view, &fs) ||
-		    (unsigned long)fs.f_type != FUSE_SUPER_MAGIC)
+		    (unsigned long)fs.f_type != FUSE_SUPER_MAGIC) {
 			pass = false;
+		} else {
+			fuse_f_type_after = (unsigned long)fs.f_type;
+		}
 		if (stop_fuse(fuse_pid, view, &fuse_usage, &fuse_status) ||
 		    fuse_status || read_file(fuse_stats_path, fuse_stats,
 					    sizeof(fuse_stats)) ||
@@ -779,7 +797,8 @@ cleanup:
 	if (write_observation(&config, pass, &result, &actual, &expected,
 			      fxmark_status, fuse_status, &fuse_usage,
 			      &policy_before, &policy_after, fuse_setup,
-			      fuse_measured, cgroup_verified, stdout_path,
+			      fuse_measured, fuse_f_type_before,
+			      fuse_f_type_after, cgroup_verified, stdout_path,
 			      stderr_path, cgroup_path, fuse_stats_path))
 		return 1;
 	namei_ext_remove_tree(config.work_root);

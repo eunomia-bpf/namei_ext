@@ -12,7 +12,7 @@ NAMEI_EXT_COMMA := ,
 NAMEI_EXT_BENCH_VARIANTS_NORMALIZED := $(subst :,$(NAMEI_EXT_SPACE),$(subst $(NAMEI_EXT_COMMA),$(NAMEI_EXT_SPACE),$(BENCH_VARIANTS)))
 TABLE_REDIRECT_BENCH_VARIANTS := $(filter table_redirect_empty table_redirect_hit,$(NAMEI_EXT_BENCH_VARIANTS_NORMALIZED))
 TABLE_REDIRECT_BENCH_ARG := $(if $(TABLE_REDIRECT_BENCH_VARIANTS),$(TABLE_REDIRECT_POLICY),-)
-NAMEI_EXT_DMESG_FAILURE_PATTERN := BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN
+NAMEI_EXT_DMESG_FAILURE_PATTERN := BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN|clocksource: Watchdog .*read timed out|Marking clocksource .* unstable
 
 define NAMEI_EXT_KVM_RUN_IMAGE
 $(VNG) --run "$(1)" $(VNG_MODULE_FLAGS) --user root --cwd "$(ROOT_DIR)" --disable-monitor --cpus "$(KVM_CPUS)" --memory "$(KVM_MEM)" --rwdir "$(ROOT_DIR)" --overlay-rwdir /tmp --append "$(KVM_APPEND)" --exec "$(MAKE) -C $(ROOT_DIR) $(2) RUN_ID=$(RUN_ID) $(3)"

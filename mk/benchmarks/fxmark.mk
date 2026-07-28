@@ -18,6 +18,61 @@ FXMARK_RESULT_DIR ?= $(RESULT_ROOT)/experiments/fxmark-rq2/$(RUN_ID)
 FXMARK_PREFLIGHT_RESULT_DIR ?= $(RESULT_ROOT)/experiments/fxmark-rq2-preflight/$(RUN_ID)
 FXMARK_GUEST_MOUNT ?= /tmp/namei-ext-fxmark-rq2
 
+define FXMARK_CAPTURE_RUN_ARTIFACTS
+install -d "$(1)/artifacts/kernel/patched" "$(1)/artifacts/kernel/stock" "$(1)/artifacts/runtime"
+install -m 0444 "$(KERNEL_IMAGE)" "$(1)/artifacts/kernel/patched/bzImage"
+install -m 0444 "$(KERNEL_BUILD_DIR)/.config" "$(1)/artifacts/kernel/patched/config"
+install -m 0444 "$(FXMARK_PATCHED_KERNEL_BTF)" "$(1)/artifacts/kernel/patched/vmlinux.btf"
+install -m 0444 "$(FXMARK_PATCHED_KERNEL_NOTES)" "$(1)/artifacts/kernel/patched/vmlinux.notes"
+install -m 0444 "$(STOCK_KERNEL_IMAGE)" "$(1)/artifacts/kernel/stock/bzImage"
+install -m 0444 "$(STOCK_KERNEL_BUILD_DIR)/.config" "$(1)/artifacts/kernel/stock/config"
+install -m 0444 "$(FXMARK_STOCK_KERNEL_BTF)" "$(1)/artifacts/kernel/stock/vmlinux.btf"
+install -m 0444 "$(FXMARK_STOCK_KERNEL_NOTES)" "$(1)/artifacts/kernel/stock/vmlinux.notes"
+install -m 0555 "$(FXMARK_BINARY)" "$(1)/artifacts/runtime/fxmark"
+install -m 0555 "$(FXMARK_CELL)" "$(1)/artifacts/runtime/fxmark_cell"
+install -m 0555 "$(FXMARK_FUSE)" "$(1)/artifacts/runtime/fxmark_fuse"
+install -m 0444 "$(FXMARK_PASS_POLICY)" "$(1)/artifacts/runtime/fxmark_pass.bpf.o"
+install -m 0444 "$(FXMARK_SELECT_POLICY)" "$(1)/artifacts/runtime/fxmark_select.bpf.o"
+jq -n \
+	--arg patched_commit "$$(cat "$(KERNEL_COMMIT_FILE)")" \
+	--arg patched_release "$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(KERNEL_RELEASE_HEADER)")" \
+	--arg patched_build_id "$$(readelf -n "$(KERNEL_BUILD_DIR)/vmlinux" | awk '/Build ID:/ {print $$3; exit}')" \
+	--arg patched_notes_sha256 "$$(sha256sum "$(1)/artifacts/kernel/patched/vmlinux.notes" | awk '{print $$1}')" \
+	--arg patched_btf_sha256 "$$(sha256sum "$(1)/artifacts/kernel/patched/vmlinux.btf" | awk '{print $$1}')" \
+	--arg stock_commit "$$(cat "$(STOCK_KERNEL_COMMIT_FILE)")" \
+	--arg stock_source_tree_sha256 "$$(cat "$(STOCK_KERNEL_SOURCE_HASH_FILE)")" \
+	--arg stock_release "$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(STOCK_KERNEL_RELEASE_HEADER)")" \
+	--arg stock_build_id "$$(readelf -n "$(STOCK_KERNEL_BUILD_DIR)/vmlinux" | awk '/Build ID:/ {print $$3; exit}')" \
+	--arg stock_notes_sha256 "$$(sha256sum "$(1)/artifacts/kernel/stock/vmlinux.notes" | awk '{print $$1}')" \
+	--arg stock_btf_sha256 "$$(sha256sum "$(1)/artifacts/kernel/stock/vmlinux.btf" | awk '{print $$1}')" \
+	'{patched:{commit:$$patched_commit,release:$$patched_release,build_id:$$patched_build_id,notes_sha256:$$patched_notes_sha256,btf_sha256:$$patched_btf_sha256,image:"artifacts/kernel/patched/bzImage",config:"artifacts/kernel/patched/config"},stock:{commit:$$stock_commit,source_tree_sha256:$$stock_source_tree_sha256,release:$$stock_release,build_id:$$stock_build_id,notes_sha256:$$stock_notes_sha256,btf_sha256:$$stock_btf_sha256,image:"artifacts/kernel/stock/bzImage",config:"artifacts/kernel/stock/config"},runtime:{fxmark:"artifacts/runtime/fxmark",cell:"artifacts/runtime/fxmark_cell",fuse:"artifacts/runtime/fxmark_fuse",pass_policy:"artifacts/runtime/fxmark_pass.bpf.o",select_policy:"artifacts/runtime/fxmark_select.bpf.o"}}' \
+	>"$(1)/artifacts/manifest.json.tmp"
+jq -e '.patched.commit | length == 40' "$(1)/artifacts/manifest.json.tmp" >/dev/null
+	jq -e '.stock.commit | length == 40' "$(1)/artifacts/manifest.json.tmp" >/dev/null
+	jq -e '.stock.source_tree_sha256 | length == 64' "$(1)/artifacts/manifest.json.tmp" >/dev/null
+jq -e '.patched.release | length > 0' "$(1)/artifacts/manifest.json.tmp" >/dev/null
+jq -e '.stock.release | length > 0' "$(1)/artifacts/manifest.json.tmp" >/dev/null
+jq -e '.patched.build_id | length > 0' "$(1)/artifacts/manifest.json.tmp" >/dev/null
+jq -e '.stock.build_id | length > 0' "$(1)/artifacts/manifest.json.tmp" >/dev/null
+mv -f "$(1)/artifacts/manifest.json.tmp" "$(1)/artifacts/manifest.json"
+sha256sum \
+	"$(1)/artifacts/kernel/patched/bzImage" \
+	"$(1)/artifacts/kernel/patched/config" \
+	"$(1)/artifacts/kernel/patched/vmlinux.btf" \
+	"$(1)/artifacts/kernel/patched/vmlinux.notes" \
+	"$(1)/artifacts/kernel/stock/bzImage" \
+	"$(1)/artifacts/kernel/stock/config" \
+	"$(1)/artifacts/kernel/stock/vmlinux.btf" \
+	"$(1)/artifacts/kernel/stock/vmlinux.notes" \
+	"$(1)/artifacts/runtime/fxmark" \
+	"$(1)/artifacts/runtime/fxmark_cell" \
+	"$(1)/artifacts/runtime/fxmark_fuse" \
+	"$(1)/artifacts/runtime/fxmark_pass.bpf.o" \
+	"$(1)/artifacts/runtime/fxmark_select.bpf.o" \
+	"$(1)/artifacts/manifest.json" \
+	>"$(1)/artifacts.sha256"
+endef
+
 .PHONY: fxmark-source fxmark-rq2-build fxmark-kernel-pair \
 	kvm-fxmark-rq2-preflight kvm-fxmark-rq2 \
 	fxmark-rq2-finalize fxmark-rq2-report experiment-fxmark-rq2 \
@@ -98,20 +153,26 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(FXMARK_PREFLIGHT_RESULT_DIR))
 	install -d "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots"
 	$(call NAMEI_EXT_RUN_START,$(FXMARK_PREFLIGHT_RESULT_DIR),fxmark-rq2,fxmark-atc2016,kvm_fxmark_rq2_preflight,$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl,fxmark_pass.bpf.c+fxmark_select.bpf.c,fxmark_cell+fxmark_fuse)
-	jq --arg stock_kernel_commit "$(STOCK_KERNEL_COMMIT)" \
+	$(call FXMARK_CAPTURE_RUN_ARTIFACTS,$(FXMARK_PREFLIGHT_RESULT_DIR))
+	jq --slurpfile kernel_artifacts "$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts/manifest.json" \
 		--argjson duration_seconds "$(FXMARK_PREFLIGHT_DURATION)" \
 		--argjson bpf_stats "$(FXMARK_BPF_STATS)" \
-		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","empty","pass","select","fuse"],types:["MRPL"],workers:[1],repetitions:1,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
+		'.layout = "boot-matrix" | .kernel_artifacts = $$kernel_artifacts[0] | .kernel_commits = {patched:$$kernel_artifacts[0].patched.commit,stock:$$kernel_artifacts[0].stock.commit} | .matrix = {conditions:["stock","unattached","empty","pass","select","fuse"],types:["MRPL"],workers:[1],repetitions:1,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
 		"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json" \
 		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json.tmp"
 	mv -f "$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json.tmp" \
 		"$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json"
+	jq --slurpfile manifest "$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts/manifest.json" -e '.kernel_artifacts == $$manifest[0] and .kernel.commit == .kernel_artifacts.patched.commit and .kernel_commit == .kernel_artifacts.patched.commit and .kernel_commits.patched == .kernel_artifacts.patched.commit and .kernel_commits.stock == .kernel_artifacts.stock.commit' "$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json" >/dev/null
 	printf '%s\n' \
 		'make kvm-fxmark-rq2-preflight RUN_ID=$(RUN_ID) FXMARK_BPF_STATS=$(FXMARK_BPF_STATS)' \
 		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/command.txt"
+	pkg-config --modversion fuse >"$(FXMARK_PREFLIGHT_RESULT_DIR)/fuse-version.txt"
+	ldd "$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts/runtime/fxmark_fuse" >"$(FXMARK_PREFLIGHT_RESULT_DIR)/fxmark-fuse-ldd.txt"
 	sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
+		"$(ROOT_DIR)/configs/kvm/x86_64.mk" \
 		"$(ROOT_DIR)/mk/benchmarks/fxmark.mk" \
 		"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/kvm.mk" \
+		"$(ROOT_DIR)/mk/kernel.mk" \
 		"$(ROOT_DIR)/bench/fxmark/fxmark-correctness.patch" \
 		"$(ROOT_DIR)/bench/fxmark/fxmark_cell.c" \
 		"$(ROOT_DIR)/bench/fxmark/fxmark_fuse.c" \
@@ -119,57 +180,62 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 		"$(ROOT_DIR)/bpf/policies/fxmark_select.bpf.c" \
 		"$(ROOT_DIR)/docs/tmp/2026-07-26-rq2-fxmark-experiment-plan.md" \
 		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/inputs.sha256"
-	sha256sum "$(FXMARK_BINARY)" "$(FXMARK_CELL)" "$(FXMARK_FUSE)" \
-		"$(FXMARK_PASS_POLICY)" "$(FXMARK_SELECT_POLICY)" \
-		"$(KERNEL_IMAGE)" "$(STOCK_KERNEL_IMAGE)" \
-		"$(KERNEL_BUILD_DIR)/vmlinux" "$(STOCK_KERNEL_BUILD_DIR)/vmlinux" \
-		"$(FXMARK_PATCHED_KERNEL_BTF)" "$(FXMARK_STOCK_KERNEL_BTF)" \
-		"$(FXMARK_PATCHED_KERNEL_NOTES)" "$(FXMARK_STOCK_KERNEL_NOTES)" \
-		"$(KERNEL_BUILD_DIR)/.config" \
-		"$(STOCK_KERNEL_BUILD_DIR)/.config" \
-		>"$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts.sha256"
 	: >"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"
 	: >"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"
+	manifest="$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts/manifest.json"; \
+	fxmark_binary="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.fxmark' "$$manifest")"; \
+	fxmark_cell="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.cell' "$$manifest")"; \
+	fxmark_fuse="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.fuse' "$$manifest")"; \
+	pass_policy="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.pass_policy' "$$manifest")"; \
+	select_policy="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.select_policy' "$$manifest")"; \
 	conditions=(stock unattached empty pass select fuse); \
 	for condition in "$${conditions[@]}"; do \
 		case "$$condition" in \
-		stock|fuse) image="$(STOCK_KERNEL_IMAGE)"; config="$(STOCK_KERNEL_BUILD_DIR)/.config"; vmlinux="$(STOCK_KERNEL_BUILD_DIR)/vmlinux"; commit="$(STOCK_KERNEL_COMMIT)"; btf="$(FXMARK_STOCK_KERNEL_BTF)"; notes="$(FXMARK_STOCK_KERNEL_NOTES)"; flavor=stock ;; \
-		unattached|empty|pass|select) image="$(KERNEL_IMAGE)"; config="$(KERNEL_BUILD_DIR)/.config"; vmlinux="$(KERNEL_BUILD_DIR)/vmlinux"; commit="$$(cat "$(KERNEL_COMMIT_FILE)")"; btf="$(FXMARK_PATCHED_KERNEL_BTF)"; notes="$(FXMARK_PATCHED_KERNEL_NOTES)"; flavor=patched ;; \
+		stock|fuse) flavor=stock ;; \
+		unattached|empty|pass|select) flavor=patched ;; \
 		*) exit 1 ;; \
 		esac; \
-		btf_sha=$$(sha256sum "$$btf" | awk '{print $$1}'); \
-		notes_sha=$$(sha256sum "$$notes" | awk '{print $$1}'); \
-		build_id=$$(readelf -n "$$vmlinux" | awk '/Build ID:/ {print $$3; exit}'); \
-		test -n "$$build_id"; \
-		printf '1|%s|%s|%s|%s|%s\n' "$$condition" "$$commit" "$$build_id" "$$notes_sha" "$$btf_sha" >>"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"; \
+		image="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r --arg flavor "$$flavor" '.[$$flavor].image' "$$manifest")"; \
+		config="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r --arg flavor "$$flavor" '.[$$flavor].config' "$$manifest")"; \
+		commit=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].commit' "$$manifest"); \
+		build_id=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].build_id' "$$manifest"); \
+		notes_sha=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].notes_sha256' "$$manifest"); \
+		btf_sha=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].btf_sha256' "$$manifest"); \
+		release=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].release' "$$manifest"); \
+		printf '1|%s|%s|%s|%s|%s|%s\n' "$$condition" "$$commit" "$$build_id" "$$notes_sha" "$$btf_sha" "$$release" >>"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"; \
 		printf '1|%s|MRPL|1\n' "$$condition" >>"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"; \
 		boot_dir="$(FXMARK_PREFLIGHT_RESULT_DIR)/boots/block-01-$$condition"; \
 		install -d "$$boot_dir"; \
-		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=1 FXMARK_RUN_DURATION=$(FXMARK_PREFLIGHT_DURATION) FXMARK_RUN_TYPES=MRPL FXMARK_RUN_CORES=1 FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_PREFLIGHT_RESULT_DIR)); \
+		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=1 FXMARK_RUN_DURATION=$(FXMARK_PREFLIGHT_DURATION) FXMARK_RUN_TYPES=MRPL FXMARK_RUN_CORES=1 FXMARK_RUN_BINARY=$$fxmark_binary FXMARK_RUN_CELL=$$fxmark_cell FXMARK_RUN_FUSE=$$fxmark_fuse FXMARK_RUN_PASS_POLICY=$$pass_policy FXMARK_RUN_SELECT_POLICY=$$select_policy FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_RELEASE=$$release FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_PREFLIGHT_RESULT_DIR)); \
 	done
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"
 	find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name observations.jsonl -print0 \
 		| sort -z | xargs -0 cat >"$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl"
 	jq -s -r '.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl" | LC_ALL=C sort >"$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-cells.txt"
-	find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | xargs -0 jq -r '"\(.repetition)|\(.condition)|\(.kernel_commit)|\(.kernel_build_id)|\(.kernel_notes_sha256)|\(.kernel_btf_sha256)"' | LC_ALL=C sort >"$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-boots.txt"
+	find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | xargs -0 jq -r '"\(.repetition)|\(.condition)|\(.kernel_commit)|\(.kernel_build_id)|\(.kernel_notes_sha256)|\(.kernel_btf_sha256)|\(.kernel_release)"' | LC_ALL=C sort >"$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-boots.txt"
 	cmp "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-cells.txt"
 	cmp "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/observed-boots.txt"
+	sha256sum -c "$(FXMARK_PREFLIGHT_RESULT_DIR)/inputs.sha256"
+	sha256sum -c "$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts.sha256"
 	test "$$(jq -s 'length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "6"
 	test "$$(jq -s '[.[] | select(.pass == true)] | length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "6"
 	test "$$(jq -s '[.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"] | unique | length' "$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl")" = "6"
 	test "$$(find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -type f | wc -l)" = "6"
+	find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | \
+		xargs -0 jq -s -e 'group_by(.kernel_flavor) | length == 2 and all(.[]; ([.[] | [.kernel_commit,.kernel_build_id,.kernel_notes_sha256,.kernel_btf_sha256,.kernel_release]] | unique | length) == 1)' >/dev/null
 	for boot in "$(FXMARK_PREFLIGHT_RESULT_DIR)"/boots/*; do \
 		for file in launcher.stdout.log launcher.stderr.log; do \
 			test -e "$$boot/$$file"; \
 		done; \
-		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
+		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
 			test -s "$$boot/$$file"; \
 		done; \
-		jq -e '.status == "completed"' "$$boot/boot.json" >/dev/null; \
+		jq -e '.status == "completed" and .clocksource == "tsc"' "$$boot/boot.json" >/dev/null; \
 	done
+	for file in fuse-version.txt fxmark-fuse-ldd.txt; do test -s "$(FXMARK_PREFLIGHT_RESULT_DIR)/$$file"; done
 	$(call NAMEI_EXT_RUN_VALIDATE_BASE,$(FXMARK_PREFLIGHT_RESULT_DIR),$(FXMARK_PREFLIGHT_RESULT_DIR)/observations.jsonl)
-	jq -e '.layout == "boot-matrix" and (.kernel_commits | keys | sort) == ["patched","stock"]' "$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json" >/dev/null
+	jq --slurpfile manifest "$(FXMARK_PREFLIGHT_RESULT_DIR)/artifacts/manifest.json" -e '.layout == "boot-matrix" and (.kernel_commits | keys | sort) == ["patched","stock"] and .kernel_artifacts == $$manifest[0] and .kernel.commit == .kernel_artifacts.patched.commit and .kernel_commit == .kernel_artifacts.patched.commit and .kernel_commits.patched == .kernel_artifacts.patched.commit and .kernel_commits.stock == .kernel_artifacts.stock.commit' "$(FXMARK_PREFLIGHT_RESULT_DIR)/run.json" >/dev/null
 	$(call NAMEI_EXT_RUN_COMPLETE,$(FXMARK_PREFLIGHT_RESULT_DIR))
 
 kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
@@ -177,25 +243,36 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(FXMARK_RESULT_DIR))
 	install -d "$(FXMARK_RESULT_DIR)/boots"
 	$(call NAMEI_EXT_RUN_START,$(FXMARK_RESULT_DIR),fxmark-rq2,fxmark-atc2016,kvm_fxmark_rq2_matrix,$(FXMARK_RESULT_DIR)/observations.jsonl,fxmark_pass.bpf.c+fxmark_select.bpf.c,fxmark_cell+fxmark_fuse)
-	jq --arg stock_kernel_commit "$(STOCK_KERNEL_COMMIT)" \
+	$(call FXMARK_CAPTURE_RUN_ARTIFACTS,$(FXMARK_RESULT_DIR))
+	jq --slurpfile kernel_artifacts "$(FXMARK_RESULT_DIR)/artifacts/manifest.json" \
 		--argjson repetitions "$(FXMARK_REPETITIONS)" \
 		--arg types "$(FXMARK_TYPES)" \
 		--arg cores "$(FXMARK_CORES)" \
 		--argjson duration_seconds "$(FXMARK_DURATION)" \
 		--argjson bpf_stats "$(FXMARK_BPF_STATS)" \
-		'.layout = "boot-matrix" | .kernel_commits = {patched:.kernel_commit,stock:$$stock_kernel_commit} | .matrix = {conditions:["stock","unattached","pass","select","fuse"],types:($$types|split(" ")),workers:($$cores|split(" ")|map(tonumber)),repetitions:$$repetitions,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
+		'.layout = "boot-matrix" | .kernel_artifacts = $$kernel_artifacts[0] | .kernel_commits = {patched:$$kernel_artifacts[0].patched.commit,stock:$$kernel_artifacts[0].stock.commit} | .matrix = {conditions:["stock","unattached","pass","select","fuse"],types:($$types|split(" ")),workers:($$cores|split(" ")|map(tonumber)),repetitions:$$repetitions,duration_seconds:$$duration_seconds,bpf_stats:$$bpf_stats}' \
 		"$(FXMARK_RESULT_DIR)/run.json" \
 		>"$(FXMARK_RESULT_DIR)/run.json.tmp"
 	mv -f "$(FXMARK_RESULT_DIR)/run.json.tmp" "$(FXMARK_RESULT_DIR)/run.json"
+	jq --slurpfile manifest "$(FXMARK_RESULT_DIR)/artifacts/manifest.json" -e '.kernel_artifacts == $$manifest[0] and .kernel.commit == .kernel_artifacts.patched.commit and .kernel_commit == .kernel_artifacts.patched.commit and .kernel_commits.patched == .kernel_artifacts.patched.commit and .kernel_commits.stock == .kernel_artifacts.stock.commit' "$(FXMARK_RESULT_DIR)/run.json" >/dev/null
 	printf '%s\n' 'make kvm-fxmark-rq2 RUN_ID=$(RUN_ID) FXMARK_BPF_STATS=$(FXMARK_BPF_STATS)' \
 		>"$(FXMARK_RESULT_DIR)/command.txt"
 	lscpu >"$(FXMARK_RESULT_DIR)/host-lscpu.txt"
-	find /sys/devices/system/cpu -path '*/cpufreq/scaling_governor' \
-		-type f -print -exec sed -n '1p' {} \; \
-		>"$(FXMARK_RESULT_DIR)/host-governors.txt"
+	found=false; \
+	for file in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do \
+		test -f "$$file" || continue; \
+		found=true; \
+		printf '%s ' "$$file"; \
+		sed -n '1p' "$$file"; \
+	done >"$(FXMARK_RESULT_DIR)/host-governors.txt"; \
+	if ! $$found; then printf '%s\n' 'cpufreq-sysfs-unavailable' >"$(FXMARK_RESULT_DIR)/host-governors.txt"; fi
+	pkg-config --modversion fuse >"$(FXMARK_RESULT_DIR)/fuse-version.txt"
+	ldd "$(FXMARK_RESULT_DIR)/artifacts/runtime/fxmark_fuse" >"$(FXMARK_RESULT_DIR)/fxmark-fuse-ldd.txt"
 	sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
+		"$(ROOT_DIR)/configs/kvm/x86_64.mk" \
 		"$(ROOT_DIR)/mk/benchmarks/fxmark.mk" \
 		"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/kvm.mk" \
+		"$(ROOT_DIR)/mk/kernel.mk" \
 		"$(ROOT_DIR)/bench/fxmark/fxmark-correctness.patch" \
 		"$(ROOT_DIR)/bench/fxmark/fxmark_cell.c" \
 		"$(ROOT_DIR)/bench/fxmark/fxmark_fuse.c" \
@@ -204,43 +281,40 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 		"$(ROOT_DIR)/analysis/fxmark/analyze.py" \
 		"$(ROOT_DIR)/docs/tmp/2026-07-26-rq2-fxmark-experiment-plan.md" \
 		>"$(FXMARK_RESULT_DIR)/inputs.sha256"
-	sha256sum "$(FXMARK_BINARY)" "$(FXMARK_CELL)" "$(FXMARK_FUSE)" \
-		"$(FXMARK_PASS_POLICY)" "$(FXMARK_SELECT_POLICY)" \
-		"$(KERNEL_IMAGE)" "$(STOCK_KERNEL_IMAGE)" \
-		"$(KERNEL_BUILD_DIR)/vmlinux" "$(STOCK_KERNEL_BUILD_DIR)/vmlinux" \
-		"$(FXMARK_PATCHED_KERNEL_BTF)" "$(FXMARK_STOCK_KERNEL_BTF)" \
-		"$(FXMARK_PATCHED_KERNEL_NOTES)" "$(FXMARK_STOCK_KERNEL_NOTES)" \
-		"$(KERNEL_BUILD_DIR)/.config" \
-		"$(STOCK_KERNEL_BUILD_DIR)/.config" \
-		>"$(FXMARK_RESULT_DIR)/artifacts.sha256"
 	: >"$(FXMARK_RESULT_DIR)/expected-boots.txt"
 	: >"$(FXMARK_RESULT_DIR)/expected-cells.txt"
+	manifest="$(FXMARK_RESULT_DIR)/artifacts/manifest.json"; \
+	fxmark_binary="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.fxmark' "$$manifest")"; \
+	fxmark_cell="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.cell' "$$manifest")"; \
+	fxmark_fuse="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.fuse' "$$manifest")"; \
+	pass_policy="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.pass_policy' "$$manifest")"; \
+	select_policy="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.select_policy' "$$manifest")"; \
 	base=(stock unattached pass select fuse); \
 	for repetition in $$(seq 1 "$(FXMARK_REPETITIONS)"); do \
 		offset=$$(((repetition - 1) % 5)); \
 		for step in 0 1 2 3 4; do \
 			condition="$${base[$$(((offset + step) % 5))]}"; \
 			case "$$condition" in \
-			stock|fuse) image="$(STOCK_KERNEL_IMAGE)"; config="$(STOCK_KERNEL_BUILD_DIR)/.config"; vmlinux="$(STOCK_KERNEL_BUILD_DIR)/vmlinux"; commit="$(STOCK_KERNEL_COMMIT)"; btf="$(FXMARK_STOCK_KERNEL_BTF)"; notes="$(FXMARK_STOCK_KERNEL_NOTES)"; flavor=stock ;; \
-			unattached|pass|select) image="$(KERNEL_IMAGE)"; config="$(KERNEL_BUILD_DIR)/.config"; vmlinux="$(KERNEL_BUILD_DIR)/vmlinux"; commit="$$(cat "$(KERNEL_COMMIT_FILE)")"; btf="$(FXMARK_PATCHED_KERNEL_BTF)"; notes="$(FXMARK_PATCHED_KERNEL_NOTES)"; flavor=patched ;; \
+			stock|fuse) flavor=stock ;; \
+			unattached|pass|select) flavor=patched ;; \
 			*) exit 1 ;; \
 			esac; \
-			btf_sha=$$(sha256sum "$$btf" | awk '{print $$1}'); \
-			notes_sha=$$(sha256sum "$$notes" | awk '{print $$1}'); \
-			build_id=$$(readelf -n "$$vmlinux" | awk '/Build ID:/ {print $$3; exit}'); \
-			test -n "$$build_id"; \
-			printf '%s|%s|%s|%s|%s|%s\n' "$$repetition" "$$condition" "$$commit" "$$build_id" "$$notes_sha" "$$btf_sha" >>"$(FXMARK_RESULT_DIR)/expected-boots.txt"; \
+			image="$(FXMARK_RESULT_DIR)/$$(jq -r --arg flavor "$$flavor" '.[$$flavor].image' "$$manifest")"; \
+			config="$(FXMARK_RESULT_DIR)/$$(jq -r --arg flavor "$$flavor" '.[$$flavor].config' "$$manifest")"; \
+			commit=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].commit' "$$manifest"); \
+			build_id=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].build_id' "$$manifest"); \
+			notes_sha=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].notes_sha256' "$$manifest"); \
+			btf_sha=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].btf_sha256' "$$manifest"); \
+			release=$$(jq -r --arg flavor "$$flavor" '.[$$flavor].release' "$$manifest"); \
+			printf '%s|%s|%s|%s|%s|%s|%s\n' "$$repetition" "$$condition" "$$commit" "$$build_id" "$$notes_sha" "$$btf_sha" "$$release" >>"$(FXMARK_RESULT_DIR)/expected-boots.txt"; \
 			for type in $(FXMARK_TYPES); do for workers in $(FXMARK_CORES); do printf '%s|%s|%s|%s\n' "$$repetition" "$$condition" "$$type" "$$workers" >>"$(FXMARK_RESULT_DIR)/expected-cells.txt"; done; done; \
 			boot_dir="$(FXMARK_RESULT_DIR)/boots/block-$$(printf '%02d' "$$repetition")-$$condition"; \
 			install -d "$$boot_dir"; \
-			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=$$repetition FXMARK_RUN_DURATION=$(FXMARK_DURATION) FXMARK_RUN_TYPES='$(FXMARK_TYPES)' FXMARK_RUN_CORES='$(FXMARK_CORES)' FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_RESULT_DIR)); \
+			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=$$repetition FXMARK_RUN_DURATION=$(FXMARK_DURATION) FXMARK_RUN_TYPES='$(FXMARK_TYPES)' FXMARK_RUN_CORES='$(FXMARK_CORES)' FXMARK_RUN_BINARY=$$fxmark_binary FXMARK_RUN_CELL=$$fxmark_cell FXMARK_RUN_FUSE=$$fxmark_fuse FXMARK_RUN_PASS_POLICY=$$pass_policy FXMARK_RUN_SELECT_POLICY=$$select_policy FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_RELEASE=$$release FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_RESULT_DIR)); \
 		done; \
 	done
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-rq2-finalize \
-		RUN_ID="$(RUN_ID)" \
-		FXMARK_REPETITIONS="$(FXMARK_REPETITIONS)" \
-		FXMARK_TYPES="$(FXMARK_TYPES)" \
-		FXMARK_CORES="$(FXMARK_CORES)"
+		RUN_ID="$(RUN_ID)"
 
 fxmark-rq2-finalize:
 	jq -e '.status == "running" and (.completed_at | not) and (.failed_at | not)' "$(FXMARK_RESULT_DIR)/run.json" >/dev/null
@@ -249,34 +323,41 @@ fxmark-rq2-finalize:
 	find "$(FXMARK_RESULT_DIR)/boots" -name observations.jsonl -print0 \
 		| sort -z | xargs -0 cat >"$(FXMARK_RESULT_DIR)/observations.jsonl"
 	jq -s -r '.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"' "$(FXMARK_RESULT_DIR)/observations.jsonl" | LC_ALL=C sort >"$(FXMARK_RESULT_DIR)/observed-cells.txt"
-	find "$(FXMARK_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | xargs -0 jq -r '"\(.repetition)|\(.condition)|\(.kernel_commit)|\(.kernel_build_id)|\(.kernel_notes_sha256)|\(.kernel_btf_sha256)"' | LC_ALL=C sort >"$(FXMARK_RESULT_DIR)/observed-boots.txt"
+	find "$(FXMARK_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | xargs -0 jq -r '"\(.repetition)|\(.condition)|\(.kernel_commit)|\(.kernel_build_id)|\(.kernel_notes_sha256)|\(.kernel_btf_sha256)|\(.kernel_release)"' | LC_ALL=C sort >"$(FXMARK_RESULT_DIR)/observed-boots.txt"
 	cmp "$(FXMARK_RESULT_DIR)/expected-cells.txt" "$(FXMARK_RESULT_DIR)/observed-cells.txt"
 	cmp "$(FXMARK_RESULT_DIR)/expected-boots.txt" "$(FXMARK_RESULT_DIR)/observed-boots.txt"
-	expected=$$((5 * $(FXMARK_REPETITIONS) * $$(wc -w <<<"$(FXMARK_TYPES)") * $$(wc -w <<<"$(FXMARK_CORES)"))); \
+	sha256sum -c "$(FXMARK_RESULT_DIR)/inputs.sha256"
+	sha256sum -c "$(FXMARK_RESULT_DIR)/artifacts.sha256"
+	expected=$$(jq '.matrix | (.conditions | length) * (.types | length) * (.workers | length) * .repetitions' "$(FXMARK_RESULT_DIR)/run.json"); \
 	test "$$(jq -s 'length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"; \
 	test "$$(jq -s '[.[] | select(.pass == true)] | length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"; \
 	test "$$(jq -s '[.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"] | unique | length' "$(FXMARK_RESULT_DIR)/observations.jsonl")" = "$$expected"
-	expected_boots=$$((5 * $(FXMARK_REPETITIONS))); \
+	expected_boots=$$(jq '.matrix | (.conditions | length) * .repetitions' "$(FXMARK_RESULT_DIR)/run.json"); \
 	test "$$(find "$(FXMARK_RESULT_DIR)/boots" -name boot.json -type f | wc -l)" = "$$expected_boots"
+	find "$(FXMARK_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | \
+		xargs -0 jq -s -e 'group_by(.kernel_flavor) | length == 2 and all(.[]; ([.[] | [.kernel_commit,.kernel_build_id,.kernel_notes_sha256,.kernel_btf_sha256,.kernel_release]] | unique | length) == 1)' >/dev/null
 	for boot in "$(FXMARK_RESULT_DIR)"/boots/*; do \
 		for file in launcher.stdout.log launcher.stderr.log; do \
 			test -e "$$boot/$$file"; \
 		done; \
-		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
+		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
 			test -s "$$boot/$$file"; \
 		done; \
-		jq -e '.status == "completed"' "$$boot/boot.json" >/dev/null; \
+		jq -e '.status == "completed" and .clocksource == "tsc"' "$$boot/boot.json" >/dev/null; \
 	done
+	for file in host-lscpu.txt host-governors.txt fuse-version.txt fxmark-fuse-ldd.txt; do test -s "$(FXMARK_RESULT_DIR)/$$file"; done
 	$(call NAMEI_EXT_RUN_VALIDATE_BASE,$(FXMARK_RESULT_DIR),$(FXMARK_RESULT_DIR)/observations.jsonl)
-	jq -e '.layout == "boot-matrix" and (.kernel_commits | keys | sort) == ["patched","stock"]' "$(FXMARK_RESULT_DIR)/run.json" >/dev/null
+	jq --slurpfile manifest "$(FXMARK_RESULT_DIR)/artifacts/manifest.json" -e '.layout == "boot-matrix" and (.kernel_commits | keys | sort) == ["patched","stock"] and .kernel_artifacts == $$manifest[0] and .kernel.commit == .kernel_artifacts.patched.commit and .kernel_commit == .kernel_artifacts.patched.commit and .kernel_commits.patched == .kernel_artifacts.patched.commit and .kernel_commits.stock == .kernel_artifacts.stock.commit' "$(FXMARK_RESULT_DIR)/run.json" >/dev/null
 	$(call NAMEI_EXT_RUN_COMPLETE,$(FXMARK_RESULT_DIR))
 
 fxmark-rq2-report:
 	jq -e '.status == "completed"' "$(FXMARK_RESULT_DIR)/run.json" >/dev/null
+	sha256sum -c "$(FXMARK_RESULT_DIR)/inputs.sha256"
+	sha256sum -c "$(FXMARK_RESULT_DIR)/artifacts.sha256"
 	python3 "$(ROOT_DIR)/analysis/fxmark/analyze.py" \
 		--input "$(FXMARK_RESULT_DIR)/observations.jsonl" \
 		--output "$(FXMARK_RESULT_DIR)/analysis" \
-		--repetitions "$(FXMARK_REPETITIONS)" \
+		--run "$(FXMARK_RESULT_DIR)/run.json" \
 		--seed "$(FXMARK_ANALYSIS_SEED)"
 	for file in summary.json summary.csv report.md throughput.png throughput.pdf; do \
 		test -s "$(FXMARK_RESULT_DIR)/analysis/$$file"; \
@@ -284,8 +365,7 @@ fxmark-rq2-report:
 
 experiment-fxmark-rq2: kvm-fxmark-rq2
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-rq2-report \
-		RUN_ID="$(RUN_ID)" \
-		FXMARK_REPETITIONS="$(FXMARK_REPETITIONS)"
+		RUN_ID="$(RUN_ID)"
 
 __fxmark_rq2_guest:
 	test -n "$(CONDITION)"
@@ -293,12 +373,18 @@ __fxmark_rq2_guest:
 	test -n "$(FXMARK_RUN_DURATION)"
 	test -n "$(FXMARK_RUN_TYPES)"
 	test -n "$(FXMARK_RUN_CORES)"
+	test -x "$(FXMARK_RUN_BINARY)"
+	test -x "$(FXMARK_RUN_CELL)"
+	test -x "$(FXMARK_RUN_FUSE)"
+	test -r "$(FXMARK_RUN_PASS_POLICY)"
+	test -r "$(FXMARK_RUN_SELECT_POLICY)"
 	test -n "$(FXMARK_BOOT_RESULT_DIR)"
 	test -n "$(FXMARK_BOOT_KERNEL_CONFIG)"
 	test -n "$(FXMARK_BOOT_KERNEL_COMMIT)"
 	test -n "$(FXMARK_BOOT_KERNEL_BUILD_ID)"
 	test -n "$(FXMARK_BOOT_KERNEL_NOTES_SHA256)"
 	test -n "$(FXMARK_BOOT_KERNEL_BTF_SHA256)"
+	test -n "$(FXMARK_BOOT_KERNEL_RELEASE)"
 	test -n "$(FXMARK_BOOT_KERNEL_FLAVOR)"
 	case "$(FXMARK_BPF_STATS)" in 0|1) ;; *) exit 1 ;; esac
 	install -d "$(FXMARK_BOOT_RESULT_DIR)/raw" "$(FXMARK_GUEST_MOUNT)"
@@ -320,15 +406,20 @@ __fxmark_rq2_guest:
 	if grep -q ' [Tt] namei_ext_lookup$$' /proc/kallsyms; then actual_flavor=patched; else actual_flavor=stock; fi; \
 	test "$$actual_flavor" = "$(FXMARK_BOOT_KERNEL_FLAVOR)"; \
 	printf '%s\n' "$$actual_flavor" >"$(FXMARK_BOOT_RESULT_DIR)/kernel-flavor.txt"
-	uname -r >"$(FXMARK_BOOT_RESULT_DIR)/kernel-release.txt"
+	actual_release=$$(uname -r); \
+	test "$$actual_release" = "$(FXMARK_BOOT_KERNEL_RELEASE)"; \
+	printf '%s\n' "$$actual_release" >"$(FXMARK_BOOT_RESULT_DIR)/kernel-release.txt"
 	uname -a >"$(FXMARK_BOOT_RESULT_DIR)/uname.txt"
 	cat /proc/version >"$(FXMARK_BOOT_RESULT_DIR)/proc-version.txt"
 	cat /proc/cmdline >"$(FXMARK_BOOT_RESULT_DIR)/kernel-cmdline.txt"
+	clocksource=$$(cat /sys/devices/system/clocksource/clocksource0/current_clocksource); \
+	test "$$clocksource" = tsc; \
+	printf '%s\n' "$$clocksource" >"$(FXMARK_BOOT_RESULT_DIR)/clocksource-before.txt"
 	cat /proc/stat >"$(FXMARK_BOOT_RESULT_DIR)/proc-stat-before.txt"
 	policy="-"; \
 	case "$(CONDITION)" in \
-	empty|pass) policy="$(FXMARK_PASS_POLICY)" ;; \
-	select) policy="$(FXMARK_SELECT_POLICY)" ;; \
+	empty|pass) policy="$(FXMARK_RUN_PASS_POLICY)" ;; \
+	select) policy="$(FXMARK_RUN_SELECT_POLICY)" ;; \
 	stock|unattached|fuse) ;; \
 	*) exit 1 ;; \
 	esac; \
@@ -337,8 +428,8 @@ __fxmark_rq2_guest:
 			cell="$${type}-$${cores}"; \
 			work="$(FXMARK_GUEST_MOUNT)/cell-$${cell}"; \
 			raw="$(FXMARK_BOOT_RESULT_DIR)/raw/$${cell}"; \
-			"$(FXMARK_CELL)" "$(CONDITION)" "$(FXMARK_BINARY)" \
-			"$(FXMARK_FUSE)" "$$policy" \
+			"$(FXMARK_RUN_CELL)" "$(CONDITION)" "$(FXMARK_RUN_BINARY)" \
+			"$(FXMARK_RUN_FUSE)" "$$policy" \
 				"$(FXMARK_BOOT_RESULT_DIR)/observations.jsonl" "$$raw" \
 				"$$work" /sys/fs/cgroup "$$type" "$$cores" \
 				"$(FXMARK_RUN_DURATION)" "$(FXMARK_CELL_TIMEOUT)" \
@@ -346,6 +437,9 @@ __fxmark_rq2_guest:
 		done; \
 	done
 	cat /proc/stat >"$(FXMARK_BOOT_RESULT_DIR)/proc-stat-after.txt"
+	clocksource=$$(cat /sys/devices/system/clocksource/clocksource0/current_clocksource); \
+	test "$$clocksource" = "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/clocksource-before.txt")"; \
+	printf '%s\n' "$$clocksource" >"$(FXMARK_BOOT_RESULT_DIR)/clocksource-after.txt"
 	dmesg >"$(FXMARK_BOOT_RESULT_DIR)/dmesg.log"
 	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(FXMARK_BOOT_RESULT_DIR)/dmesg.log)
 	umount "$(FXMARK_GUEST_MOUNT)"
@@ -358,8 +452,9 @@ __fxmark_rq2_guest:
 		--arg kernel_btf_sha256 "$(FXMARK_BOOT_KERNEL_BTF_SHA256)" \
 		--arg kernel_flavor "$(FXMARK_BOOT_KERNEL_FLAVOR)" \
 		--arg kernel_release "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/kernel-release.txt")" \
+		--arg clocksource "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/clocksource-after.txt")" \
 		--arg completed_at "$$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-		'{condition:$$condition,repetition:$$repetition,kernel_commit:$$kernel_commit,kernel_build_id:$$kernel_build_id,kernel_notes_sha256:$$kernel_notes_sha256,kernel_btf_sha256:$$kernel_btf_sha256,kernel_flavor:$$kernel_flavor,kernel_release:$$kernel_release,status:"completed",completed_at:$$completed_at}' \
+		'{condition:$$condition,repetition:$$repetition,kernel_commit:$$kernel_commit,kernel_build_id:$$kernel_build_id,kernel_notes_sha256:$$kernel_notes_sha256,kernel_btf_sha256:$$kernel_btf_sha256,kernel_flavor:$$kernel_flavor,kernel_release:$$kernel_release,clocksource:$$clocksource,status:"completed",completed_at:$$completed_at}' \
 		>"$(FXMARK_BOOT_RESULT_DIR)/boot.json"
 
 fxmark-rq2-clean:

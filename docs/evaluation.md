@@ -186,12 +186,15 @@ build/cache cases whose pathname view is the behavior under study.
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
-| Complete matched matrix | Valid: 50 KVM boots, 450/450 unique passing observations, no exclusions, exact boot/cell sets | `results/experiments/fxmark-rq2/20260726T-rq2-fxmark-full-v2/` |
-| Patched-unattached versus stock | Hypothesis contradicted: median ratio `0.867--0.942`; all nine CI upper bounds below `0.98` | Same raw root and `analysis/summary.csv` |
-| Attached `SELECT` versus optimized FUSE | Hypothesis contradicted for the stable cache-hot view: median ratio `0.314--0.570`; all nine CIs below `1` | Same raw root and `analysis/report.md` |
-| Attached-path ablation | `PASS` accounts for most active cost: paired `PASS`/unattached medians `0.298--0.547`; `SELECT`/`PASS` is `0.980--1.004` | Same raw root; independently recomputed |
-| Baseline engagement | FUSE setup median requests `28--195,433`, measured-phase median requests `1--18`; valid for stable cache-hot policy, not update/invalidation behavior | Same raw root |
-| Result review | Run valid; hypothesis contradicted; decisive mechanism/workload boundary; implementation redesign and fresh rerun required | `docs/tmp/2026-07-27-rq2-fxmark-result-review.md` |
+| Provenance-defective repeated matrix | Numerically complete: 50 fresh KVM boots and 450/450 passing observations, but invalid for publication because patched boots contain pre-commit `g83d52c2168e2-dirty` rather than recorded `bdc9a83e3` | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v2/` |
+| Patched-unattached versus stock | Diagnostic only pending clean reproduction: median ratio `0.993--1.015`; all nine cells satisfy the predeclared unused-fast-path threshold | Same raw root and `analysis/summary.csv` |
+| Attached `SELECT` versus optimized FUSE | Diagnostic only pending clean reproduction: median ratio `1.040--1.082`; all nine 95% CIs are above `1`, and SELECT wins 90/90 paired observations | Same raw root and `analysis/report.md` |
+| Current attached-path ablation | `PASS`/unattached medians are `0.900--0.930`; `SELECT`/`PASS` is `0.969--0.997`; the complete `SELECT` path retains `0.873--0.919` of unattached throughput | Same raw root; independently paired recalculation |
+| Strong FUSE engagement | The multithreaded FUSE baseline enables kernel and metadata caching; measured-phase median requests are only `1--18`, so the result does not depend on one daemon round trip per lookup | Same raw root |
+| Current result review | Matrix complete but publication-invalid; clean kernel rebuild, release matching, clocksource cleanup, and unchanged rerun required | `docs/tmp/2026-07-27-rq2-fxmark-rcu-target-rerun-review.md` |
+| Interrupted full attempt | External five-hour timeout after 33/50 complete boots; preserved as raw evidence and excluded from every result | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v1/` |
+| Superseded pre-redesign matrix | Historical valid matrix on the earlier mechanism: 50 boots and 450 cells, retained as the diagnosis that motivated the mechanism repair; not a current paper performance result | `results/experiments/fxmark-rq2/20260726T-rq2-fxmark-full-v2/` |
+| Superseded result review | Earlier mechanism contradicted the hypothesis; the review required redesign and the unchanged fresh matrix that is now complete above | `docs/tmp/2026-07-27-rq2-fxmark-result-review.md` |
 | Exact-parent invocation attribution | Directional KVM preflight passed; policy runs fell from about 10 to about 1 per work unit, with about 25 ns in the BPF body per run | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-run-count-v1/` |
 | Exact-parent normal preflight | Directional only: stock 2.471M, unattached 2.332M, `PASS` 1.235M, `SELECT` 1.085M, FUSE 2.041M ops/s; dispatch-count repair did not justify a new full matrix | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-preflight-v1/` |
 | Exact-empty invocation check | Passed in KVM: an attached PASS program remained stable and executed zero times during the measured `empty` cell | `results/experiments/fxmark-rq2-preflight/20260727T-exact-empty-run-count-v2/` |
@@ -199,21 +202,20 @@ build/cache cases whose pathname view is the behavior under study.
 | Exact-empty result review | Full matrix remains blocked; repeated pre-BPF dispatch and scope work is the next mechanism target | `docs/tmp/2026-07-27-fxmark-exact-empty-dispatch-diagnostic.md` |
 | Global parent-filter preflight | Committed directional run: stock 2.463M, unattached 2.356M, `empty` 2.403M, `PASS` 2.166M, `SELECT` 1.698M, FUSE 1.938M ops/s; `empty` recovered to 1.020x unattached and PASS reached 1.118x FUSE | `results/experiments/fxmark-rq2-preflight/20260727T-parent-fast-path-8fd1fb52f-normal/` |
 | Global parent-filter attribution | `empty` retained zero BPF runs; PASS and SELECT retained about one run per operation and about 25 ns per BPF run | `results/experiments/fxmark-rq2-preflight/20260727T-parent-fast-path-8fd1fb52f-stats/` |
-| Global parent-filter implementation | Kernel `8fd1fb52f`; complete Phase 1 and policy-semantic KVM gates passed; short preflight now justifies a fresh repeated matrix | `docs/tmp/2026-07-27-namei-ext-global-parent-fast-path-implementation.md` |
+| Global parent-filter implementation | Kernel `8fd1fb52f`; complete Phase 1 and policy-semantic KVM gates passed | `docs/tmp/2026-07-27-namei-ext-global-parent-fast-path-implementation.md` |
+| RCU target-registry repair | Kernel `83d52c216`; lockless target reads improved directional SELECT throughput by about 5.9% but did not alone pass the FUSE gate | `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-design.md` |
+| RCU borrowed-target repair | Kernel `bdc9a83e3`; forced `RESOLVE_CACHED`, concurrent atomic replacement, complete Phase 1, independent lifetime review, and final repeated matrix all passed | `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-implementation.md` |
 
-These results are retained as internal mechanism evidence and are not paper
-performance claims. They do not change RQ2 or the hypothesis. Attached-only
-state, RCU fallback, exact-parent invocation count, and the negative-component
-path have now been repaired. The committed short preflight meets the mechanism
-gate for a fresh repeated matrix, but it does not replace confidence intervals
-or the broader FxMark type/core matrix. A dynamic update/invalidation
-comparison may add RQ2 evidence, but it does not replace the strong
-cached-FUSE row.
+The RCU-target matrix is numerically promising but not yet a paper-level RQ2
+result because its patched binary predates the recorded kernel commit. The
+clean rebuilt rerun must preserve the same cache-hot `stat()` scope and
+optimized cached-FUSE row. Earlier matrices and short preflights remain
+internal mechanism evidence.
 
 ## Open Questions
 
-1. Does the global RCU parent filter retain the preflight recovery across the
-   complete repeated FxMark type/core matrix?
+1. Does the clean committed-kernel rerun reproduce the diagnostic FxMark
+   ranges after binary-release and clocksource gates are enforced?
 2. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?

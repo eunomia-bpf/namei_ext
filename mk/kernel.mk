@@ -2,12 +2,19 @@ KERNEL_BUILD_DIR ?= $(BUILD_ROOT)/kernel
 KERNEL_CONFIG_FRAGMENT ?= $(ROOT_DIR)/configs/kernel/x86_64_phase1.config
 KERNEL_IMAGE ?= $(KERNEL_BUILD_DIR)/arch/x86/boot/bzImage
 KERNEL_COMMIT_FILE ?= $(BUILD_ROOT)/kernel-commit.txt
+KERNEL_SOURCE_COMMIT_STAMP ?= $(KERNEL_BUILD_DIR)/.source-commit
+KERNEL_BUILT_COMMIT_FILE ?= $(KERNEL_BUILD_DIR)/.built-commit
+KERNEL_RELEASE_HEADER ?= $(KERNEL_BUILD_DIR)/include/generated/utsrelease.h
 KERNEL_MERGE_CONFIG ?= $(KERNEL_DIR)/scripts/kconfig/merge_config.sh
 STOCK_KERNEL_COMMIT ?= 062871f1371b2e02a272ff5279c6479aff0a37ef
 STOCK_KERNEL_SOURCE_DIR ?= $(BUILD_ROOT)/kernel-stock-src
 STOCK_KERNEL_BUILD_DIR ?= $(BUILD_ROOT)/kernel-stock
 STOCK_KERNEL_IMAGE ?= $(STOCK_KERNEL_BUILD_DIR)/arch/x86/boot/bzImage
-STOCK_KERNEL_SOURCE_STAMP ?= $(STOCK_KERNEL_SOURCE_DIR)/.source-commit
+STOCK_KERNEL_SOURCE_STAMP ?= $(STOCK_KERNEL_SOURCE_DIR)/.source-commit-$(STOCK_KERNEL_COMMIT)
+STOCK_KERNEL_SOURCE_HASH_FILE ?= $(BUILD_ROOT)/kernel-stock-source-tree.sha256
+STOCK_KERNEL_VERIFY_INDEX ?= $(BUILD_ROOT)/kernel-stock-source.index
+STOCK_KERNEL_BUILT_COMMIT_FILE ?= $(STOCK_KERNEL_BUILD_DIR)/.built-commit
+STOCK_KERNEL_RELEASE_HEADER ?= $(STOCK_KERNEL_BUILD_DIR)/include/generated/utsrelease.h
 STOCK_KERNEL_COMMIT_FILE ?= $(BUILD_ROOT)/kernel-stock-commit.txt
 KERNEL_TOUCHED_OBJECTS := \
 	fs/namei.o \
@@ -38,9 +45,29 @@ KERNEL_SOURCE_DEPS := \
 	$(KERNEL_DIR)/tools/lib/bpf/libbpf.c \
 	$(KERNEL_DIR)/tools/lib/bpf/libbpf_probes.c
 
+STOCK_KERNEL_SOURCE_HASH_COMMAND = git -C "$(KERNEL_DIR)" ls-tree -rz \
+	--full-tree "$(STOCK_KERNEL_COMMIT)"
+
+define STOCK_KERNEL_VERIFY_SOURCE
+index="$(STOCK_KERNEL_VERIFY_INDEX)"; \
+rm -f "$$index"; \
+trap 'rm -f "$$index"' EXIT; \
+GIT_INDEX_FILE="$$index" git -C "$(KERNEL_DIR)" \
+	--work-tree="$(STOCK_KERNEL_SOURCE_DIR)" read-tree "$(STOCK_KERNEL_COMMIT)"; \
+GIT_INDEX_FILE="$$index" git -C "$(KERNEL_DIR)" \
+	--work-tree="$(STOCK_KERNEL_SOURCE_DIR)" update-index --refresh; \
+GIT_INDEX_FILE="$$index" git -C "$(KERNEL_DIR)" \
+	--work-tree="$(STOCK_KERNEL_SOURCE_DIR)" diff-files --quiet --; \
+test -z "$$(GIT_INDEX_FILE="$$index" git -C "$(KERNEL_DIR)" \
+	--work-tree="$(STOCK_KERNEL_SOURCE_DIR)" ls-files --others \
+	--exclude='.source-commit-*')"
+endef
+
 .PHONY: kernel-config kernel-objects kernel kernel-provenance \
 	kernel-stock-source kernel-stock-config kernel-stock \
-	kernel-stock-provenance kernel-clean
+	kernel-stock-provenance kernel-clean FORCE
+
+FORCE:
 
 kernel-config: $(KERNEL_BUILD_DIR)/include/config/auto.conf
 	grep '^CONFIG_NAMEI_EXT=y' "$(KERNEL_BUILD_DIR)/.config"
@@ -77,11 +104,18 @@ kernel-stock-config: $(STOCK_KERNEL_BUILD_DIR)/include/config/auto.conf
 
 kernel-stock: $(STOCK_KERNEL_IMAGE)
 
-kernel-provenance:
+kernel-provenance: $(KERNEL_IMAGE)
 	install -d "$(BUILD_ROOT)"
 	commit=$$(git -C "$(KERNEL_DIR)" rev-parse HEAD); \
 	case "$$commit" in (*[!0-9a-f]*|'') exit 1;; esac; \
 	test "$${#commit}" -eq 40; \
+	test "$$(cat "$(KERNEL_SOURCE_COMMIT_STAMP)")" = "$$commit"; \
+	test "$$(cat "$(KERNEL_BUILT_COMMIT_FILE)")" = "$$commit"; \
+	short=$$(printf '%.12s' "$$commit"); \
+	release=$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(KERNEL_RELEASE_HEADER)"); \
+	test -n "$$release"; \
+	case "$$release" in (*-dirty*) exit 1;; (*-g$$short) ;; (*) exit 1;; esac; \
+	grep -aF "Linux version $$release " "$(KERNEL_BUILD_DIR)/vmlinux" >/dev/null; \
 	printf '%s\n' "$$commit" >"$(KERNEL_COMMIT_FILE).tmp"; \
 	if test -r "$(KERNEL_COMMIT_FILE)" && cmp -s "$(KERNEL_COMMIT_FILE).tmp" "$(KERNEL_COMMIT_FILE)"; then \
 		rm -f "$(KERNEL_COMMIT_FILE).tmp"; \
@@ -89,24 +123,58 @@ kernel-provenance:
 		mv -f "$(KERNEL_COMMIT_FILE).tmp" "$(KERNEL_COMMIT_FILE)"; \
 	fi
 
-kernel-stock-provenance: $(STOCK_KERNEL_SOURCE_STAMP)
+kernel-stock-provenance: $(STOCK_KERNEL_IMAGE)
 	install -d "$(BUILD_ROOT)"
-	printf '%s\n' "$(STOCK_KERNEL_COMMIT)" >"$(STOCK_KERNEL_COMMIT_FILE).tmp"
+	commit="$(STOCK_KERNEL_COMMIT)"; \
+	case "$$commit" in (*[!0-9a-f]*|'') exit 1;; esac; \
+	test "$${#commit}" -eq 40; \
+	test "$$(cat "$(STOCK_KERNEL_SOURCE_STAMP)")" = "$$commit"; \
+	test "$$($(STOCK_KERNEL_SOURCE_HASH_COMMAND) | sha256sum | awk '{print $$1}')" = "$$(cat "$(STOCK_KERNEL_SOURCE_HASH_FILE)")"; \
+	test "$$(cat "$(STOCK_KERNEL_BUILT_COMMIT_FILE)")" = "$$commit"; \
+	release=$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(STOCK_KERNEL_RELEASE_HEADER)"); \
+	test -n "$$release"; \
+	case "$$release" in (*-dirty*) exit 1;; esac; \
+	grep -aF "Linux version $$release " "$(STOCK_KERNEL_BUILD_DIR)/vmlinux" >/dev/null; \
+	printf '%s\n' "$$commit" >"$(STOCK_KERNEL_COMMIT_FILE).tmp"
+	$(call STOCK_KERNEL_VERIFY_SOURCE)
 	if test -r "$(STOCK_KERNEL_COMMIT_FILE)" && cmp -s "$(STOCK_KERNEL_COMMIT_FILE).tmp" "$(STOCK_KERNEL_COMMIT_FILE)"; then \
 		rm -f "$(STOCK_KERNEL_COMMIT_FILE).tmp"; \
 	else \
 		mv -f "$(STOCK_KERNEL_COMMIT_FILE).tmp" "$(STOCK_KERNEL_COMMIT_FILE)"; \
 	fi
 
-$(KERNEL_IMAGE): $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)/.config $(KERNEL_SOURCE_DEPS)
+$(KERNEL_IMAGE): FORCE $(KERNEL_BUILD_DIR)/include/config/auto.conf $(KERNEL_BUILD_DIR)/.config $(KERNEL_SOURCE_DEPS)
+	commit=$$(git -C "$(KERNEL_DIR)" rev-parse HEAD); \
+	case "$$commit" in (*[!0-9a-f]*|'') exit 1;; esac; \
+	test "$${#commit}" -eq 40; \
+	printf '%s\n' "$$commit" >"$(KERNEL_SOURCE_COMMIT_STAMP)"; \
+	short=$$(printf '%.12s' "$$commit"); \
+	release=$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(KERNEL_RELEASE_HEADER)" 2>/dev/null || true); \
+	case "$$release" in (*-g$$short) ;; (*) \
+		rm -f "$(KERNEL_BUILD_DIR)/include/config/kernel.release" \
+			"$(KERNEL_RELEASE_HEADER)" \
+			"$(KERNEL_BUILD_DIR)/init/version.o" \
+			"$(KERNEL_BUILD_DIR)/init/version-timestamp.o";; \
+	esac
 	$(MAKE) -C "$(KERNEL_DIR)" O="$(KERNEL_BUILD_DIR)" bzImage -j"$(JOBS)"
+	commit=$$(cat "$(KERNEL_SOURCE_COMMIT_STAMP)"); \
+	short=$$(printf '%.12s' "$$commit"); \
+	release=$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(KERNEL_RELEASE_HEADER)"); \
+	test -n "$$release"; \
+	case "$$release" in (*-dirty*) exit 1;; (*-g$$short) ;; (*) exit 1;; esac; \
+	grep -aF "Linux version $$release " "$(KERNEL_BUILD_DIR)/vmlinux" >/dev/null; \
+	printf '%s\n' "$$commit" >"$(KERNEL_BUILT_COMMIT_FILE)"
 
 $(STOCK_KERNEL_SOURCE_STAMP):
 	git -C "$(KERNEL_DIR)" cat-file -e "$(STOCK_KERNEL_COMMIT)^{commit}"
-	rm -rf "$(STOCK_KERNEL_SOURCE_DIR)"
+	rm -rf "$(STOCK_KERNEL_SOURCE_DIR)" "$(STOCK_KERNEL_BUILD_DIR)"
 	install -d "$(STOCK_KERNEL_SOURCE_DIR)"
 	git -C "$(KERNEL_DIR)" archive "$(STOCK_KERNEL_COMMIT)" | tar -x -C "$(STOCK_KERNEL_SOURCE_DIR)"
 	printf '%s\n' "$(STOCK_KERNEL_COMMIT)" >"$@"
+
+$(STOCK_KERNEL_SOURCE_HASH_FILE): $(STOCK_KERNEL_SOURCE_STAMP)
+	$(STOCK_KERNEL_SOURCE_HASH_COMMAND) | sha256sum | awk '{print $$1}' >"$@.tmp"
+	mv -f "$@.tmp" "$@"
 
 $(STOCK_KERNEL_BUILD_DIR):
 	install -d "$@"
@@ -119,8 +187,17 @@ $(STOCK_KERNEL_BUILD_DIR)/.config: $(KERNEL_CONFIG_FRAGMENT) $(STOCK_KERNEL_SOUR
 $(STOCK_KERNEL_BUILD_DIR)/include/config/auto.conf: $(STOCK_KERNEL_BUILD_DIR)/.config
 	$(MAKE) -C "$(STOCK_KERNEL_SOURCE_DIR)" O="$(STOCK_KERNEL_BUILD_DIR)" olddefconfig
 
-$(STOCK_KERNEL_IMAGE): $(STOCK_KERNEL_BUILD_DIR)/include/config/auto.conf $(STOCK_KERNEL_BUILD_DIR)/.config
+$(STOCK_KERNEL_IMAGE): FORCE $(STOCK_KERNEL_BUILD_DIR)/include/config/auto.conf $(STOCK_KERNEL_BUILD_DIR)/.config $(STOCK_KERNEL_SOURCE_HASH_FILE)
+	test "$$(cat "$(STOCK_KERNEL_SOURCE_STAMP)")" = "$(STOCK_KERNEL_COMMIT)"
+	test "$$($(STOCK_KERNEL_SOURCE_HASH_COMMAND) | sha256sum | awk '{print $$1}')" = "$$(cat "$(STOCK_KERNEL_SOURCE_HASH_FILE)")"
+	$(call STOCK_KERNEL_VERIFY_SOURCE)
 	$(MAKE) -C "$(STOCK_KERNEL_SOURCE_DIR)" O="$(STOCK_KERNEL_BUILD_DIR)" bzImage -j"$(JOBS)"
+	release=$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(STOCK_KERNEL_RELEASE_HEADER)"); \
+	test -n "$$release"; \
+	case "$$release" in (*-dirty*) exit 1;; esac; \
+	grep -aF "Linux version $$release " "$(STOCK_KERNEL_BUILD_DIR)/vmlinux" >/dev/null; \
+	printf '%s\n' "$(STOCK_KERNEL_COMMIT)" >"$(STOCK_KERNEL_BUILT_COMMIT_FILE)"
 
 kernel-clean:
 	rm -rf "$(KERNEL_BUILD_DIR)" "$(STOCK_KERNEL_BUILD_DIR)" "$(STOCK_KERNEL_SOURCE_DIR)"
+	rm -f "$(STOCK_KERNEL_SOURCE_HASH_FILE)"

@@ -90,6 +90,31 @@ both repository states under the v2 result schema for every current case-study
 and FxMark RQ2 run. Design, alternatives, and validation are recorded in
 `docs/tmp/2026-07-27-unified-source-provenance-infrastructure.md`.
 
+Kernel commits `83d52c216` and `bdc9a83e3` remove the remaining selected-target
+RCU fallback. Target-table reads are RCU-safe, replacement is atomic, and an
+RCU pathname walk borrows the registered path until ordinary namei
+legitimization acquires independent references. Ref-walk retains owned path
+references. Phase 1 now forces both final and intermediate selected-target
+RCU walks with `openat2(RESOLVE_CACHED)` and replaces a target 128 times while
+another process continuously reads through it. The complete implementation,
+lifetime argument, validation, and independent review are recorded in
+`docs/tmp/2026-07-27-namei-ext-rcu-target-selection-implementation.md`.
+
+The unchanged RQ2 matrix produced 50 KVM boots and 450/450 passing cells with
+numerically positive ranges, but independent review found that its patched
+binary was built from a pre-commit dirty tree. It is diagnostic rather than a
+paper result. The scoped result review and required clean rerun are recorded in
+`docs/tmp/2026-07-27-rq2-fxmark-rcu-target-rerun-review.md`.
+
+The forward fix binds patched and stock builds to separate source and built
+commit stamps. FxMark runs freeze both kernel identities, benchmark/FUSE
+binaries, and BPF objects before the first boot; all boots consume those
+run-local snapshots, and finalization rechecks their hashes and cross-boot
+identity. The analyzer now derives duration and matrix shape from `run.json`,
+uses an independent workload-cardinality oracle, and requires recorded FUSE
+mount identity. Details and validation are in
+`docs/tmp/2026-07-27-kernel-binary-provenance-and-rq2-analysis.md`.
+
 ## Current Make Control Plane
 
 The default Make path separates current validation, prototype experiment
@@ -109,6 +134,9 @@ entrypoints, and archived diagnostics:
   through the real KVM attach path.
 - `make kvm-build-action-sandboxing-preflight` runs the source-derived Bazel
   action-input visibility oracle through the real KVM attach path.
+- `make experiment-fxmark-rq2` runs and reports the clean-source 450-cell,
+  50-boot RQ2 matrix against stock, patched-unattached, attached `PASS`,
+  attached `SELECT`, and optimized feature-equivalent FUSE.
 - Lower-level `kvm-w4-ccache-*` targets remain available for historical ccache
   diagnostics; they are not dependencies of `make experiments`.
 

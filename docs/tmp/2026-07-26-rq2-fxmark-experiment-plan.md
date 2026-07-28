@@ -172,12 +172,14 @@ so the system-wide cgroup-BPF static key cannot contaminate those controls.
 
 - Authoritative command or workflow: `make kvm-fxmark-rq2`.
 - Real preflight case: `make kvm-fxmark-rq2-preflight`, running `MRPL`, one
-  worker, two seconds, once under all five fresh boots using the actual stock
-  image for stock/FUSE and the patched image for unattached/PASS/SELECT.
+  worker, two seconds, once under six fresh boots using the actual stock image
+  for stock/FUSE and the patched image for unattached/empty/PASS/SELECT.
 - Full completion rule: all 450 planned observations and 50 boot records exist;
   all correctness and engagement gates pass; every raw stdout/stderr, kernel
   config, dmesg, source/artifact hash, command record, and resource record is
-  present; the analysis target recomputes every reported value from raw data.
+  present; every boot uses the immutable run-local artifact snapshot; the
+  analysis target reads the formal matrix from `run.json` and recomputes every
+  reported value from raw data.
 - Raw-result path: `results/experiments/fxmark-rq2/<RUN_ID>/`.
 - Checkpoint or recovery approach: one immutable result directory per full run,
   with one raw file per boot and condition. A failed or interrupted full run
@@ -207,14 +209,22 @@ so the system-wide cgroup-BPF static key cannot contaminate those controls.
 
 ## Reproducibility Notes
 
-- Software and data versions: FxMark commit and archive hash above; patched
-  kernel commit `6641100ef13462121bf8d8bea9392d77532c86d5`;
+- Software and data versions: FxMark commit and archive hash above; the
+  post-mechanism-repair rerun uses patched kernel commit
+  `bdc9a83e3dfbef8ff2017f9188c7c86025962183`;
   matched stock ancestor `062871f1371b2e02a272ff5279c6479aff0a37ef`.
 - Config and seed notes: four-vCPU, 8-GiB KVM guest; identical committed kernel
   config except that stock omits `CONFIG_NAMEI_EXT`, enforced before execution;
   each five-boot block shares one repetition ID; 1-GiB tmpfs mounted `noatime`;
-  official deterministic benchmark sequence; 30-second duration; bootstrap
-  seed `20260726`.
+  guest TSC is marked reliable and remote-clocksource watchdog timeouts are a
+  hard dmesg failure; `current_clocksource` must remain `tsc`; official
+  deterministic benchmark sequence; 30-second
+  duration; BPF run-time statistics accounting disabled; bootstrap seed
+  `20260726`. Every patched guest release must contain
+  the recorded kernel commit and must not contain `-dirty`; the linked libfuse
+  version is recorded with the run.
+  Both kernel identities and all measured binaries/policies are frozen under
+  the result root before the first boot and rehashed at finalization.
 - Known deviations: source-version `stat()` semantics and build-only CPU-policy
   adapter described above. Cache-cold path walks, directory enumeration,
   mdtest, Filebench, and perf hardware counters are not part of this experiment

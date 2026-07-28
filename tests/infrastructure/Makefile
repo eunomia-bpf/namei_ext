@@ -14,6 +14,8 @@ include $(ROOT_DIR)/mk/results.mk
 .PHONY: test validate-only create-only clean
 
 test:
+	PYTHONPATH="$(ROOT_DIR)/analysis/fxmark" \
+		python3 "$(ROOT_DIR)/analysis/fxmark/test_analyze.py"
 	rm -rf "$(OUTPUT)"
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(OUTPUT))
 	printf '%s\n' 'make result-contract' >"$(OUTPUT)/command.txt"
