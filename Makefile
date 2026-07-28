@@ -10,7 +10,8 @@ RESULT_ROOT ?= $(ROOT_DIR)/results
 CURRENT_EXPERIMENT_TARGETS := \
 	kvm-agent-workspace-matrix \
 	kvm-application-file-sharing-preflight \
-	kvm-build-action-sandboxing-preflight
+	kvm-build-action-sandboxing-preflight \
+	kvm-service-config-rotation-preflight
 CLEAN_SOURCE_EXPERIMENT_TARGETS := \
 	$(CURRENT_EXPERIMENT_TARGETS) \
 	kvm-agent-workspace-rq2-preflight \
@@ -21,7 +22,9 @@ CLEAN_SOURCE_EXPERIMENT_TARGETS := \
 	experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight \
 	kvm-fxmark-fast-path \
-	experiment-fxmark-fast-path
+	experiment-fxmark-fast-path \
+	kvm-service-config-rotation \
+	experiment-service-config-rotation
 
 NPROC ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 JOBS ?= $(NPROC)
@@ -34,6 +37,7 @@ include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
+include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/results.mk
@@ -44,6 +48,7 @@ include $(ROOT_DIR)/mk/experiments/agent_workspace.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
+include $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 
@@ -51,11 +56,13 @@ include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 
 .PHONY: all phase1 phase1-smoke check-prereqs result-contract abi bpf bench functional \
 	policy-load policy-semantic runner agent-workspace application-file-sharing \
-	build-action-sandboxing \
+	build-action-sandboxing service-config-rotation \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
 	fxmark-fast-path-report experiment-fxmark-fast-path \
+	kvm-service-config-rotation-preflight kvm-service-config-rotation \
+	service-config-rotation-report experiment-service-config-rotation \
 	experiments legacy-build-cache \
 	w1-oracle \
 	help clean clean-results
@@ -124,6 +131,9 @@ application-file-sharing:
 build-action-sandboxing:
 	$(MAKE) -C "$(ROOT_DIR)/experiments/build_action_sandboxing" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
+service-config-rotation:
+	$(MAKE) -C "$(ROOT_DIR)/experiments/service_config_rotation" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+
 help:
 	@printf '%s\n' 'Targets:'
 	@printf '%s\n' ''
@@ -146,6 +156,10 @@ help:
 	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
 	@printf '%s\n' '                       run two concurrent source-derived Bazel actions through namei_ext in KVM'
+	@printf '%s\n' '  make kvm-service-config-rotation-preflight'
+	@printf '%s\n' '                       run one live nginx current/canary/invalid/rollback state machine in KVM'
+	@printf '%s\n' '  make experiment-service-config-rotation'
+	@printf '%s\n' '                       run ten fresh nginx rotation boots and generate the RQ1 report'
 	@printf '%s\n' '  make kvm-fxmark-rq2-preflight'
 	@printf '%s\n' '                       run one real MRPL cell in six isolated stock/patched/FUSE KVM boots'
 	@printf '%s\n' '  make kvm-fxmark-rq2'
@@ -196,6 +210,7 @@ clean: kernel-lock-ready docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/experiments/agent_workspace" BUILD_ROOT="$(BUILD_ROOT)" clean; \
 	$(MAKE) -C "$(ROOT_DIR)/experiments/application_file_sharing" BUILD_ROOT="$(BUILD_ROOT)" clean; \
 	$(MAKE) -C "$(ROOT_DIR)/experiments/build_action_sandboxing" BUILD_ROOT="$(BUILD_ROOT)" clean; \
+	$(MAKE) -C "$(ROOT_DIR)/experiments/service_config_rotation" BUILD_ROOT="$(BUILD_ROOT)" clean; \
 	$(MAKE) -C "$(ROOT_DIR)/bench/fxmark" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" OUTPUT="$(BUILD_ROOT)/fxmark-rq2" clean; \
 	rm -rf "$(BUILD_ROOT)/workloads" "$(CACHE_ROOT)/workloads"; \
 	rm -rf "$(BUILD_ROOT)"

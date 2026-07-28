@@ -123,8 +123,8 @@ entrypoints, and archived diagnostics:
 - `make phase1` runs current prototype validation only: host checks, component
   builds, KVM smoke, policy load, and KVM functional tests.
 - `make experiments` runs the implemented case-study gates: the Agent workspace
-  matrix and the Application File Sharing and Build Action Sandboxing
-  preflights.
+  matrix and the Application File Sharing, Build Action Sandboxing, and
+  Service Configuration Rotation preflights.
 - `make kvm-agent-workspace-matrix` runs the Agent workspace matrix and
   preserves raw KVM/FUSE outputs.
 - `make legacy-build-cache` is the canonical aggregate entrypoint for the
@@ -134,6 +134,9 @@ entrypoints, and archived diagnostics:
   through the real KVM attach path.
 - `make kvm-build-action-sandboxing-preflight` runs the source-derived Bazel
   action-input visibility oracle through the real KVM attach path.
+- `make kvm-service-config-rotation-preflight` runs one live nginx
+  current/canary/invalid/rollback state machine; the ten-boot formal entrypoint
+  is `make experiment-service-config-rotation`.
 - `make experiment-fxmark-rq2` runs and reports the clean-source 450-cell,
   50-boot RQ2 matrix against stock, patched-unattached, attached `PASS`,
   attached `SELECT`, and optimized feature-equivalent FUSE.
@@ -186,9 +189,12 @@ BUILD_AND_EVALUATE phase:
    paper. The concrete plans are
    `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md` and
    `docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md`.
-3. Conditional service/config transition or checkpoint/restart path remapping
-   only after a real source oracle is selected where lookup-time object
-   selection affects service-visible behavior.
+3. Service configuration rotation uses the source-derived Kubernetes
+   AtomicWriter publication shape and nginx 1.26.3 reload oracle. Its focused
+   runner, BPF policy, fresh-boot suite, and analyzer are implemented; the real
+   KVM preflight and ten-boot formal run remain. The implementation is recorded
+   in
+   `docs/tmp/2026-07-28-service-config-rotation-implementation.md`.
 
 Older diagnostic-comparison records are retained only as archived provenance.
 Future implementation work follows the complete experiments above. Smoke

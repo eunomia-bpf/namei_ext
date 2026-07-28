@@ -10,15 +10,18 @@
 #include <ftw.h>
 #include <linux/bpf.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #define NAMEI_EXT_HARNESS_NAME_MAX 64
+#define NAMEI_EXT_CONTROL_TIMEOUT_SECONDS 5
 
 struct namei_ext_component_key {
 	uint32_t event;
@@ -190,6 +193,59 @@ int namei_ext_wait_child(pid_t pid)
 	return WEXITSTATUS(status) ? -EIO : 0;
 }
 
+static int namei_ext_monotonic_ns(uint64_t *value_out)
+{
+	struct timespec now;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &now))
+		return -errno;
+	*value_out = (uint64_t)now.tv_sec * 1000000000ULL + now.tv_nsec;
+	return 0;
+}
+
+static int namei_ext_wait_control_child(pid_t pid)
+{
+	uint64_t now = 0;
+	uint64_t deadline = 0;
+	int status = 0;
+	int ret;
+
+	ret = namei_ext_monotonic_ns(&now);
+	if (ret)
+		goto terminate;
+	deadline = now +
+		(uint64_t)NAMEI_EXT_CONTROL_TIMEOUT_SECONDS * 1000000000ULL;
+	for (;;) {
+		pid_t waited = waitpid(pid, &status, WNOHANG);
+
+		if (waited == pid) {
+			if (!WIFEXITED(status))
+				return -ECHILD;
+			return WEXITSTATUS(status) ? -EIO : 0;
+		}
+		if (waited < 0 && errno != EINTR)
+			return -errno;
+		ret = namei_ext_monotonic_ns(&now);
+		if (ret || now >= deadline)
+			break;
+		usleep(10000);
+	}
+
+terminate:
+	if (kill(pid, SIGKILL) && errno != ESRCH)
+		return ret ? ret : -errno;
+	for (unsigned int attempt = 0; attempt < 100; attempt++) {
+		pid_t waited = waitpid(pid, &status, WNOHANG);
+
+		if (waited == pid || (waited < 0 && errno == ECHILD))
+			return ret ? ret : -ETIMEDOUT;
+		if (waited < 0 && errno != EINTR)
+			return ret ? ret : -errno;
+		usleep(10000);
+	}
+	return ret ? ret : -ETIMEDOUT;
+}
+
 int namei_ext_cgroup_id(const char *path, uint64_t *id_out)
 {
 	union {
@@ -272,7 +328,7 @@ int namei_ext_register_target(const char *cgroup_path,
 		close(target_fd);
 		_exit(nwritten == len ? 0 : 1);
 	}
-	return namei_ext_wait_child(pid);
+	return namei_ext_wait_control_child(pid);
 }
 
 int namei_ext_clear_targets(const char *cgroup_path)
@@ -296,7 +352,7 @@ int namei_ext_clear_targets(const char *cgroup_path)
 		close(register_fd);
 		_exit(nwritten == (ssize_t)strlen(clear) ? 0 : 1);
 	}
-	return namei_ext_wait_child(pid);
+	return namei_ext_wait_control_child(pid);
 }
 
 static int namei_ext_policy_parent_command(const char *cgroup_path,
@@ -345,7 +401,7 @@ static int namei_ext_policy_parent_command(const char *cgroup_path,
 			close(parent_fd);
 		_exit(nwritten == len ? 0 : 1);
 	}
-	return namei_ext_wait_child(pid);
+	return namei_ext_wait_control_child(pid);
 }
 
 int namei_ext_policy_parent_exact(const char *cgroup_path,

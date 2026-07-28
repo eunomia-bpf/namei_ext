@@ -57,3 +57,8 @@ directory with kernel identity, configuration, raw observations, and dmesg for
 every planned condition and repetition. They must compare the observed boot
 and cell key sets exactly with the declared matrix and establish the kernel
 identity from inside each guest.
+
+`NAMEI_EXT_KVM_RUN_CAPTURE` accepts an optional outer timeout after the host
+CPU pin argument. Suites with live daemons or other blocking external
+processes should freeze this value in their benchmark configuration so a stuck
+guest or VM fails the run instead of blocking the matrix indefinitely.

@@ -46,6 +46,8 @@ make experiments
 make kvm-agent-workspace-matrix
 make kvm-application-file-sharing-preflight
 make kvm-build-action-sandboxing-preflight
+make kvm-service-config-rotation-preflight
+make experiment-service-config-rotation
 make kvm-bench
 make kvm-fxmark-rq2-preflight
 ```
@@ -56,7 +58,8 @@ execution does not count as Phase 1 validation.
 
 `make experiments` is the current case-study aggregate. It runs the Agent
 workspace matrix and the implemented Application File Sharing and Build Action
-Sandboxing preflights through the shared KVM and result lifecycle. The
+Sandboxing preflights, plus the Service Configuration Rotation preflight,
+through the shared KVM and result lifecycle. The
 historical Redis/nginx ccache matrix remains reproducible through
 `make legacy-build-cache`, but it is not a current-suite dependency and must
 not define the structure of new experiments.
