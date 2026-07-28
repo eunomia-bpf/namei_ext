@@ -119,3 +119,22 @@ The next experiment gate is a clean-tree FxMark RQ2 preflight using the rebuilt,
 locked kernel pair. A complete preflight must finish every declared boot, pass
 the workload and dmesg gates, and verify its run-local artifact checksums before
 the full matrix is started.
+
+## Preflight follow-up
+
+The first locked clean-tree preflight preserved another failed run at
+`20260727T-locked-kernel-preflight-v1`. The run-local stock image subsequently
+passed an independent KVM smoke, so this was not another image-integrity
+failure. A verbose repeat showed that the FxMark launcher encoded every runtime
+path and kernel-identity value in `vng --exec`. Repeating the long absolute
+result-root path made the encoded command exceed the kernel command-line limit.
+The tail containing the 9p root parameters was truncated, and the kernel
+correctly panicked because it had no root device.
+
+The preflight and full matrix now write the 19 per-boot Make variables to
+`guest.mk` inside each immutable boot directory. The guest command contains
+only the main Makefile, the relative `guest.mk` path, the hidden guest target,
+and `RUN_ID`. Each generated file must have exactly 19 lines and must not
+contain the absolute repository prefix. Finalization requires the file for
+every declared boot. This both keeps the kernel command line bounded and
+preserves the exact guest inputs beside the raw boot observations.

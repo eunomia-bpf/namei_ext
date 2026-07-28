@@ -73,6 +73,32 @@ sha256sum \
 	>"$(1)/artifacts.sha256"
 endef
 
+define FXMARK_WRITE_GUEST_MAKEFILE
+printf '%s := %s\n' \
+	'CONDITION' "$$condition" \
+	'REPETITION' "$$repetition" \
+	'FXMARK_RUN_DURATION' "$(1)" \
+	'FXMARK_RUN_TYPES' "$(2)" \
+	'FXMARK_RUN_CORES' "$(3)" \
+	'FXMARK_RUN_BINARY' "$${fxmark_binary#$(ROOT_DIR)/}" \
+	'FXMARK_RUN_CELL' "$${fxmark_cell#$(ROOT_DIR)/}" \
+	'FXMARK_RUN_FUSE' "$${fxmark_fuse#$(ROOT_DIR)/}" \
+	'FXMARK_RUN_PASS_POLICY' "$${pass_policy#$(ROOT_DIR)/}" \
+	'FXMARK_RUN_SELECT_POLICY' "$${select_policy#$(ROOT_DIR)/}" \
+	'FXMARK_BOOT_RESULT_DIR' "$${boot_dir#$(ROOT_DIR)/}" \
+	'FXMARK_BOOT_KERNEL_CONFIG' "$${config#$(ROOT_DIR)/}" \
+	'FXMARK_BOOT_KERNEL_COMMIT' "$$commit" \
+	'FXMARK_BOOT_KERNEL_BUILD_ID' "$$build_id" \
+	'FXMARK_BOOT_KERNEL_NOTES_SHA256' "$$notes_sha" \
+	'FXMARK_BOOT_KERNEL_BTF_SHA256' "$$btf_sha" \
+	'FXMARK_BOOT_KERNEL_RELEASE' "$$release" \
+	'FXMARK_BOOT_KERNEL_FLAVOR' "$$flavor" \
+	'FXMARK_BPF_STATS' "$(FXMARK_BPF_STATS)" \
+	>"$$guest_makefile"; \
+test "$$(wc -l <"$$guest_makefile")" = "19"; \
+! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null
+endef
+
 .PHONY: fxmark-source fxmark-rq2-build fxmark-kernel-pair \
 	kvm-fxmark-rq2-preflight kvm-fxmark-rq2 \
 	fxmark-rq2-finalize fxmark-rq2-report experiment-fxmark-rq2 \
@@ -206,7 +232,11 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 		printf '1|%s|MRPL|1\n' "$$condition" >>"$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"; \
 		boot_dir="$(FXMARK_PREFLIGHT_RESULT_DIR)/boots/block-01-$$condition"; \
 		install -d "$$boot_dir"; \
-		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=1 FXMARK_RUN_DURATION=$(FXMARK_PREFLIGHT_DURATION) FXMARK_RUN_TYPES=MRPL FXMARK_RUN_CORES=1 FXMARK_RUN_BINARY=$$fxmark_binary FXMARK_RUN_CELL=$$fxmark_cell FXMARK_RUN_FUSE=$$fxmark_fuse FXMARK_RUN_PASS_POLICY=$$pass_policy FXMARK_RUN_SELECT_POLICY=$$select_policy FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_RELEASE=$$release FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_PREFLIGHT_RESULT_DIR)); \
+		repetition=1; \
+		guest_makefile="$$boot_dir/guest.mk"; \
+		$(call FXMARK_WRITE_GUEST_MAKEFILE,$(FXMARK_PREFLIGHT_DURATION),MRPL,1); \
+		guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
+		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest,,$$boot_dir,$(FXMARK_PREFLIGHT_RESULT_DIR)); \
 	done
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"
@@ -225,7 +255,7 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 	find "$(FXMARK_PREFLIGHT_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | \
 		xargs -0 jq -s -e 'group_by(.kernel_flavor) | length == 2 and all(.[]; ([.[] | [.kernel_commit,.kernel_build_id,.kernel_notes_sha256,.kernel_btf_sha256,.kernel_release]] | unique | length) == 1)' >/dev/null
 	for boot in "$(FXMARK_PREFLIGHT_RESULT_DIR)"/boots/*; do \
-		for file in launcher.stdout.log launcher.stderr.log; do \
+		for file in guest.mk launcher.stdout.log launcher.stderr.log; do \
 			test -e "$$boot/$$file"; \
 		done; \
 		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
@@ -310,7 +340,10 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 			for type in $(FXMARK_TYPES); do for workers in $(FXMARK_CORES); do printf '%s|%s|%s|%s\n' "$$repetition" "$$condition" "$$type" "$$workers" >>"$(FXMARK_RESULT_DIR)/expected-cells.txt"; done; done; \
 			boot_dir="$(FXMARK_RESULT_DIR)/boots/block-$$(printf '%02d' "$$repetition")-$$condition"; \
 			install -d "$$boot_dir"; \
-			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,__fxmark_rq2_guest,CONDITION=$$condition REPETITION=$$repetition FXMARK_RUN_DURATION=$(FXMARK_DURATION) FXMARK_RUN_TYPES='$(FXMARK_TYPES)' FXMARK_RUN_CORES='$(FXMARK_CORES)' FXMARK_RUN_BINARY=$$fxmark_binary FXMARK_RUN_CELL=$$fxmark_cell FXMARK_RUN_FUSE=$$fxmark_fuse FXMARK_RUN_PASS_POLICY=$$pass_policy FXMARK_RUN_SELECT_POLICY=$$select_policy FXMARK_BOOT_RESULT_DIR=$$boot_dir FXMARK_BOOT_KERNEL_CONFIG=$$config FXMARK_BOOT_KERNEL_COMMIT=$$commit FXMARK_BOOT_KERNEL_BUILD_ID=$$build_id FXMARK_BOOT_KERNEL_NOTES_SHA256=$$notes_sha FXMARK_BOOT_KERNEL_BTF_SHA256=$$btf_sha FXMARK_BOOT_KERNEL_RELEASE=$$release FXMARK_BOOT_KERNEL_FLAVOR=$$flavor FXMARK_BPF_STATS=$(FXMARK_BPF_STATS),$$boot_dir,$(FXMARK_RESULT_DIR)); \
+			guest_makefile="$$boot_dir/guest.mk"; \
+			$(call FXMARK_WRITE_GUEST_MAKEFILE,$(FXMARK_DURATION),$(FXMARK_TYPES),$(FXMARK_CORES)); \
+			guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
+			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest,,$$boot_dir,$(FXMARK_RESULT_DIR)); \
 		done; \
 	done
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-rq2-finalize \
@@ -337,7 +370,7 @@ fxmark-rq2-finalize:
 	find "$(FXMARK_RESULT_DIR)/boots" -name boot.json -print0 | sort -z | \
 		xargs -0 jq -s -e 'group_by(.kernel_flavor) | length == 2 and all(.[]; ([.[] | [.kernel_commit,.kernel_build_id,.kernel_notes_sha256,.kernel_btf_sha256,.kernel_release]] | unique | length) == 1)' >/dev/null
 	for boot in "$(FXMARK_RESULT_DIR)"/boots/*; do \
-		for file in launcher.stdout.log launcher.stderr.log; do \
+		for file in guest.mk launcher.stdout.log launcher.stderr.log; do \
 			test -e "$$boot/$$file"; \
 		done; \
 		for file in boot.json observations.jsonl kernel.config kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 kernel-flavor.txt kernel-release.txt clocksource-before.txt clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt dmesg.log; do \
