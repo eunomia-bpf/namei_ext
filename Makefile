@@ -23,6 +23,7 @@ include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/results.mk
+include $(ROOT_DIR)/mk/multi_boot.mk
 include $(ROOT_DIR)/mk/kvm.mk
 include $(ROOT_DIR)/mk/workload.mk
 include $(ROOT_DIR)/mk/experiments/legacy_build_cache.mk

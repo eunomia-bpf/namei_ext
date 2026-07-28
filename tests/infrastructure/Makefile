@@ -9,10 +9,13 @@ OUTPUT ?= $(OUTPUT_ROOT)/$(RUN_ID)
 RESULT_JSON ?= $(OUTPUT)/observations.jsonl
 SOURCE_FIXTURE_ROOT ?= $(OUTPUT_ROOT)/source-state-fixture
 KERNEL_IDENTITY_ROOT ?= $(OUTPUT_ROOT)/kernel-identity
+MULTI_BOOT_ROOT ?= $(OUTPUT_ROOT)/multi-boot
 
 include $(ROOT_DIR)/mk/results.mk
+include $(ROOT_DIR)/mk/multi_boot.mk
 
-.PHONY: test validate-only create-only clean
+.PHONY: test validate-only create-only multi-boot-collect-only \
+	multi-boot-validate-only clean
 
 test:
 	PYTHONPATH="$(ROOT_DIR)/analysis/fxmark" \
@@ -169,12 +172,71 @@ test:
 		printf '%s\n' 'existing result root unexpectedly passed' >&2; \
 		exit 1; \
 	fi
+	rm -rf "$(MULTI_BOOT_ROOT)"
+	install -d "$(MULTI_BOOT_ROOT)"
+	$(call NAMEI_EXT_MULTI_BOOT_INIT,$(MULTI_BOOT_ROOT))
+	for boot in two one; do \
+		install -d "$(MULTI_BOOT_ROOT)/boots/$$boot"; \
+		printf '{"boot":"%s"}\n' "$$boot" \
+			>"$(MULTI_BOOT_ROOT)/boots/$$boot/observations.jsonl"; \
+		printf '{}\n' >"$(MULTI_BOOT_ROOT)/boots/$$boot/boot.json"; \
+		printf 'required\n' >"$(MULTI_BOOT_ROOT)/boots/$$boot/required.txt"; \
+	done
+	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(MULTI_BOOT_ROOT),2)
+	test "$$(wc -l <"$(MULTI_BOOT_ROOT)/observations.jsonl")" = "2"
+	test "$$(jq -s -c '[.[].boot]' "$(MULTI_BOOT_ROOT)/observations.jsonl")" = \
+		'["one","two"]'
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(MULTI_BOOT_ROOT),2,boot.json observations.jsonl required.txt)
+	printf '%s\n' 'FIRST := one' 'SECOND := two' \
+		>"$(MULTI_BOOT_ROOT)/boots/one/guest.mk"
+	$(call NAMEI_EXT_MULTI_BOOT_SEAL_GUEST_MAKEFILE,$(MULTI_BOOT_ROOT)/boots/one/guest.mk,2)
+	(cd "$(MULTI_BOOT_ROOT)/boots/one" && sha256sum -c guest.mk.sha256)
+	install -d "$(MULTI_BOOT_ROOT)/boots/one/nested"
+	printf '{}\n' >"$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json"
+	printf '{"boot":"extra"}\n' \
+		>"$(MULTI_BOOT_ROOT)/boots/one/nested/observations.jsonl"
+	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
+		printf '%s\n' 'extra nested boot evidence unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	if $(MAKE) --no-print-directory multi-boot-collect-only; then \
+		printf '%s\n' 'extra nested observations unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rm "$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json" \
+		"$(MULTI_BOOT_ROOT)/boots/one/nested/observations.jsonl"
+	rm "$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
+		printf '%s\n' 'missing multi-boot artifact unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	printf 'required\n' >"$(MULTI_BOOT_ROOT)/boots/two/required.txt"
+	mv "$(MULTI_BOOT_ROOT)/boots/two/boot.json" \
+		"$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json"
+	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
+		printf '%s\n' 'nested boot artifact unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	mv "$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json" \
+		"$(MULTI_BOOT_ROOT)/boots/two/boot.json"
+	mv "$(MULTI_BOOT_ROOT)/boots/two/observations.jsonl" \
+		"$(MULTI_BOOT_ROOT)/boots/one/nested/observations.jsonl"
+	if $(MAKE) --no-print-directory multi-boot-collect-only; then \
+		printf '%s\n' 'nested observations unexpectedly passed' >&2; \
+		exit 1; \
+	fi
 
 validate-only:
 	$(call NAMEI_EXT_RUN_VALIDATE_CANONICAL,$(OUTPUT),$(RESULT_JSON))
 
 create-only:
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(OUTPUT))
+
+multi-boot-collect-only:
+	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(MULTI_BOOT_ROOT),2)
+
+multi-boot-validate-only:
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(MULTI_BOOT_ROOT),2,boot.json observations.jsonl required.txt)
 
 clean:
 	rm -rf "$(OUTPUT_ROOT)"

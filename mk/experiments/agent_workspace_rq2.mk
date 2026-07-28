@@ -8,6 +8,14 @@ AGENT_WORKSPACE_RQ2_LIBFUSE_ARCHIVE ?= $(CACHE_ROOT)/dependencies/libfuse/libfus
 AGENT_WORKSPACE_RQ2_LIBFUSE_RUNTIME ?= /usr/lib/x86_64-linux-gnu/libfuse3.so.3.14.0
 AGENT_WORKSPACE_RQ2_ANALYSIS ?= $(ROOT_DIR)/analysis/agent_workspace/analyze.py
 AGENT_WORKSPACE_RQ2_REQUIRED_ORACLES ?= $(ROOT_DIR)/experiments/agent_workspace/rq2_required_oracles.txt
+AGENT_WORKSPACE_RQ2_BOOT_FILES := \
+	guest.mk guest.mk.sha256 launcher.stdout.log launcher.stderr.log \
+	vcpu-affinity.json affinity-barrier.txt boot.json raw-runner.jsonl \
+	observations.jsonl stdout.log stderr.log kernel.config \
+	kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 \
+	kernel-btf.sha256 kernel-release.txt clocksource-before.txt \
+	clocksource-after.txt uname.txt proc-version.txt kernel-cmdline.txt \
+	proc-stat-before.txt proc-stat-after.txt dmesg.log
 
 define AGENT_WORKSPACE_RQ2_VALIDATE_HOST_PIN
 $(call NAMEI_EXT_VALIDATE_HOST_CPU_PIN,$(AGENT_WORKSPACE_RQ2_HOST_CPUS),$(KVM_CPUS))
@@ -65,7 +73,7 @@ endef
 define AGENT_WORKSPACE_RQ2_START
 $(call AGENT_WORKSPACE_RQ2_VALIDATE_HOST_PIN)
 $(call NAMEI_EXT_RESULT_ROOT_CREATE,$(1))
-install -d "$(1)/boots"
+$(call NAMEI_EXT_MULTI_BOOT_INIT,$(1))
 $(call NAMEI_EXT_RUN_START,$(1),agent-workspace-rq2,agentfs,kvm_agent_workspace_rq2,$(1)/observations.jsonl,agent_workspace_view.bpf.c,namei_ext_agent_workspace+libfuse3)
 $(call AGENT_WORKSPACE_RQ2_CAPTURE_ARTIFACTS,$(1))
 jq --slurpfile artifacts "$(1)/artifacts/manifest.json" \
@@ -84,39 +92,15 @@ mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 jq -e '.kernel.commit == .artifacts.kernel.commit and .kernel_commit == .artifacts.kernel.commit' \
 	"$(1)/run.json" >/dev/null
 printf '%s\n' "$(3)" >"$(1)/command.txt"
-lscpu >"$(1)/host-lscpu.txt"
-lscpu -e=CPU,CORE,SOCKET,NODE,ONLINE,MAXMHZ,MINMHZ \
-	>"$(1)/host-lscpu-extended.txt"
-cat /proc/stat >"$(1)/host-proc-stat-before.txt"
-cat /proc/interrupts >"$(1)/host-proc-interrupts-before.txt"
-printf '%s\n' "$(AGENT_WORKSPACE_RQ2_HOST_CPUS)" \
-	>"$(1)/host-cpu-pin.txt"
-pin_start=$$(printf '%s\n' "$(AGENT_WORKSPACE_RQ2_HOST_CPUS)" | cut -d- -f1); \
-pin_end=$$(printf '%s\n' "$(AGENT_WORKSPACE_RQ2_HOST_CPUS)" | cut -d- -f2); \
-jq -n --argjson start "$$pin_start" --argjson end "$$pin_end" \
-	'[range($$start; $$end + 1)]' >"$(1)/host-cpu-pin.json"; \
-printf 'intel_pstate_no_turbo=%s\n' \
-	"$$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)" \
-	>"$(1)/host-cpu-frequency-policy.txt"; \
-for cpu in $$(seq "$$pin_start" "$$pin_end"); do \
-	printf 'cpu=%s governor=%s driver=%s max_khz=%s\n' "$$cpu" \
-		"$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/scaling_governor")" \
-		"$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/scaling_driver")" \
-		"$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/cpuinfo_max_freq")" \
-		>>"$(1)/host-cpu-frequency-policy.txt"; \
-done
-vng_path=$$(command -v "$(VNG)"); \
-vng_module_path=$$(python3 -c 'import virtme_ng.run; print(virtme_ng.run.__file__)'); \
-"$(VNG)" --version >"$(1)/vng-version.txt"; \
-sha256sum "$$vng_path" >"$(1)/vng-executable.sha256"; \
-sha256sum "$$vng_module_path" >"$(1)/vng-run-module.sha256"
+$(call NAMEI_EXT_MULTI_BOOT_CAPTURE_PINNED_HOST,$(1),$(AGENT_WORKSPACE_RQ2_HOST_CPUS))
 ldd "$(1)/artifacts/runtime/namei_ext_agent_workspace_fuse" \
 	>"$(1)/fuse-runner-ldd.txt"
 sha256sum "$(ROOT_DIR)/configs/benchmarks/agent_workspace.mk" \
 	"$(ROOT_DIR)/configs/kvm/x86_64.mk" \
 	"$(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk" \
 	"$(ROOT_DIR)/mk/experiments/agent_workspace.mk" \
-	"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/kvm.mk" \
+	"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/multi_boot.mk" \
+	"$(ROOT_DIR)/mk/kvm.mk" \
 	"$(ROOT_DIR)/tools/kvm/verify_vcpu_affinity.py" \
 	"$(ROOT_DIR)/tools/kvm/test_verify_vcpu_affinity.py" \
 	"$(ROOT_DIR)/experiments/agent_workspace/Makefile" \
@@ -153,9 +137,7 @@ printf '%s := %s\n' \
 	'AGENT_WORKSPACE_RQ2_KERNEL_BTF_SHA256' "$$btf_sha" \
 	'AGENT_WORKSPACE_RQ2_KERNEL_RELEASE' "$$release" \
 	>"$$guest_makefile"; \
-	test "$$(wc -l <"$$guest_makefile")" = "15"; \
-! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null; \
-(cd "$$boot_dir" && sha256sum guest.mk >guest.mk.sha256)
+	$(call NAMEI_EXT_MULTI_BOOT_SEAL_GUEST_MAKEFILE,$$guest_makefile,15)
 endef
 
 .PHONY: agent-workspace-rq2-source-bindings \
@@ -322,16 +304,12 @@ agent-workspace-rq2-finalize:
 	test -n "$(AGENT_WORKSPACE_RQ2_ACTIVE_REPETITIONS)"
 	jq -e '.status == "running" and (.failed_at | not)' \
 		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/run.json" >/dev/null
-	cat /proc/stat \
-		>"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/host-proc-stat-after.txt"
-	cat /proc/interrupts \
-		>"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/host-proc-interrupts-after.txt"
+	$(call NAMEI_EXT_MULTI_BOOT_CAPTURE_PINNED_HOST_AFTER,$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR))
 	LC_ALL=C sort -o "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/expected-boots.txt" \
 		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/expected-boots.txt"
-	find "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/boots" -name observations.jsonl \
-		-print0 | sort -z | xargs -0 cat \
-		>"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/observations.jsonl"
-	find "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/boots" -name boot.json -print0 | \
+	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR),$$((2 * $(AGENT_WORKSPACE_RQ2_ACTIVE_REPETITIONS))))
+	find "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/boots" -mindepth 2 -maxdepth 2 \
+		-name boot.json -type f -print0 | \
 		sort -z | xargs -0 jq -r '"\(.repetition)|\(.condition)"' | \
 		LC_ALL=C sort >"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/observed-boots.txt"
 	cmp "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/expected-boots.txt" \
@@ -343,27 +321,14 @@ agent-workspace-rq2-finalize:
 		"$$((2 * $(AGENT_WORKSPACE_RQ2_ACTIVE_REPETITIONS)))"
 	sha256sum -c "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/inputs.sha256"
 	sha256sum -c "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/artifacts.sha256"
-	test "$$(find "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/boots" \
-		-name boot.json -type f | wc -l)" = \
-		"$$((2 * $(AGENT_WORKSPACE_RQ2_ACTIVE_REPETITIONS)))"
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR),$$((2 * $(AGENT_WORKSPACE_RQ2_ACTIVE_REPETITIONS))),$(AGENT_WORKSPACE_RQ2_BOOT_FILES))
 	test "$$(jq -s '[.[] | select(.event == "agent-workspace-lifecycle-sample")] | length' \
 		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/observations.jsonl")" = \
 		"$$((2 * $(AGENT_WORKSPACE_RQ2_ACTIVE_REPETITIONS) * $(AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES)))"
 	! jq -e 'select(.pass != true)' \
 		"$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/observations.jsonl" >/dev/null
-	for boot in "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)"/boots/*; do \
+	while IFS= read -r -d '' boot; do \
 		(cd "$$boot" && sha256sum -c guest.mk.sha256); \
-		for file in guest.mk guest.mk.sha256 launcher.stdout.log \
-			launcher.stderr.log vcpu-affinity.json affinity-barrier.txt \
-			boot.json raw-runner.jsonl \
-			observations.jsonl stdout.log stderr.log kernel.config \
-			kernel-commit.txt kernel-build-id.txt kernel-notes.sha256 \
-			kernel-btf.sha256 kernel-release.txt clocksource-before.txt \
-			clocksource-after.txt uname.txt proc-version.txt \
-			kernel-cmdline.txt proc-stat-before.txt proc-stat-after.txt \
-			dmesg.log; do \
-			test -e "$$boot/$$file"; \
-		done; \
 		jq -e '.schema == "namei_ext.agent_workspace_rq2.boot.v2" and .status == "completed" and .clocksource == "tsc" and (.affinity_verified_at | type == "string" and length > 0)' \
 			"$$boot/boot.json" >/dev/null; \
 		test "$$(cat "$$boot/affinity-barrier.txt")" = \
@@ -376,15 +341,10 @@ agent-workspace-rq2-finalize:
 			"$$boot/vcpu-affinity.json" >/dev/null; \
 		! grep -E 'WARNING: Failed to pin vCPUs|Permission denied: cannot set affinity|not enough host CPUs|QMP .*failed|No vCPU threads found|TID .* does not exist' \
 			"$$boot/launcher.stderr.log" >/dev/null; \
-	done
-	for file in host-lscpu.txt host-lscpu-extended.txt host-cpu-pin.txt \
-			host-cpu-pin.json \
-			host-cpu-frequency-policy.txt vng-version.txt \
-			vng-executable.sha256 vng-run-module.sha256 \
-			host-proc-stat-before.txt \
-			host-proc-stat-after.txt host-proc-interrupts-before.txt \
-			host-proc-interrupts-after.txt launch-order.jsonl \
-			fuse-runner-ldd.txt; do \
+	done < <(find "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/boots" \
+		-mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z)
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_PINNED_HOST_FILES,$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR))
+	for file in launch-order.jsonl fuse-runner-ldd.txt; do \
 		test -s "$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/$$file"; \
 	done
 	$(call NAMEI_EXT_RUN_VALIDATE_BASE,$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR),$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)/observations.jsonl)

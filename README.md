@@ -28,6 +28,7 @@ mk/experiments/         Make-owned KVM suites for individual case studies
 mk/benchmarks/          Make-owned standard performance matrices
 mk/suites.mk             suite registry and evidence-level aggregates
 mk/results.mk           shared run lifecycle and raw-artifact validation
+mk/multi_boot.mk        shared multi-boot mechanics and host provenance
 analysis/               derived statistics and figures from raw observations
 workloads/legacy/       evidence using the superseded workload numbering
 results/                raw observations, logs, hashes, and run metadata

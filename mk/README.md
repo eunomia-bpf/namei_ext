@@ -11,6 +11,8 @@ suite files own workload semantics.
 - `kvm.mk`: KVM execution and common guest preparation.
 - `results.mk`: `namei_ext.run.v2` lifecycle, source-state gates, and minimum
   artifact gates.
+- `multi_boot.mk`: shared boot-root, pinned-host provenance, guest-Makefile,
+  observation collection, and per-boot artifact mechanics.
 - `workload.mk`: pinned third-party workload acquisition and build.
 - `experiments/*.mk`: source-derived industrial case studies.
 - `benchmarks/*.mk`: standard performance matrices and their analysis entrypoints.
