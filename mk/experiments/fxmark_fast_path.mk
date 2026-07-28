@@ -15,6 +15,9 @@ test "$(FXMARK_ARCHIVE_URL)" = \
 	https://codeload.github.com/sslab-gatech/fxmark/tar.gz/3f29552ce7ba6be24c4172e6e2c2c1f603209953
 test "$(FXMARK_ARCHIVE_SHA256)" = \
 	b8887b7ef5fe9cedaeed35ab12801aa8b7534d9e16ec40124af788dfd85f46ae
+test "$(FXMARK_BPFTOOL)" = /usr/local/sbin/bpftool
+test "$$(sha256sum "$(FXMARK_BPFTOOL)" | awk '{print $$1}')" = \
+	8d90219edf52eacd3416ded92f2137f7ab87eeef2379b5d4b24e5395a79c9587
 test "$(KVM_APPEND)" = \
 	"loglevel=7 panic=30 oops=panic tsc=reliable clocksource=tsc"
 test "$(VNG_MODULE_FLAGS)" = --skip-modules
@@ -110,6 +113,7 @@ sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-rq2-fxmark-fast-path-confirmatory-plan.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-rq2-fxmark-fast-path-plan-review.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-fxmark-fast-path-confirmatory-implementation.md" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-28-fxmark-fast-path-preflight-v1-failure.md" \
 	>"$(1)/inputs.sha256"
 : >"$(1)/expected-boots.txt"
 : >"$(1)/expected-cells.txt"
@@ -120,6 +124,7 @@ manifest="$(1)/artifacts/manifest.json"; \
 fxmark_binary="$(1)/$$(jq -r '.runtime.fxmark' "$$manifest")"; \
 fxmark_cell="$(1)/$$(jq -r '.runtime.cell' "$$manifest")"; \
 fxmark_fuse="$(1)/$$(jq -r '.runtime.fuse' "$$manifest")"; \
+bpftool_binary="$(1)/$$(jq -r '.runtime.bpftool' "$$manifest")"; \
 pass_policy="$(1)/$$(jq -r '.runtime.pass_policy' "$$manifest")"; \
 select_policy="$(1)/$$(jq -r '.runtime.select_policy' "$$manifest")"; \
 order_index=0; \

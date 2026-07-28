@@ -27,7 +27,9 @@ pool the formal-v3 result.
   `completed_at` fields.
 - The confirmatory path captures direct pre/post inventories of loaded BPF
   programs, cgroup BPF attachments, FUSE mounts, and open `/dev/fuse` file
-  descriptors. Both snapshots must be empty and byte-identical.
+  descriptors. Both snapshots must be empty and byte-identical. The BPF
+  inventory uses a hashed `bpftool` ELF copied into the result runtime
+  artifacts, not guest `PATH` resolution.
 
 ## Confirmatory Runner
 
@@ -90,5 +92,8 @@ mark it completed.
 ## Remaining Gate
 
 The independent code/protocol review returned `GO`. The implementation still
-requires a real two-boot KVM preflight. A successful preflight proves only
-executability; the 30-block formal run is required for paper evidence.
+requires a successful real two-boot KVM preflight. Preflight v1 preserved a
+fail-fast guest-tool resolution failure; the frozen runtime-artifact repair is
+recorded in `2026-07-28-fxmark-fast-path-preflight-v1-failure.md`. A successful
+preflight proves only executability; the 30-block formal run is required for
+paper evidence.

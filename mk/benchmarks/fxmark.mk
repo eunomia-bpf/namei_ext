@@ -6,6 +6,7 @@ FXMARK_OUTPUT ?= $(BUILD_ROOT)/fxmark-rq2
 FXMARK_BINARY ?= $(FXMARK_OUTPUT)/fxmark
 FXMARK_CELL ?= $(FXMARK_OUTPUT)/fxmark_cell
 FXMARK_FUSE ?= $(FXMARK_OUTPUT)/fxmark_fuse
+FXMARK_BPFTOOL ?= /usr/local/sbin/bpftool
 FXMARK_PASS_POLICY ?= $(BUILD_ROOT)/bpf/fxmark_pass.bpf.o
 FXMARK_SELECT_POLICY ?= $(BUILD_ROOT)/bpf/fxmark_select.bpf.o
 FXMARK_PATCHED_KERNEL_BTF ?= $(FXMARK_OUTPUT)/patched-vmlinux.btf
@@ -31,6 +32,7 @@ install -m 0444 "$(FXMARK_STOCK_KERNEL_NOTES)" "$(1)/artifacts/kernel/stock/vmli
 install -m 0555 "$(FXMARK_BINARY)" "$(1)/artifacts/runtime/fxmark"
 install -m 0555 "$(FXMARK_CELL)" "$(1)/artifacts/runtime/fxmark_cell"
 install -m 0555 "$(FXMARK_FUSE)" "$(1)/artifacts/runtime/fxmark_fuse"
+install -m 0555 "$(FXMARK_BPFTOOL)" "$(1)/artifacts/runtime/bpftool"
 install -m 0444 "$(FXMARK_PASS_POLICY)" "$(1)/artifacts/runtime/fxmark_pass.bpf.o"
 install -m 0444 "$(FXMARK_SELECT_POLICY)" "$(1)/artifacts/runtime/fxmark_select.bpf.o"
 jq -n \
@@ -45,7 +47,7 @@ jq -n \
 	--arg stock_build_id "$$(readelf -n "$(STOCK_KERNEL_BUILD_DIR)/vmlinux" | awk '/Build ID:/ {print $$3; exit}')" \
 	--arg stock_notes_sha256 "$$(sha256sum "$(1)/artifacts/kernel/stock/vmlinux.notes" | awk '{print $$1}')" \
 	--arg stock_btf_sha256 "$$(sha256sum "$(1)/artifacts/kernel/stock/vmlinux.btf" | awk '{print $$1}')" \
-	'{patched:{commit:$$patched_commit,release:$$patched_release,build_id:$$patched_build_id,notes_sha256:$$patched_notes_sha256,btf_sha256:$$patched_btf_sha256,image:"artifacts/kernel/patched/bzImage",config:"artifacts/kernel/patched/config"},stock:{commit:$$stock_commit,source_tree_sha256:$$stock_source_tree_sha256,release:$$stock_release,build_id:$$stock_build_id,notes_sha256:$$stock_notes_sha256,btf_sha256:$$stock_btf_sha256,image:"artifacts/kernel/stock/bzImage",config:"artifacts/kernel/stock/config"},runtime:{fxmark:"artifacts/runtime/fxmark",cell:"artifacts/runtime/fxmark_cell",fuse:"artifacts/runtime/fxmark_fuse",pass_policy:"artifacts/runtime/fxmark_pass.bpf.o",select_policy:"artifacts/runtime/fxmark_select.bpf.o"}}' \
+	'{patched:{commit:$$patched_commit,release:$$patched_release,build_id:$$patched_build_id,notes_sha256:$$patched_notes_sha256,btf_sha256:$$patched_btf_sha256,image:"artifacts/kernel/patched/bzImage",config:"artifacts/kernel/patched/config"},stock:{commit:$$stock_commit,source_tree_sha256:$$stock_source_tree_sha256,release:$$stock_release,build_id:$$stock_build_id,notes_sha256:$$stock_notes_sha256,btf_sha256:$$stock_btf_sha256,image:"artifacts/kernel/stock/bzImage",config:"artifacts/kernel/stock/config"},runtime:{fxmark:"artifacts/runtime/fxmark",cell:"artifacts/runtime/fxmark_cell",fuse:"artifacts/runtime/fxmark_fuse",bpftool:"artifacts/runtime/bpftool",pass_policy:"artifacts/runtime/fxmark_pass.bpf.o",select_policy:"artifacts/runtime/fxmark_select.bpf.o"}}' \
 	>"$(1)/artifacts/manifest.json.tmp"
 jq -e '.patched.commit | length == 40' "$(1)/artifacts/manifest.json.tmp" >/dev/null
 	jq -e '.stock.commit | length == 40' "$(1)/artifacts/manifest.json.tmp" >/dev/null
@@ -67,6 +69,7 @@ sha256sum \
 	"$(1)/artifacts/runtime/fxmark" \
 	"$(1)/artifacts/runtime/fxmark_cell" \
 	"$(1)/artifacts/runtime/fxmark_fuse" \
+	"$(1)/artifacts/runtime/bpftool" \
 	"$(1)/artifacts/runtime/fxmark_pass.bpf.o" \
 	"$(1)/artifacts/runtime/fxmark_select.bpf.o" \
 	"$(1)/artifacts/manifest.json" \
@@ -83,6 +86,7 @@ printf '%s := %s\n' \
 	'FXMARK_RUN_BINARY' "$${fxmark_binary#$(ROOT_DIR)/}" \
 	'FXMARK_RUN_CELL' "$${fxmark_cell#$(ROOT_DIR)/}" \
 	'FXMARK_RUN_FUSE' "$${fxmark_fuse#$(ROOT_DIR)/}" \
+	'FXMARK_RUN_BPFTOOL' "$${bpftool_binary#$(ROOT_DIR)/}" \
 	'FXMARK_RUN_PASS_POLICY' "$${pass_policy#$(ROOT_DIR)/}" \
 	'FXMARK_RUN_SELECT_POLICY' "$${select_policy#$(ROOT_DIR)/}" \
 	'FXMARK_BOOT_RESULT_DIR' "$${boot_dir#$(ROOT_DIR)/}" \
@@ -96,7 +100,7 @@ printf '%s := %s\n' \
 	'FXMARK_BPF_STATS' "$(FXMARK_BPF_STATS)" \
 	'FXMARK_REQUIRE_AFFINITY' "$(if $(strip $(4)),$(4),0)" \
 	>"$$guest_makefile"; \
-test "$$(wc -l <"$$guest_makefile")" = "20"; \
+test "$$(wc -l <"$$guest_makefile")" = "21"; \
 ! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null; \
 (cd "$$boot_dir" && sha256sum guest.mk >guest.mk.sha256)
 endef
@@ -214,6 +218,7 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 	fxmark_binary="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.fxmark' "$$manifest")"; \
 	fxmark_cell="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.cell' "$$manifest")"; \
 	fxmark_fuse="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.fuse' "$$manifest")"; \
+	bpftool_binary="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.bpftool' "$$manifest")"; \
 	pass_policy="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.pass_policy' "$$manifest")"; \
 	select_policy="$(FXMARK_PREFLIGHT_RESULT_DIR)/$$(jq -r '.runtime.select_policy' "$$manifest")"; \
 	conditions=(stock unattached empty pass select fuse); \
@@ -320,6 +325,7 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 	fxmark_binary="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.fxmark' "$$manifest")"; \
 	fxmark_cell="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.cell' "$$manifest")"; \
 	fxmark_fuse="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.fuse' "$$manifest")"; \
+	bpftool_binary="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.bpftool' "$$manifest")"; \
 	pass_policy="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.pass_policy' "$$manifest")"; \
 	select_policy="$(FXMARK_RESULT_DIR)/$$(jq -r '.runtime.select_policy' "$$manifest")"; \
 	base=(stock unattached pass select fuse); \
@@ -415,6 +421,7 @@ __fxmark_rq2_guest:
 	test -x "$(FXMARK_RUN_BINARY)"
 	test -x "$(FXMARK_RUN_CELL)"
 	test -x "$(FXMARK_RUN_FUSE)"
+	test -x "$(FXMARK_RUN_BPFTOOL)"
 	test -r "$(FXMARK_RUN_PASS_POLICY)"
 	test -r "$(FXMARK_RUN_SELECT_POLICY)"
 	test -n "$(FXMARK_BOOT_RESULT_DIR)"
@@ -461,13 +468,12 @@ __fxmark_rq2_guest:
 	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
 	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
 	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
-		command -v bpftool >/dev/null; \
 		command -v findmnt >/dev/null; \
 		command -v lsof >/dev/null; \
 		test -c /dev/fuse; \
-		bpftool -j prog show \
+		"$(FXMARK_RUN_BPFTOOL)" -j prog show \
 			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-before.json"; \
-		bpftool -j cgroup tree \
+		"$(FXMARK_RUN_BPFTOOL)" -j cgroup tree \
 			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-before.json"; \
 		jq -e 'type == "array" and length == 0' \
 			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-before.json" >/dev/null; \
@@ -531,9 +537,9 @@ __fxmark_rq2_guest:
 	done
 	cat /proc/stat >"$(FXMARK_BOOT_RESULT_DIR)/proc-stat-after.txt"
 	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
-		bpftool -j prog show \
+		"$(FXMARK_RUN_BPFTOOL)" -j prog show \
 			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json"; \
-		bpftool -j cgroup tree \
+		"$(FXMARK_RUN_BPFTOOL)" -j cgroup tree \
 			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-after.json"; \
 		jq -e 'type == "array" and length == 0' \
 			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json" >/dev/null; \
