@@ -69,6 +69,7 @@ struct runner_paths {
 	char canary_index[PATH_MAX];
 	char runtime[PATH_MAX];
 	char prefix[PATH_MAX];
+	char prefix_logs[PATH_MAX];
 	char pid_file[PATH_MAX];
 	char error_log[PATH_MAX];
 	char nginx_stdout[PATH_MAX];
@@ -202,6 +203,8 @@ static int build_paths(struct runner_paths *paths, const char *result_dir)
 				paths->fixture, "runtime") ||
 	    namei_ext_path_join(paths->prefix, sizeof(paths->prefix),
 				paths->runtime, "prefix") ||
+	    namei_ext_path_join(paths->prefix_logs, sizeof(paths->prefix_logs),
+				paths->prefix, "logs") ||
 	    namei_ext_path_join(paths->pid_file, sizeof(paths->pid_file),
 				paths->runtime, "nginx.pid") ||
 	    namei_ext_path_join(paths->error_log, sizeof(paths->error_log),
@@ -888,6 +891,10 @@ int main(int argc, char **argv)
 	struct runner_paths paths = {};
 	struct file_snapshot snapshots[6] = {};
 	char cgroup[PATH_MAX] = {};
+	char policy_resolved[PATH_MAX] = {};
+	char nginx_resolved[PATH_MAX] = {};
+	char result_path_resolved[PATH_MAX] = {};
+	char result_dir_resolved[PATH_MAX] = {};
 	char validation_stdout[4][PATH_MAX] = {};
 	char validation_stderr[4][PATH_MAX] = {};
 	char logical_sha256[SHA256_HEX_LENGTH + 1] = {};
@@ -922,10 +929,17 @@ int main(int argc, char **argv)
 			argv[0]);
 		return 2;
 	}
-	policy_path = argv[1];
-	result_path = argv[2];
-	nginx = argv[3];
-	result_dir = argv[4];
+	if (!realpath(argv[1], policy_resolved) ||
+	    !realpath(argv[2], result_path_resolved) ||
+	    !realpath(argv[3], nginx_resolved) ||
+	    !realpath(argv[4], result_dir_resolved)) {
+		perror("realpath input");
+		return 2;
+	}
+	policy_path = policy_resolved;
+	result_path = result_path_resolved;
+	nginx = nginx_resolved;
+	result_dir = result_dir_resolved;
 	repetition = (unsigned int)strtoul(argv[5], NULL, 10);
 	timeout_seconds = (unsigned int)strtoul(argv[6], NULL, 10);
 	if (!repetition || !timeout_seconds)
@@ -975,7 +989,8 @@ int main(int argc, char **argv)
 	      make_directory(paths.current_content) ||
 	      make_directory(paths.canary_content) ||
 	      make_directory(paths.runtime) ||
-	      make_directory(paths.prefix);
+	      make_directory(paths.prefix) ||
+	      make_directory(paths.prefix_logs);
 	if (ret || choose_loopback_port(&port) ||
 	    namei_ext_write_text(paths.current_index, CURRENT_BODY) ||
 	    namei_ext_write_text(paths.canary_index, CANARY_BODY) ||
