@@ -161,3 +161,12 @@ measurement, produced the required raw artifacts, and passed the dmesg,
 checksum, expected-cell, and expected-boot gates. This is infrastructure
 validation only; the two-second, single-worker observations are not paper
 performance results.
+
+After closing the remaining lock windows and adding the guest-input checksum,
+`20260727T-guest-config-preflight-v3` completed the same six-condition gate from
+clean source commit `d85c0cf79f9a1e7db397e9fc52e05bfd30963671`.
+Each guest verified `guest.mk.sha256` before running its cell, and host
+finalization verified all six checksums again. All observations, kernel
+identity checks, TSC checks, artifact checksums, and dmesg gates passed. This
+run supersedes v2 as the infrastructure preflight; it remains a preflight, not
+a paper performance dataset.
