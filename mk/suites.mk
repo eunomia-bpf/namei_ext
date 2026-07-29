@@ -30,6 +30,8 @@ NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	$(NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS) \
 	kvm-agent-workspace-rq2 \
 	kvm-agent-workspace-rq3 \
+	experiment-application-file-sharing-rq1 \
+	kvm-application-file-sharing-rq1 \
 	kvm-build-action-sandboxing-rq1 \
 	kvm-toolchain-environment \
 	experiment-spindle-staging \

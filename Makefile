@@ -20,6 +20,7 @@ include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_readdir.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
+include $(ROOT_DIR)/configs/benchmarks/application_file_sharing.mk
 include $(ROOT_DIR)/configs/benchmarks/build_action_sandboxing.mk
 include $(ROOT_DIR)/configs/benchmarks/build_action_rq2.mk
 include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
@@ -65,6 +66,9 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 	kvm-toolchain-environment toolchain-environment-run \
 	toolchain-environment-finalize toolchain-environment-analyze \
 	experiment-toolchain-environment \
+	kvm-application-file-sharing-rq1 application-file-sharing-run \
+	application-file-sharing-finalize application-file-sharing-analyze \
+	experiment-application-file-sharing-rq1 \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
@@ -190,7 +194,9 @@ help:
 	@printf '%s\n' '  make experiment-agent-workspace-rq3'
 	@printf '%s\n' '                       run the matched namei_ext/Wrapfs boundary and fail-closed matrix'
 	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
-	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
+	@printf '%s\n' '                       run one XDG-derived grant/revoke workload boot in KVM'
+	@printf '%s\n' '  make experiment-application-file-sharing-rq1'
+	@printf '%s\n' '                       run three fresh XDG-derived grant/revoke workload boots and summarize RQ1 evidence'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
 	@printf '%s\n' '                       run one real Bazel action-view boot with the current allowlist policy'
 	@printf '%s\n' '  make experiment-build-action-sandboxing-rq1'
