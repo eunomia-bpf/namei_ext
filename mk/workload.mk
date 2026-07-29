@@ -77,6 +77,10 @@ workload-redis-build: $(REDIS_BUILD_JSON)
 workload-nginx-build: $(NGINX_BUILD_JSON)
 
 workload-bazel: $(BAZEL_BINARY)
+	test -x "$(BAZEL_BINARY)"
+	printf '%s  %s\n' "$(BAZEL_BINARY_SHA256)" "$(BAZEL_BINARY)" | \
+		sha256sum -c -
+	test "$$("$(BAZEL_BINARY)" --version)" = "bazel $(BAZEL_VERSION)"
 
 workload-sandboxfs-acquire: $(SANDBOXFS_ARCHIVE)
 	test -s "$(SANDBOXFS_ARCHIVE)"
@@ -93,6 +97,10 @@ workload-sandboxfs-build: $(SANDBOXFS_BUILD_PROVENANCE)
 	test -s "$(SANDBOXFS_LDD)"
 	test "$$(sha256sum "$(SANDBOXFS_BINARY)" | awk '{print $$1}')" = \
 		"$(SANDBOXFS_BINARY_SHA256)"
+	test "$$(pkg-config --modversion fuse)" = \
+		"$(SANDBOXFS_LIBFUSE_VERSION)"
+	test "$$(sha256sum "$(SANDBOXFS_LIBFUSE_RUNTIME)" | awk '{print $$1}')" = \
+		"$(SANDBOXFS_LIBFUSE_RUNTIME_SHA256)"
 	jq -e \
 		--arg commit "$(SANDBOXFS_COMMIT)" \
 		--arg archive_sha256 "$(SANDBOXFS_ARCHIVE_SHA256)" \

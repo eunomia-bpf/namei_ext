@@ -40,6 +40,12 @@ $(call NAMEI_EXT_VALIDATE_HOST_CPU_PIN,$(BUILD_ACTION_RQ2_HOST_CPUS),$(KVM_CPUS)
 endef
 
 define BUILD_ACTION_RQ2_CAPTURE_ARTIFACTS
+printf '%s  %s\n' "$(BAZEL_BINARY_SHA256)" "$(BAZEL_BINARY)" | \
+	sha256sum -c -
+printf '%s  %s\n' "$(SANDBOXFS_BINARY_SHA256)" "$(SANDBOXFS_BINARY)" | \
+	sha256sum -c -
+printf '%s  %s\n' "$(SANDBOXFS_LIBFUSE_RUNTIME_SHA256)" \
+	"$(SANDBOXFS_LIBFUSE_RUNTIME)" | sha256sum -c -
 install -d "$(1)/artifacts/kernel" "$(1)/artifacts/runtime" \
 	"$(1)/artifacts/source/sandboxfs"
 install -m 0444 "$(KERNEL_IMAGE)" "$(1)/artifacts/kernel/bzImage"
@@ -82,8 +88,8 @@ jq -n \
 	--arg sandboxfs_binary_sha256 "$$(sha256sum "$(1)/artifacts/runtime/sandboxfs" | awk '{print $$1}')" \
 	--arg libfuse_version "$(SANDBOXFS_LIBFUSE_VERSION)" \
 	--arg libfuse_sha256 "$$(sha256sum "$(1)/artifacts/runtime/libfuse.so.2" | awk '{print $$1}')" \
-	--arg bazel_version "$(BAZEL_VERSION)" \
-	--arg bazel_sha256 "$(BAZEL_BINARY_SHA256)" \
+		--arg bazel_version "$$("$(BAZEL_BINARY)" --version)" \
+		--arg bazel_sha256 "$$(sha256sum "$(BAZEL_BINARY)" | awk '{print $$1}')" \
 	'{kernel:{commit:$$kernel_commit,release:$$kernel_release,build_id:$$kernel_build_id,notes_sha256:$$kernel_notes_sha256,btf_sha256:$$kernel_btf_sha256,image:"artifacts/kernel/bzImage",config:"artifacts/kernel/config"},runtime:{runner:"artifacts/runtime/namei_ext_build_action_rq2",policy:"artifacts/runtime/build_action_sandboxing.bpf.o",sandboxfs:"artifacts/runtime/sandboxfs",libfuse:"artifacts/runtime/libfuse.so.2",bazel:"artifacts/runtime/bazel",bpftool:"artifacts/runtime/bpftool"},source:{sandboxfs:{commit:$$sandboxfs_commit,archive:"artifacts/source/sandboxfs/source.tar.gz",archive_sha256:$$sandboxfs_archive_sha256,cargo_lock:"artifacts/source/sandboxfs/Cargo.lock",cargo_lock_sha256:$$sandboxfs_lock_sha256,build:"artifacts/source/sandboxfs/build.json",build_log:"artifacts/source/sandboxfs/build.log",ldd:"artifacts/source/sandboxfs/ldd.txt",binary_sha256:$$sandboxfs_binary_sha256,libfuse_version:$$libfuse_version,libfuse_sha256:$$libfuse_sha256},bazel:{version:$$bazel_version,sha256:$$bazel_sha256}}}' \
 	>"$(1)/artifacts/manifest.json"
 jq -e '.kernel.commit | length == 40' \

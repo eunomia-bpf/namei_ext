@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
@@ -72,6 +73,8 @@ struct action_process {
 	const char *logical_action;
 	const char *sandbox_view;
 	pid_t pid;
+	int setup_fd;
+	int start_fd;
 };
 
 struct sample_paths {
@@ -408,7 +411,10 @@ static void emit_sample(FILE *out, const char *condition,
 			unsigned long long lifecycle_ns,
 			const struct process_stats *before,
 			const struct process_stats *after,
-			const char *hash_a, const char *hash_b)
+			const char *expected_hash_a,
+			const char *expected_hash_b,
+			const char *observed_hash_a,
+			const char *observed_hash_b)
 {
 	fprintf(out,
 		"{\"event\":\"build-action-rq2-sample\","
@@ -421,7 +427,8 @@ static void emit_sample(FILE *out, const char *condition,
 		"\"sandboxfs_voluntary_context_switches\":%llu,"
 		"\"sandboxfs_involuntary_context_switches\":%llu,"
 		"\"sandboxfs_vm_hwm_kb\":%llu,"
-		"\"output_hash_a\":\"%s\",\"output_hash_b\":\"%s\","
+		"\"expected_hash_a\":\"%s\",\"expected_hash_b\":\"%s\","
+		"\"observed_hash_a\":\"%s\",\"observed_hash_b\":\"%s\","
 		"\"actions\":2,\"concurrent\":true,"
 		"\"unknown_hidden\":true,\"undeclared_hidden\":true,"
 		"\"lower_objects_unchanged\":true,\"pass\":true}\n",
@@ -433,7 +440,24 @@ static void emit_sample(FILE *out, const char *condition,
 			before->voluntary_context_switches,
 		after->involuntary_context_switches -
 			before->involuntary_context_switches,
-		after->vm_hwm_kb, hash_a, hash_b);
+		after->vm_hwm_kb, expected_hash_a, expected_hash_b,
+		observed_hash_a, observed_hash_b);
+	fflush(out);
+}
+
+static void emit_sample_cleanup_failure(FILE *out, const char *condition,
+					unsigned int repetition,
+					unsigned int scale,
+					unsigned int sample,
+					const char *stage, int ret)
+{
+	fprintf(out,
+		"{\"event\":\"build-action-rq2-failure\","
+		"\"condition\":\"%s\",\"repetition\":%u,"
+		"\"scale\":%u,\"sample\":%u,\"stage\":\"%s\","
+		"\"errno\":%d,\"pass\":false}\n",
+		condition, repetition, scale, sample, stage,
+		ret < 0 ? -ret : ret);
 	fflush(out);
 }
 
@@ -778,16 +802,31 @@ out:
 
 static int spawn_action(struct action_process *action)
 {
-	pid_t pid = fork();
+	int setup_pipe[2];
+	int start_pipe[2];
+	pid_t pid;
 
-	if (pid < 0)
+	if (pipe2(setup_pipe, O_CLOEXEC))
 		return -errno;
+	if (pipe2(start_pipe, O_CLOEXEC)) {
+		int ret = -errno;
+
+		close(setup_pipe[0]);
+		close(setup_pipe[1]);
+		return ret;
+	}
+	pid = fork();
+	if (pid < 0)
+		goto fork_error;
 	if (!pid) {
 		char output_base[PATH_MAX + 32];
 		char install_base[PATH_MAX + 32];
+		char signal = 0;
 		int stderr_fd;
 		int stdout_fd;
 
+		close(setup_pipe[0]);
+		close(start_pipe[1]);
 		if (namei_ext_move_self_to_cgroup(action->cgroup))
 			_exit(120);
 		if (action->sandbox_view) {
@@ -799,26 +838,37 @@ static int spawn_action(struct action_process *action)
 				  MS_BIND | MS_REC, NULL))
 				_exit(123);
 		}
+		if (write_all(setup_pipe[1], "R", 1))
+			_exit(124);
+		close(setup_pipe[1]);
+		do {
+			errno = 0;
+			if (read(start_pipe[0], &signal, 1) == 1)
+				break;
+		} while (errno == EINTR);
+		close(start_pipe[0]);
+		if (signal != 'G')
+			_exit(125);
 		stdout_fd = open(action->stdout_path,
 				 O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644);
 		stderr_fd = open(action->stderr_path,
 				 O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0644);
 		if (stdout_fd < 0 || stderr_fd < 0)
-			_exit(124);
+			_exit(126);
 		if (dup2(stdout_fd, STDOUT_FILENO) < 0 ||
 		    dup2(stderr_fd, STDERR_FILENO) < 0)
-			_exit(125);
+			_exit(127);
 		close(stdout_fd);
 		close(stderr_fd);
 		if (chdir(action->workspace))
-			_exit(126);
+			_exit(128);
 		if (snprintf(output_base, sizeof(output_base),
 			     "--output_base=%s", action->output_base) >=
 		    (int)sizeof(output_base) ||
 		    snprintf(install_base, sizeof(install_base),
 			     "--install_base=%s", action->install_base) >=
 		    (int)sizeof(install_base))
-			_exit(127);
+			_exit(129);
 		execl(action->bazel, action->bazel, "--batch", output_base,
 		      install_base, "build", "//:result", "--noenable_bzlmod",
 		      "--spawn_strategy=standalone",
@@ -826,10 +876,106 @@ static int spawn_action(struct action_process *action)
 		      "--curses=no", "--noshow_progress",
 		      "--noshow_loading_progress", "--verbose_failures",
 		      (char *)NULL);
-		_exit(128);
+		_exit(130);
 	}
+	close(setup_pipe[1]);
+	close(start_pipe[0]);
 	action->pid = pid;
+	action->setup_fd = setup_pipe[0];
+	action->start_fd = start_pipe[1];
 	return 0;
+
+fork_error:
+	{
+		int ret = -errno;
+
+		close(setup_pipe[0]);
+		close(setup_pipe[1]);
+		close(start_pipe[0]);
+		close(start_pipe[1]);
+		return ret;
+	}
+}
+
+static int wait_for_action_setup(struct action_process *action_a,
+				 struct action_process *action_b,
+				 unsigned int timeout_ms)
+{
+	struct pollfd pollfds[2] = {
+		{.fd = action_a->setup_fd, .events = POLLIN | POLLHUP},
+		{.fd = action_b->setup_fd, .events = POLLIN | POLLHUP},
+	};
+	struct action_process *actions[2] = {action_a, action_b};
+	bool ready[2] = {};
+	unsigned int elapsed = 0;
+
+	while (elapsed <= timeout_ms) {
+		int ret = poll(pollfds, 2, 100);
+		size_t index;
+
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return -errno;
+		}
+		for (index = 0; index < 2; index++) {
+			char signal;
+			ssize_t nread;
+
+			if (ready[index] || !pollfds[index].revents)
+				continue;
+			nread = read(pollfds[index].fd, &signal, 1);
+			if (nread != 1 || signal != 'R')
+				return -EIO;
+			close(pollfds[index].fd);
+			actions[index]->setup_fd = -1;
+			pollfds[index].fd = -1;
+			ready[index] = true;
+		}
+		if (ready[0] && ready[1])
+			return 0;
+		for (index = 0; index < 2; index++) {
+			int status;
+			pid_t waited;
+
+			if (ready[index])
+				continue;
+			waited = waitpid(actions[index]->pid, &status, WNOHANG);
+			if (waited == actions[index]->pid) {
+				actions[index]->pid = -1;
+				return -EIO;
+			}
+			if (waited < 0 && errno != EINTR)
+				return -errno;
+		}
+		elapsed += 100;
+	}
+	return -ETIMEDOUT;
+}
+
+static int release_action_setup(struct action_process *action)
+{
+	int ret;
+
+	if (action->start_fd < 0)
+		return -EBADF;
+	ret = write_all(action->start_fd, "G", 1);
+	if (close(action->start_fd) && !ret)
+		ret = -errno;
+	action->start_fd = -1;
+	return ret;
+}
+
+static void close_action_control(struct action_process *action)
+{
+	if (action->setup_fd >= 0) {
+		close(action->setup_fd);
+		action->setup_fd = -1;
+	}
+	if (action->start_fd >= 0) {
+		close(action->start_fd);
+		action->start_fd = -1;
+	}
 }
 
 static int wait_for_paths(const char *first, const char *second,
@@ -858,6 +1004,117 @@ static int wait_for_paths(const char *first, const char *second,
 		elapsed += 10;
 	}
 	return -ETIMEDOUT;
+}
+
+static int wait_for_paths_inotify(int inotify_fd, const char *first,
+				  const char *second,
+				  struct action_process *action_a,
+				  struct action_process *action_b,
+				  unsigned int timeout_ms)
+{
+	const char *first_name = strrchr(first, '/');
+	const char *second_name = strrchr(second, '/');
+	bool first_seen = false;
+	bool second_seen = false;
+	unsigned int elapsed = 0;
+
+	if (!first_name || !second_name)
+		return -EINVAL;
+	first_name++;
+	second_name++;
+	while (elapsed <= timeout_ms) {
+		char buffer[4096]
+			__attribute__((aligned(__alignof__(struct inotify_event))));
+		struct pollfd pollfd = {
+			.fd = inotify_fd,
+			.events = POLLIN,
+		};
+		ssize_t length;
+		ssize_t offset;
+		int ret;
+		int status;
+
+		if (!access(first, F_OK))
+			first_seen = true;
+		if (!access(second, F_OK))
+			second_seen = true;
+		if (first_seen && second_seen)
+			return 0;
+		ret = poll(&pollfd, 1, 100);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return -errno;
+		}
+		if (ret > 0) {
+			length = read(inotify_fd, buffer, sizeof(buffer));
+			if (length < 0) {
+				if (errno == EINTR)
+					continue;
+				return -errno;
+			}
+			for (offset = 0; offset < length;) {
+				const struct inotify_event *event =
+					(const struct inotify_event *)
+						&buffer[offset];
+
+				if (event->len && (event->mask & IN_CLOSE_WRITE)) {
+					if (!strcmp(event->name, first_name))
+						first_seen = true;
+					if (!strcmp(event->name, second_name))
+						second_seen = true;
+				}
+				offset += sizeof(*event) + event->len;
+			}
+			if (first_seen && second_seen)
+				return 0;
+		}
+		if (!first_seen && action_a && action_a->pid > 0 &&
+		    waitpid(action_a->pid, &status, WNOHANG) == action_a->pid) {
+			action_a->pid = -1;
+			return -EIO;
+		}
+		if (!second_seen && action_b && action_b->pid > 0 &&
+		    waitpid(action_b->pid, &status, WNOHANG) == action_b->pid) {
+			action_b->pid = -1;
+			return -EIO;
+		}
+		elapsed += 100;
+	}
+	return -ETIMEDOUT;
+}
+
+static int parse_action_output(const char *path, const char *expected_id,
+			       char observed_hash[65])
+{
+	char buffer[256];
+	char *first_newline;
+	char *second_newline;
+	size_t index;
+	int ret;
+
+	ret = read_text(path, buffer, sizeof(buffer));
+	if (ret)
+		return ret;
+	first_newline = strchr(buffer, '\n');
+	if (!first_newline)
+		return -EIO;
+	*first_newline = '\0';
+	second_newline = strchr(first_newline + 1, '\n');
+	if (!second_newline || second_newline[1] != '\0' ||
+	    strcmp(buffer, expected_id) ||
+	    second_newline - (first_newline + 1) != 64)
+		return -EIO;
+	for (index = 0; index < 64; index++) {
+		char value = first_newline[1 + index];
+
+		if (!isxdigit((unsigned char)value) ||
+		    (value >= 'A' && value <= 'F'))
+			return -EIO;
+		observed_hash[index] = value;
+	}
+	observed_hash[64] = '\0';
+	return 0;
 }
 
 static int read_process_stats(pid_t pid, struct process_stats *stats)
@@ -1196,7 +1453,7 @@ static int stop_sandboxfs(struct sandboxfs_process *process)
 static int add_namei_view(struct namei_ext_harness_policy *policy,
 			  uint64_t cgroup_id, const char *cgroup,
 			  const char *view, const char *target,
-			  unsigned int scale)
+			  unsigned int scale, int *rollback_error)
 {
 	char name[64];
 	unsigned int index;
@@ -1204,8 +1461,10 @@ static int add_namei_view(struct namei_ext_harness_policy *policy,
 	bool target_registered = false;
 	bool view_added = false;
 	bool root_added = false;
+	int cleanup_ret;
 	int ret;
 
+	*rollback_error = 0;
 	ret = namei_ext_register_target(cgroup, target, ACTION_TARGET_ID);
 	if (!ret) {
 		target_registered = true;
@@ -1234,20 +1493,32 @@ static int add_namei_view(struct namei_ext_harness_policy *policy,
 		return 0;
 
 	for (index = 1; index <= inserted; index++) {
-		if (!format_string(name, sizeof(name), "declared-%06u.txt",
-				   index))
-			namei_ext_component_map_delete(
+		cleanup_ret = format_string(name, sizeof(name),
+					    "declared-%06u.txt", index);
+		if (!cleanup_ret)
+			cleanup_ret = namei_ext_component_map_delete(
 				policy, "build_action_declared_inputs",
 				cgroup_id, target, name);
+		if (cleanup_ret && !*rollback_error)
+			*rollback_error = cleanup_ret;
 	}
-	if (root_added)
-		namei_ext_component_map_delete(policy, "build_action_roots",
-					     cgroup_id, target, "");
-	if (view_added)
-		namei_ext_component_map_delete(policy, "build_action_views",
-					     cgroup_id, view, "action");
-	if (target_registered)
-		namei_ext_clear_targets(cgroup);
+	if (root_added) {
+		cleanup_ret = namei_ext_component_map_delete(
+			policy, "build_action_roots", cgroup_id, target, "");
+		if (cleanup_ret && !*rollback_error)
+			*rollback_error = cleanup_ret;
+	}
+	if (view_added) {
+		cleanup_ret = namei_ext_component_map_delete(
+			policy, "build_action_views", cgroup_id, view, "action");
+		if (cleanup_ret && !*rollback_error)
+			*rollback_error = cleanup_ret;
+	}
+	if (target_registered) {
+		cleanup_ret = namei_ext_clear_targets(cgroup);
+		if (cleanup_ret && !*rollback_error)
+			*rollback_error = cleanup_ret;
+	}
 	return ret;
 }
 
@@ -1379,8 +1650,16 @@ static int run_sample(FILE *out, const char *condition,
 		      struct sandboxfs_process *sandboxfs)
 {
 	struct sample_paths *paths;
-	struct action_process action_a = {.pid = -1};
-	struct action_process action_b = {.pid = -1};
+	struct action_process action_a = {
+		.pid = -1,
+		.setup_fd = -1,
+		.start_fd = -1,
+	};
+	struct action_process action_b = {
+		.pid = -1,
+		.setup_fd = -1,
+		.start_fd = -1,
+	};
 	struct process_stats daemon_before = {};
 	struct process_stats daemon_after = {};
 	char sandbox_id_a[64] = {};
@@ -1389,20 +1668,22 @@ static int run_sample(FILE *out, const char *condition,
 	char sandbox_view_b[PATH_MAX] = {};
 	char sample_id_a[128];
 	char sample_id_b[128];
-	char expected_output_a[256];
-	char expected_output_b[256];
 	char hash_a[65];
 	char hash_b[65];
+	char observed_hash_a[65] = {};
+	char observed_hash_b[65] = {};
 	char unknown_path[PATH_MAX];
 	unsigned long long lifecycle_start;
-	unsigned long long setup_start;
-	unsigned long long setup_end;
+	unsigned long long setup_start = 0;
+	unsigned long long setup_end = 0;
 	unsigned long long action_start = 0;
 	unsigned long long action_end = 0;
 	unsigned long long lifecycle_end;
 	bool namei = !strcmp(condition, "namei_ext");
 	bool view_a_created = false;
 	bool view_b_created = false;
+	int finish_fd = -1;
+	int rollback_error;
 	int ret;
 	int cleanup_ret;
 
@@ -1421,12 +1702,6 @@ static int run_sample(FILE *out, const char *condition,
 		ret = format_string(sample_id_b, sizeof(sample_id_b),
 				    "r%02u-scale%06u-s%03u-b", repetition,
 				    scale, sample);
-	if (!ret)
-		ret = format_string(expected_output_a, sizeof(expected_output_a),
-				    "%s\n%s\n", sample_id_a, hash_a);
-	if (!ret)
-		ret = format_string(expected_output_b, sizeof(expected_output_b),
-				    "%s\n%s\n", sample_id_b, hash_b);
 	if (!ret)
 		ret = write_bazel_workspace(
 			paths->workspace_a, logical_action, sample_id_a,
@@ -1448,12 +1723,22 @@ static int run_sample(FILE *out, const char *condition,
 	setup_start = nsec_now();
 	if (namei) {
 		ret = add_namei_view(policy, cgroup_id_a, cgroup_a, view,
-				     paths->lower_a, scale);
+				     paths->lower_a, scale, &rollback_error);
+		if (rollback_error)
+			emit_sample_cleanup_failure(
+				out, condition, repetition, scale, sample,
+				"namei-view-a-setup-rollback", rollback_error);
 		if (!ret)
 			view_a_created = true;
-		if (!ret)
+		if (!ret) {
 			ret = add_namei_view(policy, cgroup_id_b, cgroup_b, view,
-					     paths->lower_b, scale);
+					     paths->lower_b, scale, &rollback_error);
+			if (rollback_error)
+				emit_sample_cleanup_failure(
+					out, condition, repetition, scale, sample,
+					"namei-view-b-setup-rollback",
+					rollback_error);
+		}
 		if (!ret)
 			view_b_created = true;
 	} else {
@@ -1483,9 +1768,46 @@ static int run_sample(FILE *out, const char *condition,
 				sandbox_view_b, sizeof(sandbox_view_b),
 				sandboxfs->mountpoint, sandbox_id_b);
 	}
-	setup_end = nsec_now();
 	if (ret)
 		goto teardown;
+
+	action_a = (struct action_process){
+		.bazel = bazel,
+		.workspace = paths->workspace_a,
+		.output_base = paths->output_base_a,
+		.install_base = install_base_a,
+		.cgroup = cgroup_a,
+		.stdout_path = paths->stdout_a,
+		.stderr_path = paths->stderr_a,
+		.logical_action = logical_action,
+		.sandbox_view = namei ? NULL : sandbox_view_a,
+		.pid = -1,
+		.setup_fd = -1,
+		.start_fd = -1,
+	};
+	action_b = (struct action_process){
+		.bazel = bazel,
+		.workspace = paths->workspace_b,
+		.output_base = paths->output_base_b,
+		.install_base = install_base_b,
+		.cgroup = cgroup_b,
+		.stdout_path = paths->stdout_b,
+		.stderr_path = paths->stderr_b,
+		.logical_action = logical_action,
+		.sandbox_view = namei ? NULL : sandbox_view_b,
+		.pid = -1,
+		.setup_fd = -1,
+		.start_fd = -1,
+	};
+	ret = spawn_action(&action_a);
+	if (!ret)
+		ret = spawn_action(&action_b);
+	if (!ret)
+		ret = wait_for_action_setup(&action_a, &action_b,
+					    ACTION_TIMEOUT_MS);
+	setup_end = nsec_now();
+	if (ret)
+		goto wait_actions;
 
 	ret = namei_ext_path_join(unknown_path, sizeof(unknown_path),
 				  paths->lower_a, "unknown.txt");
@@ -1505,56 +1827,58 @@ static int run_sample(FILE *out, const char *condition,
 		ret = write_lower_manifest(paths->lower_b,
 					   paths->manifest_b_before, scale);
 	if (ret)
-		goto teardown;
-
-	action_a = (struct action_process){
-		.bazel = bazel,
-		.workspace = paths->workspace_a,
-		.output_base = paths->output_base_a,
-		.install_base = install_base_a,
-		.cgroup = cgroup_a,
-		.stdout_path = paths->stdout_a,
-		.stderr_path = paths->stderr_a,
-		.logical_action = logical_action,
-		.sandbox_view = namei ? NULL : sandbox_view_a,
-		.pid = -1,
-	};
-	action_b = (struct action_process){
-		.bazel = bazel,
-		.workspace = paths->workspace_b,
-		.output_base = paths->output_base_b,
-		.install_base = install_base_b,
-		.cgroup = cgroup_b,
-		.stdout_path = paths->stdout_b,
-		.stderr_path = paths->stderr_b,
-		.logical_action = logical_action,
-		.sandbox_view = namei ? NULL : sandbox_view_b,
-		.pid = -1,
-	};
-	ret = spawn_action(&action_a);
+		goto wait_actions;
+	ret = release_action_setup(&action_a);
 	if (!ret)
-		ret = spawn_action(&action_b);
+		ret = release_action_setup(&action_b);
 	if (!ret)
 		ret = wait_for_paths(paths->ready_a, paths->ready_b,
 				     &action_a, &action_b, ACTION_TIMEOUT_MS);
 	if (ret)
 		goto wait_actions;
+	finish_fd = inotify_init1(IN_CLOEXEC);
+	if (finish_fd < 0) {
+		ret = -errno;
+		goto wait_actions;
+	}
+	if (inotify_add_watch(finish_fd, paths->sample_root,
+			      IN_CLOSE_WRITE) < 0) {
+		ret = -errno;
+		goto wait_actions;
+	}
 	action_start = nsec_now();
 	ret = namei_ext_write_text(paths->release, "release\n");
 	if (!ret)
-		ret = wait_for_paths(paths->finished_a, paths->finished_b,
-				     &action_a, &action_b, ACTION_TIMEOUT_MS);
+		ret = wait_for_paths_inotify(
+			finish_fd, paths->finished_a, paths->finished_b,
+			&action_a, &action_b, ACTION_TIMEOUT_MS);
 	action_end = nsec_now();
 wait_actions:
+	if (finish_fd >= 0) {
+		close(finish_fd);
+		finish_fd = -1;
+	}
+	close_action_control(&action_a);
+	close_action_control(&action_b);
 	if (action_a.pid > 0) {
 		if (ret)
 			cleanup_ret = terminate_child(action_a.pid);
 		else
 			cleanup_ret = wait_child_timeout(action_a.pid,
 							 ACTION_TIMEOUT_MS);
-		if (cleanup_ret == -ETIMEDOUT)
-			terminate_child(action_a.pid);
+		if (cleanup_ret == -ETIMEDOUT) {
+			int terminate_ret = terminate_child(action_a.pid);
+
+			if (terminate_ret)
+				emit_sample_cleanup_failure(
+					out, condition, repetition, scale, sample,
+					"action-a-force-terminate", terminate_ret);
+		}
 		action_a.pid = -1;
+		if (cleanup_ret)
+			emit_sample_cleanup_failure(
+				out, condition, repetition, scale, sample,
+				"action-a-reap", cleanup_ret);
 		if (!ret && cleanup_ret)
 			ret = cleanup_ret;
 	}
@@ -1564,9 +1888,19 @@ wait_actions:
 		else
 			cleanup_ret = wait_child_timeout(action_b.pid,
 							 ACTION_TIMEOUT_MS);
-		if (cleanup_ret == -ETIMEDOUT)
-			terminate_child(action_b.pid);
+		if (cleanup_ret == -ETIMEDOUT) {
+			int terminate_ret = terminate_child(action_b.pid);
+
+			if (terminate_ret)
+				emit_sample_cleanup_failure(
+					out, condition, repetition, scale, sample,
+					"action-b-force-terminate", terminate_ret);
+		}
 		action_b.pid = -1;
+		if (cleanup_ret)
+			emit_sample_cleanup_failure(
+				out, condition, repetition, scale, sample,
+				"action-b-reap", cleanup_ret);
 		if (!ret && cleanup_ret)
 			ret = cleanup_ret;
 	}
@@ -1575,12 +1909,20 @@ wait_actions:
 	if (!path_text_equals(paths->started_a, sample_id_a) ||
 	    !path_text_equals(paths->started_b, sample_id_b) ||
 	    !path_text_equals(paths->finished_a, sample_id_a) ||
-	    !path_text_equals(paths->finished_b, sample_id_b) ||
-	    !path_text_equals(paths->bazel_output_a, expected_output_a) ||
-	    !path_text_equals(paths->bazel_output_b, expected_output_b)) {
+	    !path_text_equals(paths->finished_b, sample_id_b)) {
 		ret = -EIO;
 		goto teardown;
 	}
+	ret = parse_action_output(paths->bazel_output_a, sample_id_a,
+				  observed_hash_a);
+	if (!ret)
+		ret = parse_action_output(paths->bazel_output_b, sample_id_b,
+					  observed_hash_b);
+	if (!ret && (strcmp(observed_hash_a, hash_a) ||
+		     strcmp(observed_hash_b, hash_b)))
+		ret = -EIO;
+	if (ret)
+		goto teardown;
 	ret = copy_file(paths->bazel_output_a, paths->saved_output_a);
 	if (!ret)
 		ret = copy_file(paths->bazel_output_b, paths->saved_output_b);
@@ -1607,6 +1949,10 @@ teardown:
 			cleanup_ret = remove_namei_view(
 				policy, cgroup_id_b, cgroup_b, view,
 				paths->lower_b, scale);
+			if (cleanup_ret)
+				emit_sample_cleanup_failure(
+					out, condition, repetition, scale, sample,
+					"namei-view-b-remove", cleanup_ret);
 			if (!ret && cleanup_ret)
 				ret = cleanup_ret;
 		}
@@ -1614,21 +1960,37 @@ teardown:
 			cleanup_ret = remove_namei_view(
 				policy, cgroup_id_a, cgroup_a, view,
 				paths->lower_a, scale);
+			if (cleanup_ret)
+				emit_sample_cleanup_failure(
+					out, condition, repetition, scale, sample,
+					"namei-view-a-remove", cleanup_ret);
 			if (!ret && cleanup_ret)
 				ret = cleanup_ret;
 		}
 	} else {
 		if (view_b_created) {
 			cleanup_ret = sandboxfs_destroy(sandboxfs, sandbox_id_b);
+			if (cleanup_ret)
+				emit_sample_cleanup_failure(
+					out, condition, repetition, scale, sample,
+					"sandbox-b-destroy", cleanup_ret);
 			if (!ret && cleanup_ret)
 				ret = cleanup_ret;
 		}
 		if (view_a_created) {
 			cleanup_ret = sandboxfs_destroy(sandboxfs, sandbox_id_a);
+			if (cleanup_ret)
+				emit_sample_cleanup_failure(
+					out, condition, repetition, scale, sample,
+					"sandbox-a-destroy", cleanup_ret);
 			if (!ret && cleanup_ret)
 				ret = cleanup_ret;
 		}
 		cleanup_ret = read_process_stats(sandboxfs->pid, &daemon_after);
+		if (cleanup_ret)
+			emit_sample_cleanup_failure(
+				out, condition, repetition, scale, sample,
+				"sandboxfs-stats-after", cleanup_ret);
 		if (!ret && cleanup_ret)
 			ret = cleanup_ret;
 	}
@@ -1638,7 +2000,8 @@ teardown:
 			    order_index, setup_end - setup_start,
 			    action_end - action_start,
 			    lifecycle_end - lifecycle_start, &daemon_before,
-			    &daemon_after, hash_a, hash_b);
+			    &daemon_after, hash_a, hash_b, observed_hash_a,
+			    observed_hash_b);
 	}
 out:
 	free(paths);
@@ -1687,7 +2050,6 @@ int main(int argc, char **argv)
 	bool cgroup_b_created = false;
 	bool policy_loaded = false;
 	bool sandbox_started = false;
-	bool failure_emitted = false;
 	FILE *out;
 	char *end;
 	size_t offset;
@@ -1863,24 +2225,38 @@ int main(int argc, char **argv)
 fail:
 	if (ret) {
 		emit_failure(out, condition, repetition, "run", ret);
-		failure_emitted = true;
 	}
 	if (policy_loaded) {
 		cleanup_ret = namei_ext_policy_destroy(&policy);
+		if (cleanup_ret)
+			emit_failure(out, condition, repetition, "policy-destroy",
+				     cleanup_ret);
 		if (!ret && cleanup_ret)
 			ret = cleanup_ret;
 	}
 	if (sandbox_started) {
 		cleanup_ret = stop_sandboxfs(&sandboxfs);
+		if (cleanup_ret)
+			emit_failure(out, condition, repetition, "sandboxfs-stop",
+				     cleanup_ret);
 		if (!ret && cleanup_ret)
 			ret = cleanup_ret;
 	}
-	if (cgroup_a_created && rmdir(cgroup_a) && errno != ENOENT && !ret)
-		ret = -errno;
-	if (cgroup_b_created && rmdir(cgroup_b) && errno != ENOENT && !ret)
-		ret = -errno;
-	if (ret && !failure_emitted)
-		emit_failure(out, condition, repetition, "cleanup", ret);
+	if (cgroup_a_created && rmdir(cgroup_a) && errno != ENOENT) {
+		cleanup_ret = -errno;
+		emit_failure(out, condition, repetition, "cgroup-a-remove",
+			     cleanup_ret);
+		if (!ret)
+			ret = cleanup_ret;
+	}
+	if (cgroup_b_created && rmdir(cgroup_b) && errno != ENOENT) {
+		cleanup_ret = -errno;
+		emit_failure(out, condition, repetition, "cgroup-b-remove",
+			     cleanup_ret);
+		if (!ret)
+			ret = cleanup_ret;
+	}
+	namei_ext_remove_tree(root);
 	fprintf(out,
 		"{\"event\":\"build-action-rq2-summary\","
 		"\"condition\":\"%s\",\"repetition\":%u,"
@@ -1889,6 +2265,5 @@ fail:
 		condition, repetition, scale_count, samples, order_index,
 		ret ? "false" : "true");
 	fclose(out);
-	namei_ext_remove_tree(root);
 	return ret ? 1 : 0;
 }

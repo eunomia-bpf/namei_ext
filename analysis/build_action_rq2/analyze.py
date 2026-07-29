@@ -199,8 +199,16 @@ def validate_sample(row, plan):
             row.get("undeclared_hidden") is not True or \
             row.get("lower_objects_unchanged") is not True:
         raise ValueError("sample correctness oracle is incomplete")
-    if not SHA256_RE.fullmatch(str(row.get("output_hash_a", ""))) or \
-            not SHA256_RE.fullmatch(str(row.get("output_hash_b", ""))):
+    hash_fields = (
+        "expected_hash_a",
+        "expected_hash_b",
+        "observed_hash_a",
+        "observed_hash_b",
+    )
+    if any(not SHA256_RE.fullmatch(str(row.get(field, "")))
+           for field in hash_fields) or \
+            row["expected_hash_a"] != row["observed_hash_a"] or \
+            row["expected_hash_b"] != row["observed_hash_b"]:
         raise ValueError("sample output hash is invalid")
 
 

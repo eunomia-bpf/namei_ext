@@ -47,8 +47,10 @@ class BuildActionRQ2AnalysisTests(unittest.TestCase):
                             "sandboxfs_involuntary_context_switches": 0,
                             "sandboxfs_vm_hwm_kb":
                                 0 if condition == "namei_ext" else 1024,
-                            "output_hash_a": "a" * 64,
-                            "output_hash_b": "b" * 64,
+                            "expected_hash_a": "a" * 64,
+                            "expected_hash_b": "b" * 64,
+                            "observed_hash_a": "a" * 64,
+                            "observed_hash_b": "b" * 64,
                             "actions": 2,
                             "concurrent": True,
                             "unknown_hidden": True,
@@ -102,6 +104,15 @@ class BuildActionRQ2AnalysisTests(unittest.TestCase):
         rows = self.complete_rows(plan)
         rows.pop(0)
         with self.assertRaisesRegex(ValueError, "sample count"):
+            analyze.validate(rows, plan)
+
+    def test_expected_and_observed_hash_mismatch_is_rejected(self):
+        plan = self.plan()
+        rows = self.complete_rows(plan)
+        sample = next(row for row in rows
+                      if row["event"] == analyze.SAMPLE_EVENT)
+        sample["observed_hash_a"] = "c" * 64
+        with self.assertRaisesRegex(ValueError, "output hash"):
             analyze.validate(rows, plan)
 
     def test_failed_observation_is_rejected_while_loading(self):

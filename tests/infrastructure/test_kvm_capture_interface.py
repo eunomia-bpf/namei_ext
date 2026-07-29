@@ -275,6 +275,15 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         )
         self.assertIn("cargo build --release --locked", workload)
         self.assertIn('test ! -e "$(SANDBOXFS_SRC)/Cargo.lock"', workload)
+        self.assertIn(
+            'printf \'%s  %s\\n\' "$(BAZEL_BINARY_SHA256)" '
+            '"$(BAZEL_BINARY)"',
+            workload,
+        )
+        self.assertIn(
+            '"$(SANDBOXFS_LIBFUSE_RUNTIME_SHA256)"',
+            workload,
+        )
         self.assertTrue(lock.is_file())
         self.assertGreater(lock.stat().st_size, 0)
 

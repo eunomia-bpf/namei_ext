@@ -180,3 +180,19 @@ figures. Raw collectors do not compute these paper summaries.
 - Older large suite Makefiles still contain repeated lifecycle structure.
   Refactor only a proven common block, with contract tests, rather than
   introducing a second generic experiment framework.
+
+## Independent-Review Addendum
+
+The first read-only implementation review returned `NO GO` with two
+high-severity validity findings: `setup_ns` excluded sandboxfs's required
+per-action mount namespace and bind mount, and runtime artifact capture did
+not independently revalidate the Bazel and libfuse files used by the run. It
+also identified three evidence-quality issues: polling-based action completion,
+cleanup failures hidden behind a primary failure, and output rows containing
+only expected hashes.
+
+All findings were repaired without changing the frozen experiment question or
+matrix. The detailed implementation and validation record is
+`docs/tmp/2026-07-28-build-action-rq2-review-repairs.md`. The same reviewer
+returned `FINAL GO`. The real paired KVM preflight remains unrun until this
+repaired tree is committed and passes the clean-tree gate.
