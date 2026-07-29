@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -96,26 +97,60 @@ static int expect_open(const char *name, const char *path, int want_errno,
 	return -1;
 }
 
-static int expect_openat2_cached(const char *name, const char *path,
-				 uint64_t flags, FILE *out)
+static int expect_open_flags(const char *name, const char *path, int flags,
+			     int want_errno, FILE *out)
+{
+	int fd;
+
+	errno = 0;
+	fd = open(path, flags, 0600);
+	if (!want_errno && fd >= 0) {
+		close(fd);
+		emit_case(out, name, true, 0, "open flags matched");
+		return 0;
+	}
+	if (fd >= 0)
+		close(fd);
+	if (want_errno && fd < 0 && errno == want_errno) {
+		emit_case(out, name, true, errno, "open flags errno matched");
+		return 0;
+	}
+	emit_case(out, name, false, errno, "open flags mismatch");
+	return -1;
+}
+
+static int expect_openat2_resolve(const char *name, int dirfd,
+				  const char *path, uint64_t flags,
+				  uint64_t resolve, int want_errno, FILE *out)
 {
 	struct open_how how = {
 		.flags = flags,
-		.resolve = RESOLVE_CACHED,
+		.resolve = resolve,
 	};
 	int fd;
 
 	errno = 0;
-	fd = syscall(SYS_openat2, AT_FDCWD, path, &how, sizeof(how));
-	if (fd >= 0) {
+	fd = syscall(SYS_openat2, dirfd, path, &how, sizeof(how));
+	if (!want_errno && fd >= 0) {
 		close(fd);
-		emit_case(out, name, true, 0,
-			  "openat2 RESOLVE_CACHED succeeded");
+		emit_case(out, name, true, 0, "openat2 matched");
 		return 0;
 	}
-	emit_case(out, name, false, errno,
-		  "openat2 RESOLVE_CACHED failed");
+	if (fd >= 0)
+		close(fd);
+	if (want_errno && fd < 0 && errno == want_errno) {
+		emit_case(out, name, true, errno, "openat2 errno matched");
+		return 0;
+	}
+	emit_case(out, name, false, errno, "openat2 mismatch");
 	return -1;
+}
+
+static int expect_openat2_cached(const char *name, const char *path,
+				 uint64_t flags, FILE *out)
+{
+	return expect_openat2_resolve(name, AT_FDCWD, path, flags,
+				      RESOLVE_CACHED, 0, out);
 }
 
 static int expect_read_file(const char *name, const char *path,
@@ -147,6 +182,24 @@ static int expect_read_file(const char *name, const char *path,
 	return -1;
 }
 
+static int expect_different_devices(const char *name, const char *first,
+				    const char *second, FILE *out)
+{
+	struct stat first_st;
+	struct stat second_st;
+
+	if (stat(first, &first_st) || stat(second, &second_st)) {
+		emit_case(out, name, false, errno, "stat devices failed");
+		return -1;
+	}
+	if (first_st.st_dev != second_st.st_dev) {
+		emit_case(out, name, true, 0, "devices differ");
+		return 0;
+	}
+	emit_case(out, name, false, 0, "devices unexpectedly match");
+	return -1;
+}
+
 static int register_target_path(const char *path, unsigned int target_id);
 
 static bool read_matches_either(const char *path, const char *first,
@@ -166,7 +219,8 @@ static bool read_matches_either(const char *path, const char *first,
 	return !strcmp(buf, first) || !strcmp(buf, second);
 }
 
-static int expect_atomic_target_replacement(const char *path,
+static int expect_atomic_target_replacement(const char *name,
+					    const char *path,
 					    const char *first_target,
 					    const char *second_target,
 					    unsigned int target_id,
@@ -182,7 +236,7 @@ static int expect_atomic_target_replacement(const char *path,
 	int flags;
 
 	if (pipe(stop_pipe)) {
-		emit_case(out, "select_concurrent_replacement", false, errno,
+		emit_case(out, name, false, errno,
 			  "stop pipe failed");
 		return -1;
 	}
@@ -192,7 +246,7 @@ static int expect_atomic_target_replacement(const char *path,
 		err = errno;
 		close(stop_pipe[0]);
 		close(stop_pipe[1]);
-		emit_case(out, "select_concurrent_replacement", false, err,
+		emit_case(out, name, false, err,
 			  "set nonblocking stop pipe failed");
 		return -1;
 	}
@@ -202,7 +256,7 @@ static int expect_atomic_target_replacement(const char *path,
 		err = errno;
 		close(stop_pipe[0]);
 		close(stop_pipe[1]);
-		emit_case(out, "select_concurrent_replacement", false, err,
+		emit_case(out, name, false, err,
 			  "reader fork failed");
 		return -1;
 	}
@@ -249,11 +303,11 @@ static int expect_atomic_target_replacement(const char *path,
 	}
 
 	if (err) {
-		emit_case(out, "select_concurrent_replacement", false, -err,
+		emit_case(out, name, false, -err,
 			  "reader observed invalid target state");
 		return -1;
 	}
-	emit_case(out, "select_concurrent_replacement", true, 0,
+	emit_case(out, name, true, 0,
 		  "each read observed one complete registered target");
 	return 0;
 }
@@ -274,6 +328,76 @@ static int expect_access(const char *name, const char *path, int mode,
 		return 0;
 	}
 	emit_case(out, name, false, errno, "access mismatch");
+	return -1;
+}
+
+static int expect_unprivileged_open(const char *name, const char *path,
+				    int want_errno, FILE *out)
+{
+	struct {
+		int ret;
+		int err;
+	} result = {};
+	int pipefd[2];
+	int status;
+	pid_t pid;
+	ssize_t nread;
+
+	if (pipe(pipefd)) {
+		emit_case(out, name, false, errno, "pipe failed");
+		return -1;
+	}
+	pid = fork();
+	if (pid < 0) {
+		int err = errno;
+
+		close(pipefd[0]);
+		close(pipefd[1]);
+		emit_case(out, name, false, err, "fork failed");
+		return -1;
+	}
+	if (!pid) {
+		int fd;
+
+		close(pipefd[0]);
+		if (setgid(65534) || setuid(65534)) {
+			result.ret = -1;
+			result.err = errno;
+		} else {
+			errno = 0;
+			fd = open(path, O_RDONLY | O_CLOEXEC);
+			result.ret = fd < 0 ? -1 : 0;
+			result.err = errno;
+			if (fd >= 0)
+				close(fd);
+		}
+		if (write(pipefd[1], &result, sizeof(result)) != sizeof(result))
+			_exit(2);
+		close(pipefd[1]);
+		_exit(0);
+	}
+
+	close(pipefd[1]);
+	nread = read(pipefd[0], &result, sizeof(result));
+	close(pipefd[0]);
+	if (waitpid(pid, &status, 0) < 0 ||
+	    nread != sizeof(result) || !WIFEXITED(status) ||
+	    WEXITSTATUS(status)) {
+		emit_case(out, name, false, errno,
+			  "unprivileged result collection failed");
+		return -1;
+	}
+	if (!want_errno && result.ret == 0) {
+		emit_case(out, name, true, 0, "unprivileged open succeeded");
+		return 0;
+	}
+	if (want_errno && result.ret < 0 && result.err == want_errno) {
+		emit_case(out, name, true, result.err,
+			  "unprivileged open errno matched");
+		return 0;
+	}
+	emit_case(out, name, false, result.err,
+		  "unprivileged open mismatch");
 	return -1;
 }
 
@@ -326,7 +450,13 @@ static int expect_exec_errno(const char *name, const char *path,
 		return -1;
 	}
 
-	if (nread == (ssize_t)sizeof(err) && err == want_errno) {
+	if (!want_errno && nread == 0 && WIFEXITED(status) &&
+	    WEXITSTATUS(status) == 0) {
+		emit_case(out, name, true, 0, "execve succeeded");
+		return 0;
+	}
+	if (want_errno && nread == (ssize_t)sizeof(err) &&
+	    err == want_errno) {
 		emit_case(out, name, true, err, "execve errno matched");
 		return 0;
 	}
@@ -481,7 +611,8 @@ static int expect_select_readdir(const char *path, FILE *out)
 	return -1;
 }
 
-static int register_target_path(const char *path, unsigned int target_id)
+static int register_target_path_flags(const char *path, unsigned int target_id,
+				      int flags)
 {
 	char register_buf[64];
 	int register_fd;
@@ -490,7 +621,7 @@ static int register_target_path(const char *path, unsigned int target_id)
 	int len;
 	int err = 0;
 
-	target_fd = open(path, O_PATH | O_DIRECTORY | O_CLOEXEC);
+	target_fd = open(path, flags);
 	if (target_fd < 0)
 		return -errno;
 	register_fd = open("/sys/kernel/debug/namei_ext/register_target",
@@ -514,6 +645,12 @@ out_close_register:
 out_close_target:
 	close(target_fd);
 	return err;
+}
+
+static int register_target_path(const char *path, unsigned int target_id)
+{
+	return register_target_path_flags(path, target_id,
+					  O_PATH | O_CLOEXEC);
 }
 
 static int clear_targets(FILE *out, const char *name)
@@ -996,12 +1133,28 @@ int main(int argc, char **argv)
 	char target_payload[PATH_MAX];
 	char replacement_target_dir[PATH_MAX];
 	char replacement_target_payload[PATH_MAX];
+	char selected_file[PATH_MAX];
+	char selected_file_child[PATH_MAX];
+	char selected_file_link[PATH_MAX];
+	char selected_target_mount[PATH_MAX];
+	char selected_private_dir[PATH_MAX];
+	char selected_file_target[PATH_MAX];
+	char selected_file_replacement[PATH_MAX];
+	char selected_exec[PATH_MAX];
+	char selected_exec_target[PATH_MAX];
+	char selected_pinned_file[PATH_MAX];
+	char selected_pinned_target[PATH_MAX];
+	char selected_symlink_target[PATH_MAX];
+	char selected_fifo_target[PATH_MAX];
 	char scope_other[PATH_MAX];
 	char scope_other_secret[PATH_MAX];
 	FILE *out;
+	bool selected_target_mounted = false;
+	bool targets_registered = false;
 	int fails = 0;
 	int setup_fails = 0;
 	int setup_errno = 0;
+	int selected_parent_fd = -1;
 	int err;
 
 	if (argc < 3 || argc > 6) {
@@ -1032,6 +1185,12 @@ int main(int argc, char **argv)
 		fclose(out);
 		return 1;
 	}
+	if (chmod(root, 0755)) {
+		emit_case(out, "chmod_root", false, errno,
+			  "functional root chmod failed");
+		fclose(out);
+		return 1;
+	}
 
 	snprintf(native, sizeof(native), "%s/native", root);
 	snprintf(alias, sizeof(alias), "%s/tool", root);
@@ -1048,6 +1207,32 @@ int main(int argc, char **argv)
 	snprintf(replacement_target_payload,
 		 sizeof(replacement_target_payload),
 		 "%s/target-replacement/payload", root);
+	snprintf(selected_file, sizeof(selected_file),
+		 "%s/visible/selected-file", root);
+	snprintf(selected_file_child, sizeof(selected_file_child),
+		 "%s/visible/selected-file/child", root);
+	snprintf(selected_file_link, sizeof(selected_file_link),
+		 "%s/selected-file-link", root);
+	snprintf(selected_target_mount, sizeof(selected_target_mount),
+		 "%s/selected-target-mount", root);
+	snprintf(selected_private_dir, sizeof(selected_private_dir),
+		 "%s/selected-target-mount/private", root);
+	snprintf(selected_file_target, sizeof(selected_file_target),
+		 "%s/selected-target-mount/private/selected-file-target", root);
+	snprintf(selected_file_replacement, sizeof(selected_file_replacement),
+		 "%s/selected-target-mount/selected-file-replacement", root);
+	snprintf(selected_exec, sizeof(selected_exec),
+		 "%s/visible/selected-exec", root);
+	snprintf(selected_exec_target, sizeof(selected_exec_target),
+		 "%s/selected-target-mount/selected-exec-target", root);
+	snprintf(selected_pinned_file, sizeof(selected_pinned_file),
+		 "%s/visible/pinned-file", root);
+	snprintf(selected_pinned_target, sizeof(selected_pinned_target),
+		 "%s/selected-target-mount/selected-pinned-target", root);
+	snprintf(selected_symlink_target, sizeof(selected_symlink_target),
+		 "%s/selected-target-mount/selected-symlink-target", root);
+	snprintf(selected_fifo_target, sizeof(selected_fifo_target),
+		 "%s/selected-target-mount/selected-fifo-target", root);
 	snprintf(scope_other, sizeof(scope_other), "%s/other", root);
 	snprintf(scope_other_secret, sizeof(scope_other_secret),
 		 "%s/other/secret", root);
@@ -1079,6 +1264,20 @@ int main(int argc, char **argv)
 		setup_errno = errno;
 		setup_fails++;
 	}
+	if (mkdir(selected_target_mount, 0755)) {
+		setup_errno = errno;
+		setup_fails++;
+	} else if (mount("tmpfs", selected_target_mount, "tmpfs",
+			 MS_NOSUID | MS_NODEV, "size=1m")) {
+		setup_errno = errno;
+		setup_fails++;
+	} else {
+		selected_target_mounted = true;
+	}
+	if (mkdir(selected_private_dir, 0700)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
 	if (mkdir(target_dir, 0755)) {
 		setup_errno = errno;
 		setup_fails++;
@@ -1101,6 +1300,42 @@ int main(int argc, char **argv)
 		setup_errno = -err;
 		setup_fails++;
 	}
+	err = write_file(selected_file_target, "selected\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
+	err = write_file(selected_file_replacement, "replacement\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
+	err = write_file(selected_exec_target, "#!/bin/sh\nexit 0\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
+	if (chmod(selected_exec_target, 0755)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
+	err = write_file(selected_pinned_target, "pinned\n");
+	if (err) {
+		setup_errno = -err;
+		setup_fails++;
+	}
+	if (symlink(selected_file_replacement, selected_symlink_target)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
+	if (symlink("visible/selected-file", selected_file_link)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
+	if (mkfifo(selected_fifo_target, 0600)) {
+		setup_errno = errno;
+		setup_fails++;
+	}
 	err = write_file(scope_other_secret, "other-secret\n");
 	if (err) {
 		setup_errno = -err;
@@ -1114,12 +1349,20 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "setup_files", true, 0,
 		  "native, backing, and secret files created");
+	fails += !!expect_different_devices("select_cross_mount_setup",
+					    visible, selected_file_target, out);
 
 	fails += !!expect_stat("alias_before_attach", alias, ENOENT, out);
 	fails += !!expect_stat("backing_before_attach", backing, 0, out);
 	fails += !!expect_stat("secret_before_attach", secret, 0, out);
 	fails += !!expect_stat("select_portal_before_attach", portal_payload,
 			       ENOENT, out);
+	fails += !!expect_stat("select_file_before_attach", selected_file,
+			       ENOENT, out);
+	fails += !!expect_stat("select_exec_before_attach", selected_exec,
+			       ENOENT, out);
+	fails += !!expect_stat("select_pinned_before_attach",
+			       selected_pinned_file, ENOENT, out);
 
 	if (hide_obj_path) {
 		if (load_and_attach(hide_obj_path, cgroup_path, &policy)) {
@@ -1200,6 +1443,66 @@ int main(int argc, char **argv)
 		}
 		emit_case(out, "select_register_target", true, 0,
 			  "target directory registered");
+		targets_registered = true;
+		err = register_target_path_flags(
+			selected_symlink_target, 90,
+			O_PATH | O_NOFOLLOW | O_CLOEXEC);
+		if (err == -ELOOP) {
+			emit_case(out, "select_register_symlink_rejected", true,
+				  ELOOP, "symlink target rejected");
+		} else {
+			emit_case(out, "select_register_symlink_rejected", false,
+				  err < 0 ? -err : 0,
+				  "symlink target was not rejected");
+			fails++;
+			goto cleanup;
+		}
+		err = register_target_path(selected_fifo_target, 91);
+		if (err == -EOPNOTSUPP) {
+			emit_case(out, "select_register_fifo_rejected", true,
+				  EOPNOTSUPP, "FIFO target rejected");
+		} else {
+			emit_case(out, "select_register_fifo_rejected", false,
+				  err < 0 ? -err : 0,
+				  "FIFO target was not rejected");
+			fails++;
+			goto cleanup;
+		}
+		err = register_target_path(selected_file_target, 2);
+		if (err) {
+			emit_case(out, "select_register_file_target", false,
+				  -err, "file target registration failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_register_file_target", true, 0,
+			  "file target registered");
+		err = register_target_path(selected_exec_target, 3);
+		if (err) {
+			emit_case(out, "select_register_exec_target", false,
+				  -err, "exec target registration failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_register_exec_target", true, 0,
+			  "exec target registered");
+		err = register_target_path(selected_pinned_target, 4);
+		if (err) {
+			emit_case(out, "select_register_pinned_target", false,
+				  -err, "pinned target registration failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_register_pinned_target", true, 0,
+			  "pinned target registered");
+		if (chmod(selected_private_dir, 0000)) {
+			emit_case(out, "select_private_parent_setup", false,
+				  errno, "private target parent chmod failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_private_parent_setup", true, 0,
+			  "physical target parent made inaccessible");
 
 		if (load_and_attach(select_obj_path, cgroup_path, &policy)) {
 			emit_case(out, "attach_select_policy", false, errno,
@@ -1209,6 +1512,16 @@ int main(int argc, char **argv)
 		}
 		emit_case(out, "attach_select_policy", true, 0,
 			  "select policy attached");
+		selected_parent_fd =
+			open(visible, O_PATH | O_DIRECTORY | O_CLOEXEC);
+		if (selected_parent_fd < 0) {
+			emit_case(out, "select_parent_fd", false, errno,
+				  "logical parent open failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_parent_fd", true, 0,
+			  "logical parent opened");
 
 		fails += !!expect_stat("select_portal_final_stat", portal,
 				       0, out);
@@ -1225,6 +1538,71 @@ int main(int argc, char **argv)
 		fails += !!expect_openat2_cached(
 			"select_portal_payload_cached", portal_payload,
 			O_RDONLY | O_CLOEXEC, out);
+		fails += !!expect_stat("select_file_final_stat", selected_file,
+				       0, out);
+		fails += !!expect_open("select_file_final_open", selected_file,
+				       0, out);
+		fails += !!expect_read_file("select_file_final_read",
+					    selected_file, "selected\n", out);
+		fails += !!expect_access("select_file_final_access",
+					 selected_file, R_OK, 0, out);
+		fails += !!expect_openat2_cached(
+			"select_file_final_open_cached", selected_file,
+			O_RDONLY | O_CLOEXEC, out);
+		fails += !!expect_openat2_cached(
+			"select_file_final_opath_cached", selected_file,
+			O_PATH | O_CLOEXEC, out);
+		fails += !!expect_openat2_resolve(
+			"select_file_no_xdev_rejected", selected_parent_fd,
+			"selected-file", O_RDONLY | O_CLOEXEC,
+			RESOLVE_NO_XDEV, EXDEV, out);
+		fails += !!expect_openat2_resolve(
+			"select_file_beneath_rejected", selected_parent_fd,
+			"selected-file", O_RDONLY | O_CLOEXEC,
+			RESOLVE_BENEATH, EXDEV, out);
+		fails += !!expect_openat2_resolve(
+			"select_file_in_root_rejected", selected_parent_fd,
+			"selected-file", O_RDONLY | O_CLOEXEC,
+			RESOLVE_IN_ROOT, EXDEV, out);
+		fails += !!expect_open_flags(
+			"select_file_directory_rejected", selected_file,
+			O_RDONLY | O_DIRECTORY | O_CLOEXEC, ENOTDIR, out);
+		fails += !!expect_open_flags(
+			"select_file_create_rejected", selected_file,
+			O_RDONLY | O_CREAT | O_CLOEXEC, EOPNOTSUPP, out);
+		fails += !!expect_stat("select_file_intermediate_rejected",
+				       selected_file_child, ENOTDIR, out);
+		fails += !!expect_read_file("select_file_via_symlink",
+					    selected_file_link, "selected\n", out);
+		fails += !!expect_access("select_exec_final_access",
+					 selected_exec, X_OK, 0, out);
+		fails += !!expect_exec_errno("select_exec_final_exec",
+					     selected_exec, 0, out);
+		fails += !!expect_unprivileged_open(
+			"select_file_private_parent_capability", selected_file,
+			0, out);
+
+		if (chmod(selected_file_target, 0000)) {
+			emit_case(out, "select_file_permission_setup", false,
+				  errno, "target chmod failed");
+			fails++;
+		} else {
+			emit_case(out, "select_file_permission_setup", true, 0,
+				  "target mode set to 000");
+			fails += !!expect_unprivileged_open(
+				"select_file_permission_denied", selected_file,
+				EACCES, out);
+			if (chmod(selected_file_target, 0644)) {
+				emit_case(out, "select_file_permission_restore",
+					  false, errno,
+					  "target mode restore failed");
+				fails++;
+			} else {
+				emit_case(out, "select_file_permission_restore",
+					  true, 0,
+					  "target mode restored");
+			}
+		}
 
 		err = register_target_path(replacement_target_dir, 1);
 		if (err) {
@@ -1250,8 +1628,51 @@ int main(int argc, char **argv)
 		fails += !!expect_read_file("select_restored_payload_read",
 					    portal_payload, "selected\n", out);
 		fails += !!expect_atomic_target_replacement(
+			"select_directory_concurrent_replacement",
 			portal_payload, target_dir, replacement_target_dir, 1,
 			out);
+		fails += !!expect_atomic_target_replacement(
+			"select_file_concurrent_replacement", selected_file,
+			selected_file_target, selected_file_replacement, 2, out);
+		fails += !!expect_read_file("select_file_restored_read",
+					    selected_file, "selected\n", out);
+		err = register_target_path(target_dir, 2);
+		if (err) {
+			emit_case(out, "select_file_replace_with_directory",
+				  false, -err,
+				  "file target type replacement failed");
+			fails++;
+			goto cleanup;
+		}
+		fails += !!expect_open_flags(
+			"select_file_directory_replacement_visible",
+			selected_file, O_RDONLY | O_DIRECTORY | O_CLOEXEC,
+			0, out);
+		err = register_target_path(selected_file_target, 2);
+		if (err) {
+			emit_case(out, "select_file_restore_after_directory",
+				  false, -err,
+				  "file target restore failed");
+			fails++;
+			goto cleanup;
+		}
+		fails += !!expect_read_file(
+			"select_file_restored_after_directory", selected_file,
+			"selected\n", out);
+		fails += !!expect_read_file("select_pinned_before_unlink",
+					    selected_pinned_file, "pinned\n", out);
+		if (unlink(selected_pinned_target)) {
+			emit_case(out, "select_pinned_unlink", false, errno,
+				  "physical pinned target unlink failed");
+			fails++;
+			goto cleanup;
+		}
+		emit_case(out, "select_pinned_unlink", true, 0,
+			  "physical pinned target unlinked");
+		fails += !!expect_stat("select_pinned_physical_absent",
+				       selected_pinned_target, ENOENT, out);
+		fails += !!expect_read_file("select_pinned_after_unlink",
+					    selected_pinned_file, "pinned\n", out);
 
 		err = destroy_policy(&policy);
 		if (err) {
@@ -1264,8 +1685,15 @@ int main(int argc, char **argv)
 			  "select policy detached");
 		fails += !!expect_stat("select_portal_after_detach",
 				       portal_payload, ENOENT, out);
+		fails += !!expect_stat("select_file_after_detach",
+				       selected_file, ENOENT, out);
+		fails += !!expect_stat("select_pinned_after_detach",
+				       selected_pinned_file, ENOENT, out);
 
-		fails += !!clear_targets(out, "select_clear_targets");
+		err = clear_targets(out, "select_clear_targets");
+		fails += !!err;
+		if (!err)
+			targets_registered = false;
 		if (load_and_attach(select_obj_path, cgroup_path, &policy)) {
 			emit_case(out, "attach_select_policy_after_clear", false,
 				  errno, "load or attach failed");
@@ -1276,6 +1704,10 @@ int main(int argc, char **argv)
 			  "select policy attached after target clear");
 		fails += !!expect_stat("select_unregistered_after_clear",
 				       portal_payload, ENOENT, out);
+		fails += !!expect_stat("select_file_unregistered_after_clear",
+				       selected_file, ENOENT, out);
+		fails += !!expect_stat("select_pinned_unregistered_after_clear",
+				       selected_pinned_file, ENOENT, out);
 		err = destroy_policy(&policy);
 		if (err) {
 			emit_case(out, "detach_select_policy_after_clear", false,
@@ -1322,14 +1754,42 @@ cleanup:
 					       0, out);
 		}
 	}
+	if (selected_parent_fd >= 0)
+		close(selected_parent_fd);
+	if (targets_registered) {
+		err = clear_targets(out, "select_cleanup_targets");
+		fails += !!err;
+		if (!err)
+			targets_registered = false;
+	}
 	unlink(native);
 	unlink(backing);
 	unlink(secret);
 	unlink(target_payload);
+	unlink(replacement_target_payload);
+	chmod(selected_private_dir, 0700);
+	unlink(selected_file_target);
+	unlink(selected_file_replacement);
+	unlink(selected_exec_target);
+	unlink(selected_pinned_target);
+	unlink(selected_symlink_target);
+	unlink(selected_fifo_target);
+	rmdir(selected_private_dir);
+	if (selected_target_mounted && umount(selected_target_mount)) {
+		emit_case(out, "select_target_unmount", false, errno,
+			  "selected target tmpfs unmount failed");
+		fails++;
+	} else if (selected_target_mounted) {
+		emit_case(out, "select_target_unmount", true, 0,
+			  "selected target tmpfs unmounted");
+	}
+	unlink(selected_file_link);
 	unlink(scope_other_secret);
 	rmdir(visible);
 	rmdir(scope_other);
 	rmdir(target_dir);
+	rmdir(replacement_target_dir);
+	rmdir(selected_target_mount);
 	rmdir(root);
 	emit_case(out, "functional_summary", fails == 0, fails,
 		  fails ? "functional failures" : "functional passed");

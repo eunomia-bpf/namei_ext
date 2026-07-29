@@ -122,7 +122,7 @@ dilutes pathname lookup overhead.
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Preflight passed: two concurrent real Bazel actions, distinct expected outputs, undeclared input hidden, lower objects unchanged | Not run | Preflight records lower-object preservation; full ownership table open |
 | W4 Service Configuration and Secret Rotation | AtomicWriter publication shape and nginx 1.26.3 live-reload oracle frozen; current/canary/invalid/rollback plan independently reviewed | Runner, BPF policy, fresh-boot KVM suite, and analyzer implemented; V2 exhausted three failed dependency preflights, and an undeclared `CONFIG_PROC_CHILDREN` requirement is the final root's strongest source-grounded timeout explanation | Not authorized; formal entrypoint remains blocked | Failed roots preserved; no completed state-transition, lower-object, counter, dmesg, or analysis evidence; keep as motivating scope rather than a paper row |
 | W5 Checkpoint/Restore and Migration | DMTCP plugin behavior identified | Not run | Not run | Not written |
-| W6 HPC File Staging | Spindle source and production behavior identified; exact Pynamic/MPI/Python trace not yet frozen | Not run; blocked on cross-filesystem `SELECT` preflight | Not run | Not written |
+| W6 HPC File Staging | Spindle repository, build, source loader slice, cache mapping evidence, and source/native oracle are under final plan review | Final-file and cross-filesystem `SELECT` dependency passed complete Phase 1 (117/117 functional cases); Spindle workload not yet run | Not required for the RQ1 sufficiency row; any later RQ2 comparison needs a separate matched plan | Final-file dependency records lower-object identity, target permission, pinned-object, fail-closed, and cleanup behavior; source-workload boundary result not yet written |
 | W7 Toolchain and Dependency Environments | Industrial workflow and source set fixed; exact Spack/Nix/Python workflow not yet selected | Not run | Not run | Not written |
 
 ### A. Sandboxed Application File Sharing (supporting RQ1 breadth)
@@ -260,9 +260,10 @@ metadata, or arbitrary filesystem behavior.
 1. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?
-2. Does cross-filesystem target selection preserve lower-filesystem behavior
-   well enough to replay Spindle's shared-to-local redirection without turning
-   `namei_ext` into a cache or remote filesystem?
+2. Can the Phase 1-validated cross-filesystem final-file action replay
+   Spindle's source-produced shared-to-local mappings under the unmodified
+   upstream loader oracle, without implementing cache population or
+   distribution?
 3. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
    application oracle while staying within existing-object selection?
 4. Does the existing ccache macro ratio survive independent-run

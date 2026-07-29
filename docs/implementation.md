@@ -187,31 +187,45 @@ portable bundle implementation is recorded in
 
 ## Current Implementation State
 
-The current prototype ABI implements `PASS`, `REDIRECT`, `HIDE`, and an initial
+The current prototype ABI implements `PASS`, `REDIRECT`, `HIDE`, and
 `SELECT_TARGET`. `REDIRECT` carries a bounded replacement component in
 `redirect_name` and is validated as a same-parent component redirect. `HIDE`
 returns absence for lookup and suppresses the entry during directory
 enumeration. `SELECT_TARGET` selects a kernel-held registered `struct path` by
-opaque target ID; the current implementation supports intermediate directory
-selection plus final directory selection for stat, `O_DIRECTORY` open, and
-readdir over the selected lower directory. It still fails closed for create,
-non-directory final opens, final file target selection, and synthetic
-parent-directory aliases. Optional deny remains a design-target action, not a
-current prototype action.
+opaque target ID. Intermediate targets must be directories. Final targets may
+be regular files or directories and support normal stat, access, open, exec,
+`O_PATH`, `O_DIRECTORY`, and readdir behavior subject to target type. Create,
+symbolic-link and special-file targets, type-incompatible use, and synthetic
+parent-directory aliases fail closed or remain unsupported. Registration pins
+the selected object and grants logical reachability without replaying the
+physical target-parent walk; target inode and mount permissions remain on the
+normal VFS path. Optional deny remains a design-target action, not a current
+prototype action.
+
+Kernel commit `621aff8d1bb5` adds final existing-file selection without changing
+the BPF ABI. The complete Phase 1 run on
+`7.1.0-rc7-g621aff8d1bb5` passed 3/3 ABI checks, 8/8 policy
+load/attach/detach events, and 117/117 functional cases, with no declared fatal
+pattern in smoke, policy-load, or functional dmesg:
+`results/phase1/20260729T220000Z-f1e5e1e1/`. The design and implementation
+records are
+`docs/tmp/2026-07-29-namei-ext-final-file-selection-design.md` and
+`docs/tmp/2026-07-29-namei-ext-final-file-selection-implementation.md`.
 
 The paper direction needs admitted complete experiments, not isolated runner
 checks. Agent workspace RQ1, RQ2, and RQ3 are now complete for the admitted
 existing-object slice. The active BUILD_AND_EVALUATE work is:
 
-1. Add one second deep traditional correctness case. DMTCP
-   checkpoint/restore path virtualization is first because it has a
-   source-defined restart oracle and does not duplicate the completed Agent,
-   XDG, or Bazel workflows.
+1. Add one second deep traditional correctness case. DMTCP requalification
+   found that its relevant path virtualization is process-local userspace
+   interposition rather than an existing-object VFS selection oracle, so it is
+   no longer the active candidate.
 2. The corrected FxMark directory-enumeration matrix is complete. The next RQ2
    breadth question is cache-cold lookup or selected mdtest metadata
    operations, not another readdir rerun.
-3. Freeze a Spindle Pynamic/MPI source trace only after cross-filesystem
-   selection passes its dependency gate.
+3. Complete the reviewed Spindle source-derived loader plan now that
+   cross-filesystem final-file selection has passed its Phase 1 dependency
+   gate. Spindle remains unrun and is not yet RQ1 evidence.
 4. Keep service configuration rotation behind a new reviewed dependency plan.
    Its V2 protocol exhausted three failed preflights and is not paper evidence.
 5. Treat the old ccache hit/epoch/stale/corrupt matrix as supporting macro
@@ -258,12 +272,12 @@ adds nonzero operation counters for both the `namei_ext` policy path and the
 FUSE policy path, preserving the distinction between preflight engagement and
 full-lifecycle RQ2 evidence.
 
-This preflight is dependency evidence only. It still lacks the feature-equivalent
-FUSE comparison for the full AgentFS-derived lifecycle, calibrated
-full-lifecycle RQ2 measurements, full AgentFS-derived lifecycle oracle,
-parent-directory synthetic alias enumeration, final file target selection if
-the admitted oracle needs it, result review, and custom/stackable boundary
-audit required for full Experiment A.
+This historical preflight is dependency evidence only. Later formal Agent
+workspace RQ1, RQ2, and RQ3 experiments supplied the full-lifecycle oracle,
+feature-equivalent FUSE comparison, calibrated measurements, result review, and
+custom/stackable boundary audit. Synthetic parent-directory alias enumeration
+remains outside the implemented contract; final existing-file selection is now
+implemented and Phase 1 validated independently.
 
 An unreviewed prototype matrix target also exists: `make
 kvm-agent-workspace-matrix` runs the current Agent workspace matrix through KVM

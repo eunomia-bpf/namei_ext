@@ -10,8 +10,8 @@ Phase 1 policy roles:
   REDIRECT behavior.
 - `hide_secret.bpf.c`: minimal regression policy for lookup and readdir HIDE
   behavior.
-- `select_portal.bpf.c`: minimal regression policy for intermediate
-  SELECT_TARGET behavior through a registered lower directory.
+- `select_portal.bpf.c`: minimal regression policy for intermediate and final
+  SELECT_TARGET behavior through registered lower directories and files.
 - `application_file_sharing.bpf.c`: XDG-derived Sandboxed Application File
   Sharing preflight policy. It scopes a managed document by parent and name,
   then uses application cgroup identity for grant/revoke `SELECT` and `HIDE`

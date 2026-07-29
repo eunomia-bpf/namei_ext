@@ -1,6 +1,6 @@
 # Design
 
-Last updated: 2026-07-18
+Last updated: 2026-07-29
 Current status: frozen BUILD_AND_EVALUATE contract after BOOTSTRAP step 0005 in
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/step-report.md`.
 
@@ -37,21 +37,26 @@ is only pathname-to-object selection or visibility over existing lower objects.
 
 The kernel-facing ABI exposes one decision function. Lookup and readdir are
 event types passed to that function. The current prototype action set is
-`PASS`, `REDIRECT`, `HIDE`, and an initial `SELECT_TARGET`. `REDIRECT` supplies
+`PASS`, `REDIRECT`, `HIDE`, and `SELECT_TARGET`. `REDIRECT` supplies
 a bounded replacement component that the kernel validates in the same parent
 directory. `HIDE` returns absence for lookup and suppresses the entry during
 directory enumeration. `SELECT_TARGET` uses a kernel-held registered `struct
-path` selected by an opaque target ID; the current increment supports
-intermediate directory selection and final directory selection for stat,
-`O_DIRECTORY` open, and readdir over the selected lower directory. It still
-fails closed for create, non-directory final opens, final file target
-selection, and synthetic parent-directory aliases such as listing an otherwise
-nonexistent `ws` entry from the parent. The broader design target still needs
-the full Agent workspace lifecycle, operation-weighted traces, and optional
-attachment-mode deny before those actions count as full prototype evidence. The
-policy does not synthesize file contents, allocate VFS objects, mediate
-reads/writes after open, persist custom metadata, or implement distributed
-indexes or cross-path transactions.
+path` selected by an opaque target ID. An intermediate selected target must be
+a directory; a final target may be an existing regular file or directory.
+Final file lookup, stat, access, ordinary open, and exec continue through normal
+VFS completion and lower-filesystem file operations. Create-through-select,
+symbolic-link and special-file targets, type-incompatible use, and synthetic
+parent-directory aliases such as listing an otherwise nonexistent `ws` entry
+from its parent fail closed or remain unsupported.
+
+Registration grants object-capability reachability: the logical path is checked
+for traversal, and the selected target inode and mount retain their ordinary
+permission checks, but lookup does not replay traversal through the target's
+physical parents. The registry pins object identity rather than a live physical
+pathname; rename or unlink does not revoke an existing registration, so the
+controller must replace or clear it. The policy does not synthesize file
+contents, allocate VFS objects, mediate reads/writes after open, persist custom
+metadata, or implement distributed indexes or cross-path transactions.
 
 The requirement-to-design mapping is:
 
