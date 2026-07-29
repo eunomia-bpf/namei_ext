@@ -219,12 +219,16 @@ The official control must execute the same payload through
 the small adapter must emit the fixed experiment payload and raw observations.
 
 The source-positive control and all `namei_ext` consumers run with the same
-fixed UID and GID. The generated files are owned by that identity so the 0600
-and 0400 modes have the same read expectations in both conditions. Access
-time is not a preservation field because ordinary reads and readdir may update
-it. The source-positive control is checked against `AtomicWriter`'s documented
-creation and deletion lifecycle; its retired timestamp directories are not
-required to remain present.
+per-run fixed, non-root UID and GID derived from the KVM result directory.
+Every state records that identity, every present payload file must be owned by
+it, and both shell/`cat` consumers clear supplementary groups and drop to it
+before reading both `app.conf` and `cert.pem`. This gives the 0600 and 0400
+modes the same permission-sensitive read expectations in both conditions
+without assuming a host-specific numeric UID. Access time is not a preservation
+field because ordinary reads and readdir may update it. The source-positive
+control is checked against `AtomicWriter`'s documented creation and deletion
+lifecycle; its retired timestamp directories are not required to remain
+present.
 
 ## Mechanism Boundary
 

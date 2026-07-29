@@ -81,6 +81,13 @@ separately requires no-op publication to preserve the current V1 payload
 identity and source rollback to allocate a payload object distinct from the
 still-open original V0 object.
 
+The adapter derives one non-root runtime UID and GID from the KVM result
+directory. Each state records that identity, all present payload files must be
+owned by it, and the shell/`cat` consumer clears supplementary groups, executes
+under it, and reads both `app.conf` and `cert.pem`. The `namei_ext` runner uses
+the same derivation and credential drop, so mode 0600 and 0400 reads are
+permission-sensitive in both conditions.
+
 Kubernetes-private `..*` entries are retained in the raw inventory but excluded
 from the common payload-namespace oracle.
 
@@ -196,3 +203,15 @@ selection and hiding through nested readdir and old directory descriptors,
 incomplete cleanup after a failing state, and an over-constrained source
 identity oracle. Raw failures remain engineering evidence and do not enter the
 paper as positive results.
+
+## Preflight 01 Addendum
+
+The first real KVM preflight completed source and `namei_ext` guest execution,
+but the finalizer rejected payload ownership because it incorrectly expected
+UID and GID zero. Raw files were owned by the virtme-mapped host directory
+identity, while consumers still ran as guest root. Independent review rejected
+both the original oracle and an attempted 1000:1000 hard-code. The experiment
+now records a per-run non-root identity, runs both consumers under it, and
+checks every present file against it. The failed result root was not completed
+or reused; its diagnosis is recorded in
+`2026-07-29-kubernetes-configmap-publication-rq1-preflight-01.md`.

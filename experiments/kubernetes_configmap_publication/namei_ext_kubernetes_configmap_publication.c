@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <limits.h>
 #include <namei_ext_harness.h>
 #include <stdbool.h>
@@ -503,6 +504,24 @@ static bool view_matches(const struct view_observation *actual,
 		view_matches_payload(actual, second);
 }
 
+static bool view_owned_by(const struct view_observation *view, bool second,
+			  uid_t uid, gid_t gid)
+{
+	for (size_t index = 0; index < FILE_COUNT; index++) {
+		bool present = index == FILE_APP || index == FILE_CERT ||
+			(index == FILE_RETIRED && !second) ||
+			(index == FILE_ADDED && second);
+
+		if (!present)
+			continue;
+		if (view->files[index].error ||
+		    view->files[index].metadata.st_uid != uid ||
+		    view->files[index].metadata.st_gid != gid)
+			return false;
+	}
+	return true;
+}
+
 static int wait_child(pid_t pid, int *exit_code)
 {
 	int status;
@@ -524,6 +543,7 @@ static int wait_child(pid_t pid, int *exit_code)
 
 static int run_consumer(const char *root, const char *result_dir,
 			const char *state, const char *expected,
+			uid_t runtime_uid, gid_t runtime_gid,
 			int *exit_code_out, char *observed, size_t size)
 {
 	char stdout_path[PATH_MAX];
@@ -556,8 +576,16 @@ static int run_consumer(const char *root, const char *result_dir,
 			_exit(120);
 		close(stdout_fd);
 		close(stderr_fd);
+		if (setgroups(0, NULL) ||
+		    setresgid(runtime_gid, runtime_gid, runtime_gid) ||
+		    setresuid(runtime_uid, runtime_uid, runtime_uid) ||
+		    getuid() != runtime_uid || geteuid() != runtime_uid ||
+		    getgid() != runtime_gid || getegid() != runtime_gid)
+			_exit(119);
 		execl("/bin/sh", "sh", "-c",
-		      "exec cat \"$1/config/app.conf\"", "sh", root,
+		      "cat \"$1/config/app.conf\" && "
+		      "exec cat \"$1/tls/cert.pem\"",
+		      "sh", root,
 		      (char *)NULL);
 		_exit(121);
 	}
@@ -606,6 +634,7 @@ static void emit_state(FILE *output, const char *mechanism,
 		       const char *state, uint32_t generation,
 		       const struct view_observation *view,
 		       const struct view_observation *expected,
+		       uid_t runtime_uid, gid_t runtime_gid,
 		       int consumer_exit, const char *consumer_output,
 		       bool pass)
 {
@@ -618,10 +647,12 @@ static void emit_state(FILE *output, const char *mechanism,
 		",\"generation\":%u,\"root_mask\":%u,"
 		"\"root_unexpected\":%u,\"config_mask\":%u,"
 		"\"config_unexpected\":%u,\"tls_mask\":%u,"
-		"\"tls_unexpected\":%u,\"files\":[",
+		"\"tls_unexpected\":%u,\"runtime_uid\":%u,"
+		"\"runtime_gid\":%u,\"files\":[",
 		generation, view->root_mask, view->root_unexpected,
 		view->config_mask, view->config_unexpected,
-		view->tls_mask, view->tls_unexpected);
+		view->tls_mask, view->tls_unexpected,
+		(unsigned int)runtime_uid, (unsigned int)runtime_gid);
 	for (size_t index = 0; index < FILE_COUNT; index++) {
 		if (index)
 			fputc(',', output);
@@ -639,6 +670,7 @@ static int run_state(FILE *output, const char *mechanism,
 		     const char *state, uint32_t generation,
 		     const char *root, const struct view_observation *expected,
 		     bool second, const char *result_dir,
+		     uid_t runtime_uid, gid_t runtime_gid,
 		     struct view_observation *captured)
 {
 	char consumer_output[64] = {};
@@ -647,14 +679,19 @@ static int run_state(FILE *output, const char *mechanism,
 
 	if (!ret)
 		ret = run_consumer(root, result_dir, state,
-				   second ? "version=1\n" : "version=0\n",
+				   second ?
+					"version=1\ncertificate-v1\n" :
+					"version=0\ncertificate-v0\n",
+				   runtime_uid, runtime_gid,
 				   &consumer_exit, consumer_output,
 				   sizeof(consumer_output));
 	bool pass = !ret && view_matches(captured, expected, second) &&
-		view_matches_payload(expected, second);
+		view_matches_payload(expected, second) &&
+		view_owned_by(captured, second, runtime_uid, runtime_gid) &&
+		view_owned_by(expected, second, runtime_uid, runtime_gid);
 
 	emit_state(output, mechanism, state, generation, captured, expected,
-		   consumer_exit, consumer_output, pass);
+		   runtime_uid, runtime_gid, consumer_exit, consumer_output, pass);
 	return pass ? 0 : (ret ? ret : -EINVAL);
 }
 
@@ -1124,9 +1161,12 @@ int main(int argc, char **argv)
 	struct view_observation no_op = {};
 	struct view_observation rollback = {};
 	struct preservation_entry preserved[PRESERVATION_COUNT] = {};
+	struct stat result_metadata = {};
 	char before_tsv[PATH_MAX];
 	char after_tsv[PATH_MAX];
 	uint64_t cgroup_id = 0;
+	uid_t runtime_uid;
+	gid_t runtime_gid;
 	FILE *output = NULL;
 	bool cgroup_created = false;
 	bool targets_registered = false;
@@ -1150,6 +1190,16 @@ int main(int argc, char **argv)
 	}
 	if (argc == 5)
 		cgroup_root = argv[4];
+	if (stat(argv[3], &result_metadata)) {
+		ret = -errno;
+		goto fatal;
+	}
+	runtime_uid = result_metadata.st_uid;
+	runtime_gid = result_metadata.st_gid;
+	if (!runtime_uid || !runtime_gid) {
+		ret = -EINVAL;
+		goto fatal;
+	}
 	ret = initialize_paths(&paths, argv[3], cgroup_root);
 	if (ret)
 		goto fatal;
@@ -1200,10 +1250,12 @@ int main(int argc, char **argv)
 	}
 
 	ret = run_state(output, "direct", "physical-v0", 0, paths.v0,
-			&expected_v0, false, paths.result_dir, &direct_v0);
+			&expected_v0, false, paths.result_dir,
+			runtime_uid, runtime_gid, &direct_v0);
 	failures += !!ret;
 	ret = run_state(output, "direct", "physical-v1", 1, paths.v1,
-			&expected_v1, true, paths.result_dir, &direct_v1);
+			&expected_v1, true, paths.result_dir,
+			runtime_uid, runtime_gid, &direct_v1);
 	failures += !!ret;
 
 	ret = unmanaged_control(&paths);
@@ -1278,7 +1330,7 @@ int main(int argc, char **argv)
 
 	ret = run_state(output, "namei_ext", "initial", 0,
 			paths.current, &expected_v0, false, paths.result_dir,
-			&initial);
+			runtime_uid, runtime_gid, &initial);
 	failures += !!ret;
 	root_fd = open(paths.current, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 	if (root_fd < 0 || fstat(root_fd, &root_stat)) {
@@ -1308,7 +1360,8 @@ int main(int argc, char **argv)
 	if (!ret)
 		ret = run_state(output, "namei_ext", "update", 1,
 				paths.current, &expected_v1, true,
-				paths.result_dir, &update);
+				paths.result_dir, runtime_uid, runtime_gid,
+				&update);
 	failures += !!ret;
 	ret = capture_dirfd_lookup(output, root_fd, &root_stat,
 				   &expected_v1.files[FILE_APP], "update");
@@ -1325,7 +1378,8 @@ int main(int argc, char **argv)
 	if (!ret)
 		ret = run_state(output, "namei_ext", "no-op", 1,
 				paths.current, &expected_v1, true,
-				paths.result_dir, &no_op);
+				paths.result_dir, runtime_uid, runtime_gid,
+				&no_op);
 	if (!ret && stat(paths.current_app, &no_op_after))
 		ret = -errno;
 	bool no_op_pass = !ret &&
@@ -1351,7 +1405,8 @@ int main(int argc, char **argv)
 	if (!ret)
 		ret = run_state(output, "namei_ext", "rollback", 0,
 				paths.current, &expected_v0, false,
-				paths.result_dir, &rollback);
+				paths.result_dir, runtime_uid, runtime_gid,
+				&rollback);
 	bool rollback_identity = !ret &&
 		rollback.files[FILE_APP].metadata.st_dev ==
 			initial.files[FILE_APP].metadata.st_dev &&

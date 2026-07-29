@@ -39,6 +39,8 @@ type stateObservation struct {
 	ConfigEntries []string          `json:"config_entries"`
 	TLSEntries    []string          `json:"tls_entries"`
 	Files         []fileObservation `json:"files"`
+	RuntimeUID    uint32            `json:"runtime_uid"`
+	RuntimeGID    uint32            `json:"runtime_gid"`
 	ConsumerExit  int               `json:"consumer_exit"`
 	ConsumerOut   string            `json:"consumer_stdout"`
 	Pass          bool              `json:"pass"`
@@ -177,10 +179,19 @@ func expectedPayload(payload map[string]volumeutil.FileProjection) map[string]ex
 	return expected
 }
 
-func runConsumer(root string) (int, string, error) {
+func runConsumer(root string, uid, gid uint32) (int, string, error) {
 	command := exec.Command(
-		"/bin/sh", "-c", `exec cat "$1/config/app.conf"`, "sh", root,
+		"/bin/sh", "-c",
+		`cat "$1/config/app.conf" && exec cat "$1/tls/cert.pem"`,
+		"sh", root,
 	)
+	command.SysProcAttr = &syscall.SysProcAttr{
+		Credential: &syscall.Credential{
+			Uid:    uid,
+			Gid:    gid,
+			Groups: []uint32{},
+		},
+	}
 	output, err := command.CombinedOutput()
 	if err == nil {
 		return 0, string(output), nil
@@ -193,11 +204,14 @@ func runConsumer(root string) (int, string, error) {
 }
 
 func captureState(root, state, inventoryPath string,
-	payload map[string]volumeutil.FileProjection) (stateObservation, error) {
+	payload map[string]volumeutil.FileProjection,
+	runtimeUID, runtimeGID uint32) (stateObservation, error) {
 	observation := stateObservation{
-		Event:     "kubernetes-atomicwriter-state",
-		Mechanism: "kubernetes-atomicwriter",
-		State:     state,
+		Event:      "kubernetes-atomicwriter-state",
+		Mechanism:  "kubernetes-atomicwriter",
+		State:      state,
+		RuntimeUID: runtimeUID,
+		RuntimeGID: runtimeGID,
 	}
 	var err error
 	observation.DataTarget, err = os.Readlink(filepath.Join(root, "..data"))
@@ -226,7 +240,8 @@ func captureState(root, state, inventoryPath string,
 		file.Path = path
 		observation.Files = append(observation.Files, file)
 	}
-	observation.ConsumerExit, observation.ConsumerOut, err = runConsumer(root)
+	observation.ConsumerExit, observation.ConsumerOut, err =
+		runConsumer(root, runtimeUID, runtimeGID)
 	if err != nil {
 		return observation, err
 	}
@@ -236,7 +251,8 @@ func captureState(root, state, inventoryPath string,
 
 	expected := expectedPayload(payload)
 	pass := observation.ConsumerExit == 0 &&
-		observation.ConsumerOut == expected["config/app.conf"].bytes &&
+		observation.ConsumerOut == expected["config/app.conf"].bytes+
+			expected["tls/cert.pem"].bytes &&
 		equalNames(observation.ConfigEntries, "app.conf") &&
 		equalNames(observation.TLSEntries, "cert.pem")
 	if _, present := expected["retired.conf"]; present {
@@ -253,7 +269,8 @@ func captureState(root, state, inventoryPath string,
 			continue
 		}
 		pass = pass && file.Errno == 0 && file.Bytes == want.bytes &&
-			file.Mode == uint32(want.mode.Perm())
+			file.Mode == uint32(want.mode.Perm()) &&
+			file.UID == runtimeUID && file.GID == runtimeGID
 	}
 	observation.Pass = pass
 	if !pass {
@@ -406,6 +423,20 @@ func run(observationsPath, root, inventoryDir string) error {
 	defer file.Close()
 	output := json.NewEncoder(file)
 
+	inventoryInfo, err := os.Stat(inventoryDir)
+	if err != nil {
+		return err
+	}
+	inventoryStat, ok := inventoryInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return fmt.Errorf("stat payload unavailable for %s", inventoryDir)
+	}
+	runtimeUID := inventoryStat.Uid
+	runtimeGID := inventoryStat.Gid
+	if runtimeUID == 0 || runtimeGID == 0 {
+		return fmt.Errorf("runtime identity must be non-root")
+	}
+
 	if err := os.Mkdir(root, 0755); err != nil {
 		return err
 	}
@@ -421,7 +452,8 @@ func run(observationsPath, root, inventoryDir string) error {
 		return err
 	}
 	initial, err := captureState(root, "initial",
-		filepath.Join(inventoryDir, "source-tree-initial.tsv"), v0)
+		filepath.Join(inventoryDir, "source-tree-initial.tsv"), v0,
+		runtimeUID, runtimeGID)
 	if err != nil {
 		return err
 	}
@@ -458,7 +490,8 @@ func run(observationsPath, root, inventoryDir string) error {
 		return err
 	}
 	update, err := captureState(root, "update",
-		filepath.Join(inventoryDir, "source-tree-update.tsv"), v1)
+		filepath.Join(inventoryDir, "source-tree-update.tsv"), v1,
+		runtimeUID, runtimeGID)
 	if err != nil {
 		return err
 	}
@@ -492,7 +525,8 @@ func run(observationsPath, root, inventoryDir string) error {
 		return err
 	}
 	noOp, err := captureState(root, "no-op",
-		filepath.Join(inventoryDir, "source-tree-no-op.tsv"), v1)
+		filepath.Join(inventoryDir, "source-tree-no-op.tsv"), v1,
+		runtimeUID, runtimeGID)
 	if err != nil {
 		return err
 	}
@@ -536,7 +570,8 @@ func run(observationsPath, root, inventoryDir string) error {
 		return err
 	}
 	rollback, err := captureState(root, "rollback",
-		filepath.Join(inventoryDir, "source-tree-rollback.tsv"), v0)
+		filepath.Join(inventoryDir, "source-tree-rollback.tsv"), v0,
+		runtimeUID, runtimeGID)
 	if err != nil {
 		return err
 	}
