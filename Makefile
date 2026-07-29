@@ -28,6 +28,7 @@ include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
 include $(ROOT_DIR)/configs/benchmarks/checkpoint_restore.mk
 include $(ROOT_DIR)/configs/benchmarks/spindle_staging.mk
 include $(ROOT_DIR)/configs/benchmarks/toolchain_environment.mk
+include $(ROOT_DIR)/configs/benchmarks/kubernetes_configmap_publication.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/results.mk
@@ -46,6 +47,7 @@ include $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
 include $(ROOT_DIR)/mk/experiments/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/experiments/spindle_staging.mk
 include $(ROOT_DIR)/mk/experiments/toolchain_environment.mk
+include $(ROOT_DIR)/mk/experiments/kubernetes_configmap_publication.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
@@ -69,6 +71,13 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 	kvm-toolchain-environment toolchain-environment-run \
 	toolchain-environment-finalize toolchain-environment-analyze \
 	experiment-toolchain-environment \
+	kubernetes-configmap-publication kubernetes-configmap-publication-source \
+	kvm-kubernetes-configmap-publication-rq1-preflight \
+	kvm-kubernetes-configmap-publication-rq1 \
+	kubernetes-configmap-publication-run \
+	kubernetes-configmap-publication-finalize \
+	kubernetes-configmap-publication-analyze \
+	experiment-kubernetes-configmap-publication-rq1 \
 	kvm-agent-workspace-source-task-rq1-preflight \
 	kvm-agent-workspace-source-task-rq1 \
 	agent-workspace-source-task-run \
@@ -233,6 +242,10 @@ help:
 	@printf '%s\n' '                       run CPython 3.10/3.12 environment selection, switch, rollback, and controls in one KVM boot'
 	@printf '%s\n' '  make experiment-toolchain-environment'
 	@printf '%s\n' '                       run three fresh toolchain-environment boots and generate the RQ1 report'
+	@printf '%s\n' '  make kvm-kubernetes-configmap-publication-rq1-preflight'
+	@printf '%s\n' '                       run one Kubernetes AtomicWriter publication workload boot in KVM'
+	@printf '%s\n' '  make experiment-kubernetes-configmap-publication-rq1'
+	@printf '%s\n' '                       run three fresh ConfigMap publication boots and generate the RQ1 report'
 	@printf '%s\n' '  make kvm-fxmark-rq2-preflight'
 	@printf '%s\n' '                       run one real MRPL cell in six isolated stock/patched/FUSE KVM boots'
 	@printf '%s\n' '  make kvm-fxmark-rq2'

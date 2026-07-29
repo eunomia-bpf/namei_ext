@@ -15,6 +15,7 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-checkpoint-restore-preflight \
 	kvm-spindle-staging-preflight \
 	kvm-toolchain-environment-preflight \
+	kvm-kubernetes-configmap-publication-rq1-preflight \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-fast-path-preflight \
 	kvm-fxmark-readdir-preflight
@@ -35,6 +36,8 @@ NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	kvm-application-file-sharing-rq1 \
 	kvm-build-action-sandboxing-rq1 \
 	kvm-toolchain-environment \
+	experiment-kubernetes-configmap-publication-rq1 \
+	kvm-kubernetes-configmap-publication-rq1 \
 	experiment-spindle-staging \
 	kvm-spindle-staging
 
