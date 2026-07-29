@@ -13,6 +13,7 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-agent-workspace-rq2-preflight \
 	kvm-checkpoint-restore-preflight \
 	kvm-spindle-staging-preflight \
+	kvm-toolchain-environment-preflight \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-fast-path-preflight \
 	kvm-fxmark-readdir-preflight

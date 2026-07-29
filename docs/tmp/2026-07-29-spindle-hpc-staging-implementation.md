@@ -196,3 +196,20 @@ The corrected host source check completed with empty stderr, and the
 Make-owned packaging preflight directly compared both reconstructed fixtures
 with upstream `hello.py`. These checks are dependencies for the remaining
 real KVM preflight, not paper results.
+
+## Third KVM Preflight Attempt
+
+The third preflight used result root
+`results/experiments/spindle-staging-preflight/20260729T164002Z-spindle03/`.
+The source Spindle command returned zero with empty stderr, but the wrapper
+reported `EBUSY` because its process group still existed ten seconds after the
+leader exited. The run stopped before mapping collection or BPF attachment.
+
+The raw source log shows the loader workload completed and Spindle began
+shutdown. The added process-group disappearance rule is not Spindle's source
+oracle and can remain false for zombies. This is a wrapper completion defect,
+not an RQ1 result. The exact evidence is recorded in
+`docs/tmp/2026-07-29-spindle-hpc-staging-preflight-attempt-3.md`.
+
+The three-attempt preflight is closed. No fourth Spindle run is started, and
+W6 remains without KVM workload evidence.
