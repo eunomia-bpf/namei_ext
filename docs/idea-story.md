@@ -118,6 +118,14 @@ Evidence program:
   manifests. Runtime probes observed 13 stackable
   filesystem operation classes, while an already selected `namei_ext`
   descriptor continued through lower-file operations without re-entering BPF.
+- Kubernetes ConfigMap publication RQ1:
+  `results/experiments/kubernetes-configmap-publication-rq1/20260729T-kubernetes-configmap-publication-rq1-01/`
+  completed three fresh KVM boots against the official v1.30.0
+  `AtomicWriter` control. All 12 source states, 12 `namei_ext` states, 6 direct
+  controls, 24 stable-root descriptor checks, 12 old-descriptor checks, and 36
+  lower-object checks passed. The admitted claim is leaf-level selection and
+  hiding over already materialized generations, not ConfigMap retrieval,
+  symlink/inotify behavior, or service reload.
 - Traditional build/cache: historical runs now aggregated by
   `make legacy-build-cache`
   (2026-07-23 hot-cache, 2026-07-24 epoch-switch) pass the Redis/nginx ccache
@@ -147,6 +155,7 @@ Evidence program:
 | 2026-07-25 | Repository cleanup: retired C1–C8 claim-verdict machinery deleted from the Make control plane; process docs archived to `docs/tmp/2026-07-25-archived-process-docs/`; this file slimmed to story, RQs, evidence, rejected paths, and guardrails (full history in the archive). Scientific story unchanged. |
 | 2026-07-25 | Use cases grounded in industrial demand evidence (`docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`): six domains re-implemented lookup-time object selection at wrong layers. Service/config rotation promoted to the third use case; build/cache repositioned as access-point view governance; remote filesystem cache recorded as motivation evidence. |
 | 2026-07-29 | The headline Agent workspace RQ1 case was deepened with released SWE-Factory-Gym task `pallets__click-2622`: three fresh KVM boots passed 12/12 policy-backed task states and 6/6 physical source controls across base/completed, concurrent, switch, rollback, and withdrawal checks. The claim remains existing-object workspace view selection, not complete AgentFS or end-to-end agent execution. |
+| 2026-07-29 | Kubernetes ConfigMap publication became the fifth reviewed RQ1 workflow: three fresh KVM boots passed the official `AtomicWriter` V0/V1/no-op/rollback payload-view oracle with stable root and old descriptors, non-root mode-sensitive reads, exact selected-object identity, and unchanged lower generations. Full projected-volume materialization and service reload remain outside the claim. |
 
 ## Guardrails
 

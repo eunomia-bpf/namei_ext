@@ -1,0 +1,9 @@
+=== RUN   TestWriteOnce
+E0729 13:36:03.704275 1406043 atomic_writer.go:143] -test-: invalid payload: invalid path: must not start with '..': ..bar
+E0729 13:36:03.704367 1406043 atomic_writer.go:143] -test-: invalid payload: invalid path: must not contain '..': foo/../bar
+--- PASS: TestWriteOnce (0.00s)
+=== RUN   TestUpdate
+--- PASS: TestUpdate (0.01s)
+=== RUN   TestMultipleUpdates
+--- PASS: TestMultipleUpdates (0.00s)
+PASS

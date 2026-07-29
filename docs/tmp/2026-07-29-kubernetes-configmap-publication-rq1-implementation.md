@@ -51,9 +51,10 @@ mk/experiments/kubernetes_configmap_publication.mk
 
 The top-level `Makefile` exposes source-build, one-boot preflight, three-boot
 formal, finalization, and analysis targets. `mk/suites.mk` classifies the
-one-boot target as a dependency preflight. The formal target is executable but
-is not a member of the aggregate formal-case-study target until a reviewed
-formal result exists.
+one-boot target as a dependency preflight. At implementation freeze, the
+formal target remained outside the aggregate formal-case-study target pending
+a reviewed result. After the three-boot result passed independent review,
+`mk/suites.mk` promoted it into the aggregate formal suite.
 
 ## Source-Positive Control
 
@@ -188,21 +189,14 @@ shell quoting in the source test command, and explicitly limiting readdir
 equivalence to visible-name membership rather than placeholder dirent
 inode/type values.
 
-## Remaining Gate
+## Formal Outcome
 
-The remaining execution requires:
-
-1. at most three one-boot KVM preflight attempts;
-2. three fresh formal modified-kernel KVM boots;
-3. independent result review; and
-4. documentation and paper updates only if the reviewed result is positive.
-
-The primary execution risks are verifier rejection, a difference between host
-and guest support required by the static Kubernetes adapter, per-file
-selection and hiding through nested readdir and old directory descriptors,
-incomplete cleanup after a failing state, and an over-constrained source
-identity oracle. Raw failures remain engineering evidence and do not enter the
-paper as positive results.
+Preflight 02 passed after the ownership and non-root consumer oracle was fixed.
+The three-boot formal run then completed all source, direct, `namei_ext`,
+descriptor, lower-preservation, counter, cleanup, and dmesg gates. Independent
+result review returned `GO` for the narrow payload-view claim. The complete
+result and scope are recorded in
+`2026-07-29-kubernetes-configmap-publication-rq1-result.md`.
 
 ## Preflight 01 Addendum
 

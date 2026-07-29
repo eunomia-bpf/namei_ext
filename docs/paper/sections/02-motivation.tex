@@ -53,10 +53,12 @@ portal grant/revoke behavior~\cite{xdg_documents_portal}. The build-action
 workload follows Bazel's action-specific input views~\cite{bazel_sandboxing}.
 The toolchain workload follows per-environment software selection and
 switch/rollback behavior represented by profile systems such as
-Nix~\cite{nix_store}. DMTCP path virtualization and Kubernetes AtomicWriter
-publication provide additional source-defined lifecycle
-shapes~\cite{dmtcp_path_virtualization,kubernetes_projected_volumes}. They
-remain portfolio cases until their exact KVM oracles run.
+Nix~\cite{nix_store}. Kubernetes AtomicWriter supplies the completed
+already-materialized payload-view sequence~\cite{kubernetes_projected_volumes}.
+DMTCP path virtualization supplies an additional source-defined lifecycle
+shape but remains a portfolio case until its exact KVM oracle
+runs~\cite{dmtcp_path_virtualization}. Full projected-volume materialization
+and service reload also remain outside the completed Kubernetes subset.
 
 A historical ccache matrix supplies supporting compile-time evidence, but is
 not a headline source workload: ccache already implements cache lookup and
@@ -123,21 +125,22 @@ evaluation in Section~\ref{sec:evaluation}.
 
 \subsection{Selected Workloads}
 
-The evaluated RQ1 set contains four non-overlapping workflows. The formal
+The evaluated RQ1 set contains five non-overlapping workflows. The formal
 Agent workspace case exercises branch-visible staged/base selection, hides,
 readdir coherence, and lower-tree mutations. It also runs a released Click
 source task through concurrent base/completed views, switch, rollback, and
 withdrawal. Formal application-sharing and
 build-action runs exercise per-application grant/revoke and two
 concurrent real Bazel actions with distinct declared-input roots and an
-undeclared-input failure. The formal toolchain case selects two existing
+undeclared-input failure. The formal Kubernetes case follows the official
+\code{AtomicWriter} payload-view sequence through update, no-op, and rollback
+under one stable logical root. The formal toolchain case selects two existing
 CPython environments, switches one process-group view, and rolls it back.
-These three supporting workflows broaden the source-system evidence without
+These four supporting workflows broaden the source-system evidence without
 becoming separate headline claims.
 
-The broader portfolio also includes service rotation, checkpoint/restore, and
-HPC file staging. These source systems motivate the generality of the boundary
-but are not reported as completed experiments. A workload becomes evidence
-only after a reviewed KVM same-oracle run. In every completed case, policy runs
-at lookup and directory enumeration; non-name-resolution behavior stays with
-the source system or lower filesystem.
+Full service validation and reload, checkpoint/restore, and HPC file staging
+remain portfolio extensions rather than completed experiments. A workload
+becomes evidence only after a reviewed KVM same-oracle run. In every completed
+case, policy runs at lookup and directory enumeration; non-name-resolution
+behavior stays with the source system or lower filesystem.

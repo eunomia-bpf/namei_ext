@@ -28,6 +28,7 @@ NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS := \
 	experiment-agent-workspace-rq3 \
 	experiment-application-file-sharing-rq1 \
 	experiment-build-action-sandboxing-rq1 \
+	experiment-kubernetes-configmap-publication-rq1 \
 	experiment-toolchain-environment
 NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	$(NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS) \
@@ -36,7 +37,6 @@ NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	kvm-application-file-sharing-rq1 \
 	kvm-build-action-sandboxing-rq1 \
 	kvm-toolchain-environment \
-	experiment-kubernetes-configmap-publication-rq1 \
 	kvm-kubernetes-configmap-publication-rq1 \
 	experiment-spindle-staging \
 	kvm-spindle-staging

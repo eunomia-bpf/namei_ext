@@ -1,0 +1,34 @@
+{
+  "schema": "namei_ext.run.v2",
+  "run_id": "20260729T-kubernetes-configmap-publication-rq1-01",
+  "suite": "kubernetes-configmap-publication",
+  "source_system": "Kubernetes-AtomicWriter",
+  "result_level": "kvm_kubernetes_configmap_publication_rq1",
+  "status": "completed",
+  "started_at": "2026-07-29T21:31:19Z",
+  "observations": "observations.jsonl",
+  "source": {
+    "commit": "fd63add60139b5343f01d99a52ac7385ac8c9255",
+    "dirty": false
+  },
+  "kernel": {
+    "commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+    "dirty": false
+  },
+  "kernel_commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+  "policy": "kubernetes_configmap_publication.bpf.c",
+  "runner": "namei_ext_kubernetes_configmap_publication+atomic_writer_driver",
+  "layout": "fresh-boot-source-control-stable-root-select-hide-update-no-op-rollback",
+  "matrix": {
+    "source_control": "Kubernetes-v1.30.0-AtomicWriter",
+    "states": [
+      "initial",
+      "update",
+      "no-op",
+      "rollback"
+    ],
+    "repetitions": 3,
+    "all_boots_must_pass": true
+  },
+  "completed_at": "2026-07-29T21:31:36Z"
+}

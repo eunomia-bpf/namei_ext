@@ -5,6 +5,7 @@
 \usepackage{array}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{placeins}
 \usepackage{xspace}
 \setlength{\emergencystretch}{3em}
 \AtBeginDocument{\sloppy}
@@ -39,14 +40,15 @@ same correctness condition against FUSE and broader filesystem boundaries.
 \namei implements this ownership split as a \code{sched_ext}-style VFS extension point.
 One \code{cgroup/namei_ext} decision function lets eBPF choose pass, redirect,
 hide, and \code{SELECT_TARGET} actions over kernel-registered lower paths while
-the kernel retains filesystem ownership. Four source-derived RQ1 workflows
+the kernel retains filesystem ownership. Five source-derived RQ1 workflows
 pass reviewed KVM oracles. In the headline Agent case, two concurrent process
 groups select different existing Click workspace roots at one pathname; a
 released task observes 39/40 tests on the base view and 40/40 on the completed
 view, and switch/rollback changes both object identity and task outcome.
 Supporting workflows cover sandboxed application sharing, Bazel action views,
-and toolchain environments. On the matched Agent lifecycle, median
-lifecycle latency is 5.51\,\(\mu\)s versus
+the already-materialized payload-view subset of Kubernetes
+\code{AtomicWriter}, and toolchain environments. On the matched Agent
+lifecycle, median latency is 5.51\,\(\mu\)s versus
 62.64\,\(\mu\)s for FUSE. On cache-hot FxMark, \code{SELECT} delivers
 1.052--1.088\(\times\) cached-FUSE throughput across three path-walk tests,
 while a separate 60-boot experiment meets its predeclared

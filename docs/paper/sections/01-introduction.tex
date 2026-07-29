@@ -76,8 +76,10 @@ path-view policies, cheaper than feature-equivalent FUSE placement, and more
 contained than broader filesystem ownership. RQ1 asks whether KVM workloads pass
 the same correctness conditions while preserving lower-filesystem semantics.
 Reviewed formal KVM runs pass fixed oracles for Agent workspaces,
-application-sharing grants, concurrent Bazel action views, and toolchain
-environment selection. The headline Agent result includes three fresh boots of
+application-sharing grants, concurrent Bazel action views, the
+already-materialized payload-view subset of Kubernetes \code{AtomicWriter},
+and toolchain environment selection. The headline Agent result includes three
+fresh boots of
 a released Click source task: concurrent base and completed views produce
 39/40 and 40/40 tests, and switch/rollback changes both the selected object and
 the task outcome. RQ2 compares

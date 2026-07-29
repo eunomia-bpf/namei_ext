@@ -200,7 +200,7 @@ so the evaluation does not drift into a long baseline catalog.
 | Role | Evidence item | RQ served | Runnable status | Fairness or admission rule | Claim consequence if unavailable |
 | --- | --- | --- | --- | --- | --- |
 | Main baseline | Feature-equivalent FUSE policy over the same oracle | RQ2 | Formal Agent lifecycle and FxMark lookup/readdir matrices completed; workload-specific breadth remains possible | Same policy inputs, update schedule, and justified FUSE caching/passthrough settings as `namei_ext`; account for FUSE passthrough, FUSE-BPF, RFUSE, CoFS, and DFUSE as related acceleration context. | RQ2 cannot claim lower cost or acceptable overhead versus FUSE. |
-| Correctness oracle | Source/native behavior from XDG portal, AgentFS/BranchFS/YoloFS, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, and selected toolchain/profile systems | RQ1 | Agent workspace, W1 application sharing, W3 Bazel action views, and W7 toolchain environments have reviewed formal KVM results; W4--W6 remain motivating or dependency-limited scope | Establishes the source behavior and task input; it is not a weaker baseline. | RQ1 lacks source credibility. |
+| Correctness oracle | Source/native behavior from XDG portal, AgentFS/BranchFS/YoloFS, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, and selected toolchain/profile systems | RQ1 | Agent workspace, W1 application sharing, W3 Bazel action views, the W4 AtomicWriter payload-view subset, and W7 toolchain environments have reviewed formal KVM results; W5--W6 remain motivating or dependency-limited scope | Establishes the source behavior and task input; it is not a weaker baseline. | RQ1 lacks source credibility. |
 | Boundary evidence | Workload-specific custom/stackable/source-system ownership table | RQ3 | Citation/source-code evidence plus selected source artifacts; no full-system reimplementation unless required by the oracle | Compare required filesystem methods, daemon/runtime state, metadata, data/write-path ownership, privileged code, and invalid-policy containment. | RQ3 becomes unsupported prose. |
 | Control | Lower-FS/no-hook run through the project KVM target | RQ2 attribution | Existing Phase 1 controls; final workload controls pending | Same operation mix where meaningful; used only for overhead attribution. | RQ2 overhead attribution weakens. |
 
@@ -234,7 +234,7 @@ so the evaluation does not drift into a long baseline catalog.
 | Traditional industrial workflows | Sandboxed Application File Sharing, Build Action Sandboxing, Service Configuration and Secret Rotation, Checkpoint/Restore and Migration, HPC File Staging, and Toolchain and Dependency Environments. | Broad RQ1 evidence over one action model. | One source-derived correctness preflight per workflow; deepen the representative cases that fit the current actions. | Keep each source's broader control plane and semantics out of the claimed boundary. |
 | Filesystem literature | FUSE request path, optimized FUSE context, stackable/full-FS method ownership, metadata-service responsibilities. | Stronger RQ2/RQ3. | Same-oracle FUSE plus boundary accounting; cite optimized/full-FS systems instead of multiplying weak runnable baselines. | Too many baselines can fragment the paper. |
 | Recent eBPF/kernel-extension literature | eBPF safety, scheduling, virtualization, and kernel-extension placement assumptions. | Cleaner mechanism discussion. | Measure tail-latency/branch-cost where policy complexity could matter; state verifier and attachment assumptions. | This can distract unless tied to name-resolution path cost and safety boundaries. |
-| Kubernetes/projected config | Service/config operational breadth. | Formal W4 epoch-switch case. | Valid/canary/bad/rollback objects with native validation and service-visible oracle. | Applications holding old descriptors still require reload/restart behavior. |
+| Kubernetes/projected config | Service/config operational breadth. | Formal W4 `AtomicWriter` payload-view case completed; full service validation/reload remains open. | V0/V1/no-op/rollback visible objects, non-root reads, stable root and old descriptors, and unchanged lower generations. | Retrieval, materialization, symlink/inotify behavior, candidate validation, and reload orchestration remain outside the completed subset. |
 
 ## Adjacent Communities
 
@@ -331,7 +331,8 @@ ablations are admitted only when they change an RQ answer.
   lookup-time selection in Lua). Build/cache is repositioned as access-point
   view governance rather than acceleration. Remote filesystem cache
   (nydus FUSE→erofs+fscache) is recorded as motivation evidence only.
-- Current evidence state: W1, W2, W3, and W7 have reviewed formal RQ1 results;
+- Current evidence state: W1, W2, W3, W4's `AtomicWriter` payload-view subset,
+  and W7 have reviewed formal RQ1 results;
   W2 now includes a released source task. The Agent lifecycle, FxMark lookup,
   and FxMark readdir FUSE comparisons are complete. The next high-value depth
   questions are cache-cold or broader metadata RQ2 behavior and a second

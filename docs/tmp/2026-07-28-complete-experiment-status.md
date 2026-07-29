@@ -9,6 +9,29 @@ the paper. It separates publication evidence from supporting diagnostics,
 failed protocols, and future portfolio cases. A development run is not promoted
 merely because it booted or emitted plausible numbers.
 
+## 2026-07-29 RQ1 Addendum
+
+The current reviewed RQ1 set now contains five workflows:
+
+- W1 application file sharing;
+- W2 Agent workspaces, including the released Click source task;
+- W3 Bazel build action sandboxing;
+- W4 Kubernetes `AtomicWriter` payload publication; and
+- W7 toolchain environments.
+
+The W4 result is
+`results/experiments/kubernetes-configmap-publication-rq1/20260729T-kubernetes-configmap-publication-rq1-01/`.
+Three fresh KVM boots passed 12/12 official source states, 12/12 `namei_ext`
+states, 6/6 direct controls, 24/24 stable-root descriptor checks, 12/12
+old-descriptor checks, and 36/36 lower-object checks. Independent review
+returned `GO` for the already-materialized leaf-level payload-view subset.
+Full projected-volume materialization and nginx validation/reload remain
+outside that result.
+
+This addendum supersedes the older W4 and "next experiment" status statements
+later in this dated inventory. The older text is retained as execution history.
+The canonical current summary is `docs/evaluation.md`.
+
 The paper has three research questions:
 
 1. **RQ1, expressiveness:** can the narrow hook implement a real source-derived
@@ -161,7 +184,12 @@ results/experiments/toolchain-environment/
   20260729T171551Z-toolchain-formal01/
 ```
 
-### RQ1 Answer So Far
+### RQ1 Answer Before W4 Formal Result (Superseded 2026-07-29)
+
+This dated inventory snapshot predates the reviewed Kubernetes
+`AtomicWriter` result. The W4 addendum earlier in this document and
+`docs/tmp/2026-07-29-kubernetes-configmap-publication-rq1-result.md` are the
+current status.
 
 The reviewed formal KVM path has expressed four distinct existing-object
 workflows: per-application grant/revoke, Agent workspace lifecycle plus a

@@ -1,0 +1,10 @@
+{
+  "boots": 3,
+  "source_states": 12,
+  "namei_ext_states": 12,
+  "direct_controls": 6,
+  "directory_descriptor_checks": 24,
+  "old_descriptor_checks": 12,
+  "lower_preservation_checks": 36,
+  "verdict": "supported"
+}

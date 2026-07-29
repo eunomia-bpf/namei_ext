@@ -1,0 +1,16 @@
+{
+  "kernel": {
+    "image": "artifacts/kernel/bzImage",
+    "config": "artifacts/kernel/config"
+  },
+  "runtime": {
+    "runner": "artifacts/runtime/namei_ext_kubernetes_configmap_publication",
+    "policy": "artifacts/runtime/kubernetes_configmap_publication.bpf.o",
+    "bpftool": "artifacts/runtime/bpftool",
+    "source_driver": "artifacts/runtime/atomic-writer-driver"
+  },
+  "source": {
+    "metadata": "artifacts/source/source-metadata.json",
+    "upstream_tests": "artifacts/source/atomic-writer-tests.log"
+  }
+}

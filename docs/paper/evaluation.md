@@ -24,6 +24,7 @@ skill, not by this repository.
 | Formal Agent source-task RQ1 review | `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-formal01-result-review.md` |
 | Formal Agent workspace RQ3 review | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 | Formal corrected FxMark readdir review | `docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md` |
+| Formal Kubernetes ConfigMap publication RQ1 result and review | `docs/tmp/2026-07-29-kubernetes-configmap-publication-rq1-result.md` |
 
 Current boundary:
 

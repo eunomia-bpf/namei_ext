@@ -1,0 +1,23 @@
+{
+  "source_system": "kubernetes",
+  "version": "v1.30.0",
+  "commit": "7c48c2bd72b9bf5c44d21d7338cc7bea77d0ad2a",
+  "archive_url": "https://codeload.github.com/kubernetes/kubernetes/tar.gz/7c48c2bd72b9bf5c44d21d7338cc7bea77d0ad2a",
+  "go_version": "go version go1.22.2 linux/amd64",
+  "package": "k8s.io/kubernetes/pkg/volume/util",
+  "source_file": "pkg/volume/util/atomic_writer.go",
+  "test_file": "pkg/volume/util/atomic_writer_test.go",
+  "upstream_tests": [
+    "TestWriteOnce",
+    "TestUpdate",
+    "TestMultipleUpdates"
+  ],
+  "adapter": "experiments/kubernetes_configmap_publication/atomic_writer_driver.go",
+  "build": {
+    "module_mode": "vendor",
+    "cgo": false,
+    "adapter_command": "cd /home/yunwei37/workspace/namei_ext/.build/workloads/kubernetes-configmap-publication/source && CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=vendor go build -o /home/yunwei37/workspace/namei_ext/.build/workloads/kubernetes-configmap-publication/atomic-writer-driver /home/yunwei37/workspace/namei_ext/experiments/kubernetes_configmap_publication/atomic_writer_driver.go",
+    "upstream_test_build_command": "cd /home/yunwei37/workspace/namei_ext/.build/workloads/kubernetes-configmap-publication/source && CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=vendor go test -c -o /home/yunwei37/workspace/namei_ext/.build/workloads/kubernetes-configmap-publication/volume-util.test ./pkg/volume/util",
+    "upstream_test_run_command": "/home/yunwei37/workspace/namei_ext/.build/workloads/kubernetes-configmap-publication/volume-util.test -test.v -test.run '^(TestWriteOnce|TestUpdate|TestMultipleUpdates)$'"
+  }
+}

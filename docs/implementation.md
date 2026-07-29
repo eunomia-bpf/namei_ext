@@ -233,15 +233,17 @@ records are
 
 The paper direction needs admitted complete experiments, not isolated runner
 checks. Agent workspace RQ1, RQ2, and RQ3 are complete for the admitted
-existing-object slice, including the released source task. The highest-value
-remaining implementation work is:
+existing-object slice, including the released source task. The Kubernetes
+`AtomicWriter` payload-view subset is also complete as supporting RQ1 evidence.
+The highest-value remaining implementation work is:
 
 1. Add cache-cold lookup or selected mdtest metadata operations for RQ2 rather
    than rerunning completed cache-hot or readdir matrices.
 2. Add a second source-derived RQ3 boundary row if it can reuse a complete RQ1
    oracle and a real custom, stackable, or source filesystem implementation.
-3. Keep service rotation, DMTCP, and Spindle behind new source-native dependency
-   plans; their exhausted preflights are not paper evidence.
+3. Treat full nginx validation/reload, DMTCP, and Spindle as separate
+   source-native extensions. The completed `AtomicWriter` result does not turn
+   the older nginx or Spindle failed preflights into paper evidence.
 4. Treat the old ccache hit/epoch/stale/corrupt matrix as supporting macro
    evidence. It must not replace a source-derived workload because ccache
    already owns cache lookup and validation in userspace.

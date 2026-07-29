@@ -34,9 +34,10 @@ orchestration belong to the orchestrator skill, not to this repository.
   or stackable filesystem ownership.
 - The source-derived portfolio contains seven non-overlapping industrial
   workflows. W1 application file sharing, W2 Agent workspaces, W3 build action
-  sandboxing, and W7 toolchain/environment selection have reviewed formal KVM
-  correctness evidence. W4--W6 remain motivating or dependency-limited rows,
-  not completed paper evidence.
+  sandboxing, W4's Kubernetes `AtomicWriter` payload-view subset, and W7
+  toolchain/environment selection have reviewed formal KVM correctness
+  evidence. W5--W6 and full service reload remain motivating or
+  dependency-limited rows, not completed paper evidence.
 - Do not reopen table-only, materialized-view, or scattered-baseline side
   experiments as the novelty line.
 
@@ -59,6 +60,11 @@ orchestration belong to the orchestrator skill, not to this repository.
 - Toolchain/environment RQ1: three fresh KVM boots, 18/18 physical or logical
   states, and 24/24 Python probes under
   `results/experiments/toolchain-environment/20260729T171551Z-toolchain-formal01/`.
+- Kubernetes ConfigMap publication RQ1: three fresh KVM boots, 12/12 official
+  `AtomicWriter` states, 12/12 `namei_ext` states, 6/6 direct controls, 24/24
+  stable-root descriptor checks, 12/12 old-descriptor checks, and 36/36
+  lower-object checks under
+  `results/experiments/kubernetes-configmap-publication-rq1/20260729T-kubernetes-configmap-publication-rq1-01/`.
 - Agent workspace RQ2: 20 fresh KVM boots and 960/960 required oracles under
   `results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/`;
   paired FUSE/namei_ext lifecycle ratio `11.32x [11.24, 11.64]`.
@@ -81,7 +87,9 @@ orchestration belong to the orchestrator skill, not to this repository.
   `results/phase1/20260724T-epoch-switch-release-v2/` (real compile epoch
   switch). Observed FUSE/namei_ext compile-time ratio is about 2.1x.
 - Open evidence gaps: cache-cold lookup or broader metadata operations for RQ2
-  and a second source-derived RQ3 boundary row. The ccache
+  and a second source-derived RQ3 boundary row. W5 DMTCP and W6 Spindle remain
+  optional RQ1 breadth extensions rather than prerequisites for the current
+  five-workflow RQ1 answer. The ccache
   matrix is supporting macro evidence, not a headline workload.
 
 Complete current inventory:
