@@ -260,6 +260,23 @@ class AnalysisLifecycleTest(unittest.TestCase):
             block,
         )
 
+    def test_checkpoint_upstream_identity_is_computed_in_setpriv_recipe(self):
+        block = self.target_block(
+            ROOT / "mk/experiments/checkpoint_restore.mk",
+            "__checkpoint_restore_guest",
+        )
+        setpriv = block[block.index("setpriv \\\n"):block.index("--clear-groups")]
+        self.assertIn(
+            '--reuid="$$(stat -c %u "$(CHECKPOINT_RESTORE_BOOT_DIR)")"',
+            setpriv,
+        )
+        self.assertIn(
+            '--regid="$$(stat -c %g "$(CHECKPOINT_RESTORE_BOOT_DIR)")"',
+            setpriv,
+        )
+        self.assertNotIn('runtime_uid', setpriv)
+        self.assertNotIn('runtime_gid', setpriv)
+
 
 if __name__ == "__main__":
     unittest.main()

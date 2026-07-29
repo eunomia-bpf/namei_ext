@@ -162,6 +162,17 @@ DMTCP children as the UID/GID that owns the result directory. The upstream
 control uses the same identity, and application rows plus the analyzer record
 and verify it.
 
+The third clean-source KVM attempt,
+`results/experiments/checkpoint-restore-preflight/20260729T001040Z/`, booted
+the modified kernel and verified its identity, the `namei_ext_lookup` symbol,
+and the copied DMTCP install tree. The upstream control did not start because
+its `setpriv` recipe reused UID/GID shell variables assigned on an earlier Make
+recipe line; GNU Make's per-line shell execution left both values empty. The
+repair computes both values inline in the `setpriv` command and has a source
+contract test. This was the third counted preflight, so the bounded attempt
+budget is exhausted. The failed root is preserved, no formal run is
+authorized, and the workload remains without KVM sufficiency evidence.
+
 ## Next Decision
 
 The source baseline now passes as patched DMTCP PathTranslator at commit
@@ -170,7 +181,9 @@ An independent read-only review confirmed that the patch repairs only
 restart-environment retrieval, the provenance makes the modified baseline
 unambiguous, and the comparison remains fair. Its final verdict is `GO`.
 
-The next step is to commit this implementation so the clean-source gate can
-admit it, then run one modified-kernel preflight containing patched DMTCP
-PathTranslator, `namei_ext`, and the withdrawn negative control. A separate
-result review is required before any formal matrix.
+The current preflight is closed after three failed attempts. No formal matrix
+is authorized, and the inline UID/GID repair is runtime-unvalidated. Any future
+KVM execution requires a new protocol with an explicit methodological reason,
+a new attempt budget, and independent plan review; it must not be described as
+a continuation or replacement of these three roots. The current experiment
+budget moves to another predeclared source-derived workload.

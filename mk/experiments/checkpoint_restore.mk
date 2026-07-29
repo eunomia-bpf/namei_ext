@@ -328,7 +328,9 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 	upstream_status=0; \
 	timeout --signal=TERM --kill-after=10s \
 		"$(CHECKPOINT_RESTORE_GUEST_UPSTREAM_TIMEOUT)" \
-		setpriv --reuid="$$runtime_uid" --regid="$$runtime_gid" \
+		setpriv \
+		--reuid="$$(stat -c %u "$(CHECKPOINT_RESTORE_BOOT_DIR)")" \
+		--regid="$$(stat -c %g "$(CHECKPOINT_RESTORE_BOOT_DIR)")" \
 		--clear-groups \
 		$(MAKE) -C "$(CHECKPOINT_RESTORE_GUEST_DMTCP_SOURCE)" \
 		check-autotest AUTOTEST='--verbose pathvirt' \
