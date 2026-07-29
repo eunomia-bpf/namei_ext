@@ -1,0 +1,67 @@
+make: Entering directory '/home/yunwei37/workspace/namei_ext'
+if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+inner_status=0; \
+make --no-print-directory -C "/home/yunwei37/workspace/namei_ext" \
+	__build_action_sandboxing_guest_inner \
+	BUILD_ACTION_SANDBOXING_BOOT_DIR="results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02" \
+	BUILD_ACTION_SANDBOXING_RUN_DIR="results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02" || \
+	inner_status=$?; \
+printf '%s\n' "$inner_status" \
+	>"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/guest-inner.status"; \
+inventory_after_status=0; \
+test -d "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02"; test -n "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bpftool"; test -n "after"; command -v findmnt >/dev/null; command -v lsof >/dev/null; test -c /dev/fuse; "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bpftool" -j prog show >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/bpf-programs-after.json"; "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bpftool" -j cgroup tree >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/bpf-cgroup-after.json"; findmnt -rn -o FSTYPE,TARGET | awk '$1 == "fuse" || $1 == "fuseblk" || index($1, "fuse.") == 1' >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-mounts-after.txt"; lsof_status=0; lsof -Fpc /dev/fuse >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-open-fds-after.txt" || lsof_status=$?; printf '%s\n' "$lsof_status" >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-open-fds-after.status"; case "$lsof_status" in 0|1) ;; *) exit 1 ;; esac || \
+	inventory_after_status=$?; \
+printf '%s\n' "$inventory_after_status" \
+	>"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/guest-inventory-after.status"; \
+dmesg_status=0; \
+dmesg >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/dmesg.log" || \
+	dmesg_status=$?; \
+if test "$dmesg_status" -eq 0; then \
+	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|general protection|NULL pointer|KASAN|UBSAN|clocksource: Watchdog .*read timed out|Marking clocksource .* unstable' "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/dmesg.log" >/dev/null || \
+		dmesg_status=$?; \
+fi; \
+printf '%s\n' "$dmesg_status" \
+	>"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/guest-dmesg.status"; \
+status=completed; \
+if test "$inner_status" -ne 0 || \
+   test "$inventory_after_status" -ne 0 || \
+   test "$dmesg_status" -ne 0; then status=failed; fi; \
+jq -n \
+	--arg status "$status" \
+	--argjson inner_status "$inner_status" \
+	--argjson inventory_after_status "$inventory_after_status" \
+	--argjson dmesg_status "$dmesg_status" \
+	--arg completed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+	'{schema:"namei_ext.build_action_sandboxing_rq1.boot.v1",status:$status,inner_status:$inner_status,inventory_after_status:$inventory_after_status,dmesg_status:$dmesg_status,completed_at:$completed_at}' \
+	>"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/boot.json"; \
+test "$status" = completed
+test -n "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02"
+test -n "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02"
+test -x "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/namei_ext_build_action_sandboxing"
+test -r "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/build_action_sandboxing.bpf.o"
+test -x "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bpftool"
+test -x "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bazel"
+cp "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/kernel/config" "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/kernel.config"
+printf '%s\n' "621aff8d1bb52fad718f11fd882c956d6a5686ae" >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/kernel-commit.txt"
+actual_release=$(uname -r); test "$actual_release" = "7.1.0-rc7-g621aff8d1bb5"; printf '%s\n' "$actual_release" >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/kernel-release.txt"
+uname -a >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/uname.txt"
+cat /proc/version >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/proc-version.txt"
+cat /proc/cmdline >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/kernel-cmdline.txt"
+test -d "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02"; test -n "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bpftool"; test -n "before"; command -v findmnt >/dev/null; command -v lsof >/dev/null; test -c /dev/fuse; "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bpftool" -j prog show >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/bpf-programs-before.json"; "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bpftool" -j cgroup tree >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/bpf-cgroup-before.json"; findmnt -rn -o FSTYPE,TARGET | awk '$1 == "fuse" || $1 == "fuseblk" || index($1, "fuse.") == 1' >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-mounts-before.txt"; lsof_status=0; lsof -Fpc /dev/fuse >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-open-fds-before.txt" || lsof_status=$?; printf '%s\n' "$lsof_status" >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-open-fds-before.status"; case "$lsof_status" in 0|1) ;; *) exit 1 ;; esac
+jq -e 'type == "array" and length == 0' "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/bpf-programs-before.json" >/dev/null; jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/bpf-cgroup-before.json" >/dev/null; test ! -s "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-mounts-before.txt"; test "$(cat "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-open-fds-before.status")" = 1; test ! -s "results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/fuse-open-fds-before.txt"
+"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bazel" \
+	--version >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/bazel-version.txt"
+: >"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/observations.jsonl"
+"/home/yunwei37/workspace/namei_ext/results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/namei_ext_build_action_sandboxing" \
+	"/home/yunwei37/workspace/namei_ext/results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/build_action_sandboxing.bpf.o" \
+	"/home/yunwei37/workspace/namei_ext/results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/observations.jsonl" \
+	"/home/yunwei37/workspace/namei_ext/results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/artifacts/runtime/bazel" \
+	"/home/yunwei37/workspace/namei_ext/results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02" /sys/fs/cgroup \
+	>"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/stdout-controller.log" \
+	2>"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/stderr-controller.log"
+! jq -e 'select(has("pass") and .pass != true)' \
+	"results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/boots/repetition-02/observations.jsonl" \
+	>/dev/null
+make: Leaving directory '/home/yunwei37/workspace/namei_ext'

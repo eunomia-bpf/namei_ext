@@ -1,0 +1,8 @@
+{
+  "schema": "namei_ext.build_action_sandboxing_rq1.summary.v1",
+  "boots": 3,
+  "bazel_actions": 6,
+  "action_views": 6,
+  "lower_objects": 12,
+  "cgroup_removals": 6
+}

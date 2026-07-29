@@ -170,3 +170,20 @@ The controller now emits `remove_action_a_cgroup` and
 once per boot. The analyzer reports observed counts without a hard-coded
 scientific verdict. This is an instrumentation repair; the workload, oracle,
 policy, and three-boot matrix are unchanged.
+
+## Preflight Attempt 3 And Formal 02
+
+The final permitted preflight passed:
+`results/experiments/build-action-sandboxing-rq1-preflight/20260729T180100Z-w3-preflight03/`.
+
+The repaired formal matrix also passed:
+`results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/`.
+Its aggregate counts are 3 boots, 6 Bazel actions, 6 action views, 12 preserved
+lower objects, and 6 recorded cgroup removals. Every boot contains exactly 18
+passing lifecycle cases, 2 action views, 4 lower-object records, 7 positive
+policy counters, and one passing summary.
+
+An independent result review classified formal 02 as valid, the tested
+hypothesis as supported, and its research value as supporting. W3 can now be
+used as additional RQ1 evidence for the tested Bazel existing-object
+action-view subset.

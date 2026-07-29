@@ -1,0 +1,8 @@
+{
+  "schema": "namei_ext.build_action_sandboxing_rq1.boot.v1",
+  "status": "completed",
+  "inner_status": 0,
+  "inventory_after_status": 0,
+  "dmesg_status": 0,
+  "completed_at": "2026-07-29T18:01:47Z"
+}

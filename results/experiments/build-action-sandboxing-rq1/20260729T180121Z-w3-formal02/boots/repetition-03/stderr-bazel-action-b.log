@@ -1,0 +1,7 @@
+Extracting Bazel installation...
+INFO: Analyzed target //:result (5 packages loaded, 7 targets configured).
+INFO: Found 1 target...
+Target //:result up-to-date:
+  bazel-bin/result.txt
+INFO: Elapsed time: 5.733s, Critical Path: 0.08s
+INFO: 2 processes: 1 internal, 1 local.

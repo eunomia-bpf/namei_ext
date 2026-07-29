@@ -1,0 +1,35 @@
+{
+  "schema": "namei_ext.run.v2",
+  "run_id": "20260729T180121Z-w3-formal02",
+  "suite": "build-action-sandboxing-rq1",
+  "source_system": "Bazel-6.5.0",
+  "result_level": "kvm_bazel_action_rq1",
+  "status": "completed",
+  "started_at": "2026-07-29T18:01:24Z",
+  "observations": "observations.jsonl",
+  "source": {
+    "commit": "cd25e85e2f600f24795a6cbb49d368f82ae49d15",
+    "dirty": false
+  },
+  "kernel": {
+    "commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+    "dirty": false
+  },
+  "kernel_commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+  "policy": "build_action_sandboxing.bpf.c",
+  "runner": "namei_ext_build_action_sandboxing",
+  "protocol_schema": "namei_ext.build_action_sandboxing_rq1.v1",
+  "layout": "fresh-boot-two-concurrent-bazel-actions",
+  "matrix": {
+    "actions": [
+      "action-a",
+      "action-b"
+    ],
+    "logical_path": "view/action/input.txt",
+    "declared_child": "input.txt",
+    "hidden_child": "private.txt",
+    "repetitions": 3,
+    "all_boots_must_pass": true
+  },
+  "completed_at": "2026-07-29T18:01:59Z"
+}

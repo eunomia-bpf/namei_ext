@@ -1,0 +1,1 @@
+Linux virtme-ng 7.1.0-rc7-g621aff8d1bb5 #1 SMP PREEMPT_DYNAMIC Wed Jul 29 05:35:23 PDT 2026 x86_64 x86_64 x86_64 GNU/Linux
