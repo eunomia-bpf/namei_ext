@@ -1,6 +1,6 @@
 # Evaluation
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 This file holds the scientific evaluation state: use cases, experiment
 matrices, result pointers, and open questions. Research process rules and
@@ -123,7 +123,7 @@ dilutes pathname lookup overhead.
 | W4 Service Configuration and Secret Rotation | AtomicWriter publication shape and nginx 1.26.3 live-reload oracle frozen; current/canary/invalid/rollback plan independently reviewed | Runner, BPF policy, fresh-boot KVM suite, and analyzer implemented; V2 exhausted three failed dependency preflights, and an undeclared `CONFIG_PROC_CHILDREN` requirement is the final root's strongest source-grounded timeout explanation | Not authorized; formal entrypoint remains blocked | Failed roots preserved; no completed state-transition, lower-object, counter, dmesg, or analysis evidence; keep as motivating scope rather than a paper row |
 | W5 Checkpoint/Restore and Migration | DMTCP plugin behavior identified | Not run | Not run | Not written |
 | W6 HPC File Staging | Spindle repository, build, source loader slice, 47-object inventory, and source/native oracle fixed | Final-file and cross-filesystem `SELECT` dependency passed complete Phase 1 (117/117 functional cases); three Spindle preflights ended in setup/wrapper failures before BPF attachment, so W6 has no RQ1 result | Not required for the RQ1 sufficiency row; any later RQ2 comparison needs a separate matched plan | Failed roots remain repository evidence only; no Spindle number enters the paper |
-| W7 Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 `venv` workflow and interpreter/package oracle fixed | BPF policy, C controller, Python probe, and one-/three-boot KVM entrypoints implemented; modified-kernel preflight pending | Not required for this RQ1 sufficiency row; RQ2 owns matched FUSE comparisons | Planned controls require exact selected-directory/interpreter identity, lower `EACCES`, withdrawn `ENOENT`, and unchanged lower-environment metadata |
+| W7 Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 `venv` workflow and interpreter/package oracle fixed | Passed and independently reviewed: three fresh KVM boots selected two existing environments through the same logical executable path, including paired start, switch, and rollback | Not required for this RQ1 sufficiency row; RQ2 owns matched FUSE comparisons | Logical root/interpreter identity matched the selected lower objects; controls observed lower `EACCES` and withdrawn `ENOENT`; inventoried type/mode/owner/size/device/inode/mtime fields were unchanged |
 
 ### A. Sandboxed Application File Sharing (supporting RQ1 breadth)
 
@@ -163,7 +163,20 @@ The formal `make experiment-build-action-rq2` path is implemented but remains
 outside aggregate formal-suite membership. The three-attempt preflight
 protocol is closed without a valid pair, so no formal run is authorized.
 
-### D. ccache compile macrobenchmark (existing performance evidence)
+### D. Toolchain and Dependency Environments (supporting RQ1 breadth)
+
+| Cell | Status | Raw root |
+| --- | --- | --- |
+| CPython environment selection | Passed in three fresh modified-kernel KVM boots: all 18 physical/logical state records and all 24 independent Python probes passed for Ubuntu CPython 3.10.19 and 3.12.3 | `results/experiments/toolchain-environment/20260729T171551Z-toolchain-formal01/` |
+| Paired process-group views and transition | Passed: both cgroups were released from the same barrier with distinct 3.10/3.12 views in every boot; application A then observed 3.12 after switch and 3.10 after rollback through the unchanged logical path | Same raw root |
+| Source-system oracle and mechanism engagement | Passed: expected `sys.executable`, `sys.prefix`, SOABI, pip environment, `pyvenv.cfg`, imports, and all 18 `pip check` runs; each boot recorded 159,162 lookup events, 6,739 `SELECT` events, and positive hits for all three registered targets | Same raw root |
+| Lower-FS controls and cleanup | Passed: controls observed `EACCES` after mode 000 and `ENOENT` after mapping withdrawal; selected logical root/interpreter inodes matched the corresponding lower objects; each boot's 3,270-row type/mode/UID/GID/size/device/inode/mtime inventory was unchanged; BPF/FUSE inventory was empty after teardown and dmesg passed the declared failure scan | Same raw root |
+| Independent result review | Valid as supporting RQ1 evidence only; it does not support performance, FUSE/custom-FS superiority, all toolchain managers, or preservation of unobserved filesystem semantics | `docs/tmp/2026-07-29-toolchain-environment-formal-result-review.md` |
+
+Entry points: `make kvm-toolchain-environment-preflight` and
+`make experiment-toolchain-environment`.
+
+### E. ccache compile macrobenchmark (existing performance evidence)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -180,6 +193,8 @@ Current case-study entrypoints: `make experiments`,
 `make kvm-agent-workspace-matrix`,
 `make kvm-application-file-sharing-preflight`, and
 `make kvm-build-action-sandboxing-preflight`.
+The completed W7 formal entrypoint is
+`make experiment-toolchain-environment`.
 
 W4 entrypoints exist, but the V2 dependency protocol is closed after three
 failed preflights. `make kvm-service-config-rotation-preflight` is no longer in
@@ -196,7 +211,7 @@ ccache already implements cache lookup and validation in user space. W3 Bazel
 action views and W6 Spindle file relocation provide the source-derived
 build/cache cases whose pathname view is the behavior under study.
 
-### E. FxMark path-resolution cost (decisive RQ2 mechanism result)
+### F. FxMark path-resolution cost (decisive RQ2 mechanism result)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -232,7 +247,7 @@ one, two, and four workers. It does not prove zero overhead or generalize to
 active policy, other operations, cold caches, tails, or other machines.
 Earlier matrices and short preflights remain internal mechanism evidence.
 
-### F. Agent workspace ownership and containment (decisive RQ3 result)
+### G. Agent workspace ownership and containment (decisive RQ3 result)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |

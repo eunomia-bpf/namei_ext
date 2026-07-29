@@ -63,14 +63,26 @@ cache activity so that reads do not create an artificial lower-tree change.
   so a child failure before the ready signal terminates instead of waiting for
   the KVM timeout.
 
-This is dependency validation only. A modified-kernel KVM run is required
-before the workload contributes RQ1 evidence.
+The modified-kernel preflight passed at
+`results/experiments/toolchain-environment-preflight/
+20260729T171312Z-toolchain01/`. The unchanged three-boot matrix then passed at
+`results/experiments/toolchain-environment/
+20260729T171551Z-toolchain-formal01/`. Across the formal run, all 18
+physical/logical state records, 24 Python probes, 18 `pip check` commands,
+three paired starts, three permission controls, and three withdrawn controls
+passed. All three boots completed cleanup and the declared dmesg check.
+
+An independent result review validated the run as supporting RQ1 evidence.
+It explicitly does not support performance, FUSE/custom-filesystem
+superiority, all toolchain managers, or unobserved filesystem semantics.
 
 ## Remaining Risks
 
-- CPython may derive one part of environment discovery from a physical path
-  rather than the selected logical directory under the real VFS redirect.
-- Concurrent cgroup selection or runtime remapping may expose an implementation
-  defect not present in direct physical execution.
-- The exact lower-tree inventory may reveal legitimate runtime writes that the
-  current read-only probe did not produce during host validation.
+- The errno controls observe `EACCES` and `ENOENT` after their declared state
+  changes, but their helper does not separately encode child setup failure
+  versus `execv()` failure.
+- The paired-start barrier proves that both cgroups reached the same release
+  point and then observed distinct environments; it does not measure execution
+  overlap duration.
+- The lower inventory covers type, mode, UID/GID, size, device, inode, and
+  mtime. It does not cover ctime or establish a byte-for-byte content claim.

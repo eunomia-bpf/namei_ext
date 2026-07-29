@@ -1,0 +1,38 @@
+{
+  "schema": "namei_ext.run.v2",
+  "run_id": "20260729T171551Z-toolchain-formal01",
+  "suite": "toolchain-environment",
+  "source_system": "CPython-venv",
+  "result_level": "kvm_toolchain_environment",
+  "status": "completed",
+  "started_at": "2026-07-29T17:15:54Z",
+  "observations": "observations.jsonl",
+  "source": {
+    "commit": "d1d1b635970c69d4168df7e2cafa06bc2cbcd47c",
+    "dirty": false
+  },
+  "kernel": {
+    "commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+    "dirty": false
+  },
+  "kernel_commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+  "policy": "toolchain_environment.bpf.c",
+  "runner": "namei_ext_toolchain_environment",
+  "protocol_schema": "namei_ext.toolchain_environment.v1",
+  "layout": "fresh-boot-physical-isolation-switch-rollback-withdrawn",
+  "matrix": {
+    "physical_environments": [
+      "CPython-3.10",
+      "CPython-3.12"
+    ],
+    "logical_states": [
+      "a-3.10",
+      "b-3.12",
+      "a-switched-3.12",
+      "a-rollback-3.10"
+    ],
+    "repetitions": 3,
+    "all_boots_must_pass": true
+  },
+  "completed_at": "2026-07-29T17:21:34Z"
+}

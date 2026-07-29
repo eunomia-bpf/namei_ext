@@ -1,0 +1,4 @@
+python3.10 3.10.19-1+noble1
+python3.10-venv 3.10.19-1+noble1
+python3.12 3.12.3-1ubuntu0.15
+python3.12-venv 3.12.3-1ubuntu0.15

@@ -189,6 +189,30 @@ toolchain-environment-finalize:
 	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(TOOLCHAIN_ENV_ACTIVE_DIR),$(TOOLCHAIN_ENV_ACTIVE_REPETITIONS),$(TOOLCHAIN_ENV_BOOT_FILES))
 	while IFS= read -r -d '' boot; do \
 		cmp "$$boot/lower-before.tsv" "$$boot/lower-after.tsv"; \
+		for case_name in fixture_paths configure_policy switch_a_to_312 \
+				rollback_a_to_310 detach_policy clear_targets_a \
+				clear_targets_b; do \
+			test "$$(jq -s --arg case_name "$$case_name" \
+				'[.[] | select(.event == "toolchain-environment-case" and .case == $$case_name and .pass == true)] | length' \
+				"$$boot/observations.jsonl")" = 1; \
+		done; \
+		for counter in lookup select target-a-310 target-a-312 \
+				target-b-312; do \
+			test "$$(jq -s --arg counter "$$counter" \
+				'[.[] | select(.event == "toolchain-environment-counter" and .counter == $$counter and .value > 0 and .pass == true)] | length' \
+				"$$boot/observations.jsonl")" = 1; \
+		done; \
+		for state_spec in physical-310:3:10:0 physical-312:3:12:0 \
+				logical-a-310:3:10:1 logical-b-312:3:12:3 \
+				logical-a-switched-312:3:12:2 \
+				logical-a-rollback-310:3:10:1; do \
+			IFS=: read -r state major minor target_id <<<"$$state_spec"; \
+			test "$$(jq -s --arg state "$$state" \
+				--argjson major "$$major" --argjson minor "$$minor" \
+				--argjson target_id "$$target_id" \
+				'[.[] | select(.event == "toolchain-environment-state" and .state == $$state and .major == $$major and .minor == $$minor and .target_id == $$target_id and .pass == true)] | length' \
+				"$$boot/observations.jsonl")" = 1; \
+		done; \
 		for state in physical-310 physical-312 concurrent-a-310 \
 				concurrent-b-312 logical-a-310 logical-b-312 \
 				logical-a-switched-312 logical-a-rollback-310; do \

@@ -1,0 +1,9 @@
+{
+  "schema": "namei_ext.toolchain_environment.summary.v1",
+  "boots": 3,
+  "states": 18,
+  "concurrent_pairs": 3,
+  "permission_controls": 3,
+  "withdrawn_controls": 3,
+  "verdict": "supported"
+}

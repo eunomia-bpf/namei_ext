@@ -23,11 +23,13 @@ NAMEI_EXT_BLOCKED_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 
 NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS := \
 	experiment-agent-workspace-rq2 \
-	experiment-agent-workspace-rq3
+	experiment-agent-workspace-rq3 \
+	experiment-toolchain-environment
 NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	$(NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS) \
 	kvm-agent-workspace-rq2 \
 	kvm-agent-workspace-rq3 \
+	kvm-toolchain-environment \
 	experiment-spindle-staging \
 	kvm-spindle-staging
 
