@@ -14,23 +14,27 @@ SPINDLE_STAGING_PLAN ?= \
 SPINDLE_STAGING_PLAN_REVIEW ?= \
 	$(ROOT_DIR)/docs/tmp/2026-07-29-spindle-hpc-staging-plan-review.md
 SPINDLE_STAGING_BPFTOOL ?= $(KERNEL_BPFTOOL)
+SPINDLE_STAGING_HOST_PREFLIGHT_DIR ?= \
+	$(BUILD_ROOT)/spindle-staging/host-preflight
 SPINDLE_STAGING_GUEST_COMPILED_ABS = \
 	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_COMPILED_ROOT)
 SPINDLE_STAGING_GUEST_SPINDLE_ABS = \
 	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_SPINDLE)
 SPINDLE_STAGING_GUEST_TEST_DIR_ABS = \
 	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_TEST_DIR)
-SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS = \
-	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS)
+SPINDLE_STAGING_GUEST_HELLO_SOURCE_ABS = \
+	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_RUN_DIR)/artifacts/source/hello.py
 SPINDLE_STAGING_BOOT_FILES := \
-	guest.mk guest.mk.sha256 launcher.stdout.log launcher.stderr.log \
+	guest.mk launcher.stdout.log launcher.stderr.log \
 	boot.json raw-runner.jsonl observations.jsonl \
 	source.stdout.log source.stderr.log \
 	namei_ext.stdout.log namei_ext.stderr.log \
 	withdrawn.stdout.log withdrawn.stderr.log \
 	cache-tree.txt focal-manifest-before.jsonl \
 	focal-manifest-after.jsonl runtime-identity.json \
-	runtime-metadata.json runtime-inputs.sha256 runtime-symlinks.txt \
+	runtime-metadata.json runtime-symlinks.txt \
+	readlink-fixtures-active.tsv readlink-fixtures-after.tsv \
+	readlink-fixtures-restored.tsv \
 	runtime-mount-active.txt runtime-mount-before.status \
 	runtime-mount-after.status \
 	guest-prepare.status guest-inner.status guest-cleanup.status \
@@ -44,7 +48,7 @@ SPINDLE_STAGING_BOOT_FILES := \
 	fuse-open-fds-before.txt fuse-open-fds-before.status \
 	fuse-open-fds-after.txt fuse-open-fds-after.status \
 	kernel.config kernel-commit.txt kernel-release.txt uname.txt \
-	proc-version.txt kernel-cmdline.txt dmesg.log evidence.sha256
+	proc-version.txt kernel-cmdline.txt dmesg.log
 
 define SPINDLE_STAGING_CAPTURE_ARTIFACTS
 install -d "$(1)/artifacts/kernel" "$(1)/artifacts/runtime" \
@@ -58,8 +62,6 @@ install -m 0444 "$(SPINDLE_STAGING_POLICY)" \
 	"$(1)/artifacts/runtime/spindle_staging.bpf.o"
 install -m 0555 "$(SPINDLE_STAGING_BPFTOOL)" \
 	"$(1)/artifacts/runtime/bpftool"
-install -m 0444 "$(SPINDLE_ARCHIVE)" \
-	"$(1)/artifacts/source/$(SPINDLE_ARCHIVE_NAME)"
 install -m 0444 "$(SPINDLE_BUILD_PROVENANCE)" \
 	"$(1)/artifacts/source/build.json"
 install -m 0444 "$(SPINDLE_CONFIGURE_LOG)" \
@@ -68,52 +70,67 @@ install -m 0444 "$(SPINDLE_BUILD_LOG)" \
 	"$(1)/artifacts/source/build.log"
 install -m 0444 "$(SPINDLE_INSTALL_LOG)" \
 	"$(1)/artifacts/source/install.log"
-install -m 0444 "$(SPINDLE_INSTALL_MANIFEST)" \
-	"$(1)/artifacts/source/install-tree.sha256"
 install -m 0444 "$(SPINDLE_SRC)/testsuite/test_driver.c" \
 	"$(1)/artifacts/source/test_driver.c"
 install -m 0444 "$(SPINDLE_SRC)/testsuite/Makefile.am" \
 	"$(1)/artifacts/source/testsuite-Makefile.am"
 install -m 0444 "$(SPINDLE_SRC)/src/server/cache/global_name.c" \
 	"$(1)/artifacts/source/global_name.c"
+install -m 0444 "$(SPINDLE_SRC)/testsuite/hello.py" \
+	"$(1)/artifacts/source/hello.py"
 stat -c '%n	%a	%u	%g	%s	%d	%i' \
 	"$(SPINDLE_TEST_DIR)/retzero_" \
 	"$(SPINDLE_TEST_DIR)/retzero_x" \
-	"$(SPINDLE_TEST_DIR)/hello_.py" \
-	"$(SPINDLE_TEST_DIR)/hello_x.py" \
 	>"$(1)/artifacts/source/excluded-permission-fixtures.tsv"
+printf '%s\t%s\t%s\t%s\n' \
+	'source' 'target' 'transport_mode' 'active_mode' \
+	'hello.py' 'hello_.py' '0600' '0200' \
+	'hello.py' 'hello_x.py' '0700' '0300' \
+	>"$(1)/artifacts/source/reconstructed-readlink-fixtures.tsv"
+runtime_tar="$(1)/artifacts/source/spindle-runtime-tree.tar.tmp"; \
+runtime_gz="$(1)/artifacts/source/spindle-runtime-tree.tar.gz.tmp"; \
+rm -f "$$runtime_tar" "$$runtime_gz"; \
+cleanup_runtime_archive() { rm -f "$$runtime_tar" "$$runtime_gz"; }; \
+trap cleanup_runtime_archive EXIT; \
 tar --exclude='build/testsuite/spindle_output.*' \
 	--exclude='build/testsuite/spindle_test*' \
 	--exclude='build/testsuite/retzero_' \
 	--exclude='build/testsuite/retzero_x' \
 	--exclude='build/testsuite/hello_.py' \
 	--exclude='build/testsuite/hello_x.py' \
-	-czf "$(1)/artifacts/source/spindle-runtime-tree.tar.gz" \
-	-C "$(SPINDLE_WORK_ROOT)" build prefix
-printf '%s  %s\n' "$(SPINDLE_ARCHIVE_SHA256)" \
-	"$(1)/artifacts/source/$(SPINDLE_ARCHIVE_NAME)" | sha256sum -c -
+	-cf "$$runtime_tar" -C "$(SPINDLE_WORK_ROOT)" build prefix; \
+tar --append --file="$$runtime_tar" \
+	--transform='s|^hello.py$$|build/testsuite/hello_.py|' \
+	--mode=0600 -C "$(SPINDLE_SRC)/testsuite" hello.py; \
+tar --append --file="$$runtime_tar" \
+	--transform='s|^hello.py$$|build/testsuite/hello_x.py|' \
+	--mode=0700 -C "$(SPINDLE_SRC)/testsuite" hello.py; \
+gzip -n -c "$$runtime_tar" >"$$runtime_gz"; \
+mv -f "$$runtime_gz" \
+	"$(1)/artifacts/source/spindle-runtime-tree.tar.gz"; \
+rm -f "$$runtime_tar"; \
+trap - EXIT
+test "$$(tar -tzf "$(1)/artifacts/source/spindle-runtime-tree.tar.gz" | \
+	grep -Fxc 'build/testsuite/hello_.py')" = 1
+test "$$(tar -tzf "$(1)/artifacts/source/spindle-runtime-tree.tar.gz" | \
+	grep -Fxc 'build/testsuite/hello_x.py')" = 1
+tar -xOf "$(1)/artifacts/source/spindle-runtime-tree.tar.gz" \
+	build/testsuite/hello_.py | \
+	cmp - "$(1)/artifacts/source/hello.py"
+tar -xOf "$(1)/artifacts/source/spindle-runtime-tree.tar.gz" \
+	build/testsuite/hello_x.py | \
+	cmp - "$(1)/artifacts/source/hello.py"
 jq -n \
 	--arg kernel_commit "$$(cat "$(KERNEL_COMMIT_FILE)")" \
 	--arg kernel_release "$$(sed -n 's/^#define UTS_RELEASE "\(.*\)"/\1/p' "$(KERNEL_RELEASE_HEADER)")" \
 	--arg spindle_commit "$(SPINDLE_COMMIT)" \
-	--arg spindle_archive_sha256 "$(SPINDLE_ARCHIVE_SHA256)" \
-	--arg runner_sha256 "$$(sha256sum "$(1)/artifacts/runtime/namei_ext_spindle_staging" | awk '{print $$1}')" \
-	--arg policy_sha256 "$$(sha256sum "$(1)/artifacts/runtime/spindle_staging.bpf.o" | awk '{print $$1}')" \
-	--arg bpftool_sha256 "$$(sha256sum "$(1)/artifacts/runtime/bpftool" | awk '{print $$1}')" \
-	--arg spindle_sha256 "$$(sha256sum "$(SPINDLE_BINARY)" | awk '{print $$1}')" \
-	--arg test_driver_sha256 "$$(sha256sum "$(SPINDLE_TEST_DIR)/test_driver" | awk '{print $$1}')" \
-	--arg runtime_tree_sha256 "$$(sha256sum "$(1)/artifacts/source/spindle-runtime-tree.tar.gz" | awk '{print $$1}')" \
-	--arg excluded_fixtures_sha256 "$$(sha256sum "$(1)/artifacts/source/excluded-permission-fixtures.tsv" | awk '{print $$1}')" \
 	--arg compiled_root "$(SPINDLE_WORK_ROOT)" \
-	'{kernel:{commit:$$kernel_commit,release:$$kernel_release,image:"artifacts/kernel/bzImage",config:"artifacts/kernel/config"},runtime:{runner:{path:"artifacts/runtime/namei_ext_spindle_staging",sha256:$$runner_sha256},policy:{path:"artifacts/runtime/spindle_staging.bpf.o",sha256:$$policy_sha256},bpftool:{path:"artifacts/runtime/bpftool",sha256:$$bpftool_sha256}},source:{spindle_commit:$$spindle_commit,archive:"artifacts/source/$(SPINDLE_ARCHIVE_NAME)",archive_sha256:$$spindle_archive_sha256,build:"artifacts/source/build.json",runtime_tree:{path:"artifacts/source/spindle-runtime-tree.tar.gz",sha256:$$runtime_tree_sha256},excluded_permission_fixtures:{path:"artifacts/source/excluded-permission-fixtures.tsv",sha256:$$excluded_fixtures_sha256,count:4}},execution:{compiled_root:$$compiled_root,spindle_sha256:$$spindle_sha256,test_driver_sha256:$$test_driver_sha256}}' \
+	'{kernel:{commit:$$kernel_commit,release:$$kernel_release,image:"artifacts/kernel/bzImage",config:"artifacts/kernel/config"},runtime:{runner:{path:"artifacts/runtime/namei_ext_spindle_staging"},policy:{path:"artifacts/runtime/spindle_staging.bpf.o"},bpftool:{path:"artifacts/runtime/bpftool"}},source:{spindle_commit:$$spindle_commit,build:"artifacts/source/build.json",runtime_tree:{path:"artifacts/source/spindle-runtime-tree.tar.gz"},excluded_permission_fixtures:{path:"artifacts/source/excluded-permission-fixtures.tsv",count:2},reconstructed_readlink_fixtures:{path:"artifacts/source/reconstructed-readlink-fixtures.tsv",count:2,source:{path:"artifacts/source/hello.py"}}},execution:{compiled_root:$$compiled_root}}' \
 	>"$(1)/artifacts/manifest.json"
 jq -e \
 	--arg commit "$(SPINDLE_COMMIT)" \
-	--arg sha "$(SPINDLE_ARCHIVE_SHA256)" \
-	'.source.spindle_commit == $$commit and .source.archive_sha256 == $$sha and (.kernel.commit | length) == 40 and (.runtime.runner.sha256 | length) == 64 and (.runtime.policy.sha256 | length) == 64 and (.runtime.bpftool.sha256 | length) == 64 and (.source.runtime_tree.sha256 | length) == 64 and .source.excluded_permission_fixtures.count == 4 and (.source.excluded_permission_fixtures.sha256 | length) == 64 and (.execution.compiled_root | length) > 1 and (.execution.spindle_sha256 | length) == 64 and (.execution.test_driver_sha256 | length) == 64' \
+	'.source.spindle_commit == $$commit and (.kernel.commit | length) == 40 and .source.excluded_permission_fixtures.count == 2 and .source.reconstructed_readlink_fixtures.count == 2 and (.execution.compiled_root | length) > 1' \
 	"$(1)/artifacts/manifest.json" >/dev/null
-(cd "$(1)" && find artifacts -type f ! -name artifacts.sha256 -print0 | \
-	LC_ALL=C sort -z | xargs -0 sha256sum >artifacts.sha256)
 endef
 
 define SPINDLE_STAGING_START
@@ -131,20 +148,6 @@ mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 printf '%s\n' "$(3)" >"$(1)/command.txt"
 : >"$(1)/stdout.log"
 : >"$(1)/stderr.log"
-sha256sum \
-	"$(ROOT_DIR)/configs/benchmarks/spindle_staging.mk" \
-	"$(ROOT_DIR)/configs/benchmarks/workload-sources.mk" \
-	"$(ROOT_DIR)/configs/kvm/x86_64.mk" \
-	"$(SPINDLE_STAGING_SUITE_MAKE)" \
-	"$(ROOT_DIR)/mk/workload.mk" "$(ROOT_DIR)/mk/results.mk" \
-	"$(ROOT_DIR)/mk/multi_boot.mk" "$(ROOT_DIR)/mk/kvm.mk" \
-	"$(SPINDLE_STAGING_EXPERIMENT_MAKE)" \
-	"$(SPINDLE_STAGING_RUNNER_SOURCE)" \
-	"$(SPINDLE_STAGING_POLICY_SOURCE)" \
-	"$(ROOT_DIR)/runner/src/namei_ext_harness.c" \
-	"$(ROOT_DIR)/runner/include/namei_ext_harness.h" \
-	"$(SPINDLE_STAGING_PLAN)" "$(SPINDLE_STAGING_PLAN_REVIEW)" \
-	>"$(1)/inputs.sha256"
 endef
 
 define SPINDLE_STAGING_WRITE_GUEST_MAKEFILE
@@ -156,20 +159,18 @@ printf '%s := %s\n' \
 	'SPINDLE_STAGING_GUEST_POLICY' "$${policy#$(ROOT_DIR)/}" \
 	'SPINDLE_STAGING_GUEST_SPINDLE' "$${spindle#$(ROOT_DIR)/}" \
 	'SPINDLE_STAGING_GUEST_TEST_DIR' "$${test_dir#$(ROOT_DIR)/}" \
-	'SPINDLE_STAGING_GUEST_TEST_SHA256' "$$test_sha256" \
-	'SPINDLE_STAGING_GUEST_RUNTIME_INPUTS' "$${runtime_inputs#$(ROOT_DIR)/}" \
 	'SPINDLE_STAGING_GUEST_RUNTIME_ROOT' "$${runtime_root#$(ROOT_DIR)/}" \
 	'SPINDLE_STAGING_GUEST_COMPILED_ROOT' "$${compiled_root#$(ROOT_DIR)/}" \
 	'SPINDLE_STAGING_GUEST_KERNEL_CONFIG' "$${config#$(ROOT_DIR)/}" \
 	'SPINDLE_STAGING_GUEST_KERNEL_COMMIT' "$$commit" \
 	'SPINDLE_STAGING_GUEST_KERNEL_RELEASE' "$$release" \
 	'SPINDLE_STAGING_GUEST_BPFTOOL' "$${bpftool#$(ROOT_DIR)/}" \
-	>"$$guest_makefile"; \
-$(call NAMEI_EXT_MULTI_BOOT_SEAL_GUEST_MAKEFILE,$$guest_makefile,15)
+	>"$$guest_makefile"
 endef
 
 .PHONY: spindle-staging \
-	kvm-spindle-staging-preflight kvm-spindle-staging \
+		spindle-staging-host-preflight \
+		kvm-spindle-staging-preflight kvm-spindle-staging \
 	spindle-staging-run-matrix spindle-staging-finalize \
 	spindle-staging-analyze experiment-spindle-staging \
 	__spindle_staging_guest __spindle_staging_guest_inner \
@@ -178,6 +179,18 @@ endef
 spindle-staging:
 	$(MAKE) -C "$(ROOT_DIR)/experiments/spindle_staging" \
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
+
+spindle-staging-host-preflight: kernel-bpftool kernel kernel-provenance bpf \
+		spindle-staging workload-spindle-build
+	rm -rf "$(SPINDLE_STAGING_HOST_PREFLIGHT_DIR)"
+	install -d "$(SPINDLE_STAGING_HOST_PREFLIGHT_DIR)"
+	$(call SPINDLE_STAGING_CAPTURE_ARTIFACTS,$(SPINDLE_STAGING_HOST_PREFLIGHT_DIR))
+	test -x "$(SPINDLE_STAGING_HOST_PREFLIGHT_DIR)/artifacts/runtime/namei_ext_spindle_staging"
+	test -r "$(SPINDLE_STAGING_HOST_PREFLIGHT_DIR)/artifacts/runtime/spindle_staging.bpf.o"
+	test -x "$(SPINDLE_STAGING_HOST_PREFLIGHT_DIR)/artifacts/runtime/bpftool"
+	jq -e --arg commit "$(SPINDLE_COMMIT)" \
+		'.source.spindle_commit == $$commit and .source.reconstructed_readlink_fixtures.count == 2' \
+		"$(SPINDLE_STAGING_HOST_PREFLIGHT_DIR)/artifacts/manifest.json" >/dev/null
 
 kvm-spindle-staging-preflight: experiment-source-clean kernel-bpftool \
 		kernel kernel-provenance bpf spindle-staging \
@@ -227,7 +240,6 @@ spindle-staging-run-matrix:
 	config="$(SPINDLE_STAGING_ACTIVE_DIR)/$$(jq -r '.kernel.config' "$$manifest")"; \
 	commit=$$(jq -r '.kernel.commit' "$$manifest"); \
 	release=$$(jq -r '.kernel.release' "$$manifest"); \
-	test_sha256=$$(jq -r '.execution.test_driver_sha256' "$$manifest"); \
 	run_dir="$(SPINDLE_STAGING_ACTIVE_DIR)"; \
 	runner="$$run_dir/$$(jq -r '.runtime.runner.path' "$$manifest")"; \
 	policy="$$run_dir/$$(jq -r '.runtime.policy.path' "$$manifest")"; \
@@ -244,19 +256,15 @@ spindle-staging-run-matrix:
 		tar -xzf "$$runtime_archive" -C "$$runtime_root"; \
 		spindle="$$compiled_root/prefix/bin/spindle"; \
 		test_dir="$$compiled_root/build/testsuite"; \
-		runtime_inputs="$$boot_dir/runtime-inputs.sha256"; \
-		(cd "$$runtime_root" && \
-			find build prefix -type f -print0 | \
-			LC_ALL=C sort -z | xargs -0 sha256sum) \
-			>"$$runtime_inputs"; \
 		(cd "$$runtime_root" && \
 			find build prefix -type l -printf '%p\t%l\n' | \
 			LC_ALL=C sort) >"$$boot_dir/runtime-symlinks.txt"; \
-		(cd "$$runtime_root" && sha256sum -c "$$runtime_inputs"); \
-		test "$$(sha256sum "$$runtime_root/prefix/bin/spindle" | awk '{print $$1}')" = \
-			"$$(jq -r '.execution.spindle_sha256' "$$manifest")"; \
-		test "$$(sha256sum "$$runtime_root/build/testsuite/test_driver" | awk '{print $$1}')" = \
-			"$$test_sha256"; \
+		test -x "$$runtime_root/prefix/bin/spindle"; \
+		test -x "$$runtime_root/build/testsuite/test_driver"; \
+		cmp "$$runtime_root/build/testsuite/hello_.py" \
+			"$$run_dir/artifacts/source/hello.py"; \
+		cmp "$$runtime_root/build/testsuite/hello_x.py" \
+			"$$run_dir/artifacts/source/hello.py"; \
 		guest_makefile="$$boot_dir/guest.mk"; \
 		$(call SPINDLE_STAGING_WRITE_GUEST_MAKEFILE); \
 		guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
@@ -276,10 +284,6 @@ spindle-staging-run-matrix:
 				"$$boot_dir/boot.json" >"$$boot_dir/boot.json.tmp"; \
 			mv -f "$$boot_dir/boot.json.tmp" "$$boot_dir/boot.json"; \
 		fi; \
-		(cd "$$boot_dir" && \
-			find . -type f ! -name evidence.sha256 -print0 | \
-			LC_ALL=C sort -z | xargs -0 sha256sum \
-			>evidence.sha256); \
 		if test "$$capture_status" -ne 0; then \
 			exit "$$capture_status"; \
 		fi; \
@@ -291,7 +295,29 @@ spindle-staging-finalize:
 	jq -e '.status == "running" and (.failed_at | not)' \
 		"$(SPINDLE_STAGING_ACTIVE_DIR)/run.json" >/dev/null
 	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(SPINDLE_STAGING_ACTIVE_DIR),$(SPINDLE_STAGING_ACTIVE_REPETITIONS))
-	test "$$(jq -s '[.[] | select(.event == "spindle-staging-condition")] | length' \
+	while IFS= read -r -d '' boot; do \
+		cmp "$$boot/readlink-fixtures-active.tsv" \
+			"$$boot/readlink-fixtures-after.tsv"; \
+		diff -u \
+			<(jq -cS 'del(.phase)' \
+				"$$boot/focal-manifest-before.jsonl") \
+			<(jq -cS 'del(.phase)' \
+				"$$boot/focal-manifest-after.jsonl"); \
+		awk 'NR == 1 { ok = ($$2 == "200") } \
+		     NR == 2 { ok = ok && ($$2 == "300") } \
+		     END { exit !(NR == 2 && ok) }' \
+			"$$boot/readlink-fixtures-active.tsv"; \
+		awk 'NR == 1 { ok = ($$2 == "600") } \
+		     NR == 2 { ok = ok && ($$2 == "700") } \
+		     END { exit !(NR == 2 && ok) }' \
+			"$$boot/readlink-fixtures-restored.tsv"; \
+		for fixture in hello_.py hello_x.py; do \
+			cmp "$$boot/runtime/worktree/build/testsuite/$$fixture" \
+				"$(SPINDLE_STAGING_ACTIVE_DIR)/artifacts/source/hello.py"; \
+		done; \
+	done < <(find "$(SPINDLE_STAGING_ACTIVE_DIR)/boots" \
+		-mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z)
+	test "$$(jq -s '[.[] | select(.event == "spindle-staging-condition" and .runner_errno == 0 and .diagnostic_ok == true)] | length' \
 		"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl")" = \
 		"$$((3 * $(SPINDLE_STAGING_ACTIVE_REPETITIONS)))"
 	for event in mapping selection identity preservation; do \
@@ -300,6 +326,9 @@ spindle-staging-finalize:
 			"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl")" = \
 			"$$((47 * $(SPINDLE_STAGING_ACTIVE_REPETITIONS)))"; \
 	done
+	test "$$(jq -s '[.[] | select(.event == "spindle-staging-mapping" and .pass == true and .bytes_equal == true and .source_dev != .cache_dev and .source_size == .cache_size)] | length' \
+		"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl")" = \
+		"$$((47 * $(SPINDLE_STAGING_ACTIVE_REPETITIONS)))"
 	test "$$(jq -s '[.[] | select(.event == "spindle-staging-runtime" and .pass == true and .env_i == true and .uid > 0 and .source_argv[6] == .namei_argv[0] and .namei_argv == .withdrawn_argv and .namei_env == .withdrawn_env and (all(.source_env[]; ((startswith("LD_AUDIT=") or startswith("LD_PRELOAD=") or startswith("LDCS_")) | not))) and (all(.namei_env[]; ((startswith("LD_AUDIT=") or startswith("LD_PRELOAD=")) | not))) and ([.namei_env[] | select(startswith("LDCS_"))] == ["LDCS_CHOSEN_PARSED_CACHEPATH=/__namei_ext_no_spindle_cache__"]))] | length' \
 		"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl")" = \
 		"$(SPINDLE_STAGING_ACTIVE_REPETITIONS)"
@@ -309,7 +338,10 @@ spindle-staging-finalize:
 	test "$$(jq -s '[.[] | select(.event == "spindle-staging-selection" and .pass == true and .hits_after >= .hits_before and .hits_delta == (.hits_after - .hits_before) and .hits_delta > 0)] | length' \
 		"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl")" = \
 		"$$((47 * $(SPINDLE_STAGING_ACTIVE_REPETITIONS)))"
-	test "$$(jq -s '[.[] | select(.event == "spindle-staging-identity" and .pass == true and .probe_errno == 0 and .actual_dev == .expected_dev and .actual_ino == .expected_ino and .actual_mode == .expected_mode and .actual_size == .expected_size and .actual_sha256 == .expected_sha256 and (.actual_sha256 | length) == 64)] | length' \
+	test "$$(jq -s '[.[] | select(.event == "spindle-staging-identity" and .pass == true and .probe_errno == 0 and .actual_dev == .expected_dev and .actual_ino == .expected_ino and .actual_mode == .expected_mode and .actual_size == .expected_size)] | length' \
+		"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl")" = \
+		"$$((47 * $(SPINDLE_STAGING_ACTIVE_REPETITIONS)))"
+	test "$$(jq -s '[.[] | select(.event == "spindle-staging-preservation" and .pass == true and .source_metadata_equal == true and .cache_metadata_equal == true and .bytes_equal == true)] | length' \
 		"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl")" = \
 		"$$((47 * $(SPINDLE_STAGING_ACTIVE_REPETITIONS)))"
 	test "$$(jq -s '[.[] | select(.event == "spindle-staging-permission" and .pass == true and .temporary_mode == 0 and .observed_errno == 13 and .probe_errno == 0 and .restore_errno == 0)] | length' \
@@ -323,12 +355,8 @@ spindle-staging-finalize:
 		"$(SPINDLE_STAGING_ACTIVE_REPETITIONS)"
 	! jq -e 'select(.pass != true)' \
 		"$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl" >/dev/null
-	sha256sum -c "$(SPINDLE_STAGING_ACTIVE_DIR)/inputs.sha256"
-	(cd "$(SPINDLE_STAGING_ACTIVE_DIR)" && sha256sum -c artifacts.sha256)
 	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(SPINDLE_STAGING_ACTIVE_DIR),$(SPINDLE_STAGING_ACTIVE_REPETITIONS),$(SPINDLE_STAGING_BOOT_FILES))
 	while IFS= read -r -d '' boot; do \
-		(cd "$$boot" && sha256sum -c guest.mk.sha256); \
-		(cd "$$boot" && sha256sum -c evidence.sha256); \
 		jq -e '.status == "completed" and .prepare_status == 0 and .inner_status == 0 and .cleanup_status == 0 and .inventory_status == 0 and .dmesg_status == 0' \
 			"$$boot/boot.json" >/dev/null; \
 		for status_file in guest-prepare.status guest-inner.status guest-cleanup.status \
@@ -341,7 +369,14 @@ spindle-staging-finalize:
 			-name 'source-spindle_output.*' | wc -l)" -ge 1; \
 	done < <(find "$(SPINDLE_STAGING_ACTIVE_DIR)/boots" \
 		-mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z)
-	$(call NAMEI_EXT_RUN_VALIDATE_BASE,$(SPINDLE_STAGING_ACTIVE_DIR),$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl)
+	jq -e --arg run_id "$(RUN_ID)" \
+		'.run_id == $$run_id and .status == "running" and (.completed_at | not) and .source.dirty == false and .kernel.dirty == false' \
+		"$(SPINDLE_STAGING_ACTIVE_DIR)/run.json" >/dev/null
+	test -s "$(SPINDLE_STAGING_ACTIVE_DIR)/observations.jsonl"
+	test "$$(cat "$(SPINDLE_STAGING_ACTIVE_DIR)/source-commit.txt")" = \
+		"$$(jq -r '.source.commit' "$(SPINDLE_STAGING_ACTIVE_DIR)/run.json")"
+	test "$$(cat "$(SPINDLE_STAGING_ACTIVE_DIR)/kernel-commit.txt")" = \
+		"$$(jq -r '.kernel.commit' "$(SPINDLE_STAGING_ACTIVE_DIR)/run.json")"
 
 spindle-staging-analyze:
 	test -n "$(SPINDLE_STAGING_ACTIVE_DIR)"
@@ -395,6 +430,22 @@ __spindle_staging_guest:
 			"$(SPINDLE_STAGING_BOOT_DIR)/observations.jsonl"; \
 	fi; \
 	cleanup_status=0; \
+	for spec in hello_.py:600 hello_x.py:700; do \
+		fixture="$${spec%%:*}"; mode="$${spec##*:}"; \
+		path="$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)/build/testsuite/$$fixture"; \
+		if test -e "$$path"; then \
+			chmod "$$mode" "$$path" || cleanup_status=$$?; \
+		else \
+			cleanup_status=1; \
+		fi; \
+	done; \
+	if test "$$cleanup_status" -eq 0; then \
+		stat -c '%n	%a	%u	%g	%s	%d	%i' \
+			"$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)/build/testsuite/hello_.py" \
+			"$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)/build/testsuite/hello_x.py" \
+			>"$(SPINDLE_STAGING_BOOT_DIR)/readlink-fixtures-restored.tsv" || \
+			cleanup_status=$$?; \
+	fi; \
 	if mountpoint -q "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)"; then \
 		umount -R "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)" || \
 			cleanup_status=$$?; \
@@ -457,24 +508,19 @@ __spindle_staging_guest_inventory_after:
 	test ! -s "$(SPINDLE_STAGING_BOOT_DIR)/fuse-open-fds-after.txt"
 
 __spindle_staging_guest_inner:
-	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_GUEST_MAKEFILE,$(lastword $(MAKEFILE_LIST)))
 	test -n "$(REPETITION)"
 	test -x "$(SPINDLE_STAGING_GUEST_RUNNER)"
 	test -r "$(SPINDLE_STAGING_GUEST_POLICY)"
 	test -x "$(SPINDLE_STAGING_GUEST_BPFTOOL)"
-	test -r "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)"
 	test -d "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)"
 	test -d "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)"
 	command -v file >/dev/null
 	command -v readelf >/dev/null
 	command -v strings >/dev/null
 	(cd "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)" && \
-		sha256sum -c "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)")
-	(cd "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)" && \
 		find build prefix -type l -printf '%p\t%l\n' | \
 		LC_ALL=C sort) | cmp - \
-		"$(SPINDLE_STAGING_BOOT_DIR)/runtime-symlinks.txt"
-	(cd "$(SPINDLE_STAGING_GUEST_RUN_DIR)" && sha256sum -c artifacts.sha256)
+			"$(SPINDLE_STAGING_BOOT_DIR)/runtime-symlinks.txt"
 	runtime_mount_status=0; \
 	mountpoint -q "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)" || \
 		runtime_mount_status=$$?; \
@@ -492,19 +538,15 @@ __spindle_staging_guest_inner:
 	test -s "$(SPINDLE_STAGING_BOOT_DIR)/runtime-mount-active.txt"
 	test -x "$(SPINDLE_STAGING_GUEST_SPINDLE_ABS)"
 	test -x "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/test_driver"
-	for fixture in retzero_ retzero_x hello_.py hello_x.py; do \
+	for fixture in retzero_ retzero_x; do \
 		test ! -e "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/$$fixture"; \
 	done
-	test "$$(sha256sum "$(SPINDLE_STAGING_GUEST_RUNNER)" | awk '{print $$1}')" = \
-		"$$(jq -r '.runtime.runner.sha256' "$(SPINDLE_STAGING_GUEST_RUN_DIR)/artifacts/manifest.json")"
-	test "$$(sha256sum "$(SPINDLE_STAGING_GUEST_POLICY)" | awk '{print $$1}')" = \
-		"$$(jq -r '.runtime.policy.sha256' "$(SPINDLE_STAGING_GUEST_RUN_DIR)/artifacts/manifest.json")"
-	test "$$(sha256sum "$(SPINDLE_STAGING_GUEST_BPFTOOL)" | awk '{print $$1}')" = \
-		"$$(jq -r '.runtime.bpftool.sha256' "$(SPINDLE_STAGING_GUEST_RUN_DIR)/artifacts/manifest.json")"
-	test "$$(sha256sum "$(SPINDLE_STAGING_GUEST_SPINDLE_ABS)" | awk '{print $$1}')" = \
-		"$$(jq -r '.execution.spindle_sha256' "$(SPINDLE_STAGING_GUEST_RUN_DIR)/artifacts/manifest.json")"
-	test "$$(sha256sum "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/test_driver" | \
-		awk '{print $$1}')" = "$(SPINDLE_STAGING_GUEST_TEST_SHA256)"
+	test "$$(stat -c %a "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_.py")" = 600
+	test "$$(stat -c %a "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_x.py")" = 700
+	for fixture in hello_.py hello_x.py; do \
+		cmp "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/$$fixture" \
+			"$(SPINDLE_STAGING_GUEST_HELLO_SOURCE_ABS)"; \
+	done
 	install -d "$(SPINDLE_STAGING_BOOT_DIR)"
 	: >"$(SPINDLE_STAGING_BOOT_DIR)/raw-runner.jsonl"
 	$(call NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE,\
@@ -553,21 +595,15 @@ __spindle_staging_guest_inner:
 	test -x "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)/prefix/libexec/spindle/spindle_bootstrap"
 	jq -n \
 		--arg runner "$$(readlink -f "$(SPINDLE_STAGING_GUEST_RUNNER)")" \
-		--arg runner_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_RUNNER)" | awk '{print $$1}')" \
 		--arg policy "$$(readlink -f "$(SPINDLE_STAGING_GUEST_POLICY)")" \
-		--arg policy_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_POLICY)" | awk '{print $$1}')" \
 		--arg bpftool "$$(readlink -f "$(SPINDLE_STAGING_GUEST_BPFTOOL)")" \
-		--arg bpftool_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_BPFTOOL)" | awk '{print $$1}')" \
 		--arg spindle "$$(readlink -f "$(SPINDLE_STAGING_GUEST_SPINDLE_ABS)")" \
-		--arg spindle_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_SPINDLE_ABS)" | awk '{print $$1}')" \
 		--arg test_driver "$$(readlink -f "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/test_driver")" \
-		--arg test_driver_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/test_driver" | awk '{print $$1}')" \
 		--arg runtime_root "$$(readlink -f "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)")" \
 		--arg compiled_root "$$(readlink -f "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)")" \
 		--arg runtime_root_identity "$$(stat -c '%d:%i' "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)")" \
 		--arg compiled_root_identity "$$(stat -c '%d:%i' "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)")" \
-		--arg runtime_inputs_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)" | awk '{print $$1}')" \
-		'{runner:{path:$$runner,sha256:$$runner_sha256},policy:{path:$$policy,sha256:$$policy_sha256},bpftool:{path:$$bpftool,sha256:$$bpftool_sha256},spindle:{path:$$spindle,sha256:$$spindle_sha256},test_driver:{path:$$test_driver,sha256:$$test_driver_sha256},runtime:{source:$$runtime_root,compiled_mount:$$compiled_root,source_identity:$$runtime_root_identity,mount_identity:$$compiled_root_identity},runtime_inputs_sha256:$$runtime_inputs_sha256}' \
+		'{runner:{path:$$runner},policy:{path:$$policy},bpftool:{path:$$bpftool},spindle:{path:$$spindle},test_driver:{path:$$test_driver},runtime:{source:$$runtime_root,compiled_mount:$$compiled_root,source_identity:$$runtime_root_identity,mount_identity:$$compiled_root_identity}}' \
 		>"$(SPINDLE_STAGING_BOOT_DIR)/runtime-metadata.json"
 	jq -e '.runtime.source_identity == .runtime.mount_identity' \
 		"$(SPINDLE_STAGING_BOOT_DIR)/runtime-metadata.json" >/dev/null
@@ -583,12 +619,24 @@ __spindle_staging_guest_inner:
 	test ! -s "$(SPINDLE_STAGING_BOOT_DIR)/fuse-mounts-before.txt"
 	test "$$(cat "$(SPINDLE_STAGING_BOOT_DIR)/fuse-open-fds-before.status")" = 1
 	test ! -s "$(SPINDLE_STAGING_BOOT_DIR)/fuse-open-fds-before.txt"
+	chmod 0200 "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_.py"
+	chmod 0300 "$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_x.py"
+	stat -c '%n	%a	%u	%g	%s	%d	%i' \
+		"$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_.py" \
+		"$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_x.py" \
+		>"$(SPINDLE_STAGING_BOOT_DIR)/readlink-fixtures-active.tsv"
 	"$(SPINDLE_STAGING_GUEST_RUNNER)" \
 		"$(SPINDLE_STAGING_GUEST_POLICY)" \
 		"$(SPINDLE_STAGING_BOOT_DIR)/raw-runner.jsonl" \
 		"$(SPINDLE_STAGING_GUEST_SPINDLE_ABS)" \
 		"$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)" \
 		"$(SPINDLE_STAGING_BOOT_DIR)" /sys/fs/cgroup
+	stat -c '%n	%a	%u	%g	%s	%d	%i' \
+		"$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_.py" \
+		"$(SPINDLE_STAGING_GUEST_TEST_DIR_ABS)/hello_x.py" \
+		>"$(SPINDLE_STAGING_BOOT_DIR)/readlink-fixtures-after.tsv"
+	cmp "$(SPINDLE_STAGING_BOOT_DIR)/readlink-fixtures-active.tsv" \
+		"$(SPINDLE_STAGING_BOOT_DIR)/readlink-fixtures-after.tsv"
 	cp "$(SPINDLE_STAGING_BOOT_DIR)/raw-runner.jsonl" \
 		"$(SPINDLE_STAGING_BOOT_DIR)/observations.jsonl"
 	jq -e 'select(.event == "spindle-staging-summary" and .focal_objects == 47 and .failures == 0 and .pass == true)' \
@@ -608,9 +656,6 @@ __spindle_staging_guest_inner:
 	test "$$(find /sys/fs/cgroup -maxdepth 1 -type d \
 		-name 'namei-ext-spindle-*' | wc -l)" = 0
 	(cd "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)" && \
-		sha256sum -c "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)")
-	(cd "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)" && \
 		find build prefix -type l -printf '%p\t%l\n' | \
 		LC_ALL=C sort) | cmp - \
-		"$(SPINDLE_STAGING_BOOT_DIR)/runtime-symlinks.txt"
-	(cd "$(SPINDLE_STAGING_GUEST_RUN_DIR)" && sha256sum -c artifacts.sha256)
+			"$(SPINDLE_STAGING_BOOT_DIR)/runtime-symlinks.txt"

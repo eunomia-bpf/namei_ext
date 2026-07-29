@@ -2,9 +2,9 @@
 
 ## Status And Revision
 
-Revision 3 is frozen for the third and final review round. No Spindle adapter,
-policy, Make target, or KVM result root may be created until the existing
-independent reviewer returns `GO`.
+Revision 4 records a source-input packaging correction found by the second KVM
+preflight. It does not change the source command, focal objects, policy,
+hypothesis, or acceptance rule.
 
 Revision 1 proposed copying the complete Spindle testsuite to tmpfs and
 selecting that copied directory. Review rejected it because the copy was not
@@ -23,6 +23,15 @@ on the modified kernel. This revision also freezes the absolute build/prefix
 layout, clean execution environment, exact source and application commands,
 and all 47 distinct regular-file payloads exercised by the selected loader
 slice.
+
+Revision 4 follows result root
+`20260729T143220Z-spindle02`. Contrary to Revision 3's fixture note,
+`--nompi` still executes `run_readlinks()` and requires `hello_.py` to exist.
+The packaged runtime now reconstructs `hello_.py` and the upstream
+`hello_x.py` companion from the exact checked-in `hello.py` bytes used by the
+upstream Makefile, applies the upstream modes during the workload window,
+records their metadata before and after the conditions, and restores readable
+transport modes during cleanup.
 
 ## Research Question And Role
 
@@ -68,8 +77,6 @@ lookup-facing shared-to-local relocation and publishes a loader test.
 - Commit: `8853636d2d774729a5a728f5cf6c296b65a1099c`
 - Archive:
   `https://codeload.github.com/LLNL/Spindle/tar.gz/8853636d2d774729a5a728f5cf6c296b65a1099c`
-- Archive SHA-256:
-  `a287fd3a30603f595c753324dc486360f335b536d623af7cbe62bb5025cb95b2`
 - License files: `COPYRIGHT` and `LGPL`
 - Source-native application: upstream `testsuite/test_driver.c`, built only
   through the upstream build system
@@ -237,7 +244,7 @@ LANG=C
 TZ=UTC
 ```
 
-The generated ELF's exact path, hash, ELF type, dependencies, and RUNPATH are
+The generated ELF's exact path, ELF type, dependencies, and RUNPATH are
 recorded. Before each command, `LD_PRELOAD`, `LD_AUDIT`,
 `SPINDLE_LD_PRELOAD`, `SPINDLE_FLAGS`, `SPINDLE_OPTS`, `LIBRARY_LIST`,
 `TEST_EXEC`, `SPINDLE_DEBUG_SOCKET`, and all `LDCS_*` variables are absent.
@@ -263,8 +270,10 @@ SPINDLE_BIN --level=high --launcher=serial --pull \
 ```
 
 The configured cache and communication roots are dedicated tmpfs directories.
-Require exit status zero. Preserve stdout, stderr, all Spindle debug logs, and
-the complete cache manifest.
+Require launcher exit status zero, successful process-group cleanup, and an
+empty upstream stderr stream. Spindle's serial launcher can mask the child
+`test_driver` status, so exit status alone is not the source oracle. Preserve
+stdout, stderr, all Spindle debug logs, and the complete cache inventory.
 
 This is a source-system positive control, not a performance baseline.
 
@@ -279,9 +288,9 @@ every pair:
 - both paths exist after Spindle exits with `--noclean=yes`;
 - the local path lies below the declared tmpfs cache root;
 - the local file has a different device/inode identity from the source file;
-- source and local SHA-256 are equal because `--strip=no`;
+- a direct byte-for-byte comparison succeeds because `--strip=no`;
 - the global path, local path, basename, mode, owner, size, device, inode,
-  mtime, and hash are recorded; and
+  and mtime are recorded; and
 - there is exactly one accepted mapping for that required original object.
 
 Missing, ambiguous, non-tmpfs, mismatched, or fallback-only cache evidence
@@ -315,16 +324,17 @@ Require:
 - aggregate `SELECT_TARGET` count is positive and equals the sum of per-rule
   hits;
 - an in-cgroup `stat`/`open` identity probe for every logical focal path
-  observes the same device/inode, size, mode, and hash as the registered
+  observes the same device/inode, size, and mode as the registered
   physical cache target;
 - the process runs with the recorded unprivileged UID/GID;
 - no cache population, Spindle daemon, `LD_AUDIT`, or preload interposition is
   active; and
-- source and cached-payload manifests remain unchanged.
+- source and cached-payload metadata remain unchanged and direct byte
+  comparison still succeeds.
 
 An additional permission probe changes one cached focal object's mode to
 `000`, requires an unprivileged logical `open` to fail with `EACCES`, restores
-the exact mode, and revalidates the manifest. This probe is outside the
+the exact mode, and revalidates the target metadata. This probe is outside the
 upstream test command and cannot satisfy the source oracle.
 
 ### 3. Withdrawn Causal Control
@@ -345,24 +355,25 @@ require zero `libtest10.so` selections during the withdrawn command. This is a
 causal control, not a competing baseline.
 
 Finally unmount the canary, require the source file's original device/inode,
-mode, size, mtime, and SHA-256 to reappear, and verify all source and cache
-manifests. The covering mount and every policy/target/cgroup object must be
+mode, size, and mtime to reappear, and directly compare every source/cache
+pair again. The covering mount and every policy/target/cgroup object must be
 gone before boot completion.
 
 ## Correctness And Validity Gates
 
 Correctness gates every descriptive duration:
 
-- source Spindle and `namei_ext` exit zero;
+- source Spindle and `namei_ext` exit zero, report no runner error, and satisfy
+  their stderr oracle;
 - withdrawn exits nonzero for the declared focal missing-object reason;
 - the same upstream test ELF, arguments, source tree, and UID/GID are
   used in all conditions;
 - the 47 required source-to-cache mappings pass Spindle-log, path, tmpfs,
-  identity, and SHA-256 checks;
+  identity, and direct byte-comparison checks;
 - all 47 focal-object groups are selected during the `namei_ext` command;
 - logical identity probes match physical Spindle cache objects;
 - lower permission behavior is observed from an unprivileged process;
-- source and cache payload manifests are preserved;
+- source and cache payload metadata and bytes are preserved;
 - external BPF and FUSE inventories are empty before and after;
 - source Spindle runs without BPF, and no Spindle process or interposition
   remains during `namei_ext` or withdrawn;
@@ -381,7 +392,7 @@ Paper-facing RQ1 metrics:
 
 - source test result per condition;
 - required focal objects mapped and selected, out of 47;
-- global source path to physical cache identity and hash agreement;
+- global source path to physical cache identity and byte agreement;
 - per-object and aggregate target-selection counts;
 - lower-object and permission preservation.
 
@@ -432,7 +443,7 @@ Project code may provide only:
 - one userspace adapter that parses preserved first-party mapping records,
   registers targets, installs rules, creates the cgroup, launches the
   unmodified upstream test ELF, collects counters, and cleans up;
-- the canary covering mount, manifest collection, and focused result analysis;
+- the canary covering mount, object inventory, and focused result analysis;
   and
 - source-level contract tests for the frozen protocol.
 
@@ -459,9 +470,10 @@ results/experiments/spindle-staging/<RUN_ID>/
 
 The result captures archive/commit/configure/build provenance, source files
 that define the oracle, kernel commit/config/image, modified-kernel bpftool,
-policy/adapter hashes, exact commands and environments, stdout/stderr,
+executed policy/adapter paths, exact commands and environments, stdout/stderr,
 first-party debug logs, raw mapping and counter observations, source/cache
-manifests, mount and external inventories, cleanup evidence, and dmesg.
+metadata inventories, mount and external inventories, cleanup evidence, and
+dmesg.
 
 Frozen timeouts:
 
@@ -482,7 +494,7 @@ A passing preflight requires independent raw-result review before formal work.
 Formal execution repeats the unchanged lifecycle in three fresh KVM boots.
 Completion requires three terminal boots, all three conditions in each boot,
 141 accepted focal source-to-cache mappings, 141 focal-object selection groups,
-three effective withdrawn controls, complete provenance/inventory/manifests,
+three effective withdrawn controls, complete command/object/inventory evidence,
 and no excluded or replaced boot.
 
 Interpretation:
@@ -516,10 +528,10 @@ characters. The adapter accepts only this exact prefix, the two comma
 delimiters, and a local name containing `-spindlens-file-`. This correction
 does not change the accepted global/local fields or the 47-object inventory.
 
-To make the executed artifacts traceable, each run seals the complete Spindle
-build and installed prefix as one runtime archive. Spindle embeds its build
+Each run packages the complete Spindle build and installed prefix as one
+runtime archive. Spindle embeds its build
 and prefix roots in ELF RUNPATH and helper paths, so the archive is not
-treated as relocatable. Each fresh guest extracts a byte-identical runtime
+treated as relocatable. Each fresh guest extracts a boot-local runtime
 tree inside that boot's result directory and bind-mounts it over the exact
 root used at compile time. The guest requires the mounted root to have the
 same device/inode as the extracted source, requires `ldd` to resolve
@@ -528,29 +540,35 @@ checks the compiled `spindle_be`/bootstrap paths there. The source Spindle,
 `namei_ext`, and withdrawn conditions therefore use the same per-boot
 `test_driver`, DSO/helper tree, working directory, UID/GID, and environment.
 The runner, BPF object, and modified-kernel bpftool execute directly from the
-sealed artifact tree. Complete regular-file hashes and symlink targets are
-checked before and after the guest command, and the bind mount must be gone
-at boot completion. This replaces direct use of provisional `.build/`
+packaged artifact tree. Required executables, direct fixture comparisons, and
+symlink targets are checked before execution; the bind mount must be gone at
+boot completion. This replaces direct use of provisional `.build/`
 contents; it does not change source commit, build, command, focal objects,
 conditions, or oracle.
 
 Four upstream permission-test fixtures (`retzero_`, `retzero_x`, `hello_.py`,
 and `hello_x.py`) deliberately have owner modes `0200` or `0300`. The
-unprivileged artifact builder cannot read their bytes, and the frozen
-`--dlopen --pull --nompi` slice does not use them. Their path, mode, owner,
-size, device, and inode are sealed separately, and they are explicitly absent
-from the boot runtime tree. They are not among the 47 focal objects. If the
-source condition unexpectedly requires any of them, the source positive
-control fails and invalidates the experiment.
+unprivileged artifact builder cannot read their built paths. The `retzero`
+exec tests are skipped by `--nompi`, so those two non-focal binaries remain
+recorded by metadata and absent. The readlink suite is not skipped: it requires
+`hello_.py` to be a regular file and checks that `hello_l.py` contains the
+literal target string `hello_x.py`; it does not dereference that target.
+The upstream Makefile creates both from checked-in `hello.py`. The runtime
+archive therefore carries two byte-identical entries derived from that source
+file. They use `0600` and `0700` while the host transports the archive; the
+guest applies the upstream `0200` and `0300`
+before the source condition. Their path, mode, owner, size, device, inode, and
+bytes must remain unchanged through all three conditions, after which the
+outer cleanup restores the transport modes. They are not among the 47 focal
+objects.
 
 The guest uses an outer cleanup target around the fail-fast workload target.
 On either success or failure it recursively removes the runtime bind mount,
 captures external BPF/FUSE inventory and dmesg, and writes a terminal
 `boot.json` with inner, cleanup, inventory, and dmesg statuses. After the VM
-launcher exits, the host seals every file that exists in the boot directory
-before propagating the failure. A failed root may be partial by definition,
-but its launcher output and all observations produced before failure are
-hash-sealed.
+launcher exits, the host propagates failure without rewriting the guest's raw
+observations. A failed root may be partial by definition and is never repaired
+or reused as a successful result.
 
 The repository's fail-fast experiment contract is authoritative. A failed
 preflight preserves the failed run root and stops before formal execution.

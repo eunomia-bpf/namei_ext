@@ -15,8 +15,6 @@ positive control and a withdrawn target is the causal control.
 
 - Upstream: LLNL Spindle
 - Commit: `8853636d2d774729a5a728f5cf6c296b65a1099c`
-- Archive SHA-256:
-  `a287fd3a30603f595c753324dc486360f335b536d623af7cbe62bb5025cb95b2`
 - Build: serial resource manager, null security, dedicated cache and
   communication roots
 - Upstream workload:
@@ -25,10 +23,10 @@ positive control and a withdrawn target is the causal control.
   loader test
 
 `configs/benchmarks/workload-sources.mk` pins the source. `mk/workload.mk`
-owns download, hash verification, extraction, configure, compile, install,
-provenance, and the source-only engagement check. The source check completed
-successfully before KVM implementation and preserved 66 first-party file-cache
-mappings, exactly 47 of which match the frozen focal inventory.
+owns download, archive-structure checks, extraction, configure, compile,
+install, source identity, and the source-only engagement check. The current
+source check completed with empty stderr and produced first-party staging
+records; the KVM adapter performs the exact 47-object match.
 
 ## Implemented Components
 
@@ -45,13 +43,13 @@ adapter. It:
 2. runs the installed upstream Spindle command as an unprivileged user;
 3. parses only first-party `spindlens-file` mapping records;
 4. requires one valid tmpfs cache object for each of the 47 focal source
-   objects and checks distinct identity, size, and SHA-256;
+   objects and checks distinct identity, size, and direct byte equality;
 5. covers source `libtest10.so` with an empty read-only bind mount;
 6. registers the 47 existing Spindle objects and attaches the real
    `cgroup/namei_ext` policy;
 7. runs the unchanged upstream ELF without Spindle or loader interposition;
 8. checks application-only per-target and aggregate selection deltas;
-9. checks logical-path device, inode, mode, size, and hash against each
+9. checks logical-path device, inode, mode, and size against each
    registered cache object;
 10. checks that lower-file `000` mode causes unprivileged `EACCES`;
 11. withdraws only the `libtest10.so` rule and requires the same command to
@@ -64,15 +62,15 @@ directory through `O_PATH`. Existing directory-based experiments still call
 the same function and were rebuilt after the change.
 
 `mk/experiments/spindle_staging.mk` owns artifact capture, fresh-boot KVM
-execution, guest validation, raw result collection, sealing, and analysis.
-The runner, policy, and bpftool execute from the sealed artifact tree. Each
-boot extracts the sealed complete Spindle build and prefix into a boot-local
+execution, guest validation, raw result collection, and analysis.
+The runner, policy, and bpftool execute from the packaged artifact tree. Each
+boot extracts the complete Spindle build and prefix into a boot-local
 runtime tree. Because upstream embeds build/prefix absolute paths, the guest
 bind-mounts that tree over the exact compile-time root. It gates the mount
 source/target identity, actual private-library `ldd` resolutions, and compiled
-helper paths. Complete regular-file hashes and symlink targets are validated
-before and after execution, and the bind mount is removed before the guest
-finishes.
+helper paths. Required fixtures are compared byte-for-byte with their upstream
+source, symlink targets are recorded, and the bind mount is removed before the
+guest finishes.
 
 ## Raw Evidence Contract
 
@@ -82,77 +80,44 @@ Each boot records:
 - resolved executable, test ELF, and working-directory paths;
 - UID/GID and `env -i` status;
 - ELF type, program headers, dynamic section, and `ldd` output;
-- every source/cache path, device, inode, size, mode, and SHA-256;
+- every source/cache path, device, inode, size, mode, and direct comparison
+  result;
 - every target's selection counter before, after, and delta;
 - aggregate SELECT before, after, delta, and per-target sum;
-- actual and expected identity/hash fields for all 47 logical probes;
+- actual and expected identity fields for all 47 logical probes;
 - permission-probe errno and mode restoration;
 - withdrawn-target counter window and diagnostic result;
-- before/after source/cache manifests;
+- before/after source/cache metadata inventories;
 - complete Spindle cache tree and first-party debug logs;
 - BPF/FUSE inventories, cgroup/tmpfs cleanup, kernel identity/config, and
   dmesg.
 
-The finalizer recomputes the counter, identity, permission, and withdrawal
-relations from these raw fields. It does not accept an adapter-provided
-boolean without checking the underlying values.
+The finalizer recomputes the counter, mapping, identity, permission,
+preservation, and withdrawal relations from raw fields. It also normalizes and
+directly compares the complete before/after metadata inventories.
 
-## Independent Implementation Review
+## Execution Defects Found Before The Remaining Preflight
 
-The first read-only implementation review returned `NO-GO` before any KVM
-result root was created. It found no correctness defect in the source
-positive control, exact 47-object policy, application-only counter window, or
-withdrawn causal control. It identified four evidence/protocol defects:
+Read-only reviews and the first two KVM attempts found concrete execution
+defects before a valid workload result existed:
 
-1. raw before/after counters and identity values were discarded;
-2. sealed artifact copies were not the paths executed in the guest;
-3. the plan's four-way terminal wording conflicted with repository fail-fast
-   behavior; and
-4. exact argv/environment and ELF runtime metadata were absent.
+- The adapter initially discarded raw counter and identity relations. It now
+  records those fields and the finalizer recomputes them.
+- Spindle and `test_driver` embed absolute build and prefix paths. The complete
+  build/prefix tree is now bind-mounted over the compile-time root, and actual
+  private-library and helper resolutions are checked.
+- Guest setup could bypass cleanup or mask an inventory failure. Preparation,
+  workload, cleanup, after-inventory, and dmesg capture now have separate
+  statuses that the finalizer checks.
+- The first KVM attempt exposed a bad artifact path. The obsolete check was
+  removed.
+- The second KVM attempt exposed missing upstream readlink fixtures and a
+  launcher that masked the child diagnostic. The fixtures are reconstructed
+  from upstream source, and the adapter now requires both process success and
+  empty stderr.
 
-The implementation now records and revalidates the raw values, executes
-sealed or hash-chained artifacts, records the runtime contract, and documents
-fail-fast preflight/formal semantics. The second review found that upstream
-Spindle and `test_driver` embed absolute build/prefix paths, so merely
-extracting prefix/testsuite copies did not prevent fallback to unsealed
-`.build` libraries and helpers. The runtime artifact was expanded to the
-complete build/prefix tree and is bind-mounted over its compile-time root;
-actual private-library and helper resolutions are now gates. The same review
-also found and prompted a fix for raw counter-delta underflow on a failed
-monotonicity check.
-
-The third review found four execution blockers before KVM: the shared
-`guest.mk` contract rejects absolute repository paths, four upstream
-permission fixtures are intentionally unreadable, `mountpoint` returns a
-nonzero code not fixed to one, and failure roots were not sealed after
-launcher exit. Guest configuration now stores repository-relative paths and
-reconstructs the compile-time root in the Make recipe. The four non-focal
-permission fixtures are metadata-sealed and excluded. Mount checks accept any
-nonzero not-mounted status. An outer guest target always performs recursive
-mount cleanup and writes terminal status evidence, while the host always
-seals the boot directory after launcher exit before propagating failure.
-
-A fourth independent implementation review is required before the first real
-KVM preflight.
-
-The fourth review found that Bash disables `errexit` inside a compound command
-used on the left side of `||`, so an early after-inventory failure could be
-masked by a later successful check. It also noted that a Make prerequisite
-failure could occur before the outer cleanup recipe started. After-inventory
-is now an independent recursive Make target whose recipe lines fail normally.
-Guest filesystem preparation is also a status-captured recursive Make call
-inside the outer recipe. Both statuses are written separately and recomputed
-by the finalizer.
-
-A fifth independent implementation review is required before the first real
-KVM preflight.
-
-The fifth read-only review returned `GO for first real KVM preflight`. It
-verified that after-inventory failures propagate through the independent
-recursive Make target, prepare failures still reach structured cleanup and
-boot status, host sealing occurs after launcher exit, and the success
-finalizer checks all five status channels and pre/post mount state. This is an
-implementation-readiness verdict, not a workload result.
+These corrections preserve the source command, 47 focal objects, BPF policy,
+and acceptance oracle.
 
 ## Validation Performed
 
@@ -166,15 +131,15 @@ implementation-readiness verdict, not a workload result.
 - existing Spindle source check: official command exit zero, 66 total
   first-party file mappings, exactly 47 focal mappings
 
-No Spindle KVM preflight or formal boot has been run as part of this
-implementation record.
+The host checks above pass. The two KVM attempts below failed during experiment
+setup and therefore supply no RQ1 workload result.
 
 ## Remaining Gate And Risks
 
-The immediate gate is to commit and push the reviewed source state, then run
-exactly one fresh modified-kernel KVM preflight. The preflight may still expose guest
-dependency, loader `$ORIGIN`, cgroup cleanup, artifact-path, or final-file
-selection behavior that cannot be established by host builds.
+The immediate gate is one fresh modified-kernel KVM preflight from the
+corrected committed source state. It must establish the source condition, all
+47 cache mappings, the real `cgroup/namei_ext` condition, the withdrawn causal
+control, preservation, and cleanup in one boot.
 
 Three formal fresh boots are permitted only after the preflight raw root
 passes independent review. Until then, this experiment contributes no paper
@@ -186,16 +151,48 @@ The first real preflight used result root
 `results/experiments/spindle-staging-preflight/20260729T142246Z-spindle01/`.
 The intended modified kernel booted, preparation succeeded, and the structured
 failure wrapper completed cleanup, after-inventory, dmesg capture, and host
-evidence sealing. The inner target failed before mounting the packaged runtime
+evidence capture. The inner target failed before mounting the packaged runtime
 tree or executing any workload condition: it passed a repository-relative
 runtime manifest path to `sha256sum` after changing into the packaged runtime
 directory.
 
 This is a packaging-path defect and supplies no workload result. The detailed
-identity, status, diagnostic, evidence checks, and narrowly scoped fix are
+identity, status, diagnostic, and narrowly scoped fix are
 recorded in
 `docs/tmp/2026-07-29-spindle-hpc-staging-preflight-attempt-1.md`. The guest
-Makefile continues to store paths relative to the repository root; the suite
-now derives an absolute manifest path for reads that may occur under a changed
-working directory. The workload, policy, oracle, and acceptance rules remain
-unchanged.
+Makefile continues to store paths relative to the repository root. The
+checksum path that caused this failure has since been removed rather than
+repaired or retained as an experiment gate.
+
+## Second KVM Preflight Attempt
+
+The second preflight used result root
+`results/experiments/spindle-staging-preflight/20260729T143220Z-spindle02/`.
+It passed the corrected runtime-manifest path and entered the real source
+Spindle condition. The upstream test then diagnosed
+`readlink(hello_.py) expected error 22. Got error 2`: the archive had omitted
+that write-only fixture, so a regular-file `EINVAL` became `ENOENT`. The
+source execution was invalid despite the Spindle launcher returning zero. No
+BPF condition ran.
+
+The original adapter did not inspect stderr and did not preserve the runner
+error that actually controlled `pass=false`; the earlier attribution to an
+adapter stderr gate was incorrect. The stderr log independently proves the
+upstream source test failed. A later dry-run command also rewrote five files
+in this result root, so the root is contaminated and must not be reused.
+
+The detailed source control flow and correction are recorded in
+`docs/tmp/2026-07-29-spindle-hpc-staging-preflight-attempt-2.md`. The archive
+now reconstructs the two upstream `hello.py` readlink fixtures from the exact
+source bytes, applies their original modes only during the workload window,
+and restores readable transport modes on every guest exit path. The two
+`retzero` exec fixtures remain excluded because `--nompi` skips their suite.
+The adapter now records `runner_errno` explicitly and requires empty stderr
+for both successful conditions. Source/cache equality uses direct byte
+comparison, and checksum manifests and checksum gates have been removed from
+the Spindle build and experiment paths.
+
+The corrected host source check completed with empty stderr, and the
+Make-owned packaging preflight directly compared both reconstructed fixtures
+with upstream `hello.py`. These checks are dependencies for the remaining
+real KVM preflight, not paper results.

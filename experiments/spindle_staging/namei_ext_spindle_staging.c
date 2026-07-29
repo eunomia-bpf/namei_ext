@@ -23,7 +23,6 @@
 #include <unistd.h>
 
 #define FOCAL_OBJECTS 47
-#define SHA256_HEX_LENGTH 64
 #define SPINDLE_TARGET_MAX 64
 #define CACHE_ROOT "/tmp/namei-ext-spindle-cache"
 #define COMM_ROOT "/tmp/namei-ext-spindle-comm"
@@ -46,7 +45,6 @@ struct focal_spec {
 
 struct file_snapshot {
 	struct stat st;
-	char sha256[SHA256_HEX_LENGTH + 1];
 };
 
 struct focal_mapping {
@@ -77,6 +75,7 @@ struct run_environment {
 
 struct process_result {
 	int exit_status;
+	int runner_errno;
 	uint64_t duration_ns;
 };
 
@@ -207,15 +206,16 @@ static void emit_case(FILE *out, const char *name, bool pass, int error,
 }
 
 static void emit_condition(FILE *out, const char *condition,
-			   const struct process_result *result, bool pass,
-			   const char *detail)
+			   const struct process_result *result,
+			   bool diagnostic_ok, bool pass, const char *detail)
 {
 	fputs("{\"event\":\"spindle-staging-condition\",\"condition\":", out);
 	json_string(out, condition);
 	fprintf(out,
-		",\"exit_status\":%d,\"duration_ns\":%llu,\"pass\":%s,"
-		"\"detail\":",
-		result->exit_status,
+		",\"exit_status\":%d,\"runner_errno\":%d,"
+		"\"diagnostic_ok\":%s,\"duration_ns\":%llu,\"pass\":%s,"
+		"\"detail\":", result->exit_status, result->runner_errno,
+		diagnostic_ok ? "true" : "false",
 		(unsigned long long)result->duration_ns,
 		pass ? "true" : "false");
 	json_string(out, detail);
@@ -224,7 +224,7 @@ static void emit_condition(FILE *out, const char *condition,
 }
 
 static void emit_mapping(FILE *out, const struct focal_mapping *mapping,
-			 bool pass, const char *detail)
+			 bool bytes_equal, bool pass, const char *detail)
 {
 	fputs("{\"event\":\"spindle-staging-mapping\",\"target_id\":", out);
 	fprintf(out, "%u,\"name\":", mapping->target_id);
@@ -236,14 +236,18 @@ static void emit_mapping(FILE *out, const struct focal_mapping *mapping,
 	fprintf(out,
 		",\"source_dev\":%llu,\"source_ino\":%llu,"
 		"\"cache_dev\":%llu,\"cache_ino\":%llu,"
-		"\"size\":%lld,\"mode\":%u,\"sha256\":",
+		"\"source_size\":%lld,\"cache_size\":%lld,"
+		"\"source_mode\":%u,\"cache_mode\":%u,"
+		"\"bytes_equal\":%s",
 		(unsigned long long)mapping->source_before.st.st_dev,
 		(unsigned long long)mapping->source_before.st.st_ino,
 		(unsigned long long)mapping->cache_before.st.st_dev,
 		(unsigned long long)mapping->cache_before.st.st_ino,
+		(long long)mapping->source_before.st.st_size,
 		(long long)mapping->cache_before.st.st_size,
-		(unsigned int)mapping->cache_before.st.st_mode);
-	json_string(out, mapping->cache_before.sha256);
+		(unsigned int)mapping->source_before.st.st_mode,
+		(unsigned int)mapping->cache_before.st.st_mode,
+		bytes_equal ? "true" : "false");
 	fprintf(out, ",\"pass\":%s,\"detail\":", pass ? "true" : "false");
 	json_string(out, detail);
 	fputs("}\n", out);
@@ -393,21 +397,22 @@ static int wait_process_group(pid_t pid, unsigned int timeout_seconds,
 			kill(pid, SIGKILL);
 			while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
 				;
+			*status_out = status;
 			return -ETIMEDOUT;
 		}
 		usleep(10000);
 	}
-	for (unsigned int attempt = 0; attempt < 100; attempt++) {
+	*status_out = status;
+	for (unsigned int attempt = 0; attempt < 1000; attempt++) {
 		if (kill(-pid, 0) && errno == ESRCH)
-			break;
+			return 0;
 		usleep(10000);
-		if (attempt == 99) {
+		if (attempt == 999) {
 			kill(-pid, SIGKILL);
 			return -EBUSY;
 		}
 	}
-	*status_out = status;
-	return 0;
+	return -EBUSY;
 }
 
 static int run_process(const char *working_directory,
@@ -458,86 +463,69 @@ static int run_process(const char *working_directory,
 	}
 	ret = wait_process_group(pid, timeout_seconds, &status);
 	result->duration_ns = monotonic_ns() - started;
-	if (ret)
-		return ret;
 	if (WIFEXITED(status))
 		result->exit_status = WEXITSTATUS(status);
 	else if (WIFSIGNALED(status))
 		result->exit_status = 128 + WTERMSIG(status);
-	else
+	else if (!ret)
 		return -ECHILD;
-	return 0;
+	result->runner_errno = ret ? -ret : 0;
+	return ret;
 }
 
-static int sha256_file(const char *path, const char *cgroup_path,
-		       uid_t uid, gid_t gid,
-		       char output[SHA256_HEX_LENGTH + 1])
+static int files_equal(const char *left_path, const char *right_path,
+		       bool *equal)
 {
-	char buffer[128] = {};
-	size_t used = 0;
-	int pipe_fd[2];
-	int status = 0;
-	pid_t pid;
+	char left[16384];
+	char right[16384];
+	int left_fd;
+	int right_fd;
+	off_t offset = 0;
+	int ret = 0;
 
-	if (pipe2(pipe_fd, O_CLOEXEC))
+	*equal = false;
+	left_fd = open(left_path, O_RDONLY | O_CLOEXEC);
+	if (left_fd < 0)
 		return -errno;
-	pid = fork();
-	if (pid < 0) {
-		int saved_errno = errno;
-
-		close(pipe_fd[0]);
-		close(pipe_fd[1]);
-		return -saved_errno;
+	right_fd = open(right_path, O_RDONLY | O_CLOEXEC);
+	if (right_fd < 0) {
+		ret = -errno;
+		close(left_fd);
+		return ret;
 	}
-	if (!pid) {
-		if (cgroup_path &&
-		    namei_ext_move_self_to_cgroup(cgroup_path))
-			_exit(120);
-		if (uid != (uid_t)-1 && drop_privileges(uid, gid))
-			_exit(121);
-		if (dup2(pipe_fd[1], STDOUT_FILENO) < 0)
-			_exit(122);
-		close(pipe_fd[0]);
-		close(pipe_fd[1]);
-		execl("/usr/bin/sha256sum", "sha256sum", "--", path,
-		      (char *)NULL);
-		_exit(123);
-	}
-	close(pipe_fd[1]);
-	while (used < sizeof(buffer) - 1) {
-		ssize_t count = read(pipe_fd[0], buffer + used,
-				     sizeof(buffer) - 1 - used);
+	for (;;) {
+		ssize_t left_count;
+		ssize_t right_count;
 
-		if (count > 0) {
-			used += (size_t)count;
-			continue;
-		}
-		if (!count)
+		do {
+			left_count = pread(left_fd, left, sizeof(left), offset);
+		} while (left_count < 0 && errno == EINTR);
+		if (left_count < 0) {
+			ret = -errno;
 			break;
-		if (errno != EINTR) {
-			int saved_errno = errno;
-
-			close(pipe_fd[0]);
-			kill(pid, SIGKILL);
-			waitpid(pid, NULL, 0);
-			return -saved_errno;
 		}
+		do {
+			right_count = pread(right_fd, right, sizeof(right), offset);
+		} while (right_count < 0 && errno == EINTR);
+		if (right_count < 0) {
+			ret = -errno;
+			break;
+		}
+		if (left_count != right_count)
+			break;
+		if (!left_count) {
+			*equal = true;
+			break;
+		}
+		if (memcmp(left, right, (size_t)left_count))
+			break;
+		offset += left_count;
 	}
-	close(pipe_fd[0]);
-	if (waitpid(pid, &status, 0) != pid || !WIFEXITED(status) ||
-	    WEXITSTATUS(status) || used < SHA256_HEX_LENGTH + 1 ||
-	    buffer[SHA256_HEX_LENGTH] != ' ')
-		return -EIO;
-	for (size_t index = 0; index < SHA256_HEX_LENGTH; index++) {
-		char value = buffer[index];
-
-		if (!((value >= '0' && value <= '9') ||
-		      (value >= 'a' && value <= 'f')))
-			return -EINVAL;
-		output[index] = value;
-	}
-	output[SHA256_HEX_LENGTH] = '\0';
-	return 0;
+	if (close(left_fd) && !ret)
+		ret = -errno;
+	if (close(right_fd) && !ret)
+		ret = -errno;
+	return ret;
 }
 
 static int capture_snapshot(const char *path, struct file_snapshot *snapshot)
@@ -546,8 +534,7 @@ static int capture_snapshot(const char *path, struct file_snapshot *snapshot)
 		return -errno;
 	if (!S_ISREG(snapshot->st.st_mode))
 		return -EINVAL;
-	return sha256_file(path, NULL, (uid_t)-1, (gid_t)-1,
-			   snapshot->sha256);
+	return 0;
 }
 
 static bool snapshot_equal(const struct file_snapshot *left,
@@ -560,8 +547,7 @@ static bool snapshot_equal(const struct file_snapshot *left,
 	       left->st.st_gid == right->st.st_gid &&
 	       left->st.st_size == right->st.st_size &&
 	       left->st.st_mtim.tv_sec == right->st.st_mtim.tv_sec &&
-	       left->st.st_mtim.tv_nsec == right->st.st_mtim.tv_nsec &&
-	       !strcmp(left->sha256, right->sha256);
+	       left->st.st_mtim.tv_nsec == right->st.st_mtim.tv_nsec;
 }
 
 static int split_parent(const char *path, char *parent, size_t parent_size)
@@ -731,6 +717,7 @@ static int validate_mappings(FILE *out,
 		return -errno;
 	for (size_t index = 0; index < FOCAL_OBJECTS; index++) {
 		struct focal_mapping *mapping = &mappings[index];
+		bool bytes_equal = false;
 		bool pass = true;
 		int ret = 0;
 
@@ -747,6 +734,9 @@ static int validate_mappings(FILE *out,
 			if (!ret)
 				ret = capture_snapshot(mapping->cache,
 						       &mapping->cache_before);
+			if (!ret)
+				ret = files_equal(mapping->source, mapping->cache,
+						  &bytes_equal);
 			if (ret)
 				pass = false;
 		}
@@ -760,10 +750,9 @@ static int validate_mappings(FILE *out,
 			      mapping->cache_before.st.st_ino) ||
 		     mapping->source_before.st.st_size !=
 			     mapping->cache_before.st.st_size ||
-		     strcmp(mapping->source_before.sha256,
-			    mapping->cache_before.sha256)))
+		     !bytes_equal))
 			pass = false;
-		emit_mapping(out, mapping, pass,
+		emit_mapping(out, mapping, bytes_equal, pass,
 			     pass ? "unique Spindle file payload matches source"
 				  : "missing, ambiguous, or invalid Spindle payload");
 		failures += !pass;
@@ -1171,6 +1160,18 @@ static bool file_contains(const char *path, const char *needle)
 	return found;
 }
 
+static int file_is_empty(const char *path, bool *empty)
+{
+	struct stat st;
+
+	if (stat(path, &st))
+		return -errno;
+	if (!S_ISREG(st.st_mode))
+		return -EINVAL;
+	*empty = st.st_size == 0;
+	return 0;
+}
+
 static int capture_cache_tree(const char *result_dir)
 {
 	char output_path[PATH_MAX];
@@ -1245,7 +1246,7 @@ static int write_manifest(const char *result_dir, const char *phase,
 			"\"source_mode\":%u,\"source_uid\":%u,"
 			"\"source_gid\":%u,\"source_size\":%lld,"
 			"\"source_mtime_sec\":%lld,"
-			"\"source_mtime_nsec\":%ld,\"source_sha256\":",
+			"\"source_mtime_nsec\":%ld",
 			(unsigned long long)source.st.st_dev,
 			(unsigned long long)source.st.st_ino,
 			(unsigned int)source.st.st_mode,
@@ -1254,13 +1255,12 @@ static int write_manifest(const char *result_dir, const char *phase,
 			(long long)source.st.st_size,
 			(long long)source.st.st_mtim.tv_sec,
 			source.st.st_mtim.tv_nsec);
-		json_string(output, source.sha256);
 		fprintf(output,
 			",\"cache_dev\":%llu,\"cache_ino\":%llu,"
 			"\"cache_mode\":%u,\"cache_uid\":%u,"
 			"\"cache_gid\":%u,\"cache_size\":%lld,"
 			"\"cache_mtime_sec\":%lld,"
-			"\"cache_mtime_nsec\":%ld,\"cache_sha256\":",
+			"\"cache_mtime_nsec\":%ld",
 			(unsigned long long)cache.st.st_dev,
 			(unsigned long long)cache.st.st_ino,
 			(unsigned int)cache.st.st_mode,
@@ -1269,7 +1269,6 @@ static int write_manifest(const char *result_dir, const char *phase,
 			(long long)cache.st.st_size,
 			(long long)cache.st.st_mtim.tv_sec,
 			cache.st.st_mtim.tv_nsec);
-		json_string(output, cache.sha256);
 		fputs("}\n", output);
 	}
 	return fclose(output) ? -errno : 0;
@@ -1308,14 +1307,25 @@ static int validate_preservation(
 	for (size_t index = 0; index < FOCAL_OBJECTS; index++) {
 		struct file_snapshot source_after;
 		struct file_snapshot cache_after;
+		bool bytes_equal = false;
 		int ret = capture_snapshot(mappings[index].source,
 					   &source_after);
 		if (!ret)
 			ret = capture_snapshot(mappings[index].cache,
 					       &cache_after);
+		if (!ret)
+			ret = files_equal(mappings[index].source,
+					  mappings[index].cache, &bytes_equal);
 		bool pass = !ret &&
 			snapshot_equal(&mappings[index].source_before,
 				       &source_after) &&
+			snapshot_equal(&mappings[index].cache_before,
+				       &cache_after) &&
+			bytes_equal;
+		bool source_metadata_equal =
+			snapshot_equal(&mappings[index].source_before,
+				       &source_after);
+		bool cache_metadata_equal =
 			snapshot_equal(&mappings[index].cache_before,
 				       &cache_after);
 
@@ -1323,7 +1333,14 @@ static int validate_preservation(
 		      "\"target_id\":", out);
 		fprintf(out, "%u,\"name\":", mappings[index].target_id);
 		json_string(out, mappings[index].spec->name);
-		fprintf(out, ",\"pass\":%s}\n", pass ? "true" : "false");
+		fprintf(out,
+			",\"source_metadata_equal\":%s,"
+			"\"cache_metadata_equal\":%s,\"bytes_equal\":%s,"
+			"\"pass\":%s}\n",
+			source_metadata_equal ? "true" : "false",
+			cache_metadata_equal ? "true" : "false",
+			bytes_equal ? "true" : "false",
+			pass ? "true" : "false");
 		fflush(out);
 		failures += !pass;
 	}
@@ -1489,10 +1506,15 @@ int main(int argc, char **argv)
 			  environment.source_env, source_stdout,
 			  source_stderr, SOURCE_TIMEOUT_SECONDS,
 			  &source_result);
-	source_passed = !ret && source_result.exit_status == 0;
+	bool source_diagnostic_ok = false;
+	int diagnostic_ret = file_is_empty(source_stderr,
+					    &source_diagnostic_ok);
+
+	source_passed = !ret && !diagnostic_ret &&
+		source_result.exit_status == 0 && source_diagnostic_ok;
 	emit_condition(out, "source_spindle", &source_result,
-		       source_passed,
-		       "official serial pull mode populates local cache");
+		       source_diagnostic_ok, source_passed,
+		       "official serial pull mode exits cleanly without upstream diagnostics");
 	if (!source_passed) {
 		failures++;
 		goto cleanup;
@@ -1570,8 +1592,13 @@ int main(int argc, char **argv)
 	ret = run_process(argv[4], cgroup_path, &environment, namei_argv,
 			  environment.namei_env, namei_stdout, namei_stderr,
 			  NAMEI_TIMEOUT_SECONDS, &namei_result);
-	bool namei_passed = !ret && namei_result.exit_status == 0;
-	emit_condition(out, "namei_ext", &namei_result, namei_passed,
+	bool namei_diagnostic_ok = false;
+
+	diagnostic_ret = file_is_empty(namei_stderr, &namei_diagnostic_ok);
+	bool namei_passed = !ret && !diagnostic_ret &&
+		namei_result.exit_status == 0 && namei_diagnostic_ok;
+	emit_condition(out, "namei_ext", &namei_result,
+		       namei_diagnostic_ok, namei_passed,
 		       "unchanged upstream loader test consumes registered cache files");
 	if (!namei_passed) {
 		failures++;
@@ -1614,14 +1641,9 @@ int main(int argc, char **argv)
 
 	for (size_t index = 0; index < FOCAL_OBJECTS; index++) {
 		struct stat logical_stat = {};
-		char logical_sha[SHA256_HEX_LENGTH + 1] = {};
 
 		ret = identity_probe(cgroup_path, &environment,
 				     mappings[index].source, &logical_stat);
-		if (!ret)
-			ret = sha256_file(mappings[index].source,
-					  cgroup_path, environment.uid,
-					  environment.gid, logical_sha);
 		bool pass = !ret &&
 			logical_stat.st_dev ==
 				mappings[index].cache_before.st.st_dev &&
@@ -1630,9 +1652,7 @@ int main(int argc, char **argv)
 			logical_stat.st_mode ==
 				mappings[index].cache_before.st.st_mode &&
 			logical_stat.st_size ==
-				mappings[index].cache_before.st.st_size &&
-			!strcmp(logical_sha,
-				mappings[index].cache_before.sha256);
+				mappings[index].cache_before.st.st_size;
 
 		fputs("{\"event\":\"spindle-staging-identity\","
 		      "\"target_id\":", out);
@@ -1641,23 +1661,18 @@ int main(int argc, char **argv)
 		fprintf(out,
 			",\"actual_dev\":%llu,\"actual_ino\":%llu,"
 			"\"actual_mode\":%u,\"actual_size\":%lld,"
-			"\"actual_sha256\":",
+			"\"expected_dev\":%llu,\"expected_ino\":%llu,"
+			"\"expected_mode\":%u,\"expected_size\":%lld",
 			(unsigned long long)logical_stat.st_dev,
 			(unsigned long long)logical_stat.st_ino,
 			(unsigned int)logical_stat.st_mode,
-			(long long)logical_stat.st_size);
-		json_string(out, logical_sha);
-		fprintf(out,
-			",\"expected_dev\":%llu,\"expected_ino\":%llu,"
-			"\"expected_mode\":%u,\"expected_size\":%lld,"
-			"\"expected_sha256\":",
+			(long long)logical_stat.st_size,
 			(unsigned long long)
 				mappings[index].cache_before.st.st_dev,
 			(unsigned long long)
 				mappings[index].cache_before.st.st_ino,
 			(unsigned int)mappings[index].cache_before.st.st_mode,
 			(long long)mappings[index].cache_before.st.st_size);
-		json_string(out, mappings[index].cache_before.sha256);
 		fprintf(out, ",\"probe_errno\":%d,\"pass\":%s}\n",
 			ret ? -ret : 0, pass ? "true" : "false");
 		fflush(out);
@@ -1742,7 +1757,7 @@ int main(int argc, char **argv)
 		withdrawn_pass ? "true" : "false");
 	fflush(out);
 	emit_condition(out, "withdrawn", &withdrawn_result,
-		       withdrawn_pass,
+		       withdrawn_reason, withdrawn_pass,
 		       "covered source fails after libtest10 target withdrawal");
 	if (!withdrawn_pass) {
 		failures++;

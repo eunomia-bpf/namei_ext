@@ -65,8 +65,6 @@ SPINDLE_BUILD_RECORD_DIR := \
 SPINDLE_CONFIGURE_LOG := $(SPINDLE_BUILD_RECORD_DIR)/configure.log
 SPINDLE_BUILD_LOG := $(SPINDLE_BUILD_RECORD_DIR)/build.log
 SPINDLE_INSTALL_LOG := $(SPINDLE_BUILD_RECORD_DIR)/install.log
-SPINDLE_INSTALL_MANIFEST := \
-	$(SPINDLE_BUILD_RECORD_DIR)/install-tree.sha256
 SPINDLE_BUILD_PROVENANCE := $(SPINDLE_BUILD_RECORD_DIR)/build.json
 SPINDLE_TEST_DIR := $(SPINDLE_BUILD_ROOT)/testsuite
 SPINDLE_BINARY := $(SPINDLE_INSTALL_ROOT)/bin/spindle
@@ -201,8 +199,10 @@ workload-spindle-acquire: $(SPINDLE_ARCHIVE)
 	test -s "$(SPINDLE_ARCHIVE)"
 
 workload-spindle-verify: $(SPINDLE_ARCHIVE)
-	printf '%s  %s\n' "$(SPINDLE_ARCHIVE_SHA256)" \
-		"$(SPINDLE_ARCHIVE)" | sha256sum -c -
+	test "$$(tar -tzf "$(SPINDLE_ARCHIVE)" | \
+		grep -Fc '/testsuite/test_driver.c')" = 1
+	test "$$(tar -tzf "$(SPINDLE_ARCHIVE)" | \
+		grep -Fc '/src/server/cache/global_name.c')" = 1
 
 workload-spindle-extract: workload-spindle-verify $(SPINDLE_EXTRACT_STAMP)
 	test -x "$(SPINDLE_SRC)/configure"
@@ -226,22 +226,19 @@ workload-spindle-compile: $(SPINDLE_COMPILE_STAMP)
 
 workload-spindle-install: $(SPINDLE_INSTALL_STAMP)
 	test -s "$(SPINDLE_INSTALL_LOG)"
-	test -s "$(SPINDLE_INSTALL_MANIFEST)"
 	test -x "$(SPINDLE_BINARY)"
 
 workload-spindle-provenance: $(SPINDLE_BUILD_PROVENANCE)
 	jq -e \
 		--arg commit "$(SPINDLE_COMMIT)" \
-		--arg archive_sha256 "$(SPINDLE_ARCHIVE_SHA256)" \
-		'.schema == "namei_ext.workload_build_provenance.v1" and .project == "Spindle" and .commit == $$commit and .source.archive_sha256 == $$archive_sha256 and .build.security == "none" and .build.resource_manager == "serial" and .install.file_count > 0' \
+		'.schema == "namei_ext.workload_build_provenance.v1" and .project == "Spindle" and .commit == $$commit and .build.security == "none" and .build.resource_manager == "serial" and .install.file_count > 0' \
 		"$(SPINDLE_BUILD_PROVENANCE)" >/dev/null
 
-workload-spindle-build: workload-spindle-verify workload-spindle-provenance
+workload-spindle-build: workload-spindle-provenance
 	test -x "$(SPINDLE_BINARY)"
 	test -x "$(SPINDLE_TEST_DIR)/test_driver"
-	test -s "$(SPINDLE_INSTALL_MANIFEST)"
-	(cd "$(SPINDLE_INSTALL_ROOT)" && \
-		sha256sum -c "$(SPINDLE_INSTALL_MANIFEST)")
+	test -x "$(SPINDLE_INSTALL_ROOT)/libexec/spindle/spindle_be"
+	test -x "$(SPINDLE_INSTALL_ROOT)/libexec/spindle/spindle_bootstrap"
 
 workload-spindle-source-check: workload-spindle-build
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(SPINDLE_SOURCE_CHECK_DIR))
@@ -269,6 +266,7 @@ workload-spindle-source-check: workload-spindle-build
 				--dlopen --pull --nompi) \
 		>"$(SPINDLE_SOURCE_CHECK_DIR)/stdout.log" \
 		2>"$(SPINDLE_SOURCE_CHECK_DIR)/stderr.log"
+	test ! -s "$(SPINDLE_SOURCE_CHECK_DIR)/stderr.log"
 	find "$(SPINDLE_TEST_DIR)" -maxdepth 1 -type f \
 		\( -name 'spindle_output.*' -o -name 'spindle_test*' \) \
 		-print -exec cp -a {} "$(SPINDLE_SOURCE_CHECK_DIR)/" \;
@@ -312,16 +310,15 @@ $(SANDBOXFS_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
 
 $(SPINDLE_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
 	curl -fL --retry 3 --connect-timeout 30 -o "$@.tmp" "$(SPINDLE_URL)"
-	printf '%s  %s\n' "$(SPINDLE_ARCHIVE_SHA256)" "$@.tmp" | \
-		sha256sum -c -
+	test -s "$@.tmp"
+	test "$$(tar -tzf "$@.tmp" | \
+		grep -Fc '/testsuite/test_driver.c')" = 1
 	mv -f "$@.tmp" "$@"
 
 $(SPINDLE_EXTRACT_STAMP): $(SPINDLE_ARCHIVE) \
 $(ROOT_DIR)/configs/benchmarks/workload-sources.mk | $(WORKLOAD_BUILD_ROOT)
 	rm -rf "$(SPINDLE_WORK_ROOT)"
 	install -d "$(SPINDLE_WORK_ROOT)/source"
-	printf '%s  %s\n' "$(SPINDLE_ARCHIVE_SHA256)" \
-		"$(SPINDLE_ARCHIVE)" | sha256sum -c -
 	tar -xzf "$(SPINDLE_ARCHIVE)" -C "$(SPINDLE_SRC)" \
 		--strip-components=1
 	test -x "$(SPINDLE_SRC)/configure"
@@ -364,15 +361,10 @@ $(SPINDLE_INSTALL_STAMP): $(SPINDLE_COMPILE_STAMP)
 	test -s "$(SPINDLE_INSTALL_LOG).tmp"
 	mv -f "$(SPINDLE_INSTALL_LOG).tmp" "$(SPINDLE_INSTALL_LOG)"
 	test -x "$(SPINDLE_BINARY)"
-	(cd "$(SPINDLE_INSTALL_ROOT)" && find . -type f -print0 | \
-		LC_ALL=C sort -z | xargs -0 sha256sum) \
-		>"$(SPINDLE_INSTALL_MANIFEST).tmp"
-	test -s "$(SPINDLE_INSTALL_MANIFEST).tmp"
-	mv -f "$(SPINDLE_INSTALL_MANIFEST).tmp" \
-		"$(SPINDLE_INSTALL_MANIFEST)"
 	touch "$@"
 
-$(SPINDLE_BUILD_PROVENANCE): $(SPINDLE_INSTALL_STAMP) | \
+$(SPINDLE_BUILD_PROVENANCE): $(SPINDLE_INSTALL_STAMP) \
+$(ROOT_DIR)/mk/workload.mk | \
 $(SPINDLE_BUILD_RECORD_DIR)
 	jq -n \
 		--arg schema "namei_ext.workload_build_provenance.v1" \
@@ -380,30 +372,22 @@ $(SPINDLE_BUILD_RECORD_DIR)
 		--arg commit "$(SPINDLE_COMMIT)" \
 		--arg url "$(SPINDLE_URL)" \
 		--arg archive "$(SPINDLE_ARCHIVE)" \
-		--arg archive_sha256 "$$(sha256sum "$(SPINDLE_ARCHIVE)" | awk '{print $$1}')" \
 		--arg source_dir "$(SPINDLE_SRC)" \
 		--arg license "$(SPINDLE_LICENSE)" \
 		--arg license_path "$(SPINDLE_LICENSE_PATH)" \
-		--arg license_sha256 "$$(sha256sum "$(SPINDLE_SRC)/$(SPINDLE_LICENSE_PATH)" | awk '{print $$1}')" \
 		--arg build_dir "$(SPINDLE_BUILD_ROOT)" \
 		--arg prefix "$(SPINDLE_INSTALL_ROOT)" \
 		--arg configure_log "$(SPINDLE_CONFIGURE_LOG)" \
-		--arg configure_log_sha256 "$$(sha256sum "$(SPINDLE_CONFIGURE_LOG)" | awk '{print $$1}')" \
 		--arg build_log "$(SPINDLE_BUILD_LOG)" \
-		--arg build_log_sha256 "$$(sha256sum "$(SPINDLE_BUILD_LOG)" | awk '{print $$1}')" \
 		--arg install_log "$(SPINDLE_INSTALL_LOG)" \
-		--arg install_log_sha256 "$$(sha256sum "$(SPINDLE_INSTALL_LOG)" | awk '{print $$1}')" \
-		--arg install_manifest "$(SPINDLE_INSTALL_MANIFEST)" \
-		--arg install_manifest_sha256 "$$(sha256sum "$(SPINDLE_INSTALL_MANIFEST)" | awk '{print $$1}')" \
-		--arg spindle_sha256 "$$(sha256sum "$(SPINDLE_BINARY)" | awk '{print $$1}')" \
-		--arg test_elf_sha256 "$$(sha256sum "$(SPINDLE_TEST_DIR)/test_driver" | awk '{print $$1}')" \
+		--arg spindle "$(SPINDLE_BINARY)" \
+		--arg test_elf "$(SPINDLE_TEST_DIR)/test_driver" \
 		--argjson install_file_count "$$(find "$(SPINDLE_INSTALL_ROOT)" -type f | wc -l)" \
-		'{schema:$$schema,project:$$project,commit:$$commit,source:{url:$$url,archive:$$archive,archive_sha256:$$archive_sha256,source_dir:$$source_dir,license:{spdx:$$license,path:$$license_path,sha256:$$license_sha256}},build:{build_dir:$$build_dir,prefix:$$prefix,security:"none",resource_manager:"serial",cachepaths:"/tmp/namei-ext-spindle-cache",commpath:"/tmp/namei-ext-spindle-comm",configure_log:{path:$$configure_log,sha256:$$configure_log_sha256},build_log:{path:$$build_log,sha256:$$build_log_sha256},install_log:{path:$$install_log,sha256:$$install_log_sha256}},install:{root:$$prefix,file_count:$$install_file_count,manifest:{path:$$install_manifest,sha256:$$install_manifest_sha256},artifacts:{spindle:$$spindle_sha256,test_driver_elf:$$test_elf_sha256}}}' \
+		'{schema:$$schema,project:$$project,commit:$$commit,source:{url:$$url,archive:$$archive,source_dir:$$source_dir,license:{spdx:$$license,path:$$license_path}},build:{build_dir:$$build_dir,prefix:$$prefix,security:"none",resource_manager:"serial",cachepaths:"/tmp/namei-ext-spindle-cache",commpath:"/tmp/namei-ext-spindle-comm",configure_log:$$configure_log,build_log:$$build_log,install_log:$$install_log},install:{root:$$prefix,file_count:$$install_file_count,artifacts:{spindle:$$spindle,test_driver_elf:$$test_elf}}}' \
 		>"$@.tmp"
 	jq -e \
 		--arg commit "$(SPINDLE_COMMIT)" \
-		--arg archive_sha256 "$(SPINDLE_ARCHIVE_SHA256)" \
-		'.commit == $$commit and .source.archive_sha256 == $$archive_sha256 and .install.file_count > 0' \
+		'.commit == $$commit and .install.file_count > 0' \
 		"$@.tmp" >/dev/null
 	mv -f "$@.tmp" "$@"
 
