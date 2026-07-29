@@ -68,6 +68,53 @@ config, commits, and image identity. Aggregation, ratios, confidence intervals,
 and Markdown interpretation belong in explicit report/analysis targets, not in
 low-level collectors.
 
+### Experiment Process Corrections
+
+The 2026-07-29 Spindle preflight exposed process failures that must not recur:
+
+- Trace every documented claim to the exact code branch and raw result field
+  that supports it. A summary boolean is not evidence for a specific oracle.
+  In particular, do not infer stderr validation from `pass=false` when the
+  implementation only checks process status.
+- Preserve the return value that actually controls each result. Do not report
+  an exit-status field as the cause of failure when a wrapper or cleanup return
+  value can independently fail the run.
+- Treat completed result roots as immutable. Never rerun a target against a
+  stored `guest.mk`, generated Makefile, or configuration inside a result root.
+  If a result root is modified after capture, mark it contaminated and rerun
+  into a new root; do not repair, reseal, or reinterpret it.
+- Do not assume `make -n` is side-effect free. GNU Make can execute recursive
+  `$(MAKE)` recipe lines under dry-run. Inspect expansions only against a fresh
+  scratch build/result root or a purpose-built parse-only target.
+- Separate source-positive-control, packaging, guest lifecycle, mechanism
+  correctness, and performance gates. Pass all host-level gates before spending
+  a bounded KVM attempt.
+- Run an independent claim-to-code-to-raw-evidence review before describing a
+  result as successful and before the final bounded KVM attempt. Report current
+  status from observed evidence, not from intended behavior.
+
+### Avoid Formalism Without Evidence Value
+
+Do not add, run, regenerate, or expand artifact/result/file checksum manifests
+or checksum gates. Do not use checksums as correctness, provenance, completion,
+or experiment evidence. Existing checksum plumbing is legacy and must not be
+expanded or cited as validation.
+
+Apply the same rule to other process artifacts. Every gate, result field,
+document, baseline, review round, and workflow step must either test a concrete
+paper claim, enforce a workload oracle, make an experiment reproducible, or
+catch a demonstrated failure mode. If its evidence value cannot be stated
+precisely, do not add it. Avoid duplicate status documents, redundant metadata,
+ceremonial checklists, repeated reviews without a new question, and fragmented
+experiments that never reach an end-to-end result.
+
+Prefer direct semantic evidence: source-system oracles, exact exit and error
+behavior, file and metadata checks required by the workload, real KVM
+attachment, cleanup checks, and repeated performance observations. Prefer a
+small number of complete experiments tied to the paper's research questions
+over many weak baselines or partial probes. Git commit identities may record
+the source revision; they are not experiment checksum gates.
+
 ### Makefile Discipline
 
 Makefile changes must be minimal and local. Prefer adding or editing the

@@ -210,3 +210,5 @@ namei_ext 是一个 sched_ext-style VFS extension point，位于bind/Overlay/mat
 按照新的 skills 重新回到 BOOTSTRAP 阶段, 重新整理完善论文
 
 继续, 去把我要求的 RQ1 RQ2 RQ3 改进做一下, 至少到 ebpf workshop accept 的水评
+
+禁止做任何 checksum 这类的形式主义的东西. 记录到 user insn.md 也要方式别的形式主义的问题
