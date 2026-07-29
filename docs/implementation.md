@@ -144,6 +144,10 @@ entrypoints, and archived diagnostics:
 - `make experiment-fxmark-rq2` runs and reports the clean-source 450-cell,
   50-boot RQ2 matrix against stock, patched-unattached, attached `PASS`,
   attached `SELECT`, and optimized feature-equivalent FUSE.
+- `make kvm-fxmark-readdir-preflight` runs the corrected FxMark `MRDL`/`MRDM`
+  five-condition dependency gate. The final allowed preflight passed 20/20
+  cells and independently authorized the unchanged 50-boot formal entrypoint,
+  `make experiment-fxmark-readdir`.
 - Lower-level `kvm-w4-ccache-*` targets remain available for historical ccache
   diagnostics; they are not dependencies of `make experiments`.
 

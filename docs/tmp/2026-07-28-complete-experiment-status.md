@@ -257,18 +257,38 @@ was repaired, but the frozen three-attempt protocol is closed.
 Status: no performance result. The failed attempts must not be combined with
 the successful W3 correctness preflight.
 
-### Standard-Benchmark Breadth Still Missing
+### Corrected Directory Enumeration Preflight
 
 The paper-level RQ2 evidence is currently strong for cache-hot FxMark MRPL,
 MRPM, and MRPH and the Agent workspace lifecycle. A corrected FxMark
 `MRDL`/`MRDM` private/shared-directory suite is now implemented with exact
 logical-name, candidate-entry BPF attribution, offset-correct FUSE, five-boot
-preflight, 50-boot formal, and analyzer gates. Attempt 2 completed all five
-boots and all 20 guest cells, including the repaired exact attribution
-equation, but a host tree-depth gate failed before top-level collection and
-analysis. The collector call is repaired for the final allowed preflight
-attempt. Cache-cold operations, mdtest/IOR metadata breadth, and Filebench
-mixed profiles also have not produced formal matrices.
+preflight, 50-boot formal, and analyzer gates.
+
+The final allowed preflight completed five fresh KVM boots and 20/20 cells.
+Every correctness, attribution, FUSE-engagement, provenance, host-affinity,
+inventory, and dmesg gate passed. The one-block `SELECT/FUSE` ratios were
+`2.153`, `3.607`, `2.919`, and `0.967` for `MRDL/1`, `MRDL/4`, `MRDM/1`, and
+`MRDM/4`, respectively. The frozen analyzer therefore correctly labels the
+preflight `contradicted`. Because one observation per cell produces only a
+degenerate bootstrap interval, this direction is not a formal performance
+conclusion.
+
+An independent result review returned `GO` for preflight validity and for the
+unchanged formal protocol. The authorized formal run retains ten paired
+five-condition blocks, 50 fresh KVM boots, 30-second cells, one/two/four
+workers, and rotating Latin-square condition order. It has not run yet.
+
+Evidence:
+
+```text
+results/experiments/fxmark-readdir-preflight/
+  20260729T081348Z-fxmark-readdir-preflight-v3/
+docs/tmp/2026-07-28-rq2-fxmark-readdir-preflight-result-review.md
+```
+
+Cache-cold operations, mdtest/IOR metadata breadth, and Filebench mixed
+profiles also have not produced formal matrices.
 
 ## RQ3: Ownership And Fault Containment
 
