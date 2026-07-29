@@ -207,8 +207,9 @@ existing-object slice. The active BUILD_AND_EVALUATE work is:
    checkpoint/restore path virtualization is first because it has a
    source-defined restart oracle and does not duplicate the completed Agent,
    XDG, or Bazel workflows.
-2. Broaden RQ2 beyond cache-hot FxMark MRPL with one frozen cache-cold and
-   directory/metadata matrix, using FxMark and selected mdtest operations.
+2. The corrected FxMark directory-enumeration matrix is complete. The next RQ2
+   breadth question is cache-cold lookup or selected mdtest metadata
+   operations, not another readdir rerun.
 3. Freeze a Spindle Pynamic/MPI source trace only after cross-filesystem
    selection passes its dependency gate.
 4. Keep service configuration rotation behind a new reviewed dependency plan.

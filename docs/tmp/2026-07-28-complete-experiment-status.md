@@ -257,7 +257,7 @@ was repaired, but the frozen three-attempt protocol is closed.
 Status: no performance result. The failed attempts must not be combined with
 the successful W3 correctness preflight.
 
-### Corrected Directory Enumeration Preflight
+### Corrected Directory Enumeration Versus FUSE
 
 The paper-level RQ2 evidence is currently strong for cache-hot FxMark MRPL,
 MRPM, and MRPH and the Agent workspace lifecycle. A corrected FxMark
@@ -265,26 +265,30 @@ MRPM, and MRPH and the Agent workspace lifecycle. A corrected FxMark
 logical-name, candidate-entry BPF attribution, offset-correct FUSE, five-boot
 preflight, 50-boot formal, and analyzer gates.
 
-The final allowed preflight completed five fresh KVM boots and 20/20 cells.
-Every correctness, attribution, FUSE-engagement, provenance, host-affinity,
-inventory, and dmesg gate passed. The one-block `SELECT/FUSE` ratios were
-`2.153`, `3.607`, `2.919`, and `0.967` for `MRDL/1`, `MRDL/4`, `MRDM/1`, and
-`MRDM/4`, respectively. The frozen analyzer therefore correctly labels the
-preflight `contradicted`. Because one observation per cell produces only a
-degenerate bootstrap interval, this direction is not a formal performance
-conclusion.
+The final preflight passed and independently authorized the unchanged formal
+protocol. The formal run then completed ten paired five-condition blocks, 50
+fresh KVM boots, and 300/300 30-second cells at one/two/four workers.
 
-An independent result review returned `GO` for preflight validity and for the
-unchanged formal protocol. The authorized formal run retains ten paired
-five-condition blocks, 50 fresh KVM boots, 30-second cells, one/two/four
-workers, and rotating Latin-square condition order. It has not run yet.
+All correctness, exact BPF-attribution, FUSE-engagement, provenance,
+host-affinity, inventory, and dmesg gates passed. `SELECT/FUSE` was
+`2.314 [2.223, 2.355]`, `2.200 [2.178, 2.212]`, and
+`3.663 [3.505, 3.789]` for private-directory enumeration. It was
+`2.909 [2.833, 2.968]` and `2.450 [2.332, 2.586]` for shared-directory
+enumeration at one and two workers. At four shared-directory workers, the
+ratio was `1.018 [0.907, 1.135]`; stock, `SELECT`, and FUSE converge near five
+million entries/s under shared-directory contention.
+
+Five of six cells support the scoped throughput advantage, while the sixth is
+inconclusive. The frozen overall verdict is therefore `mixed`. An independent
+raw-result review classified the run as valid and publication-usable with the
+four-worker shared-directory boundary retained.
 
 Evidence:
 
 ```text
-results/experiments/fxmark-readdir-preflight/
-  20260729T081348Z-fxmark-readdir-preflight-v3/
-docs/tmp/2026-07-28-rq2-fxmark-readdir-preflight-result-review.md
+results/experiments/fxmark-readdir/
+  20260729T082800Z-fxmark-readdir-formal-v1/
+docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md
 ```
 
 Cache-cold operations, mdtest/IOR metadata breadth, and Filebench mixed

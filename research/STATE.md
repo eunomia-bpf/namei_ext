@@ -1,6 +1,6 @@
 # Research State
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 This file is only a handoff pointer. Research process state, gates, and
 orchestration belong to the orchestrator skill, not to this repository.
@@ -52,6 +52,12 @@ orchestration belong to the orchestrator skill, not to this repository.
   unused-fast-path confirmation live under
   `results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/` and
   `results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/`.
+- Corrected FxMark directory enumeration: the reviewed 50-boot, 300-cell
+  formal matrix lives under
+  `results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/`.
+  Five of six `SELECT/FUSE` cells have paired 95% intervals above one; the
+  four-worker shared-directory cell is inconclusive, so the frozen verdict is
+  `mixed`.
 - Agent workspace RQ3: three independent boots passed 37/37 pairwise
   `namei_ext`/Wrapfs-derived oracles and 21/21 fault cells under
   `results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/`.
@@ -61,7 +67,7 @@ orchestration belong to the orchestrator skill, not to this repository.
   `results/phase1/20260724T-epoch-switch-release-v2/` (real compile epoch
   switch). Observed FUSE/namei_ext compile-time ratio is about 2.1x.
 - Open evidence gaps: a second deep traditional correctness case, cache-cold
-  and directory/metadata benchmark breadth, and a second source-derived RQ3
+  lookup or broader metadata operations, and a second source-derived RQ3
   boundary row. The ccache matrix is supporting macro evidence, not a headline
   workload.
 

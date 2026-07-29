@@ -3,6 +3,7 @@
 \usepackage[UTF8]{ctex}
 \usepackage[margin=1in]{geometry}
 \usepackage{array}
+\usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{xspace}
 \setlength{\emergencystretch}{3em}
@@ -45,7 +46,10 @@ lifecycle latency is 5.51\,\(\mu\)s versus
 62.64\,\(\mu\)s for FUSE. On cache-hot FxMark, \code{SELECT} delivers
 1.052--1.088\(\times\) cached-FUSE throughput across three path-walk tests,
 while a separate 60-boot experiment meets its predeclared
-patched-unattached fast-path criterion.
+patched-unattached fast-path criterion. On corrected FxMark directory
+enumeration, \code{SELECT} delivers 2.20--3.66\(\times\) FUSE throughput in
+five of six cells; at four shared-directory workers, the two are
+indistinguishable.
 Finally, a matched Wrapfs-derived experiment passes 37/37 workspace oracles and
 21/21 fault cells in each of three boots while demonstrating the broader
 filesystem-method surface owned by the stackable implementation.

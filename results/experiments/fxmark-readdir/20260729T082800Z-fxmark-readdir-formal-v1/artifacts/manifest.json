@@ -1,0 +1,29 @@
+{
+  "patched": {
+    "commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+    "release": "7.1.0-rc7-g1e81d4793c78",
+    "build_id": "18270a4d6aecbb33b29bb7942d63e44a4b1236ee",
+    "notes_sha256": "77430aa1356c774e7be006668a9a92badec5eb1f17444a5684d0d57d462577e1",
+    "btf_sha256": "48cedcb14ebd3530bb3d1d68c50b94bae2f841b978cfd5fb68de4ac6118e74b0",
+    "image": "artifacts/kernel/patched/bzImage",
+    "config": "artifacts/kernel/patched/config"
+  },
+  "stock": {
+    "commit": "062871f1371b2e02a272ff5279c6479aff0a37ef",
+    "source_tree_sha256": "a1cbf7ecc98f83e9e4fe852ead55f5621283c0a38613ebddb9ba920fb2d3e7ef",
+    "release": "7.1.0-rc7",
+    "build_id": "3ce285183b3446011b7ecb63af353a22337b495a",
+    "notes_sha256": "e9a1eeaa6a175eb9e0fcc8ab8f3bf4e121e9bc26a033d1b67a99dfd4c80e0f81",
+    "btf_sha256": "7e1e85b8511d1dbc5bd2e05692b5af8cfe30c685be72b200c32f98d032d7af4c",
+    "image": "artifacts/kernel/stock/bzImage",
+    "config": "artifacts/kernel/stock/config"
+  },
+  "runtime": {
+    "fxmark": "artifacts/runtime/fxmark",
+    "cell": "artifacts/runtime/fxmark_cell",
+    "fuse": "artifacts/runtime/fxmark_fuse",
+    "bpftool": "artifacts/runtime/bpftool",
+    "pass_policy": "artifacts/runtime/fxmark_pass.bpf.o",
+    "select_policy": "artifacts/runtime/fxmark_select.bpf.o"
+  }
+}

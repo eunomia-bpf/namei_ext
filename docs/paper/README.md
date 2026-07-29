@@ -35,3 +35,6 @@ are impossible. It also must not be used to suppress the restored core idea:
 `namei_ext` is a `sched_ext`-style VFS extension point in the sequence
 bind/Overlay/materialization < eBPF LSM < `namei_ext` < FUSE/custom
 filesystems.
+
+`make -C docs/paper snapshot` builds the draft under `.build/paper/` and
+updates the committed `docs/paper/namei_ext.pdf` snapshot.

@@ -1,0 +1,15 @@
+b3aa1b13d1eb8b22512076dada8d1533443838a74ad5955eac3614d7bd079692  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/patched/bzImage
+795600e0ac577a3917dc7784a514c14df671b2456c2b4157e5472806c26678e5  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/patched/config
+48cedcb14ebd3530bb3d1d68c50b94bae2f841b978cfd5fb68de4ac6118e74b0  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/patched/vmlinux.btf
+77430aa1356c774e7be006668a9a92badec5eb1f17444a5684d0d57d462577e1  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/patched/vmlinux.notes
+30761ac6c76b3f7ae5aca73baac06580e74b08625344932811cf86106d03730a  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/stock/bzImage
+bee667c396ca35367571d8fd3a4d38d0067c2f60ec5c138a014484abef09b0f3  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/stock/config
+7e1e85b8511d1dbc5bd2e05692b5af8cfe30c685be72b200c32f98d032d7af4c  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/stock/vmlinux.btf
+e9a1eeaa6a175eb9e0fcc8ab8f3bf4e121e9bc26a033d1b67a99dfd4c80e0f81  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/kernel/stock/vmlinux.notes
+8d87b88196d97c2a2e8a9d1957c70b66459ca2f67ff2d07b46ee2fd0f30fa65f  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/runtime/fxmark
+7de3c1077d29f352e1eea35f567caec8f10380f1fa42d49c399dbdf9d4e0d7c2  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/runtime/fxmark_cell
+b89639095f129ad1b8ff6338a1d9499f152bf1d08cc6a5b54e57c800f76a1ea4  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/runtime/fxmark_fuse
+042322ac211a3fc915249af5aa3d85d57849ab8e525a30b65b482e66bbd3bcc5  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/runtime/bpftool
+bc9460259a02699762efca1fe60d25fe875f1ea7d544351fedd988a36c954342  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/runtime/fxmark_pass.bpf.o
+ced3f6262f721fdbf5eaffcc3110da974a829e8f3fae16e013be0461d439edfd  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/runtime/fxmark_select.bpf.o
+bfbb7932a58ca36f2526ec1d2ebedd0a6be9247db40ea4855c30ce901cac0c60  /home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/artifacts/manifest.json

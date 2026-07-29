@@ -116,6 +116,11 @@ same-filesystem \code{SELECT}, and multithreaded cached FUSE. & 50 fresh KVM
 boots, 450 cells over MRPL, MRPM, and MRPH at one/two/four workers. & 450/450 cells passed.
 \code{SELECT}/FUSE was 1.052--1.088\(\times\), with every paired 95\% CI above
 one; complete \code{SELECT} retained 0.895--0.931 of unattached throughput. \\
+Corrected FxMark directory enumeration & Same five conditions over
+private-directory MRDL and shared-directory MRDM. & Ten paired blocks, 50
+fresh KVM boots, and 300 cells at one/two/four workers. & 300/300 cells passed.
+\code{SELECT}/FUSE was 2.20--3.66\(\times\) with CIs above one in five cells;
+MRDM/4 was 1.018 [0.907, 1.135]. \\
 Unused fast path & Stock versus patched-unattached cache-hot MRPL in 30 paired
 blocks. & 60 fresh KVM boots and 180 cells. &
 Unattached/stock was 1.0009 [0.9921, 1.0036], 1.0083 [0.9950, 1.0179], and
@@ -127,6 +132,16 @@ implements the same source policy and passes the same source oracle.}
 \label{tab:rq2-evidence}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{../../results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/analysis/throughput.pdf}
+\caption{Corrected FxMark directory-enumeration throughput. Points are medians
+over ten fresh-boot blocks; error bars are 95\% bootstrap intervals.
+MRDL gives each worker a private directory; MRDM makes all workers enumerate
+one shared directory.}
+\label{fig:fxmark-readdir}
+\end{figure}
+
 The Agent result is a mechanism-level lifecycle comparison, not an end-to-end
 agent-task speedup. The FxMark FUSE view enabled metadata and kernel caching and
 issued only 0--19 measured requests per cell; its result does not depend on one
@@ -134,6 +149,16 @@ daemon round trip per lookup. Attached \code{PASS} retained 0.901--0.934 of
 unattached throughput, while \code{SELECT}/\code{PASS} was 0.981--0.999. The
 separate unused-path run supports only cache-hot MRPL on this host; cold caches,
 other operations, tail latency, and other machines remain open.
+
+Figure~\ref{fig:fxmark-readdir} broadens RQ2 to the event where the BPF policy
+runs for every returned directory entry. For private directories,
+\code{SELECT}/FUSE is 2.200--3.663\(\times\), and \code{SELECT} scales
+3.844\(\times\) from one to four workers versus 2.411\(\times\) for FUSE.
+Shared-directory enumeration is 2.909\(\times\) and 2.450\(\times\) at one and
+two workers. At four workers, stock, \code{SELECT}, and FUSE converge near five
+million entries/s; the \code{SELECT}/FUSE interval crosses one. The frozen
+overall verdict is therefore mixed: five cells support the throughput
+advantage, while shared-directory contention masks it in the sixth.
 
 \subsection{RQ3: Ownership And Containment Boundary}
 
@@ -182,8 +207,9 @@ copy-up, conflict resolution, distributed metadata, or data-path mediation.
 
 The completed evidence includes one formal Agent-workspace RQ1 case, two
 supporting RQ1 preflights, an Agent lifecycle RQ2 comparison, cache-hot FxMark
-active and unused-path results, and one matched Agent-workspace RQ3 boundary
-experiment. A historical ccache compile matrix is
+active and unused-path results, a formal corrected-FxMark directory-enumeration
+matrix, and one matched Agent-workspace RQ3 boundary experiment. A historical
+ccache compile matrix is
 supporting macro evidence: its hot-cache run observed FUSE/\namei 2.18\(\times\)
 and native/\namei 0.945\(\times\), but it lacks independent-run uncertainty and
 release-scale miss/stale/corrupt cells. It is not a headline workload because
@@ -191,7 +217,7 @@ ccache already implements cache lookup and validation in userspace.
 
 Service rotation, checkpoint/restore, HPC staging, and toolchain environments
 remain portfolio cases rather than completed evidence. Cache-cold lookup,
-directory/metadata benchmark breadth, tail latency, and a second
+broader metadata operations, tail latency, and a second
 source-derived RQ3 row remain open. Materialized namespaces, eBPF LSM, and
 native source mechanisms remain related work unless a fixed source oracle makes
 one a direct comparison.

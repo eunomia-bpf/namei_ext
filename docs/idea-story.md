@@ -89,6 +89,14 @@ Evidence program:
   `1.0009 [0.9921, 1.0036]`, `1.0083 [0.9950, 1.0179]`, and
   `1.0007 [0.9918, 1.0139]` at one, two, and four workers, closing the
   predeclared unused-fast-path criterion for this host and workload.
+- RQ2 directory enumeration: the corrected FxMark formal matrix
+  (`results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/`)
+  completed 50 fresh KVM boots and 300/300 passing cells. `SELECT` reached
+  `2.20--3.66x` matched FUSE throughput in all private-directory cells and
+  shared-directory enumeration at one/two workers, with every paired 95%
+  confidence interval above one. At four shared-directory workers,
+  `SELECT/FUSE` was `1.018 [0.907, 1.135]`; the frozen overall verdict is
+  `mixed`, exposing the shared-directory contention boundary.
 - Agent workspace RQ1/RQ2: formal-v3
   (`results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/`)
   completed 20 fresh KVM boots, 20,000/20,000 lifecycle samples, and 960/960

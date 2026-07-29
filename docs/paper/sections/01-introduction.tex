@@ -80,6 +80,10 @@ and concurrent Bazel-action preflights provide supporting breadth. RQ2 compares
 the same policies with feature-equivalent FUSE: the matched Agent lifecycle is
 11.32\(\times\) [11.24, 11.64], and cache-hot FxMark \code{SELECT} reaches
 1.052--1.088\(\times\) cached-FUSE throughput across MRPL, MRPM, and MRPH.
+On corrected FxMark directory enumeration, \code{SELECT} reaches
+2.20--3.66\(\times\) FUSE throughput in five of six cells; at four
+shared-directory workers, the ratio is 1.018 [0.907, 1.135], exposing the
+shared-directory contention boundary.
 RQ3 executes a matched
 Wrapfs-derived implementation; both mechanisms pass 37/37 workspace oracles
 and all 21 fault cells in each of three boots, while runtime tracing exposes

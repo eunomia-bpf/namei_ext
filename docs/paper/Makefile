@@ -6,18 +6,24 @@ LATEXMK ?= latexmk
 ROOT_DIR := $(abspath ../..)
 OUT_DIR ?= $(ROOT_DIR)/.build/paper
 PDF := $(OUT_DIR)/$(PAPER).pdf
+SNAPSHOT_PDF := $(CURDIR)/namei_ext.pdf
 
-.PHONY: all paper check clean
+.PHONY: all paper snapshot check clean
 
 all: paper
 
 paper: $(PDF)
+
+snapshot: $(SNAPSHOT_PDF)
 
 $(OUT_DIR):
 	install -d "$@"
 
 $(PDF): $(PAPER).tex refs.bib $(wildcard sections/*.tex) | $(OUT_DIR)
 	$(LATEXMK) -xelatex -interaction=nonstopmode -halt-on-error -outdir="$(OUT_DIR)" -auxdir="$(OUT_DIR)" "$(PAPER).tex"
+
+$(SNAPSHOT_PDF): $(PDF)
+	install -m 0644 "$<" "$@"
 
 check:
 	test -f "$(PAPER).tex"

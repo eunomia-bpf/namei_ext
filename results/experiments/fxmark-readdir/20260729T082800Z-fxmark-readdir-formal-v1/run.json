@@ -1,0 +1,101 @@
+{
+  "schema": "namei_ext.run.v2",
+  "run_id": "20260729T082800Z-fxmark-readdir-formal-v1",
+  "suite": "fxmark-readdir",
+  "source_system": "fxmark-atc2016",
+  "result_level": "kvm_fxmark_readdir",
+  "status": "completed",
+  "started_at": "2026-07-29T08:28:58Z",
+  "observations": "observations.jsonl",
+  "source": {
+    "commit": "121ed2dcd2294a35f9be5347a043295c4ec3657c",
+    "dirty": false
+  },
+  "kernel": {
+    "commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+    "dirty": false
+  },
+  "kernel_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+  "policy": "fxmark_pass.bpf.c+fxmark_select.bpf.c",
+  "runner": "fxmark_cell+fxmark_fuse",
+  "layout": "latin-square-boot-matrix",
+  "kernel_artifacts": {
+    "patched": {
+      "commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+      "release": "7.1.0-rc7-g1e81d4793c78",
+      "build_id": "18270a4d6aecbb33b29bb7942d63e44a4b1236ee",
+      "notes_sha256": "77430aa1356c774e7be006668a9a92badec5eb1f17444a5684d0d57d462577e1",
+      "btf_sha256": "48cedcb14ebd3530bb3d1d68c50b94bae2f841b978cfd5fb68de4ac6118e74b0",
+      "image": "artifacts/kernel/patched/bzImage",
+      "config": "artifacts/kernel/patched/config"
+    },
+    "stock": {
+      "commit": "062871f1371b2e02a272ff5279c6479aff0a37ef",
+      "source_tree_sha256": "a1cbf7ecc98f83e9e4fe852ead55f5621283c0a38613ebddb9ba920fb2d3e7ef",
+      "release": "7.1.0-rc7",
+      "build_id": "3ce285183b3446011b7ecb63af353a22337b495a",
+      "notes_sha256": "e9a1eeaa6a175eb9e0fcc8ab8f3bf4e121e9bc26a033d1b67a99dfd4c80e0f81",
+      "btf_sha256": "7e1e85b8511d1dbc5bd2e05692b5af8cfe30c685be72b200c32f98d032d7af4c",
+      "image": "artifacts/kernel/stock/bzImage",
+      "config": "artifacts/kernel/stock/config"
+    },
+    "runtime": {
+      "fxmark": "artifacts/runtime/fxmark",
+      "cell": "artifacts/runtime/fxmark_cell",
+      "fuse": "artifacts/runtime/fxmark_fuse",
+      "bpftool": "artifacts/runtime/bpftool",
+      "pass_policy": "artifacts/runtime/fxmark_pass.bpf.o",
+      "select_policy": "artifacts/runtime/fxmark_select.bpf.o"
+    }
+  },
+  "kernel_commits": {
+    "patched": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+    "stock": "062871f1371b2e02a272ff5279c6479aff0a37ef"
+  },
+  "benchmark_source": {
+    "commit": "3f29552ce7ba6be24c4172e6e2c2c1f603209953",
+    "archive_url": "https://codeload.github.com/sslab-gatech/fxmark/tar.gz/3f29552ce7ba6be24c4172e6e2c2c1f603209953",
+    "archive_sha256": "b8887b7ef5fe9cedaeed35ab12801aa8b7534d9e16ec40124af788dfd85f46ae",
+    "corrections": {
+      "common_patch_sha256": "3c7d82176471ff0620d3e58b1ca920e64dcf4349f69600bbab44e581258fe7ae",
+      "readdir_patch_sha256": "e4046f61202f561b89f348ddeb63a870defeb5ee9a198f0afcef6ef3ec670709",
+      "files_per_worker": 8192
+    }
+  },
+  "guest_launch": {
+    "kvm_append": "loglevel=7 panic=30 oops=panic tsc=reliable clocksource=tsc",
+    "vng_module_flags": "--skip-modules"
+  },
+  "runtime_provenance": {
+    "bpftool_source_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+    "bpftool_sha256": "042322ac211a3fc915249af5aa3d85d57849ab8e525a30b65b482e66bbd3bcc5"
+  },
+  "matrix": {
+    "conditions": [
+      "stock",
+      "unattached",
+      "pass",
+      "select",
+      "fuse"
+    ],
+    "types": [
+      "MRDL",
+      "MRDM"
+    ],
+    "workers": [
+      1,
+      2,
+      4
+    ],
+    "repetitions": 10,
+    "duration_seconds": 30,
+    "bpf_stats": 0,
+    "order": "rotating-latin-square",
+    "kvm_cpus": 4,
+    "host_cpu_pin": "4-7",
+    "affinity": "exact-vcpu-index-mapping",
+    "external_inventory_gate": true,
+    "files_per_worker": 8192
+  },
+  "completed_at": "2026-07-29T11:05:02Z"
+}
