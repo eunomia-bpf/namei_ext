@@ -20,6 +20,8 @@ SPINDLE_STAGING_GUEST_SPINDLE_ABS = \
 	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_SPINDLE)
 SPINDLE_STAGING_GUEST_TEST_DIR_ABS = \
 	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_TEST_DIR)
+SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS = \
+	$(ROOT_DIR)/$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS)
 SPINDLE_STAGING_BOOT_FILES := \
 	guest.mk guest.mk.sha256 launcher.stdout.log launcher.stderr.log \
 	boot.json raw-runner.jsonl observations.jsonl \
@@ -460,14 +462,14 @@ __spindle_staging_guest_inner:
 	test -x "$(SPINDLE_STAGING_GUEST_RUNNER)"
 	test -r "$(SPINDLE_STAGING_GUEST_POLICY)"
 	test -x "$(SPINDLE_STAGING_GUEST_BPFTOOL)"
-	test -r "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS)"
+	test -r "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)"
 	test -d "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)"
 	test -d "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)"
 	command -v file >/dev/null
 	command -v readelf >/dev/null
 	command -v strings >/dev/null
 	(cd "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)" && \
-		sha256sum -c "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS)")
+		sha256sum -c "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)")
 	(cd "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)" && \
 		find build prefix -type l -printf '%p\t%l\n' | \
 		LC_ALL=C sort) | cmp - \
@@ -564,7 +566,7 @@ __spindle_staging_guest_inner:
 		--arg compiled_root "$$(readlink -f "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)")" \
 		--arg runtime_root_identity "$$(stat -c '%d:%i' "$(SPINDLE_STAGING_GUEST_RUNTIME_ROOT)")" \
 		--arg compiled_root_identity "$$(stat -c '%d:%i' "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)")" \
-		--arg runtime_inputs_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS)" | awk '{print $$1}')" \
+		--arg runtime_inputs_sha256 "$$(sha256sum "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)" | awk '{print $$1}')" \
 		'{runner:{path:$$runner,sha256:$$runner_sha256},policy:{path:$$policy,sha256:$$policy_sha256},bpftool:{path:$$bpftool,sha256:$$bpftool_sha256},spindle:{path:$$spindle,sha256:$$spindle_sha256},test_driver:{path:$$test_driver,sha256:$$test_driver_sha256},runtime:{source:$$runtime_root,compiled_mount:$$compiled_root,source_identity:$$runtime_root_identity,mount_identity:$$compiled_root_identity},runtime_inputs_sha256:$$runtime_inputs_sha256}' \
 		>"$(SPINDLE_STAGING_BOOT_DIR)/runtime-metadata.json"
 	jq -e '.runtime.source_identity == .runtime.mount_identity' \
@@ -606,7 +608,7 @@ __spindle_staging_guest_inner:
 	test "$$(find /sys/fs/cgroup -maxdepth 1 -type d \
 		-name 'namei-ext-spindle-*' | wc -l)" = 0
 	(cd "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)" && \
-		sha256sum -c "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS)")
+		sha256sum -c "$(SPINDLE_STAGING_GUEST_RUNTIME_INPUTS_ABS)")
 	(cd "$(SPINDLE_STAGING_GUEST_COMPILED_ABS)" && \
 		find build prefix -type l -printf '%p\t%l\n' | \
 		LC_ALL=C sort) | cmp - \

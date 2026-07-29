@@ -179,3 +179,23 @@ selection behavior that cannot be established by host builds.
 Three formal fresh boots are permitted only after the preflight raw root
 passes independent review. Until then, this experiment contributes no paper
 result.
+
+## First KVM Preflight Attempt
+
+The first real preflight used result root
+`results/experiments/spindle-staging-preflight/20260729T142246Z-spindle01/`.
+The intended modified kernel booted, preparation succeeded, and the structured
+failure wrapper completed cleanup, after-inventory, dmesg capture, and host
+evidence sealing. The inner target failed before mounting the packaged runtime
+tree or executing any workload condition: it passed a repository-relative
+runtime manifest path to `sha256sum` after changing into the packaged runtime
+directory.
+
+This is a packaging-path defect and supplies no workload result. The detailed
+identity, status, diagnostic, evidence checks, and narrowly scoped fix are
+recorded in
+`docs/tmp/2026-07-29-spindle-hpc-staging-preflight-attempt-1.md`. The guest
+Makefile continues to store paths relative to the repository root; the suite
+now derives an absolute manifest path for reads that may occur under a changed
+working directory. The workload, policy, oracle, and acceptance rules remain
+unchanged.
