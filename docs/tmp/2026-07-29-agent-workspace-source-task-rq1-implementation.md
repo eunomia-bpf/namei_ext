@@ -125,18 +125,24 @@ boot passes.
   root. Their schema is `namei_ext.agent_source_task.import.v2`.
 - The same review removed hard-coded raw summary event counts and separated
   cgroup-move error attribution from other child environment failures.
+- KVM preflight attempt 3 completed the entire admitted one-boot workflow:
+  all six exact source-task states, concurrent overlap, switch, rollback,
+  withdrawal, policy engagement, lower preservation, teardown, inventory, and
+  dmesg checks passed. An independent claim-to-code-to-raw review gave GO for
+  the formal run.
 - `git diff --check` passes.
 
 ## Remaining Work
 
-A fresh modified-kernel KVM preflight must reach the real BPF attach path and
-verify the exact 39/1 and 40/0 controls, task dependencies, absolute import
-path, concurrent overlap, switch, rollback, withdrawal, lower-file
-preservation, and cleanup. Only a successful real preflight and independent
-evidence review permit the three-boot formal run.
+The predeclared three-fresh-boot formal run is authorized. Its result requires
+a fresh independent review before it can enter the paper.
 
 Attempt 1 is recorded in
 `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-1.md`.
 Attempt 2 and its independent review are recorded in
 `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-2.md` and
 `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-2-review.md`.
+Attempt 3 is recorded in
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-3.md`.
+Its independent evidence review is recorded in
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-03-review.md`.
