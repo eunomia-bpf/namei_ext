@@ -262,10 +262,12 @@ the successful W3 correctness preflight.
 The paper-level RQ2 evidence is currently strong for cache-hot FxMark MRPL,
 MRPM, and MRPH and the Agent workspace lifecycle. A corrected FxMark
 `MRDL`/`MRDM` private/shared-directory suite is now implemented with exact
-logical-name, per-entry BPF attribution, offset-correct FUSE, five-boot
-preflight, 50-boot formal, and analyzer gates; its local contracts pass, but it
-has not run in KVM. Cache-cold operations, mdtest/IOR metadata breadth, and
-Filebench mixed profiles also have not produced formal matrices.
+logical-name, candidate-entry BPF attribution, offset-correct FUSE, five-boot
+preflight, 50-boot formal, and analyzer gates. Attempt 1 passed the stock and
+unattached boots, then failed an incorrect attribution equation at the first
+PASS cell; the repaired exact equation records VFS buffer-boundary retries.
+Cache-cold operations, mdtest/IOR metadata breadth, and Filebench mixed
+profiles also have not produced formal matrices.
 
 ## RQ3: Ownership And Fault Containment
 

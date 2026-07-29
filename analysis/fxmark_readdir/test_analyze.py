@@ -24,7 +24,13 @@ def rows_for(plan=None):
                 for workers in plan["workers"]:
                     files, directories = analyze.expected_tree(test, workers)
                     attached = condition in ("pass", "select")
-                    attribution = analyze.expected_attribution(test, workers) \
+                    returned_entries = analyze.expected_attribution(
+                        test, workers)
+                    directory_streams = analyze.expected_directory_streams(
+                        test, workers)
+                    getdents_calls = directory_streams + 2
+                    retry_runs = getdents_calls - directory_streams
+                    attribution = returned_entries + retry_runs \
                         if attached else 0
                     base_work_count = 120 if condition == "select" else 100
                     work_count = base_work_count * plan["duration_seconds"]
@@ -47,9 +53,9 @@ def rows_for(plan=None):
                         "expected_directories": directories,
                         "readdir_validation_required": True,
                         "logical_directory_entries":
-                        analyze.expected_attribution(test, workers),
+                        returned_entries,
                         "expected_directory_entries":
-                        analyze.expected_attribution(test, workers),
+                        returned_entries,
                         "logical_names_complete": True,
                         "selected_directory_identity": condition != "fuse",
                         "select_required_for_logical_path": condition == "select",
@@ -61,6 +67,8 @@ def rows_for(plan=None):
                         attribution + (1 if attached else 0),
                         "validation_lookup_runs": 1 if attached else 0,
                         "validation_readdir_runs": attribution,
+                        "validation_getdents_nonempty_calls": getdents_calls,
+                        "validation_readdir_retry_runs": retry_runs,
                         "bpf_stats_post_timing_only": True,
                         "fuse_status": 0 if condition == "fuse" else -1,
                         "fuse_setup_requests": 1 if condition == "fuse" else 0,
@@ -119,6 +127,9 @@ class ValidationTests(unittest.TestCase):
 
     def test_rejects_incomplete_names(self):
         self.assert_rejects("logical_names_complete", False)
+
+    def test_rejects_getdents_retry_mismatch(self):
+        self.assert_rejects("validation_readdir_retry_runs", 1)
 
     def test_rejects_select_identity_failure(self):
         self.assert_rejects("selected_directory_identity", False, "select")

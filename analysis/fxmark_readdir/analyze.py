@@ -80,6 +80,12 @@ def expected_attribution(test, workers):
     return workers * (FILES_PER_WORKER + 2) if test == "MRDL" else files + 2
 
 
+def expected_directory_streams(test, workers):
+    if test not in TYPES:
+        raise ValueError(f"unknown test: {test}")
+    return workers if test == "MRDL" else 1
+
+
 def make_config(mode="formal", repetitions=None, types=None, workers=None,
                 duration_seconds=None):
     if mode not in MODE_DEFAULTS:
@@ -168,6 +174,13 @@ def _validate_common(row, config, key):
         raise ValueError(f"logical entry-count mismatch: {key}")
     if _bool(row, "logical_names_complete", key) is not True:
         raise ValueError(f"incomplete logical names: {key}")
+    directory_streams = expected_directory_streams(row["type"], workers)
+    getdents_calls = _int(row, "validation_getdents_nonempty_calls", key,
+                          True)
+    retry_runs = _int(row, "validation_readdir_retry_runs", key)
+    if getdents_calls < directory_streams or \
+            retry_runs != getdents_calls - directory_streams:
+        raise ValueError(f"invalid getdents retry attribution: {key}")
     identity = _bool(row, "selected_directory_identity", key)
     if row["condition"] != "fuse" and not identity:
         raise ValueError(f"logical/physical identity mismatch: {key}")
@@ -195,8 +208,9 @@ def _validate_bpf(row, key):
     lookup_runs = _int(row, "validation_lookup_runs", key)
     readdir_runs = _int(row, "validation_readdir_runs", key)
     expected = expected_attribution(row["type"], row["workers"])
+    retry_runs = _int(row, "validation_readdir_retry_runs", key)
     if attached:
-        if lookup_runs <= 0 or readdir_runs != expected or \
+        if lookup_runs <= 0 or readdir_runs != expected + retry_runs or \
                 after_count - before_count != lookup_runs + readdir_runs:
             raise ValueError(f"BPF attribution mismatch: {key}")
     elif lookup_runs != 0 or readdir_runs != 0:

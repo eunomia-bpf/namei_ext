@@ -16,6 +16,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,6 +26,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -72,16 +74,30 @@ struct readdir_validation {
 	unsigned long long expected_entries;
 	unsigned long long lookup_runs;
 	unsigned long long readdir_runs;
+	unsigned long long getdents_nonempty_calls;
+	unsigned long long readdir_retry_runs;
 	bool names_complete;
 	bool selected_identity;
 };
 
 struct readdir_child_result {
 	unsigned long long entries;
+	unsigned long long getdents_nonempty_calls;
 	int error;
 	bool names_complete;
 	bool selected_identity;
 };
+
+struct fxmark_linux_dirent64 {
+	uint64_t ino;
+	int64_t offset;
+	unsigned short reclen;
+	unsigned char type;
+	char name[];
+};
+
+_Static_assert(offsetof(struct fxmark_linux_dirent64, name) == 19,
+	       "getdents64 ABI layout changed");
 
 static struct tree_count observed_tree;
 
@@ -692,7 +708,7 @@ static int parse_readdir_name(const struct cell_config *config, int directory,
 static int open_validation_directories(const struct cell_config *config,
 				       const char *root,
 				       const char *physical_root,
-				       DIR **directories,
+				       int *directories,
 				       bool *selected_identity)
 {
 	int count = !strcmp(config->type, "MRDL") ? config->ncore : 1;
@@ -713,10 +729,11 @@ static int open_validation_directories(const struct cell_config *config,
 							sizeof(physical));
 		if (ret)
 			return ret;
-		directories[index] = opendir(logical);
-		if (!directories[index])
+		directories[index] =
+			open(logical, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+		if (directories[index] < 0)
 			return -errno;
-		if (fstat(dirfd(directories[index]), &logical_stat) ||
+		if (fstat(directories[index], &logical_stat) ||
 		    stat(physical, &physical_stat))
 			return -errno;
 		if (strcmp(config->condition, "fuse") &&
@@ -728,7 +745,7 @@ static int open_validation_directories(const struct cell_config *config,
 }
 
 static int enumerate_validation_directories(const struct cell_config *config,
-					    DIR **directories,
+					    int *directories,
 					    struct readdir_child_result *result)
 {
 	size_t file_count =
@@ -741,42 +758,73 @@ static int enumerate_validation_directories(const struct cell_config *config,
 	if (!seen)
 		return -ENOMEM;
 	for (int directory = 0; directory < directory_count; directory++) {
+		unsigned char buffer[4096];
 		bool dot = false;
 		bool dotdot = false;
-		struct dirent *entry;
 
-		errno = 0;
-		while ((entry = readdir(directories[directory]))) {
-			size_t slot;
+		for (;;) {
+			ssize_t received =
+				syscall(SYS_getdents64, directories[directory],
+					buffer, sizeof(buffer));
+			size_t position = 0;
 
-			result->entries++;
-			if (!strcmp(entry->d_name, ".")) {
-				if (dot) {
-					ret = -EEXIST;
-					break;
-				}
-				dot = true;
-				continue;
-			}
-			if (!strcmp(entry->d_name, "..")) {
-				if (dotdot) {
-					ret = -EEXIST;
-					break;
-				}
-				dotdot = true;
-				continue;
-			}
-			ret = parse_readdir_name(config, directory, entry->d_name,
-						 &slot);
-			if (ret || seen[slot]) {
-				if (!ret)
-					ret = -EEXIST;
+			if (received < 0) {
+				ret = -errno;
 				break;
 			}
-			seen[slot] = 1;
+			if (!received)
+				break;
+			result->getdents_nonempty_calls++;
+			while (position < (size_t)received) {
+				struct fxmark_linux_dirent64 *entry =
+					(void *)(buffer + position);
+				const size_t header =
+					offsetof(struct fxmark_linux_dirent64,
+						 name);
+				size_t name_space;
+				size_t slot;
+
+				if ((size_t)received - position <
+					    header ||
+				    entry->reclen < header + 1 ||
+				    entry->reclen > (size_t)received - position) {
+					ret = -EIO;
+					break;
+				}
+				name_space = entry->reclen - header;
+				if (!memchr(entry->name, '\0', name_space)) {
+					ret = -EIO;
+					break;
+				}
+				result->entries++;
+				if (!strcmp(entry->name, ".")) {
+					if (dot) {
+						ret = -EEXIST;
+						break;
+					}
+					dot = true;
+				} else if (!strcmp(entry->name, "..")) {
+					if (dotdot) {
+						ret = -EEXIST;
+						break;
+					}
+					dotdot = true;
+				} else {
+					ret = parse_readdir_name(
+						config, directory, entry->name,
+						&slot);
+					if (ret || seen[slot]) {
+						if (!ret)
+							ret = -EEXIST;
+						break;
+					}
+					seen[slot] = 1;
+				}
+				position += entry->reclen;
+			}
+			if (ret)
+				break;
 		}
-		if (!ret && errno)
-			ret = -errno;
 		if (!ret && (!dot || !dotdot))
 			ret = -ENOENT;
 		if (ret)
@@ -792,13 +840,13 @@ static int enumerate_validation_directories(const struct cell_config *config,
 }
 
 static int close_validation_directories(const struct cell_config *config,
-					DIR **directories)
+					int *directories)
 {
 	int count = !strcmp(config->type, "MRDL") ? config->ncore : 1;
 	int ret = 0;
 
 	for (int index = 0; index < count; index++) {
-		if (directories[index] && closedir(directories[index]) && !ret)
+		if (directories[index] >= 0 && close(directories[index]) && !ret)
 			ret = -errno;
 	}
 	return ret;
@@ -811,7 +859,7 @@ static void readdir_validation_child(const struct cell_config *config,
 				     int ready_fd, int go_fd, int result_fd)
 {
 	struct readdir_child_result result = {};
-	DIR *directories[FXMARK_MAX_WORKERS] = {};
+	int directories[FXMARK_MAX_WORKERS] = {-1, -1, -1, -1};
 	char go;
 	int open_status;
 
@@ -853,6 +901,8 @@ static int validate_readdir_view(
 	struct policy_stats stats_after = {};
 	struct readdir_child_result child_result = {};
 	struct rusage usage = {};
+	unsigned long long directory_count =
+		!strcmp(config->type, "MRDL") ? config->ncore : 1;
 	int ready_pipe[2] = {-1, -1};
 	int result_pipe[2] = {-1, -1};
 	int go_pipe[2] = {-1, -1};
@@ -933,6 +983,11 @@ static int validate_readdir_view(
 			goto out;
 	}
 	validation->entries = child_result.entries;
+	validation->getdents_nonempty_calls =
+		child_result.getdents_nonempty_calls;
+	if (validation->getdents_nonempty_calls >= directory_count)
+		validation->readdir_retry_runs =
+			validation->getdents_nonempty_calls - directory_count;
 	validation->names_complete = child_result.names_complete;
 	validation->selected_identity = child_result.selected_identity;
 	if (policy) {
@@ -949,10 +1004,13 @@ static int validate_readdir_view(
 	if (open_status || child_result.error || child_status ||
 	    !validation->names_complete ||
 	    validation->entries != validation->expected_entries ||
+	    validation->getdents_nonempty_calls < directory_count ||
 	    (!strcmp(config->condition, "select") &&
 	     !validation->selected_identity) ||
 	    (policy && (!validation->lookup_runs ||
-			validation->readdir_runs != validation->entries)))
+			validation->readdir_runs !=
+				validation->entries +
+					validation->readdir_retry_runs)))
 		ret = -EINVAL;
 
 out:
@@ -1091,6 +1149,8 @@ static int write_observation(const struct cell_config *config, bool pass,
 			"\"selected_directory_identity\":%s,"
 			"\"validation_lookup_runs\":%llu,"
 			"\"validation_readdir_runs\":%llu,"
+			"\"validation_getdents_nonempty_calls\":%llu,"
+			"\"validation_readdir_retry_runs\":%llu,"
 			"\"bpf_stats_post_timing_only\":%s,"
 			"\"fuse_setup_requests\":%llu,"
 			"\"fuse_measured_requests\":%llu,"
@@ -1129,6 +1189,8 @@ static int write_observation(const struct cell_config *config, bool pass,
 			readdir->names_complete ? "true" : "false",
 			readdir->selected_identity ? "true" : "false",
 			readdir->lookup_runs, readdir->readdir_runs,
+			readdir->getdents_nonempty_calls,
+			readdir->readdir_retry_runs,
 			is_readdir_test(config) ? "true" : "false",
 			fuse_setup, fuse_measured, fuse_measured_opendir,
 			fuse_measured_readdir, fuse_measured_releasedir,

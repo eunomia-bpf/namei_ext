@@ -42,8 +42,7 @@ executable:
   cardinality;
 - pre-create and register each enumerated directory as an exact policy scope;
 - after timing, prove the readdir event with an already-open-directory
-  handshake in the measured cgroup: with BPF statistics enabled only for this
-  validation, the program run-count delta must equal the returned-entry count;
+  handshake in the measured cgroup and exact run-count attribution;
 - prove the nonexistent logical `view` selects the expected lower object;
 - implement FUSE `seekdir()`/`telldir()` offsets and verify a full logical
   enumeration over a directory larger than one FUSE reply; and
@@ -55,3 +54,10 @@ The initial `NO-GO` rejects running the current implementation, not the
 experiment question. After the repairs, a fresh independent implementation
 review must inspect the actual code and return `GO` before the first real KVM
 preflight.
+
+The first real KVM attempt later showed that the initial
+`run-count == returned-entry-count` equation omitted VFS buffer-boundary
+retries: policy runs before the userspace fill actor rejects a candidate that
+does not fit. The repaired exact equation records fixed-size non-empty
+`getdents64` calls and adds one retry per non-final call. This preserves the
+review's attribution requirement rather than weakening it.

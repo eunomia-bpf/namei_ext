@@ -56,14 +56,19 @@ records a baseline. A child then enters the benchmark cgroup and opens all
 logical directories. It checks lower-directory device and inode identity for
 direct and `SELECT` views, then stops on a pipe barrier. The controller records
 the lookup delta after the opens, releases the barrier, and the child performs
-only `readdir()` on the already-open streams.
+only fixed 4 KiB `getdents64` calls on the already-open descriptors.
 
-The child parses every expected FxMark filename, rejects malformed or
-duplicate entries, requires one `.` and `..` per directory, and verifies a
-complete bitmap. The exact BPF readdir run-count delta must equal:
+The child parses every returned record and expected FxMark filename, rejects
+malformed or duplicate entries, requires one `.` and `..` per directory, and
+verifies a complete bitmap. Because VFS invokes policy before the userspace
+fill actor, a candidate that does not fit at a buffer boundary runs policy once
+before being retried in the next syscall. The exact BPF readdir run-count delta
+for this experiment's tmpfs iterator and fixed validation buffer must equal:
 
-- `W * (8192 + 2)` for `MRDL`; or
-- `8192 * W + 2` for `MRDM`.
+```text
+retry runs = non-empty getdents calls - enumerated directories
+readdir runs = returned entries + retry runs
+```
 
 BPF run statistics are disabled before the timed interval and disabled again
 after validation. Pipe reads and child waits have explicit timeouts, and any
@@ -141,9 +146,10 @@ Completed local checks:
 - `make fxmark-fuse-readdir-contract`;
 - `make fxmark-readdir-analysis-test`;
 - warning-free `-Werror` builds of `fxmark_cell.c` and `fxmark_fuse.c`;
-- 24 analyzer unit tests, including strict JSON integer typing, FUSE phase
-  acknowledgement, frozen run-manifest rejection, all declared rejection
-  gates, and the non-degenerate throughput bootstrap;
+- 25 analyzer unit tests, including strict JSON integer typing, exact
+  getdents retry attribution, FUSE phase acknowledgement, frozen run-manifest
+  rejection, all declared rejection gates, and the non-degenerate throughput
+  bootstrap;
 - seven host-vCPU affinity verifier tests;
 - host FUSE enumeration of all 8,192 names across multiple readdir requests
   with acknowledged measured-phase transitions;

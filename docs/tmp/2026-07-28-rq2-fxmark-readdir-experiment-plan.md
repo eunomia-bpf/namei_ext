@@ -128,11 +128,15 @@ Every cell must satisfy:
   opens all logical directories, and stops at a synchronization barrier;
 - the parent snapshots the program at that barrier and records the lookup
   delta;
-- after the barrier, the child performs only `readdir` on those already-open
-  directory streams and sends the returned-entry count through a pipe;
-- the exact BPF run-count delta equals the returned-entry count:
-  `W * (N + 2)` for `MRDL` and `N * W + 2` for `MRDM`; BPF statistics are
-  disabled again before cleanup;
+- after the barrier, the child performs only fixed 4 KiB `getdents64` calls on
+  those already-open directory descriptors and sends both the returned-entry
+  count and non-empty syscall count through a pipe;
+- the exact BPF readdir delta equals returned entries plus one candidate-entry
+  retry for each non-final non-empty `getdents64` call on this experiment's
+  tmpfs iterator. Thus
+  `retry_runs = nonempty_calls - enumerated_directories` and
+  `readdir_runs = returned_entries + retry_runs`; BPF statistics are disabled
+  again before cleanup;
 - FUSE retains a live FUSE superblock through validation, records positive
   measured `opendir`, `readdir`, and `releasedir` counts, then unmounts and
   exits zero;
