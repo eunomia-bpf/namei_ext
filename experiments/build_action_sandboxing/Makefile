@@ -6,6 +6,10 @@ LIBBPF_OUTPUT ?= $(BUILD_ROOT)/libbpf
 LIBBPF_A ?= $(LIBBPF_OUTPUT)/libbpf.a
 LIBBPF_SOURCES := $(wildcard $(KERNEL_DIR)/tools/lib/bpf/*.[ch] $(KERNEL_DIR)/tools/lib/bpf/Makefile)
 HARNESS_LIBRARY ?= $(BUILD_ROOT)/runner/libnamei_ext_harness.a
+HARNESS_SOURCES := \
+	$(ROOT_DIR)/runner/Makefile \
+	$(ROOT_DIR)/runner/include/namei_ext_harness.h \
+	$(ROOT_DIR)/runner/src/namei_ext_harness.c
 CC ?= cc
 
 .PHONY: all clean
@@ -21,7 +25,7 @@ $(LIBBPF_OUTPUT):
 $(LIBBPF_A): $(LIBBPF_SOURCES) | $(LIBBPF_OUTPUT)
 	$(MAKE) -C "$(KERNEL_DIR)/tools/lib/bpf" OUTPUT="$(LIBBPF_OUTPUT)/" "$(LIBBPF_A)"
 
-$(HARNESS_LIBRARY):
+$(HARNESS_LIBRARY): $(HARNESS_SOURCES)
 	$(MAKE) -C "$(ROOT_DIR)/runner" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 $(OUTPUT)/namei_ext_build_action_sandboxing: namei_ext_build_action_sandboxing.c $(HARNESS_LIBRARY) $(LIBBPF_A) | $(OUTPUT)

@@ -47,6 +47,13 @@ int namei_ext_component_map_update(
 int namei_ext_component_map_delete(
 	struct namei_ext_harness_policy *policy, const char *map_name,
 	uint64_t cgroup_id, const char *parent, const char *name);
+int namei_ext_component_map_lookup(
+	struct namei_ext_harness_policy *policy, const char *map_name,
+	uint64_t cgroup_id, const char *parent, const char *name,
+	uint32_t *value_out);
+int namei_ext_component_map_count(
+	struct namei_ext_harness_policy *policy, const char *map_name,
+	size_t *count_out);
 int namei_ext_policy_counter(struct namei_ext_harness_policy *policy,
 			     const char *map_name, uint32_t key,
 			     uint64_t *value_out);

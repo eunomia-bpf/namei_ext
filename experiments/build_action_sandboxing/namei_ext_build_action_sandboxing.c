@@ -27,9 +27,11 @@ enum build_action_sandboxing_counter {
 	BAS_COUNTER_LOOKUP = 1,
 	BAS_COUNTER_READDIR = 2,
 	BAS_COUNTER_SELECT = 3,
-	BAS_COUNTER_HIDE_LOOKUP = 4,
-	BAS_COUNTER_HIDE_READDIR = 5,
-	BAS_COUNTER_PASS = 6,
+	BAS_COUNTER_ALLOW_LOOKUP = 4,
+	BAS_COUNTER_ALLOW_READDIR = 5,
+	BAS_COUNTER_HIDE_LOOKUP = 6,
+	BAS_COUNTER_HIDE_READDIR = 7,
+	BAS_COUNTER_PASS = 8,
 };
 
 struct bazel_action {
@@ -382,14 +384,22 @@ int main(int argc, char **argv)
 			"action", ACTION_TARGET_ID);
 	if (!ret)
 		ret = namei_ext_component_map_update(
-			&policy, "build_action_hidden_inputs", cgroup_id_a,
-			target_a, "private.txt", 1);
+			&policy, "build_action_roots", cgroup_id_a,
+			target_a, "", 1);
 	if (!ret)
 		ret = namei_ext_component_map_update(
-			&policy, "build_action_hidden_inputs", cgroup_id_b,
-			target_b, "private.txt", 1);
+			&policy, "build_action_roots", cgroup_id_b,
+			target_b, "", 1);
+	if (!ret)
+		ret = namei_ext_component_map_update(
+			&policy, "build_action_declared_inputs", cgroup_id_a,
+			target_a, "input.txt", 1);
+	if (!ret)
+		ret = namei_ext_component_map_update(
+			&policy, "build_action_declared_inputs", cgroup_id_b,
+			target_b, "input.txt", 1);
 	emit_case(out, "install_action_views", !ret, ret ? -ret : 0,
-		  "declared roots selected and undeclared paths hidden per action");
+		  "declared roots selected and allowlisted per action");
 	fails += !!ret;
 	if (ret)
 		goto cleanup;
@@ -503,6 +513,10 @@ release_and_wait:
 				 BAS_COUNTER_READDIR);
 	fails += !!check_counter(out, &policy, "select",
 				 BAS_COUNTER_SELECT);
+	fails += !!check_counter(out, &policy, "allow_lookup",
+				 BAS_COUNTER_ALLOW_LOOKUP);
+	fails += !!check_counter(out, &policy, "allow_readdir",
+				 BAS_COUNTER_ALLOW_READDIR);
 	fails += !!check_counter(out, &policy, "hide_lookup",
 				 BAS_COUNTER_HIDE_LOOKUP);
 	fails += !!check_counter(out, &policy, "hide_readdir",

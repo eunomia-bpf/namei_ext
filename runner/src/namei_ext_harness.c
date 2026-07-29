@@ -537,6 +537,23 @@ static int component_map_fd(struct namei_ext_harness_policy *policy,
 	return map_fd < 0 ? -EINVAL : map_fd;
 }
 
+static int component_key_map_fd(struct namei_ext_harness_policy *policy,
+				const char *map_name)
+{
+	struct bpf_map *map;
+	int map_fd;
+
+	map_fd = component_map_fd(policy, map_name);
+	if (map_fd < 0)
+		return map_fd;
+	map = bpf_object__find_map_by_name(policy->obj, map_name);
+	if (!map ||
+	    bpf_map__key_size(map) != sizeof(struct namei_ext_component_key) ||
+	    bpf_map__value_size(map) != sizeof(uint32_t))
+		return -EINVAL;
+	return map_fd;
+}
+
 int namei_ext_component_map_update(
 	struct namei_ext_harness_policy *policy, const char *map_name,
 	uint64_t cgroup_id, const char *parent, const char *name,
@@ -549,7 +566,7 @@ int namei_ext_component_map_update(
 	ret = fill_component_key(&key, cgroup_id, parent, name);
 	if (ret)
 		return ret;
-	map_fd = component_map_fd(policy, map_name);
+	map_fd = component_key_map_fd(policy, map_name);
 	if (map_fd < 0)
 		return map_fd;
 	if (bpf_map_update_elem(map_fd, &key, &value, BPF_ANY))
@@ -568,11 +585,61 @@ int namei_ext_component_map_delete(
 	ret = fill_component_key(&key, cgroup_id, parent, name);
 	if (ret)
 		return ret;
-	map_fd = component_map_fd(policy, map_name);
+	map_fd = component_key_map_fd(policy, map_name);
 	if (map_fd < 0)
 		return map_fd;
 	if (bpf_map_delete_elem(map_fd, &key) && errno != ENOENT)
 		return -errno;
+	return 0;
+}
+
+int namei_ext_component_map_lookup(
+	struct namei_ext_harness_policy *policy, const char *map_name,
+	uint64_t cgroup_id, const char *parent, const char *name,
+	uint32_t *value_out)
+{
+	struct namei_ext_component_key key;
+	uint32_t value;
+	int map_fd;
+	int ret;
+
+	if (!value_out)
+		return -EINVAL;
+	ret = fill_component_key(&key, cgroup_id, parent, name);
+	if (ret)
+		return ret;
+	map_fd = component_key_map_fd(policy, map_name);
+	if (map_fd < 0)
+		return map_fd;
+	if (bpf_map_lookup_elem(map_fd, &key, &value))
+		return -errno;
+	*value_out = value;
+	return 0;
+}
+
+int namei_ext_component_map_count(
+	struct namei_ext_harness_policy *policy, const char *map_name,
+	size_t *count_out)
+{
+	struct namei_ext_component_key current;
+	struct namei_ext_component_key next;
+	const void *key = NULL;
+	size_t count = 0;
+	int map_fd;
+
+	if (!count_out)
+		return -EINVAL;
+	map_fd = component_key_map_fd(policy, map_name);
+	if (map_fd < 0)
+		return map_fd;
+	while (!bpf_map_get_next_key(map_fd, key, &next)) {
+		current = next;
+		key = &current;
+		count++;
+	}
+	if (errno != ENOENT)
+		return -errno;
+	*count_out = count;
 	return 0;
 }
 
