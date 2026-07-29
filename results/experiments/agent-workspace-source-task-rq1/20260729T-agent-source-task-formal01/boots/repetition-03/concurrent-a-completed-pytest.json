@@ -1,0 +1,11 @@
+{
+  "errors": 0,
+  "expected": "completed",
+  "failed": [],
+  "failures": 0,
+  "pass": true,
+  "passed": 40,
+  "schema": "namei_ext.agent_source_task.pytest.v1",
+  "skipped": 0,
+  "tests": 40
+}

@@ -51,6 +51,7 @@ make current-experiment-gates
 make formal-case-studies
 make formal-performance
 make kvm-agent-workspace-matrix
+make experiment-agent-workspace-source-task-rq1
 make experiment-agent-workspace-rq2
 make experiment-agent-workspace-rq3
 make experiment-application-file-sharing-rq1
@@ -71,8 +72,9 @@ execution does not count as Phase 1 validation.
 
 `make experiments` and `make current-experiment-gates` run development gates.
 Paper-facing collection uses `make formal-case-studies` and
-`make formal-performance`. Formal RQ1 case studies currently cover Agent
-workspace lifecycle, application file sharing, Bazel action views, and
+`make formal-performance`. Formal RQ1 case studies currently cover the Agent
+workspace lifecycle plus a released Click source task, application file
+sharing, Bazel action views, and
 toolchain selection. Formal RQ2 and RQ3 case studies include the matched Agent
 workspace namei_ext/FUSE lifecycle and namei_ext/Wrapfs-derived ownership
 matrices. Service Configuration Rotation remains registered as a blocked suite
@@ -92,7 +94,7 @@ their exact diagnostics; the entrypoint has not yet completed successfully or
 authorized a formal matrix.
 
 Canonical KVM case-study result roots contain `run.json`,
-`observations.jsonl`, `command.txt`, source and artifact hash manifests,
+`observations.jsonl`, `command.txt`, source inputs,
 main-repository and kernel commits and status, guest and launcher
 stdout/stderr, kernel identity and configuration, and dmesg. Formal targets
 reject a dirty main or kernel tree. Result roots are immutable by `RUN_ID`;

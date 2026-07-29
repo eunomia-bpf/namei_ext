@@ -1,6 +1,6 @@
 # Complete Experiment Status
 
-Date: 2026-07-28
+Date: 2026-07-29
 
 ## Purpose
 
@@ -45,15 +45,15 @@ Implemented slice: two application cgroups, one logical document, an existing
 host target, grant, revoke, cross-application isolation, lookup/readdir/open/stat
 checks, and lower-object preservation.
 
-Result: passed one reviewed KVM preflight with zero failures. Policy engagement
-was 123 lookup events, 30 readdir events, two selections, eight lookup hides,
-and four readdir hides.
+Result: passed and independently reviewed in three fresh KVM boots. All 15
+lifecycle states passed: three granted views and twelve hidden views, with exact
+logical/lower identity and unchanged lower and unrelated objects.
 
 Evidence:
 
 ```text
-results/experiments/application-file-sharing/
-  20260725T-sandboxed-file-sharing-preflight-v3/
+results/experiments/application-file-sharing-rq1/
+  20260729T1824Z-w1-formal01/
 ```
 
 Status: supporting RQ1 breadth, not a formal FUSE performance result.
@@ -67,6 +67,12 @@ RQ1 result: three terminal KVM runs passed the fixed lookup/readdir/open/stat,
 whiteout, symlink, mutation, and final-tree oracle. Each run emitted 1,176
 records with zero failures and clean dmesg.
 
+Released source-task result: three fresh KVM boots ran SWE-Factory-Gym
+`pallets__click-2622` through concurrent completed/base views, switch, rollback,
+and withdrawal. All 12 policy-backed task states and all 6 physical source
+controls passed. The task observed 39/40 tests on base and 40/40 on completed,
+while object identity followed each mapping.
+
 Evidence:
 
 ```text
@@ -74,6 +80,8 @@ results/experiments/agent-workspace-matrix/
   20260722T020120Z-rq1run1/
   20260722T020210Z-rq1run2/
   20260722T020245Z-rq1run3/
+results/experiments/agent-workspace-source-task-rq1/
+  20260729T-agent-source-task-formal01/
 ```
 
 Status: headline RQ1 case and the shared workload for the formal RQ2 and RQ3
@@ -87,16 +95,16 @@ Implemented slice: two real Bazel 6.5.0 genrules execute concurrently. They use
 the same logical input pathname but select different declared roots. An existing
 undeclared input must be absent from lookup and readdir.
 
-Result: passed one reviewed KVM preflight. Both actions completed and produced
-their distinct expected 17-byte outputs. The policy recorded four selections,
-two lookup hides, and two readdir hides. Declared and undeclared lower objects
-were unchanged.
+Result: passed and independently reviewed in three fresh KVM boots. All six
+Bazel actions completed, matched their action-specific logical/lower objects,
+hid undeclared inputs, produced the expected outputs, and preserved twelve
+lower objects.
 
 Evidence:
 
 ```text
-results/experiments/build-action-sandboxing/
-  20260726T-build-action-sandboxing-preflight-v3/
+results/experiments/build-action-sandboxing-rq1/
+  20260729T180121Z-w3-formal02/
 ```
 
 Status: supporting traditional RQ1 breadth.
@@ -132,25 +140,35 @@ There is no completed checkpoint/restore paper result.
 Source behavior: LLNL Spindle redirects library, executable, Python, and data
 lookups from shared storage to prepared node-local objects.
 
-Status: source and industrial deployment are identified. The exact
-Pynamic/MPI/Python trace is not frozen, and cross-filesystem target selection
-has not passed its dependency preflight.
+Status: the Spindle source loader slice and source/native oracle are fixed, and
+the final-file plus cross-filesystem `SELECT` dependency passed 117/117
+functional cases. Three source-task preflights stopped in setup or wrapper code
+before BPF attachment. There is no Spindle RQ1 result.
 
 ### W7 Toolchain And Dependency Environments
 
 Source behavior: Nix/Guix/Spack profiles and language environments select
 installed tool and dependency views.
 
-Status: source family and oracle shape are identified, but one exact
-Spack/Nix/Python workflow has not been selected or executed.
+Result: passed and independently reviewed in three fresh KVM boots. All 18
+physical/logical states and 24 Python probes passed across concurrent CPython
+3.10/3.12 views, switch, rollback, and lower-object controls.
+
+Evidence:
+
+```text
+results/experiments/toolchain-environment/
+  20260729T171551Z-toolchain-formal01/
+```
 
 ### RQ1 Answer So Far
 
-The real KVM path has expressed three distinct existing-object workflows:
-per-application grant/revoke, concurrent Agent workspace views, and concurrent
-Bazel action views. This supports the mechanism's breadth across security,
-agent, and traditional build workflows. It does not yet support all seven
-portfolio cases, and the paper must not report W4-W7 as completed.
+The reviewed formal KVM path has expressed four distinct existing-object
+workflows: per-application grant/revoke, Agent workspace lifecycle plus a
+released source task, concurrent Bazel action views, and toolchain environment
+selection. This supports RQ1 across application sharing, agent, build, and
+environment workflows. W4--W6 remain portfolio or dependency-limited cases and
+must not be reported as completed evidence.
 
 ## RQ2: Cost And Overhead
 

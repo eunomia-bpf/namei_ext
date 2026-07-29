@@ -66,12 +66,15 @@ application and hides it from another. & \namei selects or hides the document
 by application and grant state. & Three fresh KVM boots passed 15/15 states:
 3 granted views, 12 hidden views, exact logical/lower object identity, and
 unchanged lower and unrelated objects. \\
-Agent workspace lifecycle~\cite{agentfs_repo} & AgentFS-derived branch state
-selects staged or base objects and hides whiteouts. The oracle checks tree
-state, symlinks, lookup/readdir coherence, and lower mutations. & \namei
-selects or hides existing lower objects; the lower filesystem retains
-permissions, writes, metadata, and file data. & 3/3 KVM runs passed 1,176
-records each with zero failures and clean dmesg. \\
+Agent workspaces~\cite{agentfs_repo,swe_factory_repo,swe_factory_gym_dataset} & AgentFS-derived branch
+state selects staged/base objects and hides whiteouts; a released Click task
+distinguishes base from completed source. & \namei selects or hides existing
+lower objects; the lower filesystem retains permissions, writes, metadata, and
+file data. & The lifecycle matrix recorded 1,170 pass-bearing records with zero
+failed oracles plus six metadata records in each of three runs. Three fresh
+source-task boots passed 12/12 policy-backed task states and 6/6 physical
+source controls: concurrent base/completed views produced 39/40 and 40/40
+tests, followed by switch, rollback, and withdrawal. \\
 Build action sandboxing (supporting)~\cite{bazel_sandboxing} & Two concurrent Bazel actions
 use one logical input path but different declared roots; an undeclared existing
 input must be absent. & \namei selects each action's declared object and hides

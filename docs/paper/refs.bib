@@ -789,13 +789,28 @@
 % PDF: not available
 % ABSTRACT: SWE-Factory is a public repository for generating issue-resolution
 %   training data and benchmark environments, including released Gym rows.
-% USED_FOR: Source for the selected environment/cache build-test transition.
+% USED_FOR: Evaluator and workload-generation source for the selected Click task.
 @misc{swe_factory_repo,
   title = {SWE-Factory},
   author = {{DeepSoftwareAnalytics}},
   howpublished = {\url{https://github.com/DeepSoftwareAnalytics/swe-factory}},
   year = {2025},
   note = {Accessed 2026-07-10}
+}
+
+% VERIFIED: 2026-07-29
+% REAL: yes
+% PDF: not available
+% ABSTRACT: SWE-Factory-Gym is a public 430-row issue-resolution dataset whose
+%   fields include instance ID, base commit, patch, test patch, Dockerfile, and
+%   evaluation script.
+% USED_FOR: Direct source for the released pallets__click-2622 task row.
+@misc{swe_factory_gym_dataset,
+  title = {{SWE-Factory-Gym} Dataset},
+  author = {{SWE-Factory}},
+  howpublished = {\url{https://huggingface.co/datasets/SWE-Factory/SWE-Factory-Gym}},
+  year = {2026},
+  note = {Dataset row \texttt{pallets\_\_click-2622}; accessed 2026-07-29}
 }
 
 % VERIFIED: 2026-07-10

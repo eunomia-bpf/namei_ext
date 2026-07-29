@@ -1,0 +1,63 @@
+{
+  "checks": {
+    "click_file_is_logical": true,
+    "click_types_file_is_logical": true,
+    "cwd_identity_matches": true,
+    "logical_root_identity_matches": true,
+    "sys_path_has_exact_logical_src": true,
+    "test_identity_matches": true,
+    "types_identity_matches": true
+  },
+  "click_file": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/src/click/__init__.py",
+  "click_types_file": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/src/click/types.py",
+  "cwd": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed",
+  "cwd_identity": {
+    "device": 64,
+    "inode": 35987379,
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed"
+  },
+  "effective_sys_path": [
+    "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/artifacts/source",
+    "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/src",
+    "/usr/lib/python312.zip",
+    "/usr/lib/python3.12",
+    "/usr/lib/python3.12/lib-dynload",
+    "/usr/local/lib/python3.12/dist-packages",
+    "/usr/lib/python3/dist-packages"
+  ],
+  "expected_root": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed",
+  "expected_root_identity": {
+    "device": 64,
+    "inode": 35987379,
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed"
+  },
+  "expected_test": {
+    "device": 64,
+    "inode": 35987701,
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/tests/test_types.py"
+  },
+  "expected_types": {
+    "device": 64,
+    "inode": 35988041,
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/src/click/types.py"
+  },
+  "logical_root": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed",
+  "logical_root_identity": {
+    "device": 64,
+    "inode": 35987379,
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed"
+  },
+  "logical_test": {
+    "device": 64,
+    "inode": 35987701,
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/tests/test_types.py"
+  },
+  "logical_types": {
+    "device": 64,
+    "inode": 35988041,
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/src/click/types.py"
+  },
+  "pass": true,
+  "required_sys_path": "/home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/lower/completed/src",
+  "schema": "namei_ext.agent_source_task.import.v2"
+}

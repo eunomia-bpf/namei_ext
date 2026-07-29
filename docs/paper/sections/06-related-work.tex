@@ -88,9 +88,10 @@ selection while leaving the rest of that ownership with the source system or
 lower filesystem.
 
 Environment and cache systems provide a second workload source, not a filesystem
-mechanism baseline. SWE-Factory-Gym, MEnvData-SWE, and SWE-rebench V2 provide
-build/test oracles for environment state and cache reuse
-policies~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}. CoFS and
+mechanism baseline. SWE-Factory-Gym also supplies the released source-task
+oracle used in the Agent workspace case. Along with MEnvData-SWE and SWE-rebench
+V2, it provides build/test oracles for environment state and cache reuse
+policies~\cite{swe_factory_repo,swe_factory_gym_dataset,menvagent_repo,swe_rebench_v2_repo}. CoFS and
 large-scale LLM data-pipeline work add contemporary evidence that build,
 container, and data-cache paths matter to real systems~\cite{cofs_fast26,llm_data_pipeline_osdi26}.
 Agentic systems such as Murakkab and SREGym show that modern agents run through

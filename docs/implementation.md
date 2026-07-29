@@ -1,6 +1,6 @@
 # Implementation
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed the latest paper
 reorganization pass and independent outer audit. Implementation artifacts below
@@ -45,8 +45,8 @@ harness. The historical 24,286-line multi-workload runner is isolated under
 `experiments/legacy_oracle/` and is not a template for new cases.
 
 Canonical case-study result roots use `namei_ext.run.v2` metadata and preserve
-`observations.jsonl`, commands, separate source and binary hash manifests, main
-and kernel commit/status files, guest and launcher stdout/stderr, kernel
+`observations.jsonl`, commands, source inputs and captured runtime artifacts,
+main and kernel commit/status files, guest and launcher stdout/stderr, kernel
 configuration and identity, and dmesg. Source identity is captured on the host
 before KVM boot, and kernel identity is validated in the guest; dirty, missing,
 or malformed formal-run provenance is a hard failure.
@@ -109,7 +109,7 @@ paper result. The scoped result review and required clean rerun are recorded in
 The forward fix binds patched and stock builds to separate source and built
 commit stamps. FxMark runs freeze both kernel identities, benchmark/FUSE
 binaries, and BPF objects before the first boot; all boots consume those
-run-local snapshots, and finalization rechecks their hashes and cross-boot
+run-local snapshots, and finalization rechecks cross-boot kernel and workload
 identity. The analyzer now derives duration and matrix shape from `run.json`,
 uses an independent workload-cardinality oracle, and requires recorded FUSE
 mount identity. Details and validation are in
@@ -127,6 +127,9 @@ entrypoints, and archived diagnostics:
   preflights.
 - `make kvm-agent-workspace-matrix` runs the Agent workspace matrix and
   preserves raw KVM/FUSE outputs.
+- `make experiment-agent-workspace-source-task-rq1` runs the released
+  SWE-Factory-Gym Click task through three fresh KVM boots with concurrent
+  completed/base views, switch, rollback, and withdrawal.
 - `make experiment-agent-workspace-rq2` runs the formal ten-pair
   `namei_ext`/FUSE lifecycle comparison.
 - `make experiment-agent-workspace-rq3` runs the formal three-boot matched
@@ -169,6 +172,18 @@ Implementation and result records are
 `docs/tmp/2026-07-29-application-file-sharing-rq1-formal-implementation.md`
 and
 `docs/tmp/2026-07-29-application-file-sharing-rq1-formal01-result-review.md`.
+
+The Agent workspace source-task workload is implemented by
+`bpf/policies/agent_workspace_source_task.bpf.c` and
+`experiments/agent_workspace_source_task/`. It runs the released
+SWE-Factory-Gym `pallets__click-2622` pytest oracle through two concurrent
+process-group views of one logical workspace, then switches, rolls back, and
+withdraws one view. The reviewed formal result completed three fresh KVM boots
+with 12/12 policy-backed task states and 6/6 direct physical source controls:
+`results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/`.
+Implementation and result records are
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-implementation.md` and
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-formal01-result-review.md`.
 
 The Agent workspace RQ3 implementation ports the official Wrapfs source at
 commit `464802c8fd1a25413b295161c9bb9a4ce7bfa33b` to the current Linux 7.1
@@ -217,22 +232,17 @@ records are
 `docs/tmp/2026-07-29-namei-ext-final-file-selection-implementation.md`.
 
 The paper direction needs admitted complete experiments, not isolated runner
-checks. Agent workspace RQ1, RQ2, and RQ3 are now complete for the admitted
-existing-object slice. The active BUILD_AND_EVALUATE work is:
+checks. Agent workspace RQ1, RQ2, and RQ3 are complete for the admitted
+existing-object slice, including the released source task. The highest-value
+remaining implementation work is:
 
-1. Add one second deep traditional correctness case. DMTCP requalification
-   found that its relevant path virtualization is process-local userspace
-   interposition rather than an existing-object VFS selection oracle, so it is
-   no longer the active candidate.
-2. The corrected FxMark directory-enumeration matrix is complete. The next RQ2
-   breadth question is cache-cold lookup or selected mdtest metadata
-   operations, not another readdir rerun.
-3. Complete the reviewed Spindle source-derived loader plan now that
-   cross-filesystem final-file selection has passed its Phase 1 dependency
-   gate. Spindle remains unrun and is not yet RQ1 evidence.
-4. Keep service configuration rotation behind a new reviewed dependency plan.
-   Its V2 protocol exhausted three failed preflights and is not paper evidence.
-5. Treat the old ccache hit/epoch/stale/corrupt matrix as supporting macro
+1. Add cache-cold lookup or selected mdtest metadata operations for RQ2 rather
+   than rerunning completed cache-hot or readdir matrices.
+2. Add a second source-derived RQ3 boundary row if it can reuse a complete RQ1
+   oracle and a real custom, stackable, or source filesystem implementation.
+3. Keep service rotation, DMTCP, and Spindle behind new source-native dependency
+   plans; their exhausted preflights are not paper evidence.
+4. Treat the old ccache hit/epoch/stale/corrupt matrix as supporting macro
    evidence. It must not replace a source-derived workload because ccache
    already owns cache lookup and validation in userspace.
 
@@ -312,7 +322,7 @@ only.
 The current BUILD_AND_EVALUATE step repaired protocol blockers found by that
 review and reran `make kvm-agent-workspace-matrix`, producing
 `results/experiments/agent-workspace-matrix/20260714T231148Z-7e0cc0e8/`.
-That root now preserves command provenance, input hashes, kernel config,
+That root now preserves command provenance, source inputs, kernel config,
 stdout/stderr logs, explicit FUSE options, matrix-specific summary labels, and
 no-hook latency controls for both the `namei_ext` and FUSE paths. It is still
 supporting implementation evidence only: the next implementation work must add

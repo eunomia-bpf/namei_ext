@@ -21,6 +21,7 @@ skill, not by this repository.
 | Current handoff pointer | `research/STATE.md` |
 | Complete experiment inventory | `docs/tmp/2026-07-28-complete-experiment-status.md` |
 | Formal application file sharing RQ1 review | `docs/tmp/2026-07-29-application-file-sharing-rq1-formal01-result-review.md` |
+| Formal Agent source-task RQ1 review | `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-formal01-result-review.md` |
 | Formal Agent workspace RQ3 review | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 | Formal corrected FxMark readdir review | `docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md` |
 

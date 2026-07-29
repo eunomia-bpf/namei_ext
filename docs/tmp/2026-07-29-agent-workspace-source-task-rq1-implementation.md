@@ -134,8 +134,10 @@ boot passes.
 
 ## Remaining Work
 
-The predeclared three-fresh-boot formal run is authorized. Its result requires
-a fresh independent review before it can enter the paper.
+The predeclared three-fresh-boot formal run completed, and a fresh independent
+review found the result valid and the tested W2 hypothesis supported. The
+source-task result may enter the paper within the reviewed existing-object
+claim boundary.
 
 Attempt 1 is recorded in
 `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-1.md`.
@@ -146,3 +148,5 @@ Attempt 3 is recorded in
 `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-3.md`.
 Its independent evidence review is recorded in
 `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-03-review.md`.
+The formal result review is recorded in
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-formal01-result-review.md`.

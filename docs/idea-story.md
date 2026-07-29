@@ -1,6 +1,6 @@
 # Idea And Hypothesis
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 The full historical version of this file, including the orchestrator process
 tables (Claim Evolution, Narrative Evolution, Hypothesis Frontier), is archived
@@ -97,7 +97,14 @@ Evidence program:
   confidence interval above one. At four shared-directory workers,
   `SELECT/FUSE` was `1.018 [0.907, 1.135]`; the frozen overall verdict is
   `mixed`, exposing the shared-directory contention boundary.
-- Agent workspace RQ1/RQ2: formal-v3
+- Agent workspace RQ1 source task:
+  `results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/`
+  completed three fresh KVM boots, 12/12 policy-backed task states, and 6/6
+  physical source controls. Two concurrent process groups selected distinct
+  completed/base Click roots at one pathname; the released task observed 40/40
+  versus 39/40 tests. Switch and rollback changed object identity and task
+  outcome, and withdrawal hid the workspace.
+- Agent workspace RQ2: formal-v3
   (`results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/`)
   completed 20 fresh KVM boots, 20,000/20,000 lifecycle samples, and 960/960
   required oracles. The feature-equivalent FUSE/namei_ext paired lifecycle
@@ -139,6 +146,7 @@ Evidence program:
 | 2026-07-15 | Story frozen after BOOTSTRAP step 0005: `sched_ext`-style VFS name-resolution extension point; RQ1 expressiveness, RQ2 cost versus feature-equivalent FUSE, RQ3 boundary versus custom/stackable FS; Agent workspace and traditional build/cache as the two primary workload families. |
 | 2026-07-25 | Repository cleanup: retired C1–C8 claim-verdict machinery deleted from the Make control plane; process docs archived to `docs/tmp/2026-07-25-archived-process-docs/`; this file slimmed to story, RQs, evidence, rejected paths, and guardrails (full history in the archive). Scientific story unchanged. |
 | 2026-07-25 | Use cases grounded in industrial demand evidence (`docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`): six domains re-implemented lookup-time object selection at wrong layers. Service/config rotation promoted to the third use case; build/cache repositioned as access-point view governance; remote filesystem cache recorded as motivation evidence. |
+| 2026-07-29 | The headline Agent workspace RQ1 case was deepened with released SWE-Factory-Gym task `pallets__click-2622`: three fresh KVM boots passed 12/12 policy-backed task states and 6/6 physical source controls across base/completed, concurrent, switch, rollback, and withdrawal checks. The claim remains existing-object workspace view selection, not complete AgentFS or end-to-end agent execution. |
 
 ## Guardrails
 

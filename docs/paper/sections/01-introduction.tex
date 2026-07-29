@@ -77,7 +77,10 @@ contained than broader filesystem ownership. RQ1 asks whether KVM workloads pass
 the same correctness conditions while preserving lower-filesystem semantics.
 Reviewed formal KVM runs pass fixed oracles for Agent workspaces,
 application-sharing grants, concurrent Bazel action views, and toolchain
-environment selection. RQ2 compares
+environment selection. The headline Agent result includes three fresh boots of
+a released Click source task: concurrent base and completed views produce
+39/40 and 40/40 tests, and switch/rollback changes both the selected object and
+the task outcome. RQ2 compares
 the same policies with feature-equivalent FUSE: the matched Agent lifecycle is
 11.32\(\times\) [11.24, 11.64], and cache-hot FxMark \code{SELECT} reaches
 1.052--1.088\(\times\) cached-FUSE throughput across MRPL, MRPM, and MRPH.

@@ -1,0 +1,7 @@
+{
+  "schema": "namei_ext.agent_workspace_source_task_rq1.summary.v1",
+  "boots": 3,
+  "pytest_runs": 18,
+  "concurrent_pairs": 3,
+  "visibility_states": 12
+}

@@ -1,0 +1,5 @@
+.......................................F                                 [100%]
+- generated xml file: /home/yunwei37/workspace/namei_ext/results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/boots/repetition-03/physical-base-junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_types.py::test_choice_get_invalid_choice_message - Attribut...
+1 failed, 39 passed in 0.20s

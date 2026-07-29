@@ -40,6 +40,8 @@ comparison rows.
 The first source family is agent/workspace state. AgentFS is the primary source
 because its public implementation exposes workspace lifecycle traces
 from which path-selection and visibility oracles can be extracted~\cite{agentfs_repo}.
+SWE-Factory-Gym supplies a released Click source task whose fail-to-pass test
+can run through those workspace views~\cite{swe_factory_repo,swe_factory_gym_dataset}.
 BranchFS, Sandlock, and YoloFS provide neighboring branch, sandbox, staging,
 and stackable-filesystem context rather than separate evaluation
 workloads~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
@@ -123,7 +125,9 @@ evaluation in Section~\ref{sec:evaluation}.
 
 The evaluated RQ1 set contains four non-overlapping workflows. The formal
 Agent workspace case exercises branch-visible staged/base selection, hides,
-readdir coherence, and lower-tree mutations. Formal application-sharing and
+readdir coherence, and lower-tree mutations. It also runs a released Click
+source task through concurrent base/completed views, switch, rollback, and
+withdrawal. Formal application-sharing and
 build-action runs exercise per-application grant/revoke and two
 concurrent real Bazel actions with distinct declared-input roots and an
 undeclared-input failure. The formal toolchain case selects two existing
