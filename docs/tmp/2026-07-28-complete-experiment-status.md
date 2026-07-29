@@ -120,10 +120,12 @@ authorized without a new reviewed dependency plan.
 Source behavior: DMTCP path virtualization translates a pathname remembered
 before checkpoint to the restored location after migration.
 
-Status: DMTCP source behavior and host preflight machinery are identified, but
-the complete modified-kernel KVM oracle has not run. This is the highest-value
-next traditional correctness case because it adds a different application
-lifecycle without duplicating W1-W3.
+Status: the DMTCP-derived application, restart-path plugin, Make-owned KVM
+runner, analyzer, and source contracts are implemented. The frozen protocol
+exhausted three KVM attempts on a hidden DMTCP assertion, a guest UID mismatch,
+and a Make per-line-shell UID/GID propagation error. The final harness repair
+passes source tests, but the closed protocol does not authorize a fourth run.
+There is no completed checkpoint/restore paper result.
 
 ### W6 HPC File Staging
 
@@ -258,10 +260,12 @@ the successful W3 correctness preflight.
 ### Standard-Benchmark Breadth Still Missing
 
 The paper-level RQ2 evidence is currently strong for cache-hot FxMark MRPL,
-MRPM, and MRPH and the Agent workspace lifecycle. The planned cache-cold
-FxMark operations,
-directory enumeration, mdtest/IOR metadata breadth, and Filebench mixed
-profiles have not produced formal matrices. These are the main breadth gaps.
+MRPM, and MRPH and the Agent workspace lifecycle. A corrected FxMark
+`MRDL`/`MRDM` private/shared-directory suite is now implemented with exact
+logical-name, per-entry BPF attribution, offset-correct FUSE, five-boot
+preflight, 50-boot formal, and analyzer gates; its local contracts pass, but it
+has not run in KVM. Cache-cold operations, mdtest/IOR metadata breadth, and
+Filebench mixed profiles also have not produced formal matrices.
 
 ## RQ3: Ownership And Fault Containment
 

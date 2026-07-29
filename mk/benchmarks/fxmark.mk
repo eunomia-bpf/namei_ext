@@ -104,7 +104,9 @@ printf '%s := %s\n' \
 $(call NAMEI_EXT_MULTI_BOOT_SEAL_GUEST_MAKEFILE,$$guest_makefile,21)
 endef
 
-.PHONY: fxmark-source fxmark-rq2-build fxmark-kernel-pair \
+.PHONY: fxmark-source fxmark-rq2-build fxmark-readdir-source-contract \
+	fxmark-fuse-readdir-contract \
+	fxmark-kernel-pair \
 	kvm-fxmark-rq2-preflight kvm-fxmark-rq2 \
 	fxmark-rq2-finalize fxmark-rq2-report experiment-fxmark-rq2 \
 	__fxmark_rq2_guest fxmark-rq2-clean
@@ -117,6 +119,86 @@ fxmark-rq2-build: $(FXMARK_SOURCE_STAMP) runner
 		BUILD_ROOT="$(BUILD_ROOT)" \
 		OUTPUT="$(FXMARK_OUTPUT)" \
 		FXMARK_SOURCE_ROOT="$(FXMARK_SOURCE_ROOT)" all
+
+fxmark-readdir-source-contract: fxmark-rq2-build
+	rm -rf "$(FXMARK_OUTPUT)/readdir-source-contract"
+	install -d "$(FXMARK_OUTPUT)/readdir-source-contract/MRDL" \
+		"$(FXMARK_OUTPUT)/readdir-source-contract/MRDM"
+	timeout 60 "$(FXMARK_BINARY)" --type MRDL --ncore 1 --nbg 0 \
+		--duration 1 --directio 0 \
+		--root "$(FXMARK_OUTPUT)/readdir-source-contract/MRDL" \
+		--profbegin /bin/true --profend /bin/true \
+		>"$(FXMARK_OUTPUT)/readdir-source-contract/MRDL.stdout"
+	timeout 60 "$(FXMARK_BINARY)" --type MRDM --ncore 1 --nbg 0 \
+		--duration 1 --directio 0 \
+		--root "$(FXMARK_OUTPUT)/readdir-source-contract/MRDM" \
+		--profbegin /bin/true --profend /bin/true \
+		>"$(FXMARK_OUTPUT)/readdir-source-contract/MRDM.stdout"
+	test "$$(find "$(FXMARK_OUTPUT)/readdir-source-contract/MRDL" \
+		-type f | wc -l)" = "8192"
+	test "$$(find "$(FXMARK_OUTPUT)/readdir-source-contract/MRDL" \
+		-type d | wc -l)" = "2"
+	test -f "$(FXMARK_OUTPUT)/readdir-source-contract/MRDL/0/n_dir_rd-0-0.dat"
+	test -f "$(FXMARK_OUTPUT)/readdir-source-contract/MRDL/0/n_dir_rd-0-8191.dat"
+	test "$$(find "$(FXMARK_OUTPUT)/readdir-source-contract/MRDM" \
+		-type f | wc -l)" = "8192"
+	test "$$(find "$(FXMARK_OUTPUT)/readdir-source-contract/MRDM" \
+		-type d | wc -l)" = "1"
+	test -f "$(FXMARK_OUTPUT)/readdir-source-contract/MRDM/n_shdir_rd-0-0.dat"
+	test -f "$(FXMARK_OUTPUT)/readdir-source-contract/MRDM/n_shdir_rd-0-8191.dat"
+	awk 'NR == 2 { if ($$3 <= 16388) exit 1 }' \
+		"$(FXMARK_OUTPUT)/readdir-source-contract/MRDL.stdout"
+	awk 'NR == 2 { if ($$3 <= 16388) exit 1 }' \
+		"$(FXMARK_OUTPUT)/readdir-source-contract/MRDM.stdout"
+	grep -F 'if (rc || !result)' "$(FXMARK_SOURCE_ROOT)/src/MRDL.c"
+	grep -F 'if (rc || !result)' "$(FXMARK_SOURCE_ROOT)/src/MRDM.c"
+	grep -F '++iter;' "$(FXMARK_SOURCE_ROOT)/src/MRDL.c"
+	grep -F '++iter;' "$(FXMARK_SOURCE_ROOT)/src/MRDM.c"
+
+fxmark-fuse-readdir-contract: fxmark-rq2-build
+	command -v fusermount >/dev/null
+	root="$(FXMARK_OUTPUT)/fuse-readdir-contract"; \
+	rm -rf "$$root"; \
+	install -d "$$root/lower" "$$root/view"; \
+	for index in $$(seq 0 8191); do \
+		: >"$$root/lower/n_shdir_rd-0-$$index.dat"; \
+	done; \
+	fuse_pid=; \
+	control="/tmp/namei-ext-fxmark-contract-$$$$.sock"; \
+	cleanup() { \
+		if mountpoint -q "$$root/view"; then \
+			fusermount -u "$$root/view" || true; \
+		fi; \
+		if test -n "$$fuse_pid"; then \
+			kill "$$fuse_pid" 2>/dev/null || true; \
+			wait "$$fuse_pid" 2>/dev/null || true; \
+		fi; \
+		rm -f "$$control"; \
+	}; \
+	trap cleanup EXIT; \
+	"$(FXMARK_FUSE)" "$$root/lower" "$$root/view" "$$root/stats.json" \
+		"$$control" \
+		>"$$root/fuse.stdout" 2>"$$root/fuse.stderr" & \
+	fuse_pid=$$!; \
+	mounted=false; \
+	for attempt in $$(seq 1 200); do \
+		if mountpoint -q "$$root/view"; then mounted=true; break; fi; \
+		kill -0 "$$fuse_pid"; \
+		sleep 0.05; \
+	done; \
+	test "$$mounted" = true; \
+	"$(FXMARK_FUSE)" --phase "$$control" measured; \
+	test "$$(find "$$root/view" -mindepth 1 -maxdepth 1 -type f | wc -l)" \
+		= 8192; \
+	test -f "$$root/view/n_shdir_rd-0-0.dat"; \
+	test -f "$$root/view/n_shdir_rd-0-8191.dat"; \
+	"$(FXMARK_FUSE)" --phase "$$control" after; \
+	fusermount -u "$$root/view"; \
+	wait "$$fuse_pid"; \
+	fuse_pid=; \
+	jq -e '.fuse_status == 0 and .measured_opendir > 0 and .measured_readdir > 1 and .measured_releasedir > 0 and .phase_measured_acks == 1 and .phase_after_acks == 1 and .phase_invalid_commands == 0' \
+		"$$root/stats.json" >/dev/null; \
+	trap - EXIT
 
 fxmark-kernel-pair: kernel kernel-stock kernel-provenance \
 		kernel-stock-provenance $(FXMARK_PATCHED_KERNEL_BTF) \
@@ -167,7 +249,8 @@ $(FXMARK_ARCHIVE): | $(FXMARK_CACHE_DIR)
 	mv -f "$@.tmp" "$@"
 
 $(FXMARK_SOURCE_STAMP): $(FXMARK_ARCHIVE) \
-		$(ROOT_DIR)/bench/fxmark/fxmark-correctness.patch
+		$(ROOT_DIR)/bench/fxmark/fxmark-correctness.patch \
+		$(ROOT_DIR)/bench/fxmark/fxmark-readdir-correctness.patch
 	rm -rf "$(FXMARK_SOURCE_ROOT)"
 	install -d "$(FXMARK_SOURCE_ROOT)"
 	printf '%s  %s\n' "$(FXMARK_ARCHIVE_SHA256)" "$(FXMARK_ARCHIVE)" | sha256sum -c -
@@ -176,7 +259,14 @@ $(FXMARK_SOURCE_STAMP): $(FXMARK_ARCHIVE) \
 	test -f "$(FXMARK_SOURCE_ROOT)/src/MRPL.c"
 	test -f "$(FXMARK_SOURCE_ROOT)/src/MRPM.c"
 	test -f "$(FXMARK_SOURCE_ROOT)/src/MRPH.c"
+	test -f "$(FXMARK_SOURCE_ROOT)/src/MRDL.c"
+	test -f "$(FXMARK_SOURCE_ROOT)/src/MRDM.c"
 	patch --fuzz=0 -d "$(FXMARK_SOURCE_ROOT)" -p1 <"$(ROOT_DIR)/bench/fxmark/fxmark-correctness.patch"
+	patch --fuzz=0 -d "$(FXMARK_SOURCE_ROOT)" -p1 <"$(ROOT_DIR)/bench/fxmark/fxmark-readdir-correctness.patch"
+	test "$$(grep -F '#define FILES_PER_WORKER 8192' "$(FXMARK_SOURCE_ROOT)/src/MRDL.c" | wc -l)" = 1
+	test "$$(grep -F '#define FILES_PER_WORKER 8192' "$(FXMARK_SOURCE_ROOT)/src/MRDM.c" | wc -l)" = 1
+	test "$$(grep -F 'if (rc || !result)' "$(FXMARK_SOURCE_ROOT)/src/MRDL.c" | wc -l)" = 1
+	test "$$(grep -F 'if (rc || !result)' "$(FXMARK_SOURCE_ROOT)/src/MRDM.c" | wc -l)" = 1
 	printf '%s\n' "$(FXMARK_COMMIT)" >"$@"
 
 kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf

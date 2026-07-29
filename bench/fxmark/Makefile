@@ -79,7 +79,7 @@ $(FXMARK_CELL): fxmark_cell.c $(HARNESS_LIBRARY) $(LIBBPF_A) | $(OUTPUT)
 		-lelf -lz -lm
 
 $(FXMARK_FUSE): fxmark_fuse.c | $(OUTPUT)
-	$(CC) -g -O2 -Wall -Wextra $$(pkg-config --cflags fuse) \
+	$(CC) -g -O2 -Wall -Wextra -pthread $$(pkg-config --cflags fuse) \
 		-o "$@" "$<" $$(pkg-config --libs fuse)
 
 clean:

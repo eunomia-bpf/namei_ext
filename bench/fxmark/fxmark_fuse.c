@@ -8,8 +8,10 @@
 #include <fcntl.h>
 #include <fuse.h>
 #include <limits.h>
+#include <poll.h>
+#include <pthread.h>
 #include <sched.h>
-#include <signal.h>
+#include <stdatomic.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -17,9 +19,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 enum request_counter {
@@ -46,24 +50,188 @@ enum request_phase {
 
 static char lower_root[PATH_MAX];
 static char stats_path[PATH_MAX];
-static volatile sig_atomic_t current_phase = PHASE_SETUP;
+static char control_path[sizeof(((struct sockaddr_un *)0)->sun_path)];
+static _Atomic int current_phase = PHASE_SETUP;
+static _Atomic bool control_stop;
+static int control_fd = -1;
+static pthread_t control_thread;
+static unsigned long long phase_measured_acks;
+static unsigned long long phase_after_acks;
+static unsigned long long phase_invalid_commands;
 static unsigned long long counters[PHASE_MAX][REQUEST_MAX];
 
-static void set_measured(int signo)
+static int read_byte(int fd, char *value)
 {
-	(void)signo;
-	current_phase = PHASE_MEASURED;
+	for (;;) {
+		ssize_t received = read(fd, value, 1);
+
+		if (received == 1)
+			return 0;
+		if (!received)
+			return -EPIPE;
+		if (errno != EINTR)
+			return -errno;
+	}
 }
 
-static void set_after(int signo)
+static int write_byte(int fd, char value)
 {
-	(void)signo;
-	current_phase = PHASE_AFTER;
+	for (;;) {
+		ssize_t written = send(fd, &value, 1, MSG_NOSIGNAL);
+
+		if (written == 1)
+			return 0;
+		if (!written)
+			return -EIO;
+		if (errno != EINTR)
+			return -errno;
+	}
+}
+
+static void *serve_control(void *unused)
+{
+	(void)unused;
+	while (!atomic_load_explicit(&control_stop, memory_order_acquire)) {
+		struct pollfd descriptor = {
+			.fd = control_fd,
+			.events = POLLIN,
+		};
+		int ready = poll(&descriptor, 1, 100);
+		int client;
+		char command;
+		char reply = 'E';
+
+		if (ready < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		if (!ready)
+			continue;
+		client = accept4(control_fd, NULL, NULL, SOCK_CLOEXEC);
+		if (client < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		if (!read_byte(client, &command)) {
+			int phase = atomic_load_explicit(&current_phase,
+							memory_order_acquire);
+
+			if (command == 'M' && phase == PHASE_SETUP) {
+				atomic_store_explicit(&current_phase, PHASE_MEASURED,
+						     memory_order_release);
+				phase_measured_acks++;
+				reply = 'O';
+			} else if (command == 'A' && phase == PHASE_MEASURED) {
+				atomic_store_explicit(&current_phase, PHASE_AFTER,
+						     memory_order_release);
+				phase_after_acks++;
+				reply = 'O';
+			} else {
+				phase_invalid_commands++;
+			}
+		}
+		write_byte(client, reply);
+		close(client);
+	}
+	return NULL;
+}
+
+static int start_control(const char *path)
+{
+	struct sockaddr_un address = {
+		.sun_family = AF_UNIX,
+	};
+	int ret;
+
+	if (snprintf(control_path, sizeof(control_path), "%s", path) >=
+	    (int)sizeof(control_path))
+		return -ENAMETOOLONG;
+	if (snprintf(address.sun_path, sizeof(address.sun_path), "%s", path) >=
+	    (int)sizeof(address.sun_path))
+		return -ENAMETOOLONG;
+	control_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (control_fd < 0)
+		return -errno;
+	if (unlink(path) && errno != ENOENT) {
+		ret = -errno;
+		goto error;
+	}
+	if (bind(control_fd, (struct sockaddr *)&address, sizeof(address)) ||
+	    listen(control_fd, 4)) {
+		ret = -errno;
+		goto error;
+	}
+	atomic_store_explicit(&control_stop, false, memory_order_release);
+	ret = pthread_create(&control_thread, NULL, serve_control, NULL);
+	if (ret) {
+		ret = -ret;
+		goto error;
+	}
+	return 0;
+
+error:
+	close(control_fd);
+	control_fd = -1;
+	unlink(path);
+	return ret;
+}
+
+static int stop_control(void)
+{
+	int ret;
+
+	atomic_store_explicit(&control_stop, true, memory_order_release);
+	ret = pthread_join(control_thread, NULL);
+	if (close(control_fd) && !ret)
+		ret = errno;
+	control_fd = -1;
+	if (unlink(control_path) && errno != ENOENT && !ret)
+		ret = errno;
+	return ret ? -ret : 0;
+}
+
+static int send_phase(const char *path, const char *phase)
+{
+	struct sockaddr_un address = {
+		.sun_family = AF_UNIX,
+	};
+	char command;
+	char reply;
+	int fd;
+	int ret;
+
+	if (!strcmp(phase, "measured"))
+		command = 'M';
+	else if (!strcmp(phase, "after"))
+		command = 'A';
+	else
+		return -EINVAL;
+	if (snprintf(address.sun_path, sizeof(address.sun_path), "%s", path) >=
+	    (int)sizeof(address.sun_path))
+		return -ENAMETOOLONG;
+	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return -errno;
+	if (connect(fd, (struct sockaddr *)&address, sizeof(address))) {
+		ret = -errno;
+		goto out;
+	}
+	ret = write_byte(fd, command);
+	if (!ret)
+		ret = read_byte(fd, &reply);
+	if (!ret && reply != 'O')
+		ret = -EPROTO;
+out:
+	if (close(fd) && !ret)
+		ret = -errno;
+	return ret;
 }
 
 static void count_request(enum request_counter counter)
 {
-	int phase = current_phase;
+	int phase = atomic_load_explicit(&current_phase, memory_order_acquire);
 
 	if (phase < PHASE_SETUP || phase >= PHASE_MAX)
 		phase = PHASE_AFTER;
@@ -216,19 +384,30 @@ static int fx_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	struct dirent *entry;
 
 	(void)path;
-	(void)offset;
 	count_request(REQUEST_READDIR);
-	errno = 0;
-	while ((entry = readdir(dir))) {
+	if (offset)
+		seekdir(dir, offset);
+	for (;;) {
 		struct stat st = {
-			.st_ino = entry->d_ino,
-			.st_mode = entry->d_type << 12,
+			.st_ino = 0,
+			.st_mode = 0,
 		};
+		off_t next;
 
-		if (filler(buf, entry->d_name, &st, 0))
+		errno = 0;
+		entry = readdir(dir);
+		if (!entry)
+			return errno ? -errno : 0;
+		st.st_ino = entry->d_ino;
+		st.st_mode = entry->d_type << 12;
+		errno = 0;
+		next = telldir(dir);
+		if (next < 0)
+			return errno ? -errno : -EIO;
+		if (filler(buf, entry->d_name, &st, next))
 			break;
 	}
-	return errno ? -errno : 0;
+	return 0;
 }
 
 static int fx_releasedir(const char *path, struct fuse_file_info *fi)
@@ -306,14 +485,25 @@ static int write_stats(int fuse_status)
 		fputc('}', out);
 	}
 	fprintf(out,
-		",\"setup_total\":%llu,\"measured_total\":%llu,"
-		"\"after_total\":%llu"
-		",\"user_ns\":%llu,\"system_ns\":%llu,"
-		"\"voluntary_context_switches\":%ld,"
-		"\"involuntary_context_switches\":%ld}\n",
-		phase_totals[PHASE_SETUP], phase_totals[PHASE_MEASURED],
-		phase_totals[PHASE_AFTER],
-		timeval_ns(usage.ru_utime), timeval_ns(usage.ru_stime),
+			",\"setup_total\":%llu,\"measured_total\":%llu,"
+			"\"after_total\":%llu,"
+			"\"measured_opendir\":%llu,"
+			"\"measured_readdir\":%llu,"
+			"\"measured_releasedir\":%llu"
+			",\"phase_measured_acks\":%llu,"
+			"\"phase_after_acks\":%llu,"
+			"\"phase_invalid_commands\":%llu"
+			",\"user_ns\":%llu,\"system_ns\":%llu,"
+			"\"voluntary_context_switches\":%ld,"
+			"\"involuntary_context_switches\":%ld}\n",
+			phase_totals[PHASE_SETUP], phase_totals[PHASE_MEASURED],
+			phase_totals[PHASE_AFTER],
+			counters[PHASE_MEASURED][REQUEST_OPENDIR],
+			counters[PHASE_MEASURED][REQUEST_READDIR],
+			counters[PHASE_MEASURED][REQUEST_RELEASEDIR],
+			phase_measured_acks, phase_after_acks,
+			phase_invalid_commands,
+			timeval_ns(usage.ru_utime), timeval_ns(usage.ru_stime),
 		usage.ru_nvcsw, usage.ru_nivcsw);
 	if (fclose(out))
 		return -errno;
@@ -324,12 +514,24 @@ int main(int argc, char **argv)
 {
 	char *fuse_argv[6];
 	cpu_set_t cpus;
-	struct sigaction action = {};
+	bool control_started = false;
 	int fuse_status;
+	int control_status;
 	int i;
 
-	if (argc != 4) {
-		fprintf(stderr, "usage: %s LOWER_ROOT MOUNTPOINT STATS_JSON\n",
+	if (argc == 4 && !strcmp(argv[1], "--phase")) {
+		int ret = send_phase(argv[2], argv[3]);
+
+		if (ret) {
+			errno = -ret;
+			perror("send phase");
+			return 1;
+		}
+		return 0;
+	}
+	if (argc != 5) {
+		fprintf(stderr,
+			"usage: %s LOWER_ROOT MOUNTPOINT STATS_JSON CONTROL_SOCKET\n",
 			argv[0]);
 		return 2;
 	}
@@ -348,18 +550,13 @@ int main(int argc, char **argv)
 		perror("sched_setaffinity");
 		return 1;
 	}
-	action.sa_handler = set_measured;
-	action.sa_flags = SA_RESTART;
-	sigemptyset(&action.sa_mask);
-	if (sigaction(SIGUSR1, &action, NULL)) {
-		perror("sigaction SIGUSR1");
+	control_status = start_control(argv[4]);
+	if (control_status) {
+		errno = -control_status;
+		perror("start control");
 		return 1;
 	}
-	action.sa_handler = set_after;
-	if (sigaction(SIGUSR2, &action, NULL)) {
-		perror("sigaction SIGUSR2");
-		return 1;
-	}
+	control_started = true;
 
 	fuse_argv[0] = argv[0];
 	fuse_argv[1] = "-f";
@@ -370,8 +567,14 @@ int main(int argc, char **argv)
 	fuse_argv[4] = argv[2];
 	fuse_argv[5] = NULL;
 	fuse_status = fuse_main(5, fuse_argv, &fx_ops, NULL);
+	control_status = control_started ? stop_control() : 0;
 	if (write_stats(fuse_status)) {
 		perror("write_stats");
+		return 1;
+	}
+	if (control_status) {
+		errno = -control_status;
+		perror("stop control");
 		return 1;
 	}
 	return fuse_status ? 1 : 0;

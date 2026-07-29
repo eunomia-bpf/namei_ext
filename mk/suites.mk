@@ -13,7 +13,8 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-agent-workspace-rq2-preflight \
 	kvm-checkpoint-restore-preflight \
 	kvm-fxmark-rq2-preflight \
-	kvm-fxmark-fast-path-preflight
+	kvm-fxmark-fast-path-preflight \
+	kvm-fxmark-readdir-preflight
 
 NAMEI_EXT_BLOCKED_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-service-config-rotation-preflight
@@ -35,10 +36,14 @@ NAMEI_EXT_BLOCKED_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 NAMEI_EXT_FORMAL_PERFORMANCE_TARGETS := \
 	experiment-fxmark-rq2 \
 	experiment-fxmark-fast-path
+# The readdir entrypoints are clean-tree gated but remain outside the aggregate
+# target list until their independent KVM preflight passes.
 NAMEI_EXT_FORMAL_PERFORMANCE_ENTRYPOINTS := \
 	$(NAMEI_EXT_FORMAL_PERFORMANCE_TARGETS) \
 	kvm-fxmark-rq2 \
-	kvm-fxmark-fast-path
+	kvm-fxmark-fast-path \
+	experiment-fxmark-readdir \
+	kvm-fxmark-readdir
 
 NAMEI_EXT_HISTORICAL_TARGETS := legacy-build-cache
 

@@ -18,6 +18,7 @@ include $(ROOT_DIR)/configs/kvm/x86_64.mk
 include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
+include $(ROOT_DIR)/configs/benchmarks/fxmark_readdir.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
 include $(ROOT_DIR)/configs/benchmarks/build_action_rq2.mk
 include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
@@ -39,6 +40,7 @@ include $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
 include $(ROOT_DIR)/mk/experiments/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
+include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 
 .DEFAULT_GOAL := phase1
 
@@ -52,6 +54,8 @@ include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
 	fxmark-fast-path-report experiment-fxmark-fast-path \
+	kvm-fxmark-readdir-preflight kvm-fxmark-readdir \
+	fxmark-readdir-report experiment-fxmark-readdir \
 	kvm-service-config-rotation-preflight kvm-service-config-rotation \
 	service-config-rotation-report experiment-service-config-rotation \
 	experiments current-experiment-gates formal-case-studies formal-performance \
@@ -194,6 +198,10 @@ help:
 	@printf '%s\n' '                       run one host-pinned stock/unattached paired FxMark block'
 	@printf '%s\n' '  make experiment-fxmark-fast-path'
 	@printf '%s\n' '                       run the frozen 30-block unused-fast-path confirmation and report'
+	@printf '%s\n' '  make kvm-fxmark-readdir-preflight'
+	@printf '%s\n' '                       run one host-pinned corrected MRDL/MRDM five-condition block'
+	@printf '%s\n' '  make experiment-fxmark-readdir'
+	@printf '%s\n' '                       run the frozen corrected directory-enumeration matrix and report'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Historical experiment reproduction:'
 	@printf '%s\n' '  make legacy-build-cache'
