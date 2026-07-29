@@ -33,7 +33,7 @@ mk/multi_boot.mk        shared multi-boot mechanics and host provenance
 analysis/               derived statistics and figures from raw observations
 configs/publication/    explicit index of published formal result bundles
 workloads/legacy/       evidence using the superseded workload numbering
-results/                raw observations, logs, hashes, and run metadata
+results/                raw observations, logs, and run metadata
 ```
 
 `experiments/legacy_oracle/` retains the historical multi-workload ccache
@@ -53,6 +53,9 @@ make formal-performance
 make kvm-agent-workspace-matrix
 make experiment-agent-workspace-rq2
 make experiment-agent-workspace-rq3
+make experiment-application-file-sharing-rq1
+make experiment-build-action-sandboxing-rq1
+make experiment-toolchain-environment
 make kvm-application-file-sharing-preflight
 make kvm-build-action-sandboxing-preflight
 make kvm-service-config-rotation-preflight
@@ -66,15 +69,15 @@ make kvm-fxmark-rq2-preflight
 kernel objects, KVM boot, policy load/attach, and functional behavior. Host-only
 execution does not count as Phase 1 validation.
 
-`make experiments` and `make current-experiment-gates` run the current
-development gates: the Agent workspace matrix and the implemented Application
-File Sharing and Build Action Sandboxing preflights. Paper-facing collection
-uses `make formal-case-studies` and `make formal-performance` instead. Service
-Configuration Rotation remains registered as a blocked suite so its failed
-dependency preflights stay reproducible, but it is excluded from current and
-formal aggregates. Formal case studies currently include the matched Agent
-workspace RQ2 namei_ext/FUSE lifecycle and RQ3 namei_ext/Wrapfs-derived
-ownership matrices. The historical Redis/nginx ccache matrix remains
+`make experiments` and `make current-experiment-gates` run development gates.
+Paper-facing collection uses `make formal-case-studies` and
+`make formal-performance`. Formal RQ1 case studies currently cover Agent
+workspace lifecycle, application file sharing, Bazel action views, and
+toolchain selection. Formal RQ2 and RQ3 case studies include the matched Agent
+workspace namei_ext/FUSE lifecycle and namei_ext/Wrapfs-derived ownership
+matrices. Service Configuration Rotation remains registered as a blocked suite
+so its failed dependency preflights stay reproducible, but it is excluded from
+current and formal aggregates. The historical Redis/nginx ccache matrix remains
 reproducible through `make legacy-build-cache`; it is not a current-suite
 dependency and must not define the structure of new experiments.
 

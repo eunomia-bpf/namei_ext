@@ -33,9 +33,10 @@ orchestration belong to the orchestrator skill, not to this repository.
   evaluates the verifier-bounded, fail-closed ownership boundary versus custom
   or stackable filesystem ownership.
 - The source-derived portfolio contains seven non-overlapping industrial
-  workflows. W1 application file sharing, W2 Agent workspaces, and W3 build
-  action sandboxing currently have KVM correctness evidence. W4 remains behind
-  a closed dependency protocol; W5--W7 are not yet executed.
+  workflows. W1 application file sharing, W2 Agent workspaces, W3 build action
+  sandboxing, and W7 toolchain/environment selection have reviewed formal KVM
+  correctness evidence. W4--W6 remain motivating or dependency-limited rows,
+  not completed paper evidence.
 - Do not reopen table-only, materialized-view, or scattered-baseline side
   experiments as the novelty line.
 
@@ -45,6 +46,15 @@ orchestration belong to the orchestrator skill, not to this repository.
 - Agent workspace RQ1: three terminal reviewed KVM runs under
   `results/experiments/agent-workspace-matrix/20260722T020120Z-rq1run1/`,
   `20260722T020210Z-rq1run2/`, and `20260722T020245Z-rq1run3/`.
+- Application file sharing RQ1: three fresh KVM boots, 15/15 lifecycle states,
+  39/39 setup/lifecycle/cleanup cases, and preserved lower objects under
+  `results/experiments/application-file-sharing-rq1/20260729T1824Z-w1-formal01/`.
+- Bazel build action RQ1: three fresh KVM boots, six completed Bazel actions,
+  six logical/lower object matches, and 12 preserved lower objects under
+  `results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/`.
+- Toolchain/environment RQ1: three fresh KVM boots, 18/18 physical or logical
+  states, and 24/24 Python probes under
+  `results/experiments/toolchain-environment/20260729T171551Z-toolchain-formal01/`.
 - Agent workspace RQ2: 20 fresh KVM boots and 960/960 required oracles under
   `results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/`;
   paired FUSE/namei_ext lifecycle ratio `11.32x [11.24, 11.64]`.
@@ -66,10 +76,10 @@ orchestration belong to the orchestrator skill, not to this repository.
   (hot cache + trace-derived state row) and
   `results/phase1/20260724T-epoch-switch-release-v2/` (real compile epoch
   switch). Observed FUSE/namei_ext compile-time ratio is about 2.1x.
-- Open evidence gaps: a second deep traditional correctness case, cache-cold
-  lookup or broader metadata operations, and a second source-derived RQ3
-  boundary row. The ccache matrix is supporting macro evidence, not a headline
-  workload.
+- Open evidence gaps: deeper source-system integration and concurrent
+  state-transition coverage for RQ1, cache-cold lookup or broader metadata
+  operations for RQ2, and a second source-derived RQ3 boundary row. The ccache
+  matrix is supporting macro evidence, not a headline workload.
 
 Complete current inventory:
 `docs/tmp/2026-07-28-complete-experiment-status.md`.

@@ -60,23 +60,30 @@ the source system or lower filesystem.
 \hline
 Workload & Source oracle & \namei evidence & Result evidence \\
 \hline
-Application file sharing (supporting preflight) & The XDG Documents portal grant state selects one
-existing host document for one application and hides it from another. &
-\namei selects or hides the document by application and grant state. & One KVM
-preflight passed grant, revoke, cross-application isolation, lookup, readdir,
-open, stat, and lower-object checks with zero failures. \\
+Application file sharing (supporting)~\cite{xdg_documents_portal} & The XDG
+Documents portal grant state selects one existing host document for one
+application and hides it from another. & \namei selects or hides the document
+by application and grant state. & Three fresh KVM boots passed 15/15 states:
+3 granted views, 12 hidden views, exact logical/lower object identity, and
+unchanged lower and unrelated objects. \\
 Agent workspace lifecycle~\cite{agentfs_repo} & AgentFS-derived branch state
 selects staged or base objects and hides whiteouts. The oracle checks tree
 state, symlinks, lookup/readdir coherence, and lower mutations. & \namei
 selects or hides existing lower objects; the lower filesystem retains
 permissions, writes, metadata, and file data. & 3/3 KVM runs passed 1,176
 records each with zero failures and clean dmesg. \\
-Build action sandboxing (supporting preflight)~\cite{bazel_sandboxing} & Two concurrent Bazel actions
+Build action sandboxing (supporting)~\cite{bazel_sandboxing} & Two concurrent Bazel actions
 use one logical input path but different declared roots; an undeclared existing
 input must be absent. & \namei selects each action's declared object and hides
-the undeclared name. & Both real Bazel 6.5.0 actions passed with distinct
-expected outputs; four selections and four hides were observed, and lower
-objects were unchanged. \\
+the undeclared name. & Three fresh KVM boots completed all six Bazel 6.5.0
+actions, matched six logical/lower input objects, hid undeclared inputs, and
+preserved 12 lower objects. \\
+Toolchain environments (supporting)~\cite{nix_store} & Two installed
+environments expose distinct interpreter and package trees; one process-group
+view switches and rolls back. & \namei selects the existing environment root
+without changing the logical executable path. & Three fresh KVM boots passed
+18/18 physical/logical states, 24/24 Python probes, concurrent 3.10/3.12 views,
+switch, rollback, and lower-object controls. \\
 \hline
 \end{tabular}
 \caption{RQ1 answer table. A row becomes evidence only after the source-oracle
@@ -205,8 +212,8 @@ copy-up, conflict resolution, distributed metadata, or data-path mediation.
 
 \subsection{Evaluation Scope}
 
-The completed evidence includes one formal Agent-workspace RQ1 case, two
-supporting RQ1 preflights, an Agent lifecycle RQ2 comparison, cache-hot FxMark
+The completed evidence includes four reviewed formal RQ1 workflows, an Agent
+lifecycle RQ2 comparison, cache-hot FxMark
 active and unused-path results, a formal corrected-FxMark directory-enumeration
 matrix, and one matched Agent-workspace RQ3 boundary experiment. A historical
 ccache compile matrix is
@@ -215,8 +222,8 @@ and native/\namei 0.945\(\times\), but it lacks independent-run uncertainty and
 release-scale miss/stale/corrupt cells. It is not a headline workload because
 ccache already implements cache lookup and validation in userspace.
 
-Service rotation, checkpoint/restore, HPC staging, and toolchain environments
-remain portfolio cases rather than completed evidence. Cache-cold lookup,
+Service rotation, checkpoint/restore, and HPC staging remain portfolio cases
+rather than completed evidence. Cache-cold lookup,
 broader metadata operations, tail latency, and a second
 source-derived RQ3 row remain open. Materialized namespaces, eBPF LSM, and
 native source mechanisms remain related work unless a fixed source oracle makes

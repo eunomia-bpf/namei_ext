@@ -1,0 +1,9 @@
+{
+  "schema": "namei_ext.application_file_sharing_rq1.summary.v1",
+  "boots": 3,
+  "states": 15,
+  "visible_states": 3,
+  "hidden_states": 12,
+  "lower_objects": 3,
+  "cgroup_removals": 6
+}

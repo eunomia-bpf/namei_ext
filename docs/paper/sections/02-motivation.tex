@@ -46,12 +46,15 @@ workloads~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
 
 The traditional source families are application file sharing, build action
 sandboxing, checkpoint/restore, HPC staging, service rotation, and toolchain
-environments. The application-sharing preflight follows the XDG Documents
-portal grant/revoke behavior. The build-action preflight follows Bazel's
-action-specific input views~\cite{bazel_sandboxing}. DMTCP path
-virtualization, Kubernetes AtomicWriter publication, and Nix profile selection
-provide additional source-defined lifecycle shapes~\cite{dmtcp_path_virtualization,kubernetes_projected_volumes,nix_store}.
-They remain portfolio cases until their exact KVM oracles run.
+environments. The application-sharing workload follows the XDG Documents
+portal grant/revoke behavior~\cite{xdg_documents_portal}. The build-action
+workload follows Bazel's action-specific input views~\cite{bazel_sandboxing}.
+The toolchain workload follows per-environment software selection and
+switch/rollback behavior represented by profile systems such as
+Nix~\cite{nix_store}. DMTCP path virtualization and Kubernetes AtomicWriter
+publication provide additional source-defined lifecycle
+shapes~\cite{dmtcp_path_virtualization,kubernetes_projected_volumes}. They
+remain portfolio cases until their exact KVM oracles run.
 
 A historical ccache matrix supplies supporting compile-time evidence, but is
 not a headline source workload: ccache already implements cache lookup and
@@ -118,17 +121,19 @@ evaluation in Section~\ref{sec:evaluation}.
 
 \subsection{Selected Workloads}
 
-The evaluated RQ1 set contains three non-overlapping workflows. The formal
+The evaluated RQ1 set contains four non-overlapping workflows. The formal
 Agent workspace case exercises branch-visible staged/base selection, hides,
-readdir coherence, and lower-tree mutations. Supporting application-sharing
-and build-action preflights exercise per-application grant/revoke and two
+readdir coherence, and lower-tree mutations. Formal application-sharing and
+build-action runs exercise per-application grant/revoke and two
 concurrent real Bazel actions with distinct declared-input roots and an
-undeclared-input failure. These preflights demonstrate feasibility and breadth;
-they are not promoted to final RQ evidence.
+undeclared-input failure. The formal toolchain case selects two existing
+CPython environments, switches one process-group view, and rolls it back.
+These three supporting workflows broaden the source-system evidence without
+becoming separate headline claims.
 
-The broader portfolio also includes service rotation, checkpoint/restore, HPC
-file staging, and toolchain environments. These source systems motivate the
-generality of the boundary but are not reported as completed experiments. A
-workload becomes evidence only after a reviewed KVM same-oracle run. In every
-case, policy runs at lookup and directory enumeration; non-name-resolution
-behavior stays with the source system or lower filesystem.
+The broader portfolio also includes service rotation, checkpoint/restore, and
+HPC file staging. These source systems motivate the generality of the boundary
+but are not reported as completed experiments. A workload becomes evidence
+only after a reviewed KVM same-oracle run. In every completed case, policy runs
+at lookup and directory enumeration; non-name-resolution behavior stays with
+the source system or lower filesystem.

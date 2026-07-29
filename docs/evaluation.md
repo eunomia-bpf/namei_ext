@@ -117,7 +117,7 @@ dilutes pathname lookup overhead.
 
 | Case | Source/oracle fixed | `namei_ext` correctness in KVM | Feature-equivalent FUSE | RQ3 boundary record |
 | --- | --- | --- | --- | --- |
-| W1 Sandboxed Application File Sharing | Existing-object, two-application grant/revoke subset frozen from the XDG Documents portal API | Preflight passed: grant, revoke, cross-application isolation, lookup/readdir/open/stat, and unchanged lower object | Source system is FUSE; matched project implementation not run | Preflight records lower-object preservation; full ownership table open |
+| W1 Sandboxed Application File Sharing | Existing-object, two-application grant/revoke subset frozen from the XDG Documents portal API | Passed and independently reviewed: three fresh KVM boots, 15/15 lifecycle states, 3/3 granted views, 12/12 hidden views, and exact logical/lower object identity | Source system is FUSE; matched project performance implementation not run | Lower object and unrelated same-named path remained unchanged; policy/target/cgroup cleanup passed in every boot; full ownership table open |
 | W2 Agent Workspaces | AgentFS-derived lifecycle trace fixed | Passed, three RQ1 terminal runs plus the formal RQ2 and RQ3 matrices | Same-oracle formal comparison passed: 10 paired blocks, 20 KVM boots, 10,000 lifecycle samples per condition | Formal matched `namei_ext`/Wrapfs-derived experiment passed: 37/37 pairwise oracles for both mechanisms, 21/21 fault cells, and runtime attribution in each of three KVM boots |
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Passed and independently reviewed: three fresh KVM boots, six Bazel actions, six action-specific logical/lower inode matches, twelve preserved lower objects, and all allow/hide/select branches | Not run; RQ2 owns the separately frozen sandboxfs comparison | Policy/target/cgroup cleanup and lower-object preservation passed in every boot; full ownership table open |
 | W4 Service Configuration and Secret Rotation | AtomicWriter publication shape and nginx 1.26.3 live-reload oracle frozen; current/canary/invalid/rollback plan independently reviewed | Runner, BPF policy, fresh-boot KVM suite, and analyzer implemented; V2 exhausted three failed dependency preflights, and an undeclared `CONFIG_PROC_CHILDREN` requirement is the final root's strongest source-grounded timeout explanation | Not authorized; formal entrypoint remains blocked | Failed roots preserved; no completed state-transition, lower-object, counter, dmesg, or analysis evidence; keep as motivating scope rather than a paper row |
@@ -129,11 +129,15 @@ dilutes pathname lookup overhead.
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
-| XDG-derived two-application grant/revoke preflight | Passed in KVM; application A hidden before grant, visible after grant, and hidden after revoke; application B always hidden; unrelated same-named path and lower object unchanged; zero failures | `results/experiments/application-file-sharing/20260725T-sandboxed-file-sharing-preflight-v3/` |
-| Policy engagement | Passed: 123 lookup, 30 readdir, 2 `SELECT`, 8 lookup `HIDE`, and 4 readdir `HIDE` events | Same raw root |
+| XDG-derived two-application grant/revoke lifecycle | Passed and independently reviewed in three fresh modified-kernel KVM boots: all 15 states passed; application A was hidden before grant, visible after grant, and hidden after revoke; application B remained hidden | `results/experiments/application-file-sharing-rq1/20260729T1824Z-w1-formal01/` |
+| Lookup, read, enumeration, and object identity | Passed: all 12 hidden states returned `ENOENT` for document/payload lookup and completed readdir without listing `document`; all three granted states listed the name, read expected bytes, and matched logical/lower document and payload device/inode | Same raw root |
+| Lower object, unrelated path, and cleanup | Passed: 3/3 lower-object records preserved device, inode, mode, size, and bytes; 15/15 unrelated-path reads matched; all policy detaches, target clears, six cgroup removals, external BPF/FUSE inventory checks, and dmesg scans passed | Same raw root |
+| Policy engagement | Passed in every boot: 210 lookup, 30 readdir, 3 `SELECT`, 12 lookup `HIDE`, and 4 readdir `HIDE` events per boot | Same raw root |
+| Independent result review | Valid; the tested existing-object XDG Documents portal grant/revoke subset supports RQ1 breadth, without claiming portal compatibility or performance | `docs/tmp/2026-07-29-application-file-sharing-rq1-formal01-result-review.md` |
 | Matched FUSE performance comparison | Open; the source system establishes FUSE behavior, but no matched timing result exists | — |
 
-Make entrypoint: `make kvm-application-file-sharing-preflight`.
+Entry points: `make kvm-application-file-sharing-preflight` and
+`make experiment-application-file-sharing-rq1`.
 
 ### B. Agent Workspaces (headline)
 
@@ -193,9 +197,8 @@ Entry points: `make kvm-toolchain-environment-preflight` and
 
 Current case-study entrypoints: `make experiments`,
 `make kvm-agent-workspace-matrix`,
-`make kvm-application-file-sharing-preflight`, and
-`make experiment-build-action-sandboxing-rq1`.
-The completed W7 formal entrypoint is
+`make experiment-application-file-sharing-rq1`,
+`make experiment-build-action-sandboxing-rq1`, and
 `make experiment-toolchain-environment`.
 
 W4 entrypoints exist, but the V2 dependency protocol is closed after three

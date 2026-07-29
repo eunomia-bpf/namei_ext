@@ -133,9 +133,9 @@ entrypoints, and archived diagnostics:
   `namei_ext`/Wrapfs-derived ownership and fault-containment matrix.
 - `make legacy-build-cache` is the canonical aggregate entrypoint for the
   historical traditional build/cache matrix.
-- `make kvm-application-file-sharing-preflight` runs the W1 Sandboxed
-  Application File Sharing grant/revoke oracle with two application cgroups
-  through the real KVM attach path.
+- `make kvm-application-file-sharing-preflight` runs one W1 Sandboxed
+  Application File Sharing grant/revoke boot; `make
+  experiment-application-file-sharing-rq1` runs the formal three-boot result.
 - `make kvm-build-action-sandboxing-preflight` runs the source-derived Bazel
   action-input visibility oracle through the real KVM attach path.
 - `make kvm-service-config-rotation-preflight` runs one live nginx
@@ -154,17 +154,21 @@ entrypoints, and archived diagnostics:
 The implementation record for this control-plane alignment is
 `docs/tmp/2026-07-13-build-evaluate-make-control-plane-alignment.md`.
 
-The W1 preflight is implemented by
+The formal W1 workload is implemented by
 `bpf/policies/application_file_sharing.bpf.c` and
 `experiments/application_file_sharing/namei_ext_application_file_sharing.c`.
 The policy scopes a managed logical document by parent device/inode and name,
-then keys its grant by application cgroup ID. The scoped KVM run passed
-grant, revoke, cross-application isolation, lookup/readdir/open/stat,
-same-named-path containment, and lower-object-preservation checks with zero
-failures:
-`results/experiments/application-file-sharing/20260725T-sandboxed-file-sharing-preflight-v3/`.
-The complete implementation record is
-`docs/tmp/2026-07-25-sandboxed-application-file-sharing-preflight-implementation.md`.
+then keys its grant by application cgroup ID. Each child records document and
+payload lookup, payload read, complete directory enumeration, unrelated-path
+bytes, and logical/lower object identity from its application cgroup. The
+formal run passed all 15 states across three fresh KVM boots, preserved every
+lower object, and completed detach, target clear, and both cgroup removals in
+each boot:
+`results/experiments/application-file-sharing-rq1/20260729T1824Z-w1-formal01/`.
+Implementation and result records are
+`docs/tmp/2026-07-29-application-file-sharing-rq1-formal-implementation.md`
+and
+`docs/tmp/2026-07-29-application-file-sharing-rq1-formal01-result-review.md`.
 
 The Agent workspace RQ3 implementation ports the official Wrapfs source at
 commit `464802c8fd1a25413b295161c9bb9a4ce7bfa33b` to the current Linux 7.1

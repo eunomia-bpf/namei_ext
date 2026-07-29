@@ -75,8 +75,9 @@ We evaluate whether this ownership split is sufficient for source-derived
 path-view policies, cheaper than feature-equivalent FUSE placement, and more
 contained than broader filesystem ownership. RQ1 asks whether KVM workloads pass
 the same correctness conditions while preserving lower-filesystem semantics.
-The formal Agent-workspace view passes its fixed oracle; application-sharing
-and concurrent Bazel-action preflights provide supporting breadth. RQ2 compares
+Reviewed formal KVM runs pass fixed oracles for Agent workspaces,
+application-sharing grants, concurrent Bazel action views, and toolchain
+environment selection. RQ2 compares
 the same policies with feature-equivalent FUSE: the matched Agent lifecycle is
 11.32\(\times\) [11.24, 11.64], and cache-hot FxMark \code{SELECT} reaches
 1.052--1.088\(\times\) cached-FUSE throughput across MRPL, MRPM, and MRPH.

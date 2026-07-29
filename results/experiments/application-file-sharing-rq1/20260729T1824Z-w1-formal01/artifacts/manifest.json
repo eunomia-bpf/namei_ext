@@ -1,0 +1,19 @@
+{
+  "kernel": {
+    "commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+    "release": "7.1.0-rc7-g621aff8d1bb5",
+    "image": "artifacts/kernel/bzImage",
+    "config": "artifacts/kernel/config"
+  },
+  "runtime": {
+    "runner": "artifacts/runtime/namei_ext_application_file_sharing",
+    "policy": "artifacts/runtime/application_file_sharing.bpf.o",
+    "bpftool": "artifacts/runtime/bpftool"
+  },
+  "source": {
+    "documents_portal": "artifacts/source/documents-portal-url.txt",
+    "implementation": "artifacts/source/implementation-url.txt",
+    "expected_document": "artifacts/source/expected-document-payload.txt",
+    "expected_unrelated": "artifacts/source/expected-unrelated-payload.txt"
+  }
+}
