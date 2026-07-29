@@ -193,10 +193,11 @@ for boot in "$(1)"/boots/*; do \
 	for file in guest.mk guest.mk.sha256 launcher.stdout.log \
 		launcher.stderr.log vcpu-affinity.json affinity-verified-at.txt \
 		affinity-barrier.txt bpf-programs-before.json \
-		bpf-programs-after.json bpf-cgroup-before.json \
-		bpf-cgroup-after.json fuse-mounts-before.txt \
-		fuse-mounts-after.txt fuse-open-fds-before.txt \
-		fuse-open-fds-after.txt \
+			bpf-programs-after.json bpf-cgroup-before.json \
+			bpf-cgroup-after.json fuse-mounts-before.txt \
+			fuse-mounts-after.txt fuse-open-fds-before.txt \
+			fuse-open-fds-before.status fuse-open-fds-after.txt \
+			fuse-open-fds-after.status \
 		boot.json observations.jsonl kernel.config kernel-commit.txt \
 		kernel-build-id.txt kernel-notes.sha256 kernel-btf.sha256 \
 		kernel-flavor.txt kernel-release.txt clocksource-before.txt \
@@ -225,14 +226,18 @@ for boot in "$(1)"/boots/*; do \
 		"$$boot/bpf-programs-after.json"; \
 	cmp "$$boot/bpf-cgroup-before.json" \
 		"$$boot/bpf-cgroup-after.json"; \
-	for file in fuse-mounts-before.txt fuse-mounts-after.txt \
-			fuse-open-fds-before.txt fuse-open-fds-after.txt; do \
-		test ! -s "$$boot/$$file"; \
-	done; \
+		for file in fuse-mounts-before.txt fuse-mounts-after.txt \
+				fuse-open-fds-before.txt fuse-open-fds-after.txt; do \
+			test ! -s "$$boot/$$file"; \
+		done; \
+		test "$$(cat "$$boot/fuse-open-fds-before.status")" = 1; \
+		test "$$(cat "$$boot/fuse-open-fds-after.status")" = 1; \
 	cmp "$$boot/fuse-mounts-before.txt" \
 		"$$boot/fuse-mounts-after.txt"; \
-	cmp "$$boot/fuse-open-fds-before.txt" \
-		"$$boot/fuse-open-fds-after.txt"; \
+		cmp "$$boot/fuse-open-fds-before.txt" \
+			"$$boot/fuse-open-fds-after.txt"; \
+		cmp "$$boot/fuse-open-fds-before.status" \
+			"$$boot/fuse-open-fds-after.status"; \
 	jq -e --slurpfile expected "$(1)/host-cpu-pin.json" \
 		--argjson kvm_cpus "$(KVM_CPUS)" \
 		'.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified" and .expected_host_cpus == $$expected[0] and (.expected_host_cpus | length) == $$kvm_cpus and .expected_vcpu_mapping == [range(0; ($$expected[0] | length)) as $$index | {vcpu_index:$$index,host_cpu:$$expected[0][$$index]}] and [.vcpus[] | [.vcpu_index,.cpus_allowed]] == [range(0; ($$expected[0] | length)) as $$index | [$$index,[$$expected[0][$$index]]]]' \

@@ -43,6 +43,29 @@ cat /proc/stat >"$(1)/host-proc-stat-after.txt"
 cat /proc/interrupts >"$(1)/host-proc-interrupts-after.txt"
 endef
 
+define NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY
+test -d "$(strip $(1))"; \
+test -n "$(strip $(2))"; \
+test -n "$(strip $(3))"; \
+command -v findmnt >/dev/null; \
+command -v lsof >/dev/null; \
+test -c /dev/fuse; \
+"$(strip $(2))" -j prog show \
+	>"$(strip $(1))/bpf-programs-$(strip $(3)).json"; \
+"$(strip $(2))" -j cgroup tree \
+	>"$(strip $(1))/bpf-cgroup-$(strip $(3)).json"; \
+findmnt -rn -o FSTYPE,TARGET | \
+	awk '$$1 == "fuse" || $$1 == "fuseblk" || index($$1, "fuse.") == 1' \
+	>"$(strip $(1))/fuse-mounts-$(strip $(3)).txt"; \
+lsof_status=0; \
+lsof -Fpc /dev/fuse \
+	>"$(strip $(1))/fuse-open-fds-$(strip $(3)).txt" || \
+	lsof_status=$$?; \
+printf '%s\n' "$$lsof_status" \
+	>"$(strip $(1))/fuse-open-fds-$(strip $(3)).status"; \
+case "$$lsof_status" in 0|1) ;; *) exit 1 ;; esac
+endef
+
 define NAMEI_EXT_MULTI_BOOT_SEAL_GUEST_MAKEFILE
 test "$$(wc -l <"$(1)")" = "$(2)"; \
 ! grep -F "$(ROOT_DIR)/" "$(1)" >/dev/null; \

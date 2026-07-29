@@ -24,9 +24,10 @@ CHECKPOINT_RESTORE_BOOT_FILES := \
 	guest.mk guest.mk.sha256 launcher.stdout.log launcher.stderr.log \
 	boot.json observations.jsonl upstream-autotest.stdout.log \
 	upstream-autotest.stderr.log bpf-programs-before.json \
-	bpf-programs-after.json bpf-cgroup-before.json bpf-cgroup-after.json \
-	fuse-mounts-before.txt fuse-mounts-after.txt \
-	fuse-open-fds-before.txt fuse-open-fds-after.txt \
+		bpf-programs-after.json bpf-cgroup-before.json bpf-cgroup-after.json \
+		fuse-mounts-before.txt fuse-mounts-after.txt \
+		fuse-open-fds-before.txt fuse-open-fds-before.status \
+		fuse-open-fds-after.txt fuse-open-fds-after.status \
 	kernel.config kernel-commit.txt kernel-release.txt uname.txt \
 	proc-version.txt kernel-cmdline.txt runtime-identity.json dmesg.log \
 	evidence.sha256
@@ -350,25 +351,17 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 	fi
 	grep -F 'test groups: pass=1 fail=0 skipped=0 total=1' \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stdout.log"
-	"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j prog show \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-programs-before.json"
-	"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j cgroup tree \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-cgroup-before.json"
+	$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY,\
+		$(CHECKPOINT_RESTORE_BOOT_DIR),\
+		$(CHECKPOINT_RESTORE_GUEST_BPFTOOL),before)
 	jq -e 'type == "array" and length == 0' \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-programs-before.json" \
 		>/dev/null
 	jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-cgroup-before.json" \
 		>/dev/null
-	findmnt -rn -o FSTYPE,TARGET | \
-		awk '$$1 == "fuse" || $$1 == "fuseblk" || index($$1, "fuse.") == 1' \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-mounts-before.txt"
 	test ! -s "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-mounts-before.txt"
-	lsof_status=0; \
-	lsof -Fpc /dev/fuse \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-before.txt" || \
-		lsof_status=$$?; \
-	test "$$lsof_status" = 1; \
+	test "$$(cat "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-before.status")" = 1
 	test ! -s "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-before.txt"
 	for condition in pathvirt namei_ext withdrawn; do \
 		result="$(CHECKPOINT_RESTORE_BOOT_DIR)/conditions/$$condition"; \
@@ -404,28 +397,22 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/conditions/namei_ext/observations.jsonl" \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/conditions/withdrawn/observations.jsonl" \
 		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/observations.jsonl"
-	"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j prog show \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-programs-after.json"
-	"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j cgroup tree \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-cgroup-after.json"
+	$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY,\
+		$(CHECKPOINT_RESTORE_BOOT_DIR),\
+		$(CHECKPOINT_RESTORE_GUEST_BPFTOOL),after)
 	cmp "$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-programs-before.json" \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-programs-after.json"
 	cmp "$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-cgroup-before.json" \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-cgroup-after.json"
-	findmnt -rn -o FSTYPE,TARGET | \
-		awk '$$1 == "fuse" || $$1 == "fuseblk" || index($$1, "fuse.") == 1' \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-mounts-after.txt"
 	test ! -s "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-mounts-after.txt"
-	lsof_status=0; \
-	lsof -Fpc /dev/fuse \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-after.txt" || \
-		lsof_status=$$?; \
-	test "$$lsof_status" = 1; \
+	test "$$(cat "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-after.status")" = 1
 	test ! -s "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-after.txt"
 	cmp "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-mounts-before.txt" \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-mounts-after.txt"
 	cmp "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-before.txt" \
 		"$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-after.txt"
+	cmp "$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-before.status" \
+		"$(CHECKPOINT_RESTORE_BOOT_DIR)/fuse-open-fds-after.status"
 	dmesg >"$(CHECKPOINT_RESTORE_BOOT_DIR)/dmesg.log"
 	$(call NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN,$(CHECKPOINT_RESTORE_BOOT_DIR)/dmesg.log)
 	jq -n \

@@ -482,26 +482,14 @@ __fxmark_rq2_guest:
 	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
 	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
 	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
-		command -v findmnt >/dev/null; \
-		command -v lsof >/dev/null; \
-		test -c /dev/fuse; \
-		"$(FXMARK_RUN_BPFTOOL)" -j prog show \
-			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-before.json"; \
-		"$(FXMARK_RUN_BPFTOOL)" -j cgroup tree \
-			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-before.json"; \
+		$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY,\
+			$(FXMARK_BOOT_RESULT_DIR),$(FXMARK_RUN_BPFTOOL),before); \
 		jq -e 'type == "array" and length == 0' \
 			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-before.json" >/dev/null; \
 		jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' \
 			"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-before.json" >/dev/null; \
-		findmnt -rn -o FSTYPE,TARGET | \
-			awk '$$1 == "fuse" || $$1 == "fuseblk" || index($$1, "fuse.") == 1' \
-			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-before.txt"; \
 		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-before.txt"; \
-		lsof_status=0; \
-		lsof -Fpc /dev/fuse \
-			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.txt" || \
-			lsof_status=$$?; \
-		test "$$lsof_status" = 1; \
+		test "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.status")" = 1; \
 		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.txt"; \
 	fi
 	printf '%s\n' "$(FXMARK_BPF_STATS)" >/proc/sys/kernel/bpf_stats_enabled
@@ -548,10 +536,8 @@ __fxmark_rq2_guest:
 	done
 	cat /proc/stat >"$(FXMARK_BOOT_RESULT_DIR)/proc-stat-after.txt"
 	if test "$(FXMARK_REQUIRE_AFFINITY)" = 1; then \
-		"$(FXMARK_RUN_BPFTOOL)" -j prog show \
-			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json"; \
-		"$(FXMARK_RUN_BPFTOOL)" -j cgroup tree \
-			>"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-after.json"; \
+		$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY,\
+			$(FXMARK_BOOT_RESULT_DIR),$(FXMARK_RUN_BPFTOOL),after); \
 		jq -e 'type == "array" and length == 0' \
 			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json" >/dev/null; \
 		jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' \
@@ -560,20 +546,15 @@ __fxmark_rq2_guest:
 			"$(FXMARK_BOOT_RESULT_DIR)/bpf-programs-after.json"; \
 		cmp "$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-before.json" \
 			"$(FXMARK_BOOT_RESULT_DIR)/bpf-cgroup-after.json"; \
-		findmnt -rn -o FSTYPE,TARGET | \
-			awk '$$1 == "fuse" || $$1 == "fuseblk" || index($$1, "fuse.") == 1' \
-			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-after.txt"; \
 		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-after.txt"; \
-		lsof_status=0; \
-		lsof -Fpc /dev/fuse \
-			>"$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.txt" || \
-			lsof_status=$$?; \
-		test "$$lsof_status" = 1; \
+		test "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.status")" = 1; \
 		test ! -s "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.txt"; \
 		cmp "$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-before.txt" \
 			"$(FXMARK_BOOT_RESULT_DIR)/fuse-mounts-after.txt"; \
 		cmp "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.txt" \
 			"$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.txt"; \
+		cmp "$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-before.status" \
+			"$(FXMARK_BOOT_RESULT_DIR)/fuse-open-fds-after.status"; \
 	fi
 	clocksource=$$(cat /sys/devices/system/clocksource/clocksource0/current_clocksource); \
 	test "$$clocksource" = "$$(cat "$(FXMARK_BOOT_RESULT_DIR)/clocksource-before.txt")"; \

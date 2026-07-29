@@ -177,6 +177,74 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
                         call = "\n".join(lines[index:index + 4])
                         self.assertIn('RUN_ID="$(RUN_ID)"', call)
 
+    def test_external_inventory_uses_shared_capture_helper(self):
+        shared = (ROOT / "mk/multi_boot.mk").read_text(encoding="utf-8")
+        self.assertIn(
+            "define NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY",
+            shared,
+        )
+        for required in (
+            '"$(strip $(2))" -j prog show',
+            '"$(strip $(2))" -j cgroup tree',
+            'bpf-programs-$(strip $(3)).json',
+            'bpf-cgroup-$(strip $(3)).json',
+            'fuse-mounts-$(strip $(3)).txt',
+            'fuse-open-fds-$(strip $(3)).txt',
+            'fuse-open-fds-$(strip $(3)).status',
+        ):
+            self.assertIn(required, shared)
+
+        for relative in (
+            "mk/benchmarks/fxmark.mk",
+            "mk/experiments/checkpoint_restore.mk",
+        ):
+            source = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertGreaterEqual(
+                source.count(
+                    "$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY"
+                ),
+                2,
+                relative,
+            )
+            self.assertNotIn("findmnt -rn -o FSTYPE,TARGET", source)
+            self.assertNotIn("lsof -Fpc /dev/fuse", source)
+            self.assertIn("fuse-open-fds-before.status", source)
+            self.assertIn("fuse-open-fds-after.status", source)
+
+    def test_external_inventory_strips_multiline_call_arguments(self):
+        makefile = self.root / "inventory.mk"
+        result_dir = self.root / "inventory"
+        makefile.write_text(
+            f"include {ROOT / 'mk/multi_boot.mk'}\n"
+            ".PHONY: render\n"
+            "render:\n"
+            "\t$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY,\\\n"
+            "\t\t$(TEST_RESULT_DIR),\\\n"
+            "\t\t$(TEST_BPFTOOL),before)\n",
+            encoding="utf-8",
+        )
+        completed = subprocess.run(
+            [
+                "make",
+                "--no-print-directory",
+                "-n",
+                "-f",
+                str(makefile),
+                "render",
+                f"TEST_RESULT_DIR={result_dir}",
+                "TEST_BPFTOOL=/usr/bin/true",
+            ],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn(f'test -d "{result_dir}"', completed.stdout)
+        self.assertIn('"/usr/bin/true" -j prog show', completed.stdout)
+        self.assertNotIn(f'test -d " {result_dir}"', completed.stdout)
+        self.assertNotIn('" /usr/bin/true" -j', completed.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -40,8 +40,8 @@
 ## Expected And Alternative Outcomes
 
 - Current expected answer: at 2,048 declared inputs, `namei_ext` has lower
-  barrier-to-completion action time than sandboxfs while both pass the same
-  output, isolation, and lower-object oracles.
+  barrier-release-to-action-finished time than sandboxfs while both pass the
+  same output, isolation, and lower-object oracles.
 - Strongest competing explanation: Bazel and shell work dominate the action,
   kernel caching amortizes sandboxfs requests, or sandboxfs's positive mapping
   representation is better matched to the declared-input set.
@@ -75,8 +75,9 @@
 ## Comparison
 
 - Proposed system or method: one `namei_ext` program attached at the cgroup
-  root; action cgroup identity selects one existing input root and hides
-  undeclared entries during lookup and readdir.
+  root; action cgroup identity selects one existing input root, hides entries
+  by default under that root, and exposes only names in the action's declared
+  input allowlist during lookup and readdir.
 - Main baseline and competing position: official sandboxfs 0.2.0 represents
   the source system's answer that a reconfigurable FUSE filesystem should
   construct each action's arbitrary view.
@@ -91,8 +92,10 @@
   advantage for the tested Bazel action shape.
 - Information, tuning, and compute fairness:
   - each action has `N` declared and `N` undeclared existing files;
-  - both mechanisms receive the same declared and undeclared sets;
-  - `namei_ext` installs `N` hide decisions plus one root selection per action;
+  - both mechanisms receive the same declared-input set and no enumeration of
+    undeclared names;
+  - `namei_ext` installs `N` declared-name decisions plus one root selection
+    per action and hides every other child under the selected root;
   - sandboxfs installs `N` read-only mappings per action, omitting undeclared
     files;
   - the generated BUILD file, command, expected output hash, lower objects,
@@ -105,13 +108,17 @@
 
 - Real workload: two concurrent Bazel 6.5.0 genrules. Each action enumerates
   its view, verifies no undeclared name is visible, reads every declared file
-  in lexical order, and emits the expected aggregate SHA-256.
+  in lexical order, and emits the expected aggregate SHA-256. Every lifecycle
+  sample uses a fresh Bazel output base and unique ready, release, started,
+  finished, and output files. The genrule writes the sample identity to its
+  started and finished records so a cached or skipped action cannot pass.
 - Input scales: 64, 512, and 2,048 declared files per action with the same
   number of physically existing undeclared files. The 2,048-file cell is
   primary because Bazel identifies hundreds or thousands of mappings as the
   motivating regime.
-- Primary metric: per-block ratio of sandboxfs to `namei_ext`
-  barrier-release-to-both-actions-complete time at 2,048 inputs.
+- Primary metric: per-block ratio of sandboxfs to `namei_ext` time from barrier
+  release until both genrules write their action-finished records at 2,048
+  inputs. Bazel startup, loading, and analysis occur before this boundary.
 - Secondary metrics: the same action-time ratio at 64 and 512 inputs; view
   setup time; total lifecycle time; daemon CPU time, context switches, and peak
   RSS; policy counters; sandboxfs mount and process identity.
@@ -120,6 +127,10 @@
   - action-specific aggregate output hashes match independently constructed
     expected hashes;
   - lookup and readdir expose every declared file and no undeclared file;
+  - a new unknown file created in each lower root after view setup remains
+    hidden from both lookup and readdir;
+  - unique started and finished records prove both genrules executed in every
+    lifecycle sample;
   - lower file identity, mode, size, and content hashes remain unchanged;
   - `namei_ext` records lookup, readdir, select, and hide actions;
   - sandboxfs is the mounted filesystem serving both action views and its
@@ -127,8 +138,10 @@
   - detach/unmount and process cleanup complete; dmesg is clean.
 - Repetitions, seeds, and uncertainty: ten paired boot blocks, alternating
   condition order. Each boot runs three lifecycle samples per scale and reduces
-  them to a per-boot median. Report paired ratios and a deterministic
-  10,000-resample percentile bootstrap 95% confidence interval.
+  them to a per-boot median. Scale order rotates across blocks so one scale
+  does not always inherit the same cache and thermal position. Report paired
+  ratios and a deterministic 10,000-resample percentile bootstrap 95%
+  confidence interval.
 - Cost estimate: one paired preflight, then 20 formal KVM boots and 180
   two-action lifecycle samples.
 
@@ -136,7 +149,7 @@
 
 | Run group | Role | Workload | System/method | Repetitions | Decision consequence |
 |---|---|---|---|---:|---|
-| preflight | dependency | 64-input two-action Bazel oracle | `namei_ext`, sandboxfs | 1 paired block, 1 sample | proves both real paths execute; no paper claim |
+| preflight | dependency | 64-input two-action Bazel oracle plus maximum-scale policy-map fill/clear | `namei_ext`, sandboxfs | 1 paired block, 1 sample | proves both real paths execute and 4,096 declared entries install and clean up; no paper claim |
 | formal | proposed | 64/512/2,048-input two-action Bazel oracle | `namei_ext` | 10 boots, 3 samples/scale | proposed arm |
 | formal | main baseline | same | sandboxfs 0.2.0 | 10 boots, 3 samples/scale | tests matched FUSE alternative |
 
@@ -146,6 +159,10 @@
   `make experiment-build-action-rq2 RUN_ID=<fresh-id>`.
 - Real preflight case:
   `make kvm-build-action-rq2-preflight RUN_ID=<fresh-id>`.
+- Capacity gate: the dedicated build-action allowlist map has at least 8,192
+  entries. The preflight inserts and reads back 4,096 distinct entries, clears
+  them, verifies map occupancy returns to zero, and records verifier/load
+  evidence before the 64-input action pair runs.
 - Full completion rule: exactly 20 completed formal boot roots, 180 passing
   lifecycle samples, 60 per scale, ten complete paired block ratios per scale,
   no missing/replaced/excluded cells, and all artifact and correctness gates

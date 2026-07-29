@@ -84,6 +84,12 @@ line files. Build ID, BTF, clocksource, kernel flavor, and workload-specific
 oracles remain suite-owned. Guest Makefiles are sealed and validated through
 the helpers in `multi_boot.mk`.
 
+Suites that must account for external BPF or FUSE state use
+`NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY`. It records BPF programs, cgroup
+attachments, FUSE mounts, `/dev/fuse` owners, and the `lsof` status without
+interpreting them. Each suite owns the expected empty, active, or unchanged
+state for its condition.
+
 Nested `boot.json` files are always invalid. A suite that stores
 condition-level raw `observations.jsonl` below a boot directory must pass their
 exact expected count to the multi-boot collection and validation helpers; the
