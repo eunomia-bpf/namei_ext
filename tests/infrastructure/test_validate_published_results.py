@@ -27,7 +27,8 @@ class PublishedResultTest(unittest.TestCase):
             "source": {"commit": "1" * 40, "dirty": False},
             "kernel": {"commit": "2" * 40, "dirty": False},
             "artifacts": {
-                "source": {"oracle": "artifacts/source/oracle.txt"}
+                "source": {"oracle": "artifacts/source/oracle.txt"},
+                "runtime": ["artifacts/runtime/runner"],
             },
         }
         self.write("run.json", json.dumps(run))
@@ -36,6 +37,7 @@ class PublishedResultTest(unittest.TestCase):
         self.write("artifacts.sha256", f"{'4' * 64}  artifact\n")
         self.write("artifacts/manifest.json", "{}\n")
         self.write("artifacts/source/oracle.txt", "oracle\n")
+        self.write("artifacts/runtime/runner", "runner\n")
         self.write("source-commit.txt", f"{'1' * 40}\n")
         self.write("kernel-commit.txt", f"{'2' * 40}\n")
         self.write(
@@ -74,6 +76,7 @@ class PublishedResultTest(unittest.TestCase):
                             ),
                             "analyzer": "analysis/example.py",
                             "seed": 7,
+                            "require_all_artifacts": True,
                             "analysis_args": {
                                 "oracle": "artifacts/source/oracle.txt"
                             },
@@ -196,6 +199,24 @@ class PublishedResultTest(unittest.TestCase):
             )
         )
         self.assertFalse(any("analyzer replay failed" in error for error in errors))
+
+    def test_untracked_declared_runtime_artifact_fails(self):
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(self.repo),
+                "rm",
+                "--cached",
+                "results/experiments/example/formal-v1/artifacts/runtime/runner",
+            ],
+            check=True,
+            capture_output=True,
+        )
+        errors = validate_repository(self.repo, self.index)
+        self.assertTrue(
+            any("artifacts/runtime/runner" in error for error in errors)
+        )
 
     def test_unlisted_failed_result_is_allowed(self):
         failed = self.repo / "results/experiments/example/failed-v1/run.json"

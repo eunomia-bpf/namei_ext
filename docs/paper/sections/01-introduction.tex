@@ -75,14 +75,15 @@ We evaluate whether this ownership split is sufficient for source-derived
 path-view policies, cheaper than feature-equivalent FUSE placement, and more
 contained than broader filesystem ownership. RQ1 asks whether KVM workloads pass
 the same correctness conditions while preserving lower-filesystem semantics.
-RQ2 compares the same policies with feature-equivalent FUSE implementations.
-RQ3 asks whether verifier-bounded policy and kernel validation provide a
-narrower, fail-closed ownership boundary than custom or stackable filesystems.
-The primary workload families are Agent workspace lifecycle and traditional
-build/cache transition. Build/environment datasets may supply real repository
-build/test oracles, but the second workload is not framed as an agent workload.
-Service/config remains motivating scope unless a concrete source-system
-correctness condition depends on lookup-time object selection.
+The formal Agent-workspace view passes its fixed oracle; application-sharing
+and concurrent Bazel-action preflights provide supporting breadth. RQ2 compares
+the same policies with feature-equivalent FUSE: the matched Agent lifecycle is
+11.32\(\times\) [11.24, 11.64], and cache-hot FxMark \code{SELECT} reaches
+1.052--1.088\(\times\) cached-FUSE throughput across MRPL, MRPM, and MRPH.
+RQ3 executes a matched
+Wrapfs-derived implementation; both mechanisms pass 37/37 workspace oracles
+and all 21 fault cells in each of three boots, while runtime tracing exposes
+the broader stackable filesystem-method boundary.
 
 The paper's primary contribution is the design and Linux implementation of
 \namei as one systems boundary: a \code{sched_ext}-style VFS extension point

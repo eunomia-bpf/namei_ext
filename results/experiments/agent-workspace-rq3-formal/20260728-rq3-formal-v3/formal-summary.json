@@ -1,0 +1,15 @@
+{
+  "schema": "namei_ext.agent_workspace_rq3.formal.v2",
+  "run_id": "20260728-rq3-formal-v3",
+  "generated_at": "2026-07-29T05:19:33Z",
+  "boots": 3,
+  "completed_boots": 3,
+  "pass": true,
+  "lower_fs": "ext4",
+  "mechanisms": [
+    "namei_ext",
+    "wrapfs-derived"
+  ],
+  "fault_matrix": true,
+  "kprobe_attribution": true
+}

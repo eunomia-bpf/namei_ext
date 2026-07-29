@@ -21,6 +21,9 @@ AGENT_WORKSPACE_RQ3_FORMAL_DIR ?= $(RESULT_ROOT)/experiments/agent-workspace-rq3
 AGENT_WORKSPACE_RQ3_FORMAL_BOOTS ?= 3
 AGENT_WORKSPACE_RQ3_RUN_ROLE ?= preflight
 AGENT_WORKSPACE_RQ3_ANALYSIS ?= $(ROOT_DIR)/analysis/agent_workspace_rq3/analyze.py
+AGENT_WORKSPACE_RQ3_PACKAGER ?= \
+	$(ROOT_DIR)/analysis/agent_workspace_rq3/package_formal.py
+AGENT_WORKSPACE_RQ3_ANALYSIS_SEED ?= 20260728
 AGENT_WORKSPACE_RQ3_SEMANTIC_ORACLES ?= \
 	$(AGENT_WORKSPACE_RQ3_EXPERIMENT_DIR)/semantic_oracles.h
 AGENT_WORKSPACE_RQ3_REPORT_JSON ?= $(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/report.json
@@ -77,6 +80,7 @@ AGENT_WORKSPACE_RQ3_FUSE_KERNEL_SOURCES := \
 	experiment-agent-workspace-rq3 \
 	agent-workspace-rq3-analysis-test \
 	agent-workspace-rq3-report \
+	agent-workspace-rq3-publication-bundle \
 	__experiment_agent_workspace_rq3_module_smoke \
 	__experiment_agent_workspace_rq3_faults \
 	__experiment_agent_workspace_rq3_preflight
@@ -157,6 +161,8 @@ experiment-agent-workspace-rq3:
 		"$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/formal-summary.json" >/dev/null
 	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
 		agent-workspace-rq3-report RUN_ID="$(RUN_ID)"
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+		agent-workspace-rq3-publication-bundle RUN_ID="$(RUN_ID)"
 
 agent-workspace-rq3-analysis-test:
 	python3 -m unittest discover \
@@ -172,6 +178,29 @@ agent-workspace-rq3-report: agent-workspace-rq3-analysis-test
 		--markdown "$(AGENT_WORKSPACE_RQ3_REPORT_MD)"
 	jq -e '.all_oracles_passed == true and .completed_boots == 3 and .namei_fd_policy_counter_unchanged_boots == 3' \
 		"$(AGENT_WORKSPACE_RQ3_REPORT_JSON)" >/dev/null
+
+agent-workspace-rq3-publication-bundle: agent-workspace-rq3-analysis-test
+	test -f "$(AGENT_WORKSPACE_RQ3_REPORT_JSON)"
+	test -f "$(AGENT_WORKSPACE_RQ3_REPORT_MD)"
+	python3 "$(AGENT_WORKSPACE_RQ3_PACKAGER)" \
+		--formal-dir "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)" \
+		--root "$(ROOT_DIR)" \
+		--build-root "$(BUILD_ROOT)"
+	rm -rf "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/analysis.tmp"
+	python3 "$(AGENT_WORKSPACE_RQ3_ANALYSIS)" \
+		--input "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/observations.jsonl" \
+		--run "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/run.json" \
+		--output "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/analysis.tmp" \
+		--seed "$(AGENT_WORKSPACE_RQ3_ANALYSIS_SEED)"
+	cmp "$(AGENT_WORKSPACE_RQ3_REPORT_JSON)" \
+		"$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/analysis.tmp/summary.json"
+	cmp "$(AGENT_WORKSPACE_RQ3_REPORT_MD)" \
+		"$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/analysis.tmp/report.md"
+	rm -rf "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/analysis"
+	mv "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/analysis.tmp" \
+		"$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)/analysis"
+	(cd "$(AGENT_WORKSPACE_RQ3_FORMAL_DIR)" && \
+		sha256sum -c inputs.sha256 && sha256sum -c artifacts.sha256)
 
 __experiment_agent_workspace_rq3_preflight: __namei_ext_guest_prepare
 	command -v mkfs.ext4 >/dev/null
@@ -207,6 +236,7 @@ __experiment_agent_workspace_rq3_preflight: __namei_ext_guest_prepare
 		"$(AGENT_WORKSPACE_RQ3_WRAPFS_RUNNER_SOURCE)" \
 		"$(AGENT_WORKSPACE_RQ3_FAULT_SOURCE)" \
 		"$(AGENT_WORKSPACE_RQ3_ANALYSIS)" \
+		"$(AGENT_WORKSPACE_RQ3_PACKAGER)" \
 		"$(AGENT_WORKSPACE_RQ3_SEMANTIC_ORACLES)" \
 		"$(ROOT_DIR)/experiments/agent_workspace/Makefile" \
 		"$(ROOT_DIR)/bpf/policies/agent_workspace_view.bpf.c" \

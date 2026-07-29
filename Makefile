@@ -168,6 +168,8 @@ help:
 	@printf '%s\n' '                       run the paired two-boot Agent workspace RQ2 preflight'
 	@printf '%s\n' '  make experiment-agent-workspace-rq2'
 	@printf '%s\n' '                       run ten paired namei_ext/FUSE boots and generate the RQ2 report'
+	@printf '%s\n' '  make experiment-agent-workspace-rq3'
+	@printf '%s\n' '                       run the matched namei_ext/Wrapfs boundary and fail-closed matrix'
 	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
 	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'

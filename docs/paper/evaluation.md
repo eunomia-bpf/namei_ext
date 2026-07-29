@@ -1,7 +1,7 @@
 # Paper Evaluation Notes
 
 Status: routing note for the paper draft.
-Last updated: 2026-07-25.
+Last updated: 2026-07-28.
 
 The old process-heavy evaluation plan was archived to
 `docs/tmp/2026-07-25-archived-process-docs/evaluation.md` on 2026-07-25 and
@@ -19,6 +19,8 @@ skill, not by this repository.
 | Standalone research or implementation records | `docs/tmp/YYYY-MM-DD-*.md` |
 | Raw logs, JSON/JSONL, benchmark outputs, generated summaries | `results/` |
 | Current handoff pointer | `research/STATE.md` |
+| Complete experiment inventory | `docs/tmp/2026-07-28-complete-experiment-status.md` |
+| Formal Agent workspace RQ3 review | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 
 Current boundary:
 

@@ -1,0 +1,2 @@
+TARGET                                                    SOURCE     FSTYPE OPTIONS
+/dev/shm/namei-ext-rq3-root-20260728-rq3-formal-v3-boot-2 /dev/loop0 ext4   rw,relatime

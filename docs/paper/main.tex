@@ -38,11 +38,17 @@ same correctness condition against FUSE and broader filesystem boundaries.
 \namei implements this ownership split as a \code{sched_ext}-style VFS extension point.
 One \code{cgroup/namei_ext} decision function lets eBPF choose pass, redirect,
 hide, and \code{SELECT_TARGET} actions over kernel-registered lower paths while
-the kernel retains filesystem ownership. The evaluation uses source-derived
-agent/workspace and traditional build/cache correctness conditions to compare
-\namei with feature-equivalent FUSE and to identify which filesystem
-responsibilities remain outside the hook. Service/config remains conditional on
-an admitted lookup-time oracle.
+the kernel retains filesystem ownership. In KVM, the formal Agent-workspace
+oracle passes, and source-derived application-sharing and Bazel-action
+preflights provide supporting breadth. On the matched Agent lifecycle, median
+lifecycle latency is 5.51\,\(\mu\)s versus
+62.64\,\(\mu\)s for FUSE. On cache-hot FxMark, \code{SELECT} delivers
+1.052--1.088\(\times\) cached-FUSE throughput across three path-walk tests,
+while a separate 60-boot experiment meets its predeclared
+patched-unattached fast-path criterion.
+Finally, a matched Wrapfs-derived experiment passes 37/37 workspace oracles and
+21/21 fault cells in each of three boots while demonstrating the broader
+filesystem-method surface owned by the stackable implementation.
 \end{abstract}
 
 \input{sections/01-introduction}

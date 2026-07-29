@@ -44,21 +44,20 @@ BranchFS, Sandlock, and YoloFS provide neighboring branch, sandbox, staging,
 and stackable-filesystem context rather than separate evaluation
 workloads~\cite{branchfs_repo,sandlock_repo,yolofs_repo}.
 
-The second source family is traditional build/cache state. Redis, nginx,
-PostgreSQL, ccache-style builds, BuildKit cache-mount-style workloads, and
-Docker-backed benchmark rows can provide real build/test oracles. In the
-current plan, SWE-Factory-Gym and MEnvData-SWE are useful because their public
-artifacts provide reproducible repository build/test oracles, while SWE-rebench
-V2 supplies broader benchmark context~\cite{swe_factory_repo,menvagent_repo,swe_rebench_v2_repo}.
-These sources are useful only when the oracle can be reduced to selecting or
-hiding existing cache or backing objects while the source evaluator keeps
-build/test semantics.
+The traditional source families are application file sharing, build action
+sandboxing, checkpoint/restore, HPC staging, service rotation, and toolchain
+environments. The application-sharing preflight follows the XDG Documents
+portal grant/revoke behavior. The build-action preflight follows Bazel's
+action-specific input views~\cite{bazel_sandboxing}. DMTCP path
+virtualization, Kubernetes AtomicWriter publication, and Nix profile selection
+provide additional source-defined lifecycle shapes~\cite{dmtcp_path_virtualization,kubernetes_projected_volumes,nix_store}.
+They remain portfolio cases until their exact KVM oracles run.
 
-Service/config sources remain conditional. Projected configuration, secret,
-certificate, or fixture views motivate the problem, but a service/config
-workload belongs in the evaluation only when the source behavior depends on
-lookup-time object selection rather than projected-volume materialization or
-service reload alone~\cite{kubernetes_projected_volumes}.
+A historical ccache matrix supplies supporting compile-time evidence, but is
+not a headline source workload: ccache already implements cache lookup and
+validation in userspace. Source systems are admitted only when the behavior
+under study is the application's path view, not an application-level cache
+algorithm re-expressed in BPF.
 
 Only source behavior tied to a concrete same-oracle KVM run becomes final
 evaluation evidence. Source inspection and paper-derived behavior motivate
@@ -76,11 +75,15 @@ readdir under a workspace path & select or hide existing lower objects while
 the source runtime keeps COW, checkpoint, sandbox, writes, and lifecycle
 orchestration & final tree, lookup/readdir coherence, and preserved
 lower-filesystem permissions \\
-Traditional build/cache transition & cache epoch marks a local object hit,
-miss, stale, corrupt, or behind an epoch update & select verified local or
-canonical fallback, or hide a stale/corrupt local object while cache population,
-build/test execution, and content validation stay outside the hook & source
-build/test result and stale/corrupt non-use \\
+Application file sharing & application identity and grant state change whether
+one existing host document is visible & select the granted document or hide it
+while grant persistence and portal UI remain outside the hook & grant, revoke,
+cross-application isolation, and unchanged lower object \\
+Build action sandboxing & action identity and declared-input set choose which
+existing input tree one logical pathname exposes & select the action's declared
+object or hide an undeclared name while Bazel keeps process and build semantics
+& real action success, distinct concurrent outputs, and undeclared-input
+failure \\
 \hline
 \end{tabular}
 \caption{Representative state-dependent path-view examples. The \namei
@@ -115,21 +118,17 @@ evaluation in Section~\ref{sec:evaluation}.
 
 \subsection{Selected Workloads}
 
-The selected workloads are two representative cases. One workload derives from
-an AgentFS source oracle whose
-name-resolution decisions select or hide branch-visible objects while COW,
-checkpoint, sandbox, and write behavior remain responsibilities of the source
-runtime.
+The evaluated RQ1 set contains three non-overlapping workflows. The formal
+Agent workspace case exercises branch-visible staged/base selection, hides,
+readdir coherence, and lower-tree mutations. Supporting application-sharing
+and build-action preflights exercise per-application grant/revoke and two
+concurrent real Bazel actions with distinct declared-input roots and an
+undeclared-input failure. These preflights demonstrate feasibility and breadth;
+they are not promoted to final RQ evidence.
 
-The second workload is a traditional build/cache transition that chooses
-existing verified local or canonical objects, and can select regenerated
-objects only after the source evaluator has materialized them. It hides stale
-or corrupt local objects while the source evaluator and lower filesystem keep
-cache population and build/test semantics. This workload exercises file-object
-cache choices through \code{SELECT_TARGET} over kernel-registered lower paths.
-
-A workload becomes reportable only after a reviewed KVM same-oracle run.
-Service/config is included only when a concrete source oracle depends on
-lookup-time object selection. These workloads instantiate the boundary studied
-by the paper, where policy runs at lookup and directory enumeration and
-non-name-resolution behavior stays with the source system or lower filesystem.
+The broader portfolio also includes service rotation, checkpoint/restore, HPC
+file staging, and toolchain environments. These source systems motivate the
+generality of the boundary but are not reported as completed experiments. A
+workload becomes evidence only after a reviewed KVM same-oracle run. In every
+case, policy runs at lookup and directory enumeration; non-name-resolution
+behavior stays with the source system or lower filesystem.

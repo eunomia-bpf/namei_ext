@@ -1,6 +1,6 @@
 # Research State
 
-Last updated: 2026-07-25
+Last updated: 2026-07-28
 
 This file is only a handoff pointer. Research process state, gates, and
 orchestration belong to the orchestrator skill, not to this repository.
@@ -32,9 +32,10 @@ orchestration belong to the orchestrator skill, not to this repository.
   path-view policies. RQ2 measures cost versus feature-equivalent FUSE. RQ3
   evaluates the verifier-bounded, fail-closed ownership boundary versus custom
   or stackable filesystem ownership.
-- The two primary workload families are Agent workspace and traditional
-  build/cache. Service/config and checkpoint/restart path remapping remain
-  conditional on concrete lookup-time source oracles.
+- The source-derived portfolio contains seven non-overlapping industrial
+  workflows. W1 application file sharing, W2 Agent workspaces, and W3 build
+  action sandboxing currently have KVM correctness evidence. W4 remains behind
+  a closed dependency protocol; W5--W7 are not yet executed.
 - Do not reopen table-only, materialized-view, or scattered-baseline side
   experiments as the novelty line.
 
@@ -42,15 +43,30 @@ orchestration belong to the orchestrator skill, not to this repository.
 
 - Paper draft: `docs/paper/main.tex` and `docs/paper/sections/*.tex`.
 - Agent workspace RQ1: three terminal reviewed KVM runs under
-  `results/experiments/agent-workspace-matrix/20260722T0201*-rq1run{1,2,3}/`.
+  `results/experiments/agent-workspace-matrix/20260722T020120Z-rq1run1/`,
+  `20260722T020210Z-rq1run2/`, and `20260722T020245Z-rq1run3/`.
+- Agent workspace RQ2: 20 fresh KVM boots and 960/960 required oracles under
+  `results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/`;
+  paired FUSE/namei_ext lifecycle ratio `11.32x [11.24, 11.64]`.
+- FxMark RQ2: the clean 50-boot active-path matrix and separate 60-boot
+  unused-fast-path confirmation live under
+  `results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/` and
+  `results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/`.
+- Agent workspace RQ3: three independent boots passed 37/37 pairwise
+  `namei_ext`/Wrapfs-derived oracles and 21/21 fault cells under
+  `results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/`.
 - Traditional build/cache: KVM release runs
   `results/experiments/build-cache/20260723T-build-cache-state-release-v1/`
   (hot cache + trace-derived state row) and
   `results/phase1/20260724T-epoch-switch-release-v2/` (real compile epoch
   switch). Observed FUSE/namei_ext compile-time ratio is about 2.1x.
-- Open evidence gaps: release-scale real-compile miss/stale/corrupt cells
-  (one-sample stale/corrupt-hidden probes passed on 2026-07-24), timing
-  uncertainty modeling for RQ2, and RQ3 boundary write-ups per workload.
+- Open evidence gaps: a second deep traditional correctness case, cache-cold
+  and directory/metadata benchmark breadth, and a second source-derived RQ3
+  boundary row. The ccache matrix is supporting macro evidence, not a headline
+  workload.
+
+Complete current inventory:
+`docs/tmp/2026-07-28-complete-experiment-status.md`.
 
 Do not perform Git mutation unless explicitly requested after status/diff
 inspection.

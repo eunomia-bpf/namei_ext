@@ -1,0 +1,8 @@
+{
+  "project_commit": "1f5d0c9d699163cd70284dd21a4da6dbf02803bc",
+  "project_dirty": false,
+  "kernel_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+  "kernel_dirty": false,
+  "kernel_submodule_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+  "wrapfs_upstream_commit": "464802c8fd1a25413b295161c9bb9a4ce7bfa33b"
+}

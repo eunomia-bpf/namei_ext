@@ -1,6 +1,6 @@
 # Idea And Hypothesis
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 The full historical version of this file, including the orchestrator process
 tables (Claim Evolution, Narrative Evolution, Hypothesis Frontier), is archived
@@ -94,13 +94,24 @@ Evidence program:
   completed 20 fresh KVM boots, 20,000/20,000 lifecycle samples, and 960/960
   required oracles. The feature-equivalent FUSE/namei_ext paired lifecycle
   ratio is `11.32x [11.24, 11.64]`.
+- Agent workspace RQ3:
+  `results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/`
+  completed three independent KVM boots. Both `namei_ext` and a matched
+  Wrapfs-derived stackable implementation passed 37/37 pairwise
+  AgentFS-derived oracles in every boot. Two verifier faults produced exact
+  rejection logs, and all 19 runtime fault cells preserved lower-object
+  manifests. Runtime probes observed 13 stackable
+  filesystem operation classes, while an already selected `namei_ext`
+  descriptor continued through lower-file operations without re-entering BPF.
 - Traditional build/cache: historical runs now aggregated by
   `make legacy-build-cache`
   (2026-07-23 hot-cache, 2026-07-24 epoch-switch) pass the Redis/nginx ccache
   output oracle in KVM for `namei_ext`, native control, and
   feature-equivalent FUSE; observed `FUSE/namei_ext` compile-time ratio is
-  about 2.1x with `namei_ext` near native. Miss/stale/corrupt compile cells
-  are not yet closed at release scale; one-sample stale/corrupt-hidden
+  about 2.1x. In the hot-cache run, native/namei_ext was `0.945x`, so
+  `namei_ext` total compile time was about 5.8% above native. This is supporting
+  macro evidence, not a generic “near native” claim. Miss/stale/corrupt compile
+  cells are not yet closed at release scale; one-sample stale/corrupt-hidden
   fallback probes passed.
 
 ## Rejected Or Dormant Paths

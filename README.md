@@ -51,6 +51,8 @@ make current-experiment-gates
 make formal-case-studies
 make formal-performance
 make kvm-agent-workspace-matrix
+make experiment-agent-workspace-rq2
+make experiment-agent-workspace-rq3
 make kvm-application-file-sharing-preflight
 make kvm-build-action-sandboxing-preflight
 make kvm-service-config-rotation-preflight
@@ -70,7 +72,9 @@ File Sharing and Build Action Sandboxing preflights. Paper-facing collection
 uses `make formal-case-studies` and `make formal-performance` instead. Service
 Configuration Rotation remains registered as a blocked suite so its failed
 dependency preflights stay reproducible, but it is excluded from current and
-formal aggregates. The historical Redis/nginx ccache matrix remains
+formal aggregates. Formal case studies currently include the matched Agent
+workspace RQ2 namei_ext/FUSE lifecycle and RQ3 namei_ext/Wrapfs-derived
+ownership matrices. The historical Redis/nginx ccache matrix remains
 reproducible through `make legacy-build-cache`; it is not a current-suite
 dependency and must not define the structure of new experiments.
 

@@ -75,6 +75,17 @@ def validate_observations(path: Path, errors: list[str]):
         errors.append(f"{path}: no observation records")
 
 
+def artifact_paths(value: object):
+    if isinstance(value, dict):
+        for child in value.values():
+            yield from artifact_paths(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from artifact_paths(child)
+    elif isinstance(value, str) and value.startswith("artifacts/"):
+        yield value
+
+
 def require_tracked_file(
     repo: Path,
     relative: PurePosixPath,
@@ -212,18 +223,19 @@ def validate_result(
         required.append(observations)
 
     artifacts = run.get("artifacts")
-    source_artifacts = (
-        artifacts.get("source", {}) if isinstance(artifacts, dict) else {}
-    )
-    if isinstance(source_artifacts, dict):
-        for name, value in source_artifacts.items():
-            if not isinstance(value, str) or not value.startswith("artifacts/"):
-                continue
-            relative = safe_relative_path(
-                value, f"{run_relative}: source artifact {name}", errors
-            )
-            if relative is not None:
-                required.append(relative)
+    if entry.get("require_all_artifacts") is True:
+        declared_artifacts = artifact_paths(artifacts)
+    else:
+        source_artifacts = (
+            artifacts.get("source", {}) if isinstance(artifacts, dict) else {}
+        )
+        declared_artifacts = artifact_paths(source_artifacts)
+    for value in declared_artifacts:
+        relative = safe_relative_path(
+            value, f"{run_relative}: declared artifact", errors
+        )
+        if relative is not None:
+            required.append(relative)
 
     for relative in required:
         require_tracked_file(repo, root_relative / relative, tracked, errors)

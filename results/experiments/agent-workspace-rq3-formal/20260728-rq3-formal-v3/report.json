@@ -1,0 +1,2479 @@
+{
+  "all_oracles_passed": true,
+  "boots": [
+    {
+      "artifact_hash_rows": 9,
+      "boot": "boot-1",
+      "fault_containment": {
+        "directories_per_manifest": 2,
+        "independent_policy_lifecycles": 18,
+        "objects_per_manifest": 8,
+        "runtime_faults_with_manifests": 19
+      },
+      "fault_errnos": {
+        "redirect_create": 95,
+        "redirect_dot": 22,
+        "redirect_dot_dot": 22,
+        "redirect_dot_dot_readdir": 22,
+        "redirect_dot_readdir": 22,
+        "redirect_embedded_nul": 22,
+        "redirect_embedded_nul_readdir": 22,
+        "redirect_len_65": 22,
+        "redirect_len_65_readdir": 22,
+        "redirect_len_zero": 22,
+        "redirect_len_zero_readdir": 22,
+        "redirect_slash": 22,
+        "redirect_slash_readdir": 22,
+        "select_create": 95,
+        "select_final_open": 95,
+        "select_readdir": 95,
+        "target_unregistered": 2,
+        "target_zero": 22,
+        "target_zero_warm": 22,
+        "verifier_reject_action_4": 22,
+        "verifier_reject_ctx_write": 13
+      },
+      "input_hash_rows": 51,
+      "namei_fd_policy_counter_after": 142,
+      "namei_fd_policy_counter_before": 142,
+      "namei_fd_policy_counter_delta": 0,
+      "observation_count": 1227,
+      "pairwise_oracles": [
+        {
+          "expected": "errno=EACCES",
+          "namei_case": "base_epoch_denied_access",
+          "operation": "access",
+          "oracle_id": "base-denied-access",
+          "pass": true,
+          "wrapfs_case": "base_unprivileged_access_denied"
+        },
+        {
+          "expected": "mode=0000",
+          "namei_case": "base_epoch_denied_mode",
+          "operation": "stat",
+          "oracle_id": "base-denied-mode",
+          "pass": true,
+          "wrapfs_case": "base_denied_mode"
+        },
+        {
+          "expected": "exit=0",
+          "namei_case": "base_epoch_exec_tool",
+          "operation": "exec",
+          "oracle_id": "base-execute",
+          "pass": true,
+          "wrapfs_case": "base_exec_tool"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "base_epoch_whiteout",
+          "operation": "stat",
+          "oracle_id": "base-hidden-lookup",
+          "pass": true,
+          "wrapfs_case": "base_lookup_deleted_hidden"
+        },
+        {
+          "expected": "required=main,link,src,.git;absent=deleted,generated,cached",
+          "namei_case": "base_epoch_readdir",
+          "operation": "readdir",
+          "oracle_id": "base-hidden-readdir",
+          "pass": true,
+          "wrapfs_case": "base_readdir_deleted_hidden"
+        },
+        {
+          "expected": "bytes=base-main",
+          "namei_case": "base_epoch_main",
+          "operation": "read",
+          "oracle_id": "base-main-bytes",
+          "pass": true,
+          "wrapfs_case": "base_lookup_main"
+        },
+        {
+          "expected": "mode=0644",
+          "namei_case": "base_epoch_main_mode",
+          "operation": "stat",
+          "oracle_id": "base-main-mode",
+          "pass": true,
+          "wrapfs_case": "base_main_mode"
+        },
+        {
+          "expected": "bytes=ref-main",
+          "namei_case": "base_epoch_git_head",
+          "operation": "read",
+          "oracle_id": "base-nested-git",
+          "pass": true,
+          "wrapfs_case": "base_nested_git"
+        },
+        {
+          "expected": "bytes=base-app",
+          "namei_case": "base_epoch_src_app",
+          "operation": "read",
+          "oracle_id": "base-nested-src",
+          "pass": true,
+          "wrapfs_case": "base_nested_src"
+        },
+        {
+          "expected": "target=main.txt",
+          "namei_case": "base_epoch_symlink",
+          "operation": "readlink",
+          "oracle_id": "base-symlink",
+          "pass": true,
+          "wrapfs_case": "base_symlink"
+        },
+        {
+          "expected": "bytes=base-main",
+          "namei_case": "base_epoch_symlink_follow",
+          "operation": "read",
+          "oracle_id": "base-symlink-follow",
+          "pass": true,
+          "wrapfs_case": "base_symlink_follow"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "agentfs_cached_negative_before_create",
+          "operation": "stat",
+          "oracle_id": "cached-negative-before-create",
+          "pass": true,
+          "wrapfs_case": "cached_negative_before_create"
+        },
+        {
+          "expected": "bytes=cached-created",
+          "namei_case": "agentfs_cached_negative_visible",
+          "operation": "read",
+          "oracle_id": "cached-negative-bytes",
+          "pass": true,
+          "wrapfs_case": "cached_negative_read"
+        },
+        {
+          "expected": "flags=CREAT,EXCL,WRONLY,CLOEXEC;mode=0644;bytes=cached-created",
+          "namei_case": "agentfs_cached_negative_create",
+          "operation": "open-write",
+          "oracle_id": "cached-negative-create",
+          "pass": true,
+          "wrapfs_case": "cached_negative_create"
+        },
+        {
+          "expected": "required=main,link,src,.git,generated,cached;absent=deleted",
+          "namei_case": "agentfs_cached_negative_readdir_visible",
+          "operation": "readdir",
+          "oracle_id": "cached-negative-readdir",
+          "pass": true,
+          "wrapfs_case": "cached_negative_readdir_visible"
+        },
+        {
+          "expected": "fields=19",
+          "namei_case": "final_tree_manifest",
+          "operation": "manifest",
+          "oracle_id": "final-lower-tree",
+          "pass": true,
+          "wrapfs_case": "final_lower_tree_manifest"
+        },
+        {
+          "expected": "flags=CREAT,EXCL,WRONLY,CLOEXEC;fsync;mode=0640;size=19",
+          "namei_case": "upper_epoch_create_write_fsync_fchmod_fstat",
+          "operation": "open-write",
+          "oracle_id": "generated-create",
+          "pass": true,
+          "wrapfs_case": "generated_create_write_fsync_fchmod_fstat"
+        },
+        {
+          "expected": "bytes=generated-in-upper",
+          "namei_case": "upper_generated_visible",
+          "operation": "read-lower",
+          "oracle_id": "generated-lower-bytes",
+          "pass": true,
+          "wrapfs_case": "generated_lower_visible"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "upper_generated_negative_before_write",
+          "operation": "stat",
+          "oracle_id": "generated-negative",
+          "pass": true,
+          "wrapfs_case": "generated_negative_before_create"
+        },
+        {
+          "expected": "required=main,link,src,.git,generated;absent=deleted,cached",
+          "namei_case": "upper_epoch_readdir_after_write",
+          "operation": "readdir",
+          "oracle_id": "generated-readdir",
+          "pass": true,
+          "wrapfs_case": "generated_readdir_visible"
+        },
+        {
+          "expected": "generated->renamed",
+          "namei_case": "agentfs_rename_generated_to_renamed",
+          "operation": "rename",
+          "oracle_id": "rename-generated",
+          "pass": true,
+          "wrapfs_case": "rename_generated_to_renamed"
+        },
+        {
+          "expected": "renamed=generated-in-upper",
+          "namei_case": "agentfs_rename_generated_new_visible",
+          "operation": "read",
+          "oracle_id": "rename-new-bytes",
+          "pass": true,
+          "wrapfs_case": "rename_new_visible"
+        },
+        {
+          "expected": "generated=ENOENT",
+          "namei_case": "agentfs_rename_generated_old_absent",
+          "operation": "stat",
+          "oracle_id": "rename-old-absent",
+          "pass": true,
+          "wrapfs_case": "rename_old_absent"
+        },
+        {
+          "expected": "renamed->generated",
+          "namei_case": "agentfs_rename_restored_generated",
+          "operation": "rename",
+          "oracle_id": "rename-restore",
+          "pass": true,
+          "wrapfs_case": "rename_restore_generated"
+        },
+        {
+          "expected": "cached=removed",
+          "namei_case": "agentfs_unlink_cached_created",
+          "operation": "unlink",
+          "oracle_id": "unlink-cached-negative",
+          "pass": true,
+          "wrapfs_case": "unlink_cached_negative"
+        },
+        {
+          "expected": "cached=ENOENT",
+          "namei_case": "agentfs_unlink_cached_absent",
+          "operation": "stat",
+          "oracle_id": "unlink-result-absent",
+          "pass": true,
+          "wrapfs_case": "unlink_cached_negative_absent"
+        },
+        {
+          "expected": "errno=EACCES",
+          "namei_case": "upper_epoch_denied_access",
+          "operation": "access",
+          "oracle_id": "upper-denied-access",
+          "pass": true,
+          "wrapfs_case": "upper_unprivileged_access_denied"
+        },
+        {
+          "expected": "mode=0100",
+          "namei_case": "upper_epoch_denied_mode",
+          "operation": "stat",
+          "oracle_id": "upper-denied-mode",
+          "pass": true,
+          "wrapfs_case": "upper_denied_mode"
+        },
+        {
+          "expected": "exit=0",
+          "namei_case": "upper_epoch_exec_tool",
+          "operation": "exec",
+          "oracle_id": "upper-execute",
+          "pass": true,
+          "wrapfs_case": "upper_exec_tool"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "upper_epoch_whiteout",
+          "operation": "stat",
+          "oracle_id": "upper-hidden-lookup",
+          "pass": true,
+          "wrapfs_case": "upper_lookup_deleted_hidden"
+        },
+        {
+          "expected": "required=main,link,src,.git;absent=deleted,generated,cached",
+          "namei_case": "upper_epoch_readdir_before_write",
+          "operation": "readdir",
+          "oracle_id": "upper-hidden-readdir",
+          "pass": true,
+          "wrapfs_case": "upper_readdir_deleted_hidden"
+        },
+        {
+          "expected": "bytes=upper-main",
+          "namei_case": "upper_epoch_main",
+          "operation": "read",
+          "oracle_id": "upper-main-bytes",
+          "pass": true,
+          "wrapfs_case": "upper_lookup_main"
+        },
+        {
+          "expected": "mode=0600",
+          "namei_case": "upper_epoch_main_mode",
+          "operation": "stat",
+          "oracle_id": "upper-main-mode",
+          "pass": true,
+          "wrapfs_case": "upper_main_mode"
+        },
+        {
+          "expected": "bytes=ref-agent",
+          "namei_case": "upper_epoch_git_head",
+          "operation": "read",
+          "oracle_id": "upper-nested-git",
+          "pass": true,
+          "wrapfs_case": "upper_nested_git"
+        },
+        {
+          "expected": "bytes=agent-edited-app",
+          "namei_case": "upper_epoch_src_app",
+          "operation": "read",
+          "oracle_id": "upper-nested-src",
+          "pass": true,
+          "wrapfs_case": "upper_nested_src"
+        },
+        {
+          "expected": "target=main.txt",
+          "namei_case": "upper_epoch_symlink",
+          "operation": "readlink",
+          "oracle_id": "upper-symlink",
+          "pass": true,
+          "wrapfs_case": "upper_symlink"
+        },
+        {
+          "expected": "bytes=upper-main",
+          "namei_case": "upper_epoch_symlink_follow",
+          "operation": "read",
+          "oracle_id": "upper-symlink-follow",
+          "pass": true,
+          "wrapfs_case": "upper_symlink_follow"
+        }
+      ],
+      "provenance": {
+        "kernel_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+        "kernel_dirty": false,
+        "kernel_submodule_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+        "project_commit": "1f5d0c9d699163cd70284dd21a4da6dbf02803bc",
+        "project_dirty": false,
+        "wrapfs_upstream_commit": "464802c8fd1a25413b295161c9bb9a4ce7bfa33b"
+      },
+      "wrapfs_kprobe_counts": {
+        "create": 2,
+        "fill_super": 2,
+        "fsync": 1,
+        "getattr": 10,
+        "lookup": 28,
+        "open": 22,
+        "put_super": 2,
+        "read_iter": 15,
+        "readdir": 10,
+        "rename": 2,
+        "setattr": 1,
+        "unlink": 1,
+        "write_iter": 2
+      }
+    },
+    {
+      "artifact_hash_rows": 9,
+      "boot": "boot-2",
+      "fault_containment": {
+        "directories_per_manifest": 2,
+        "independent_policy_lifecycles": 18,
+        "objects_per_manifest": 8,
+        "runtime_faults_with_manifests": 19
+      },
+      "fault_errnos": {
+        "redirect_create": 95,
+        "redirect_dot": 22,
+        "redirect_dot_dot": 22,
+        "redirect_dot_dot_readdir": 22,
+        "redirect_dot_readdir": 22,
+        "redirect_embedded_nul": 22,
+        "redirect_embedded_nul_readdir": 22,
+        "redirect_len_65": 22,
+        "redirect_len_65_readdir": 22,
+        "redirect_len_zero": 22,
+        "redirect_len_zero_readdir": 22,
+        "redirect_slash": 22,
+        "redirect_slash_readdir": 22,
+        "select_create": 95,
+        "select_final_open": 95,
+        "select_readdir": 95,
+        "target_unregistered": 2,
+        "target_zero": 22,
+        "target_zero_warm": 22,
+        "verifier_reject_action_4": 22,
+        "verifier_reject_ctx_write": 13
+      },
+      "input_hash_rows": 51,
+      "namei_fd_policy_counter_after": 142,
+      "namei_fd_policy_counter_before": 142,
+      "namei_fd_policy_counter_delta": 0,
+      "observation_count": 1227,
+      "pairwise_oracles": [
+        {
+          "expected": "errno=EACCES",
+          "namei_case": "base_epoch_denied_access",
+          "operation": "access",
+          "oracle_id": "base-denied-access",
+          "pass": true,
+          "wrapfs_case": "base_unprivileged_access_denied"
+        },
+        {
+          "expected": "mode=0000",
+          "namei_case": "base_epoch_denied_mode",
+          "operation": "stat",
+          "oracle_id": "base-denied-mode",
+          "pass": true,
+          "wrapfs_case": "base_denied_mode"
+        },
+        {
+          "expected": "exit=0",
+          "namei_case": "base_epoch_exec_tool",
+          "operation": "exec",
+          "oracle_id": "base-execute",
+          "pass": true,
+          "wrapfs_case": "base_exec_tool"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "base_epoch_whiteout",
+          "operation": "stat",
+          "oracle_id": "base-hidden-lookup",
+          "pass": true,
+          "wrapfs_case": "base_lookup_deleted_hidden"
+        },
+        {
+          "expected": "required=main,link,src,.git;absent=deleted,generated,cached",
+          "namei_case": "base_epoch_readdir",
+          "operation": "readdir",
+          "oracle_id": "base-hidden-readdir",
+          "pass": true,
+          "wrapfs_case": "base_readdir_deleted_hidden"
+        },
+        {
+          "expected": "bytes=base-main",
+          "namei_case": "base_epoch_main",
+          "operation": "read",
+          "oracle_id": "base-main-bytes",
+          "pass": true,
+          "wrapfs_case": "base_lookup_main"
+        },
+        {
+          "expected": "mode=0644",
+          "namei_case": "base_epoch_main_mode",
+          "operation": "stat",
+          "oracle_id": "base-main-mode",
+          "pass": true,
+          "wrapfs_case": "base_main_mode"
+        },
+        {
+          "expected": "bytes=ref-main",
+          "namei_case": "base_epoch_git_head",
+          "operation": "read",
+          "oracle_id": "base-nested-git",
+          "pass": true,
+          "wrapfs_case": "base_nested_git"
+        },
+        {
+          "expected": "bytes=base-app",
+          "namei_case": "base_epoch_src_app",
+          "operation": "read",
+          "oracle_id": "base-nested-src",
+          "pass": true,
+          "wrapfs_case": "base_nested_src"
+        },
+        {
+          "expected": "target=main.txt",
+          "namei_case": "base_epoch_symlink",
+          "operation": "readlink",
+          "oracle_id": "base-symlink",
+          "pass": true,
+          "wrapfs_case": "base_symlink"
+        },
+        {
+          "expected": "bytes=base-main",
+          "namei_case": "base_epoch_symlink_follow",
+          "operation": "read",
+          "oracle_id": "base-symlink-follow",
+          "pass": true,
+          "wrapfs_case": "base_symlink_follow"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "agentfs_cached_negative_before_create",
+          "operation": "stat",
+          "oracle_id": "cached-negative-before-create",
+          "pass": true,
+          "wrapfs_case": "cached_negative_before_create"
+        },
+        {
+          "expected": "bytes=cached-created",
+          "namei_case": "agentfs_cached_negative_visible",
+          "operation": "read",
+          "oracle_id": "cached-negative-bytes",
+          "pass": true,
+          "wrapfs_case": "cached_negative_read"
+        },
+        {
+          "expected": "flags=CREAT,EXCL,WRONLY,CLOEXEC;mode=0644;bytes=cached-created",
+          "namei_case": "agentfs_cached_negative_create",
+          "operation": "open-write",
+          "oracle_id": "cached-negative-create",
+          "pass": true,
+          "wrapfs_case": "cached_negative_create"
+        },
+        {
+          "expected": "required=main,link,src,.git,generated,cached;absent=deleted",
+          "namei_case": "agentfs_cached_negative_readdir_visible",
+          "operation": "readdir",
+          "oracle_id": "cached-negative-readdir",
+          "pass": true,
+          "wrapfs_case": "cached_negative_readdir_visible"
+        },
+        {
+          "expected": "fields=19",
+          "namei_case": "final_tree_manifest",
+          "operation": "manifest",
+          "oracle_id": "final-lower-tree",
+          "pass": true,
+          "wrapfs_case": "final_lower_tree_manifest"
+        },
+        {
+          "expected": "flags=CREAT,EXCL,WRONLY,CLOEXEC;fsync;mode=0640;size=19",
+          "namei_case": "upper_epoch_create_write_fsync_fchmod_fstat",
+          "operation": "open-write",
+          "oracle_id": "generated-create",
+          "pass": true,
+          "wrapfs_case": "generated_create_write_fsync_fchmod_fstat"
+        },
+        {
+          "expected": "bytes=generated-in-upper",
+          "namei_case": "upper_generated_visible",
+          "operation": "read-lower",
+          "oracle_id": "generated-lower-bytes",
+          "pass": true,
+          "wrapfs_case": "generated_lower_visible"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "upper_generated_negative_before_write",
+          "operation": "stat",
+          "oracle_id": "generated-negative",
+          "pass": true,
+          "wrapfs_case": "generated_negative_before_create"
+        },
+        {
+          "expected": "required=main,link,src,.git,generated;absent=deleted,cached",
+          "namei_case": "upper_epoch_readdir_after_write",
+          "operation": "readdir",
+          "oracle_id": "generated-readdir",
+          "pass": true,
+          "wrapfs_case": "generated_readdir_visible"
+        },
+        {
+          "expected": "generated->renamed",
+          "namei_case": "agentfs_rename_generated_to_renamed",
+          "operation": "rename",
+          "oracle_id": "rename-generated",
+          "pass": true,
+          "wrapfs_case": "rename_generated_to_renamed"
+        },
+        {
+          "expected": "renamed=generated-in-upper",
+          "namei_case": "agentfs_rename_generated_new_visible",
+          "operation": "read",
+          "oracle_id": "rename-new-bytes",
+          "pass": true,
+          "wrapfs_case": "rename_new_visible"
+        },
+        {
+          "expected": "generated=ENOENT",
+          "namei_case": "agentfs_rename_generated_old_absent",
+          "operation": "stat",
+          "oracle_id": "rename-old-absent",
+          "pass": true,
+          "wrapfs_case": "rename_old_absent"
+        },
+        {
+          "expected": "renamed->generated",
+          "namei_case": "agentfs_rename_restored_generated",
+          "operation": "rename",
+          "oracle_id": "rename-restore",
+          "pass": true,
+          "wrapfs_case": "rename_restore_generated"
+        },
+        {
+          "expected": "cached=removed",
+          "namei_case": "agentfs_unlink_cached_created",
+          "operation": "unlink",
+          "oracle_id": "unlink-cached-negative",
+          "pass": true,
+          "wrapfs_case": "unlink_cached_negative"
+        },
+        {
+          "expected": "cached=ENOENT",
+          "namei_case": "agentfs_unlink_cached_absent",
+          "operation": "stat",
+          "oracle_id": "unlink-result-absent",
+          "pass": true,
+          "wrapfs_case": "unlink_cached_negative_absent"
+        },
+        {
+          "expected": "errno=EACCES",
+          "namei_case": "upper_epoch_denied_access",
+          "operation": "access",
+          "oracle_id": "upper-denied-access",
+          "pass": true,
+          "wrapfs_case": "upper_unprivileged_access_denied"
+        },
+        {
+          "expected": "mode=0100",
+          "namei_case": "upper_epoch_denied_mode",
+          "operation": "stat",
+          "oracle_id": "upper-denied-mode",
+          "pass": true,
+          "wrapfs_case": "upper_denied_mode"
+        },
+        {
+          "expected": "exit=0",
+          "namei_case": "upper_epoch_exec_tool",
+          "operation": "exec",
+          "oracle_id": "upper-execute",
+          "pass": true,
+          "wrapfs_case": "upper_exec_tool"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "upper_epoch_whiteout",
+          "operation": "stat",
+          "oracle_id": "upper-hidden-lookup",
+          "pass": true,
+          "wrapfs_case": "upper_lookup_deleted_hidden"
+        },
+        {
+          "expected": "required=main,link,src,.git;absent=deleted,generated,cached",
+          "namei_case": "upper_epoch_readdir_before_write",
+          "operation": "readdir",
+          "oracle_id": "upper-hidden-readdir",
+          "pass": true,
+          "wrapfs_case": "upper_readdir_deleted_hidden"
+        },
+        {
+          "expected": "bytes=upper-main",
+          "namei_case": "upper_epoch_main",
+          "operation": "read",
+          "oracle_id": "upper-main-bytes",
+          "pass": true,
+          "wrapfs_case": "upper_lookup_main"
+        },
+        {
+          "expected": "mode=0600",
+          "namei_case": "upper_epoch_main_mode",
+          "operation": "stat",
+          "oracle_id": "upper-main-mode",
+          "pass": true,
+          "wrapfs_case": "upper_main_mode"
+        },
+        {
+          "expected": "bytes=ref-agent",
+          "namei_case": "upper_epoch_git_head",
+          "operation": "read",
+          "oracle_id": "upper-nested-git",
+          "pass": true,
+          "wrapfs_case": "upper_nested_git"
+        },
+        {
+          "expected": "bytes=agent-edited-app",
+          "namei_case": "upper_epoch_src_app",
+          "operation": "read",
+          "oracle_id": "upper-nested-src",
+          "pass": true,
+          "wrapfs_case": "upper_nested_src"
+        },
+        {
+          "expected": "target=main.txt",
+          "namei_case": "upper_epoch_symlink",
+          "operation": "readlink",
+          "oracle_id": "upper-symlink",
+          "pass": true,
+          "wrapfs_case": "upper_symlink"
+        },
+        {
+          "expected": "bytes=upper-main",
+          "namei_case": "upper_epoch_symlink_follow",
+          "operation": "read",
+          "oracle_id": "upper-symlink-follow",
+          "pass": true,
+          "wrapfs_case": "upper_symlink_follow"
+        }
+      ],
+      "provenance": {
+        "kernel_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+        "kernel_dirty": false,
+        "kernel_submodule_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+        "project_commit": "1f5d0c9d699163cd70284dd21a4da6dbf02803bc",
+        "project_dirty": false,
+        "wrapfs_upstream_commit": "464802c8fd1a25413b295161c9bb9a4ce7bfa33b"
+      },
+      "wrapfs_kprobe_counts": {
+        "create": 2,
+        "fill_super": 2,
+        "fsync": 1,
+        "getattr": 10,
+        "lookup": 28,
+        "open": 22,
+        "put_super": 2,
+        "read_iter": 15,
+        "readdir": 10,
+        "rename": 2,
+        "setattr": 1,
+        "unlink": 1,
+        "write_iter": 2
+      }
+    },
+    {
+      "artifact_hash_rows": 9,
+      "boot": "boot-3",
+      "fault_containment": {
+        "directories_per_manifest": 2,
+        "independent_policy_lifecycles": 18,
+        "objects_per_manifest": 8,
+        "runtime_faults_with_manifests": 19
+      },
+      "fault_errnos": {
+        "redirect_create": 95,
+        "redirect_dot": 22,
+        "redirect_dot_dot": 22,
+        "redirect_dot_dot_readdir": 22,
+        "redirect_dot_readdir": 22,
+        "redirect_embedded_nul": 22,
+        "redirect_embedded_nul_readdir": 22,
+        "redirect_len_65": 22,
+        "redirect_len_65_readdir": 22,
+        "redirect_len_zero": 22,
+        "redirect_len_zero_readdir": 22,
+        "redirect_slash": 22,
+        "redirect_slash_readdir": 22,
+        "select_create": 95,
+        "select_final_open": 95,
+        "select_readdir": 95,
+        "target_unregistered": 2,
+        "target_zero": 22,
+        "target_zero_warm": 22,
+        "verifier_reject_action_4": 22,
+        "verifier_reject_ctx_write": 13
+      },
+      "input_hash_rows": 51,
+      "namei_fd_policy_counter_after": 142,
+      "namei_fd_policy_counter_before": 142,
+      "namei_fd_policy_counter_delta": 0,
+      "observation_count": 1227,
+      "pairwise_oracles": [
+        {
+          "expected": "errno=EACCES",
+          "namei_case": "base_epoch_denied_access",
+          "operation": "access",
+          "oracle_id": "base-denied-access",
+          "pass": true,
+          "wrapfs_case": "base_unprivileged_access_denied"
+        },
+        {
+          "expected": "mode=0000",
+          "namei_case": "base_epoch_denied_mode",
+          "operation": "stat",
+          "oracle_id": "base-denied-mode",
+          "pass": true,
+          "wrapfs_case": "base_denied_mode"
+        },
+        {
+          "expected": "exit=0",
+          "namei_case": "base_epoch_exec_tool",
+          "operation": "exec",
+          "oracle_id": "base-execute",
+          "pass": true,
+          "wrapfs_case": "base_exec_tool"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "base_epoch_whiteout",
+          "operation": "stat",
+          "oracle_id": "base-hidden-lookup",
+          "pass": true,
+          "wrapfs_case": "base_lookup_deleted_hidden"
+        },
+        {
+          "expected": "required=main,link,src,.git;absent=deleted,generated,cached",
+          "namei_case": "base_epoch_readdir",
+          "operation": "readdir",
+          "oracle_id": "base-hidden-readdir",
+          "pass": true,
+          "wrapfs_case": "base_readdir_deleted_hidden"
+        },
+        {
+          "expected": "bytes=base-main",
+          "namei_case": "base_epoch_main",
+          "operation": "read",
+          "oracle_id": "base-main-bytes",
+          "pass": true,
+          "wrapfs_case": "base_lookup_main"
+        },
+        {
+          "expected": "mode=0644",
+          "namei_case": "base_epoch_main_mode",
+          "operation": "stat",
+          "oracle_id": "base-main-mode",
+          "pass": true,
+          "wrapfs_case": "base_main_mode"
+        },
+        {
+          "expected": "bytes=ref-main",
+          "namei_case": "base_epoch_git_head",
+          "operation": "read",
+          "oracle_id": "base-nested-git",
+          "pass": true,
+          "wrapfs_case": "base_nested_git"
+        },
+        {
+          "expected": "bytes=base-app",
+          "namei_case": "base_epoch_src_app",
+          "operation": "read",
+          "oracle_id": "base-nested-src",
+          "pass": true,
+          "wrapfs_case": "base_nested_src"
+        },
+        {
+          "expected": "target=main.txt",
+          "namei_case": "base_epoch_symlink",
+          "operation": "readlink",
+          "oracle_id": "base-symlink",
+          "pass": true,
+          "wrapfs_case": "base_symlink"
+        },
+        {
+          "expected": "bytes=base-main",
+          "namei_case": "base_epoch_symlink_follow",
+          "operation": "read",
+          "oracle_id": "base-symlink-follow",
+          "pass": true,
+          "wrapfs_case": "base_symlink_follow"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "agentfs_cached_negative_before_create",
+          "operation": "stat",
+          "oracle_id": "cached-negative-before-create",
+          "pass": true,
+          "wrapfs_case": "cached_negative_before_create"
+        },
+        {
+          "expected": "bytes=cached-created",
+          "namei_case": "agentfs_cached_negative_visible",
+          "operation": "read",
+          "oracle_id": "cached-negative-bytes",
+          "pass": true,
+          "wrapfs_case": "cached_negative_read"
+        },
+        {
+          "expected": "flags=CREAT,EXCL,WRONLY,CLOEXEC;mode=0644;bytes=cached-created",
+          "namei_case": "agentfs_cached_negative_create",
+          "operation": "open-write",
+          "oracle_id": "cached-negative-create",
+          "pass": true,
+          "wrapfs_case": "cached_negative_create"
+        },
+        {
+          "expected": "required=main,link,src,.git,generated,cached;absent=deleted",
+          "namei_case": "agentfs_cached_negative_readdir_visible",
+          "operation": "readdir",
+          "oracle_id": "cached-negative-readdir",
+          "pass": true,
+          "wrapfs_case": "cached_negative_readdir_visible"
+        },
+        {
+          "expected": "fields=19",
+          "namei_case": "final_tree_manifest",
+          "operation": "manifest",
+          "oracle_id": "final-lower-tree",
+          "pass": true,
+          "wrapfs_case": "final_lower_tree_manifest"
+        },
+        {
+          "expected": "flags=CREAT,EXCL,WRONLY,CLOEXEC;fsync;mode=0640;size=19",
+          "namei_case": "upper_epoch_create_write_fsync_fchmod_fstat",
+          "operation": "open-write",
+          "oracle_id": "generated-create",
+          "pass": true,
+          "wrapfs_case": "generated_create_write_fsync_fchmod_fstat"
+        },
+        {
+          "expected": "bytes=generated-in-upper",
+          "namei_case": "upper_generated_visible",
+          "operation": "read-lower",
+          "oracle_id": "generated-lower-bytes",
+          "pass": true,
+          "wrapfs_case": "generated_lower_visible"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "upper_generated_negative_before_write",
+          "operation": "stat",
+          "oracle_id": "generated-negative",
+          "pass": true,
+          "wrapfs_case": "generated_negative_before_create"
+        },
+        {
+          "expected": "required=main,link,src,.git,generated;absent=deleted,cached",
+          "namei_case": "upper_epoch_readdir_after_write",
+          "operation": "readdir",
+          "oracle_id": "generated-readdir",
+          "pass": true,
+          "wrapfs_case": "generated_readdir_visible"
+        },
+        {
+          "expected": "generated->renamed",
+          "namei_case": "agentfs_rename_generated_to_renamed",
+          "operation": "rename",
+          "oracle_id": "rename-generated",
+          "pass": true,
+          "wrapfs_case": "rename_generated_to_renamed"
+        },
+        {
+          "expected": "renamed=generated-in-upper",
+          "namei_case": "agentfs_rename_generated_new_visible",
+          "operation": "read",
+          "oracle_id": "rename-new-bytes",
+          "pass": true,
+          "wrapfs_case": "rename_new_visible"
+        },
+        {
+          "expected": "generated=ENOENT",
+          "namei_case": "agentfs_rename_generated_old_absent",
+          "operation": "stat",
+          "oracle_id": "rename-old-absent",
+          "pass": true,
+          "wrapfs_case": "rename_old_absent"
+        },
+        {
+          "expected": "renamed->generated",
+          "namei_case": "agentfs_rename_restored_generated",
+          "operation": "rename",
+          "oracle_id": "rename-restore",
+          "pass": true,
+          "wrapfs_case": "rename_restore_generated"
+        },
+        {
+          "expected": "cached=removed",
+          "namei_case": "agentfs_unlink_cached_created",
+          "operation": "unlink",
+          "oracle_id": "unlink-cached-negative",
+          "pass": true,
+          "wrapfs_case": "unlink_cached_negative"
+        },
+        {
+          "expected": "cached=ENOENT",
+          "namei_case": "agentfs_unlink_cached_absent",
+          "operation": "stat",
+          "oracle_id": "unlink-result-absent",
+          "pass": true,
+          "wrapfs_case": "unlink_cached_negative_absent"
+        },
+        {
+          "expected": "errno=EACCES",
+          "namei_case": "upper_epoch_denied_access",
+          "operation": "access",
+          "oracle_id": "upper-denied-access",
+          "pass": true,
+          "wrapfs_case": "upper_unprivileged_access_denied"
+        },
+        {
+          "expected": "mode=0100",
+          "namei_case": "upper_epoch_denied_mode",
+          "operation": "stat",
+          "oracle_id": "upper-denied-mode",
+          "pass": true,
+          "wrapfs_case": "upper_denied_mode"
+        },
+        {
+          "expected": "exit=0",
+          "namei_case": "upper_epoch_exec_tool",
+          "operation": "exec",
+          "oracle_id": "upper-execute",
+          "pass": true,
+          "wrapfs_case": "upper_exec_tool"
+        },
+        {
+          "expected": "errno=ENOENT",
+          "namei_case": "upper_epoch_whiteout",
+          "operation": "stat",
+          "oracle_id": "upper-hidden-lookup",
+          "pass": true,
+          "wrapfs_case": "upper_lookup_deleted_hidden"
+        },
+        {
+          "expected": "required=main,link,src,.git;absent=deleted,generated,cached",
+          "namei_case": "upper_epoch_readdir_before_write",
+          "operation": "readdir",
+          "oracle_id": "upper-hidden-readdir",
+          "pass": true,
+          "wrapfs_case": "upper_readdir_deleted_hidden"
+        },
+        {
+          "expected": "bytes=upper-main",
+          "namei_case": "upper_epoch_main",
+          "operation": "read",
+          "oracle_id": "upper-main-bytes",
+          "pass": true,
+          "wrapfs_case": "upper_lookup_main"
+        },
+        {
+          "expected": "mode=0600",
+          "namei_case": "upper_epoch_main_mode",
+          "operation": "stat",
+          "oracle_id": "upper-main-mode",
+          "pass": true,
+          "wrapfs_case": "upper_main_mode"
+        },
+        {
+          "expected": "bytes=ref-agent",
+          "namei_case": "upper_epoch_git_head",
+          "operation": "read",
+          "oracle_id": "upper-nested-git",
+          "pass": true,
+          "wrapfs_case": "upper_nested_git"
+        },
+        {
+          "expected": "bytes=agent-edited-app",
+          "namei_case": "upper_epoch_src_app",
+          "operation": "read",
+          "oracle_id": "upper-nested-src",
+          "pass": true,
+          "wrapfs_case": "upper_nested_src"
+        },
+        {
+          "expected": "target=main.txt",
+          "namei_case": "upper_epoch_symlink",
+          "operation": "readlink",
+          "oracle_id": "upper-symlink",
+          "pass": true,
+          "wrapfs_case": "upper_symlink"
+        },
+        {
+          "expected": "bytes=upper-main",
+          "namei_case": "upper_epoch_symlink_follow",
+          "operation": "read",
+          "oracle_id": "upper-symlink-follow",
+          "pass": true,
+          "wrapfs_case": "upper_symlink_follow"
+        }
+      ],
+      "provenance": {
+        "kernel_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+        "kernel_dirty": false,
+        "kernel_submodule_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+        "project_commit": "1f5d0c9d699163cd70284dd21a4da6dbf02803bc",
+        "project_dirty": false,
+        "wrapfs_upstream_commit": "464802c8fd1a25413b295161c9bb9a4ce7bfa33b"
+      },
+      "wrapfs_kprobe_counts": {
+        "create": 2,
+        "fill_super": 2,
+        "fsync": 1,
+        "getattr": 10,
+        "lookup": 28,
+        "open": 22,
+        "put_super": 2,
+        "read_iter": 15,
+        "readdir": 10,
+        "rename": 2,
+        "setattr": 1,
+        "unlink": 1,
+        "write_iter": 2
+      }
+    }
+  ],
+  "completed_boots": 3,
+  "fault_errnos": {
+    "redirect_create": 95,
+    "redirect_dot": 22,
+    "redirect_dot_dot": 22,
+    "redirect_dot_dot_readdir": 22,
+    "redirect_dot_readdir": 22,
+    "redirect_embedded_nul": 22,
+    "redirect_embedded_nul_readdir": 22,
+    "redirect_len_65": 22,
+    "redirect_len_65_readdir": 22,
+    "redirect_len_zero": 22,
+    "redirect_len_zero_readdir": 22,
+    "redirect_slash": 22,
+    "redirect_slash_readdir": 22,
+    "select_create": 95,
+    "select_final_open": 95,
+    "select_readdir": 95,
+    "target_unregistered": 2,
+    "target_zero": 22,
+    "target_zero_warm": 22,
+    "verifier_reject_action_4": 22,
+    "verifier_reject_ctx_write": 13
+  },
+  "formal_run_id": "20260728-rq3-formal-v3",
+  "lower_fs": "ext4",
+  "namei_fd_policy_counter_unchanged_boots": 3,
+  "pairwise_oracle_count": 37,
+  "provenance": {
+    "kernel_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+    "kernel_submodule_commit": "1e81d4793c78b7667d0798248c70c0b15a2c3877",
+    "project_commit": "1f5d0c9d699163cd70284dd21a4da6dbf02803bc",
+    "wrapfs_upstream_commit": "464802c8fd1a25413b295161c9bb9a4ce7bfa33b"
+  },
+  "responsibility_matrix": [
+    {
+      "fuse": "userspace filesystem daemon callbacks",
+      "namei_ext": "verified BPF decision function",
+      "responsibility": "policy execution",
+      "wrapfs": "privileged kernel module policy"
+    },
+    {
+      "fuse": "FUSE requests and daemon callbacks",
+      "namei_ext": "BPF decision; VFS performs resolution",
+      "responsibility": "lookup and readdir",
+      "wrapfs": "Wrapfs lookup and iterate methods"
+    },
+    {
+      "fuse": "FUSE client and daemon filesystem",
+      "namei_ext": "VFS and lower filesystem",
+      "responsibility": "inode, dentry, super, and file methods",
+      "wrapfs": "Wrapfs interposes and forwards"
+    },
+    {
+      "fuse": "daemon-mediated FUSE requests",
+      "namei_ext": "selected lower file operations",
+      "responsibility": "ordinary open-fd data and metadata operations",
+      "wrapfs": "Wrapfs file and inode methods forward to lower"
+    },
+    {
+      "fuse": "mount plus daemon path and epoch state",
+      "namei_ext": "cgroup policy link, target registry, policy maps",
+      "responsibility": "target and scope state",
+      "wrapfs": "mount source, stacked dentries, module policy"
+    },
+    {
+      "fuse": "mount and live daemon connection",
+      "namei_ext": "no policy mount or userspace daemon",
+      "responsibility": "daemon and mount lifetime",
+      "wrapfs": "stacked mount and kernel module"
+    },
+    {
+      "fuse": "FUSE client caches plus daemon invalidation protocol",
+      "namei_ext": "existing VFS and lower-filesystem caches",
+      "responsibility": "cache and coherency",
+      "wrapfs": "stacked dentry/inode state plus lower caches"
+    },
+    {
+      "fuse": "daemon validation, disconnect, and request failure paths",
+      "namei_ext": "verifier and bounded kernel errno checks",
+      "responsibility": "invalid policy behavior",
+      "wrapfs": "kernel module validation and failure paths"
+    },
+    {
+      "fuse": "daemon implementation and lower backing store",
+      "namei_ext": "lower filesystem",
+      "responsibility": "persistence",
+      "wrapfs": "forwarded to lower filesystem"
+    }
+  ],
+  "schema": "namei_ext.agent_workspace_rq3.analysis.v2",
+  "source_accounting": {
+    "fuse_deployed_filesystem": {
+      "daemon_operation_tables": [
+        {
+          "assignments": [
+            {
+              "function": "agent_fuse_getattr",
+              "slot": "getattr"
+            },
+            {
+              "function": "agent_fuse_readdir",
+              "slot": "readdir"
+            },
+            {
+              "function": "agent_fuse_open",
+              "slot": "open"
+            },
+            {
+              "function": "agent_fuse_create",
+              "slot": "create"
+            },
+            {
+              "function": "agent_fuse_mknod",
+              "slot": "mknod"
+            },
+            {
+              "function": "agent_fuse_read",
+              "slot": "read"
+            },
+            {
+              "function": "agent_fuse_write",
+              "slot": "write"
+            },
+            {
+              "function": "agent_fuse_truncate",
+              "slot": "truncate"
+            },
+            {
+              "function": "agent_fuse_readlink",
+              "slot": "readlink"
+            },
+            {
+              "function": "agent_fuse_unlink",
+              "slot": "unlink"
+            },
+            {
+              "function": "agent_fuse_rename",
+              "slot": "rename"
+            },
+            {
+              "function": "agent_fuse_release",
+              "slot": "release"
+            }
+          ],
+          "source": "experiments/agent_workspace/namei_ext_agent_workspace_fuse.c",
+          "table": "agent_fuse_ops",
+          "type": "fuse_operations"
+        }
+      ],
+      "daemon_source": "experiments/agent_workspace/namei_ext_agent_workspace_fuse.c",
+      "kernel_makefile": "kernel/fs/fuse/Makefile",
+      "kernel_operation_tables": [
+        {
+          "assignments": [
+            {
+              "function": "nonseekable_open",
+              "slot": "open"
+            },
+            {
+              "function": "fuse_conn_abort_write",
+              "slot": "write"
+            }
+          ],
+          "source": "kernel/fs/fuse/control.c",
+          "table": "fuse_ctl_abort_ops",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "nonseekable_open",
+              "slot": "open"
+            },
+            {
+              "function": "fuse_conn_waiting_read",
+              "slot": "read"
+            }
+          ],
+          "source": "kernel/fs/fuse/control.c",
+          "table": "fuse_ctl_waiting_ops",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "nonseekable_open",
+              "slot": "open"
+            },
+            {
+              "function": "fuse_conn_max_background_read",
+              "slot": "read"
+            },
+            {
+              "function": "fuse_conn_max_background_write",
+              "slot": "write"
+            }
+          ],
+          "source": "kernel/fs/fuse/control.c",
+          "table": "fuse_conn_max_background_ops",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "nonseekable_open",
+              "slot": "open"
+            },
+            {
+              "function": "fuse_conn_congestion_threshold_read",
+              "slot": "read"
+            },
+            {
+              "function": "fuse_conn_congestion_threshold_write",
+              "slot": "write"
+            }
+          ],
+          "source": "kernel/fs/fuse/control.c",
+          "table": "fuse_conn_congestion_threshold_ops",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_ctl_get_tree",
+              "slot": "get_tree"
+            }
+          ],
+          "source": "kernel/fs/fuse/control.c",
+          "table": "fuse_ctl_context_ops",
+          "type": "fs_context_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_ctl_init_fs_context",
+              "slot": "init_fs_context"
+            },
+            {
+              "function": "fuse_ctl_kill_sb",
+              "slot": "kill_sb"
+            }
+          ],
+          "source": "kernel/fs/fuse/control.c",
+          "table": "fuse_ctl_fs_type",
+          "type": "file_system_type"
+        },
+        {
+          "assignments": [
+            {
+              "function": "THIS_MODULE",
+              "slot": "owner"
+            },
+            {
+              "function": "fuse_dev_open",
+              "slot": "open"
+            },
+            {
+              "function": "fuse_dev_read",
+              "slot": "read_iter"
+            },
+            {
+              "function": "fuse_dev_splice_read",
+              "slot": "splice_read"
+            },
+            {
+              "function": "fuse_dev_write",
+              "slot": "write_iter"
+            },
+            {
+              "function": "fuse_dev_splice_write",
+              "slot": "splice_write"
+            },
+            {
+              "function": "fuse_dev_poll",
+              "slot": "poll"
+            },
+            {
+              "function": "fuse_dev_release",
+              "slot": "release"
+            },
+            {
+              "function": "fuse_dev_fasync",
+              "slot": "fasync"
+            },
+            {
+              "function": "fuse_dev_ioctl",
+              "slot": "unlocked_ioctl"
+            },
+            {
+              "function": "compat_ptr_ioctl",
+              "slot": "compat_ioctl"
+            },
+            {
+              "function": "fuse_uring_cmd",
+              "slot": "uring_cmd"
+            },
+            {
+              "function": "fuse_dev_show_fdinfo",
+              "slot": "show_fdinfo"
+            }
+          ],
+          "source": "kernel/fs/fuse/dev.c",
+          "table": "fuse_dev_operations",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_dentry_revalidate",
+              "slot": "d_revalidate"
+            },
+            {
+              "function": "fuse_dentry_delete",
+              "slot": "d_delete"
+            },
+            {
+              "function": "fuse_dentry_init",
+              "slot": "d_init"
+            },
+            {
+              "function": "fuse_dentry_release",
+              "slot": "d_release"
+            },
+            {
+              "function": "fuse_dentry_automount",
+              "slot": "d_automount"
+            }
+          ],
+          "source": "kernel/fs/fuse/dir.c",
+          "table": "fuse_dentry_operations",
+          "type": "dentry_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_lookup",
+              "slot": "lookup"
+            },
+            {
+              "function": "fuse_mkdir",
+              "slot": "mkdir"
+            },
+            {
+              "function": "fuse_symlink",
+              "slot": "symlink"
+            },
+            {
+              "function": "fuse_unlink",
+              "slot": "unlink"
+            },
+            {
+              "function": "fuse_rmdir",
+              "slot": "rmdir"
+            },
+            {
+              "function": "fuse_rename2",
+              "slot": "rename"
+            },
+            {
+              "function": "fuse_link",
+              "slot": "link"
+            },
+            {
+              "function": "fuse_setattr",
+              "slot": "setattr"
+            },
+            {
+              "function": "fuse_create",
+              "slot": "create"
+            },
+            {
+              "function": "fuse_atomic_open",
+              "slot": "atomic_open"
+            },
+            {
+              "function": "fuse_tmpfile",
+              "slot": "tmpfile"
+            },
+            {
+              "function": "fuse_mknod",
+              "slot": "mknod"
+            },
+            {
+              "function": "fuse_permission",
+              "slot": "permission"
+            },
+            {
+              "function": "fuse_getattr",
+              "slot": "getattr"
+            },
+            {
+              "function": "fuse_listxattr",
+              "slot": "listxattr"
+            },
+            {
+              "function": "fuse_get_inode_acl",
+              "slot": "get_inode_acl"
+            },
+            {
+              "function": "fuse_get_acl",
+              "slot": "get_acl"
+            },
+            {
+              "function": "fuse_set_acl",
+              "slot": "set_acl"
+            },
+            {
+              "function": "fuse_fileattr_get",
+              "slot": "fileattr_get"
+            },
+            {
+              "function": "fuse_fileattr_set",
+              "slot": "fileattr_set"
+            }
+          ],
+          "source": "kernel/fs/fuse/dir.c",
+          "table": "fuse_dir_inode_operations",
+          "type": "inode_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "generic_file_llseek",
+              "slot": "llseek"
+            },
+            {
+              "function": "generic_read_dir",
+              "slot": "read"
+            },
+            {
+              "function": "fuse_readdir",
+              "slot": "iterate_shared"
+            },
+            {
+              "function": "fuse_dir_open",
+              "slot": "open"
+            },
+            {
+              "function": "fuse_dir_release",
+              "slot": "release"
+            },
+            {
+              "function": "fuse_dir_fsync",
+              "slot": "fsync"
+            },
+            {
+              "function": "fuse_dir_ioctl",
+              "slot": "unlocked_ioctl"
+            },
+            {
+              "function": "fuse_dir_compat_ioctl",
+              "slot": "compat_ioctl"
+            }
+          ],
+          "source": "kernel/fs/fuse/dir.c",
+          "table": "fuse_dir_operations",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_setattr",
+              "slot": "setattr"
+            },
+            {
+              "function": "fuse_permission",
+              "slot": "permission"
+            },
+            {
+              "function": "fuse_getattr",
+              "slot": "getattr"
+            },
+            {
+              "function": "fuse_listxattr",
+              "slot": "listxattr"
+            },
+            {
+              "function": "fuse_get_inode_acl",
+              "slot": "get_inode_acl"
+            },
+            {
+              "function": "fuse_get_acl",
+              "slot": "get_acl"
+            },
+            {
+              "function": "fuse_set_acl",
+              "slot": "set_acl"
+            },
+            {
+              "function": "fuse_fileattr_get",
+              "slot": "fileattr_get"
+            },
+            {
+              "function": "fuse_fileattr_set",
+              "slot": "fileattr_set"
+            }
+          ],
+          "source": "kernel/fs/fuse/dir.c",
+          "table": "fuse_common_inode_operations",
+          "type": "inode_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_setattr",
+              "slot": "setattr"
+            },
+            {
+              "function": "fuse_get_link",
+              "slot": "get_link"
+            },
+            {
+              "function": "fuse_getattr",
+              "slot": "getattr"
+            },
+            {
+              "function": "fuse_listxattr",
+              "slot": "listxattr"
+            }
+          ],
+          "source": "kernel/fs/fuse/dir.c",
+          "table": "fuse_symlink_inode_operations",
+          "type": "inode_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_symlink_read_folio",
+              "slot": "read_folio"
+            }
+          ],
+          "source": "kernel/fs/fuse/dir.c",
+          "table": "fuse_symlink_aops",
+          "type": "address_space_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_vma_close",
+              "slot": "close"
+            },
+            {
+              "function": "filemap_fault",
+              "slot": "fault"
+            },
+            {
+              "function": "filemap_map_pages",
+              "slot": "map_pages"
+            },
+            {
+              "function": "fuse_page_mkwrite",
+              "slot": "page_mkwrite"
+            }
+          ],
+          "source": "kernel/fs/fuse/file.c",
+          "table": "fuse_file_vm_ops",
+          "type": "vm_operations_struct"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_file_llseek",
+              "slot": "llseek"
+            },
+            {
+              "function": "fuse_file_read_iter",
+              "slot": "read_iter"
+            },
+            {
+              "function": "fuse_file_write_iter",
+              "slot": "write_iter"
+            },
+            {
+              "function": "fuse_file_mmap",
+              "slot": "mmap"
+            },
+            {
+              "function": "fuse_open",
+              "slot": "open"
+            },
+            {
+              "function": "fuse_flush",
+              "slot": "flush"
+            },
+            {
+              "function": "fuse_release",
+              "slot": "release"
+            },
+            {
+              "function": "fuse_fsync",
+              "slot": "fsync"
+            },
+            {
+              "function": "fuse_file_lock",
+              "slot": "lock"
+            },
+            {
+              "function": "thp_get_unmapped_area",
+              "slot": "get_unmapped_area"
+            },
+            {
+              "function": "fuse_file_flock",
+              "slot": "flock"
+            },
+            {
+              "function": "fuse_splice_read",
+              "slot": "splice_read"
+            },
+            {
+              "function": "fuse_splice_write",
+              "slot": "splice_write"
+            },
+            {
+              "function": "fuse_file_ioctl",
+              "slot": "unlocked_ioctl"
+            },
+            {
+              "function": "fuse_file_compat_ioctl",
+              "slot": "compat_ioctl"
+            },
+            {
+              "function": "fuse_file_poll",
+              "slot": "poll"
+            },
+            {
+              "function": "fuse_file_fallocate",
+              "slot": "fallocate"
+            },
+            {
+              "function": "fuse_copy_file_range",
+              "slot": "copy_file_range"
+            },
+            {
+              "function": "generic_setlease",
+              "slot": "setlease"
+            }
+          ],
+          "source": "kernel/fs/fuse/file.c",
+          "table": "fuse_file_operations",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_read_folio",
+              "slot": "read_folio"
+            },
+            {
+              "function": "fuse_readahead",
+              "slot": "readahead"
+            },
+            {
+              "function": "fuse_writepages",
+              "slot": "writepages"
+            },
+            {
+              "function": "fuse_launder_folio",
+              "slot": "launder_folio"
+            },
+            {
+              "function": "iomap_dirty_folio",
+              "slot": "dirty_folio"
+            },
+            {
+              "function": "iomap_release_folio",
+              "slot": "release_folio"
+            },
+            {
+              "function": "iomap_invalidate_folio",
+              "slot": "invalidate_folio"
+            },
+            {
+              "function": "iomap_is_partially_uptodate",
+              "slot": "is_partially_uptodate"
+            },
+            {
+              "function": "filemap_migrate_folio",
+              "slot": "migrate_folio"
+            },
+            {
+              "function": "fuse_bmap",
+              "slot": "bmap"
+            },
+            {
+              "function": "fuse_direct_IO",
+              "slot": "direct_IO"
+            }
+          ],
+          "source": "kernel/fs/fuse/file.c",
+          "table": "fuse_file_aops",
+          "type": "address_space_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_alloc_inode",
+              "slot": "alloc_inode"
+            },
+            {
+              "function": "fuse_free_inode",
+              "slot": "free_inode"
+            },
+            {
+              "function": "fuse_evict_inode",
+              "slot": "evict_inode"
+            },
+            {
+              "function": "fuse_write_inode",
+              "slot": "write_inode"
+            },
+            {
+              "function": "inode_just_drop",
+              "slot": "drop_inode"
+            },
+            {
+              "function": "fuse_umount_begin",
+              "slot": "umount_begin"
+            },
+            {
+              "function": "fuse_statfs",
+              "slot": "statfs"
+            },
+            {
+              "function": "fuse_sync_fs",
+              "slot": "sync_fs"
+            },
+            {
+              "function": "fuse_show_options",
+              "slot": "show_options"
+            }
+          ],
+          "source": "kernel/fs/fuse/inode.c",
+          "table": "fuse_super_operations",
+          "type": "super_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_get_tree_submount",
+              "slot": "get_tree"
+            }
+          ],
+          "source": "kernel/fs/fuse/inode.c",
+          "table": "fuse_context_submount_ops",
+          "type": "fs_context_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_free_fsc",
+              "slot": "free"
+            },
+            {
+              "function": "fuse_parse_param",
+              "slot": "parse_param"
+            },
+            {
+              "function": "fuse_reconfigure",
+              "slot": "reconfigure"
+            },
+            {
+              "function": "fuse_get_tree",
+              "slot": "get_tree"
+            }
+          ],
+          "source": "kernel/fs/fuse/inode.c",
+          "table": "fuse_context_ops",
+          "type": "fs_context_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_init_fs_context",
+              "slot": "init_fs_context"
+            },
+            {
+              "function": "fuse_fs_parameters",
+              "slot": "parameters"
+            },
+            {
+              "function": "fuse_kill_sb_anon",
+              "slot": "kill_sb"
+            }
+          ],
+          "source": "kernel/fs/fuse/inode.c",
+          "table": "fuse_fs_type",
+          "type": "file_system_type"
+        },
+        {
+          "assignments": [
+            {
+              "function": "fuse_init_fs_context",
+              "slot": "init_fs_context"
+            },
+            {
+              "function": "fuse_fs_parameters",
+              "slot": "parameters"
+            },
+            {
+              "function": "fuse_kill_sb_blk",
+              "slot": "kill_sb"
+            }
+          ],
+          "source": "kernel/fs/fuse/inode.c",
+          "table": "fuseblk_fs_type",
+          "type": "file_system_type"
+        }
+      ],
+      "kernel_registered_vfs_slots": [
+        "alloc_inode",
+        "atomic_open",
+        "bmap",
+        "close",
+        "compat_ioctl",
+        "copy_file_range",
+        "create",
+        "d_automount",
+        "d_delete",
+        "d_init",
+        "d_release",
+        "d_revalidate",
+        "direct_IO",
+        "dirty_folio",
+        "drop_inode",
+        "evict_inode",
+        "fallocate",
+        "fasync",
+        "fault",
+        "fileattr_get",
+        "fileattr_set",
+        "flock",
+        "flush",
+        "free",
+        "free_inode",
+        "fsync",
+        "get_acl",
+        "get_inode_acl",
+        "get_link",
+        "get_tree",
+        "get_unmapped_area",
+        "getattr",
+        "init_fs_context",
+        "invalidate_folio",
+        "is_partially_uptodate",
+        "iterate_shared",
+        "kill_sb",
+        "launder_folio",
+        "link",
+        "listxattr",
+        "llseek",
+        "lock",
+        "lookup",
+        "map_pages",
+        "migrate_folio",
+        "mkdir",
+        "mknod",
+        "mmap",
+        "open",
+        "owner",
+        "page_mkwrite",
+        "parameters",
+        "parse_param",
+        "permission",
+        "poll",
+        "read",
+        "read_folio",
+        "read_iter",
+        "readahead",
+        "reconfigure",
+        "release",
+        "release_folio",
+        "rename",
+        "rmdir",
+        "set_acl",
+        "setattr",
+        "setlease",
+        "show_fdinfo",
+        "show_options",
+        "splice_read",
+        "splice_write",
+        "statfs",
+        "symlink",
+        "sync_fs",
+        "tmpfile",
+        "umount_begin",
+        "unlink",
+        "unlocked_ioctl",
+        "uring_cmd",
+        "write",
+        "write_inode",
+        "write_iter",
+        "writepages"
+      ],
+      "kernel_sources": [
+        "kernel/fs/fuse/acl.c",
+        "kernel/fs/fuse/backing.c",
+        "kernel/fs/fuse/control.c",
+        "kernel/fs/fuse/dev.c",
+        "kernel/fs/fuse/dev_uring.c",
+        "kernel/fs/fuse/dir.c",
+        "kernel/fs/fuse/file.c",
+        "kernel/fs/fuse/inode.c",
+        "kernel/fs/fuse/ioctl.c",
+        "kernel/fs/fuse/iomode.c",
+        "kernel/fs/fuse/passthrough.c",
+        "kernel/fs/fuse/readdir.c",
+        "kernel/fs/fuse/sysctl.c",
+        "kernel/fs/fuse/trace.c",
+        "kernel/fs/fuse/xattr.c"
+      ],
+      "registered_callbacks": [
+        "create",
+        "getattr",
+        "mknod",
+        "open",
+        "read",
+        "readdir",
+        "readlink",
+        "release",
+        "rename",
+        "truncate",
+        "unlink",
+        "write"
+      ]
+    },
+    "namei_ext_shared": {
+      "owned_state": [
+        "target registry",
+        "cgroup scope",
+        "action validation",
+        "RCU lifetime",
+        "cgroup release"
+      ],
+      "sources": [
+        "kernel/fs/namei.c",
+        "kernel/fs/namei_ext.c",
+        "kernel/fs/readdir.c",
+        "kernel/include/linux/bpf-cgroup-defs.h",
+        "kernel/include/linux/bpf-cgroup.h",
+        "kernel/include/linux/namei_ext.h",
+        "kernel/include/uapi/linux/bpf.h",
+        "kernel/kernel/bpf/cgroup.c",
+        "kernel/kernel/bpf/verifier.c"
+      ]
+    },
+    "namei_ext_workload_policy": {
+      "entry_points": [
+        "cgroup/namei_ext"
+      ],
+      "source": "bpf/policies/agent_workspace_view.bpf.c"
+    },
+    "wrapfs_deployed_module": {
+      "makefile": "thirdparty/wrapfs/Makefile",
+      "operation_tables": [
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_d_init",
+              "slot": "d_init"
+            },
+            {
+              "function": "wrapfs_d_revalidate",
+              "slot": "d_revalidate"
+            },
+            {
+              "function": "wrapfs_d_release",
+              "slot": "d_release"
+            }
+          ],
+          "source": "thirdparty/wrapfs/dentry.c",
+          "table": "wrapfs_dops",
+          "type": "dentry_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_file_llseek",
+              "slot": "llseek"
+            },
+            {
+              "function": "wrapfs_unlocked_ioctl",
+              "slot": "unlocked_ioctl"
+            },
+            {
+              "function": "wrapfs_compat_ioctl",
+              "slot": "compat_ioctl"
+            },
+            {
+              "function": "wrapfs_mmap",
+              "slot": "mmap"
+            },
+            {
+              "function": "wrapfs_open",
+              "slot": "open"
+            },
+            {
+              "function": "wrapfs_flush",
+              "slot": "flush"
+            },
+            {
+              "function": "wrapfs_file_release",
+              "slot": "release"
+            },
+            {
+              "function": "wrapfs_fsync",
+              "slot": "fsync"
+            },
+            {
+              "function": "wrapfs_fasync",
+              "slot": "fasync"
+            },
+            {
+              "function": "wrapfs_read_iter",
+              "slot": "read_iter"
+            },
+            {
+              "function": "wrapfs_write_iter",
+              "slot": "write_iter"
+            }
+          ],
+          "source": "thirdparty/wrapfs/file.c",
+          "table": "wrapfs_main_fops",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_file_llseek",
+              "slot": "llseek"
+            },
+            {
+              "function": "wrapfs_readdir",
+              "slot": "iterate_shared"
+            },
+            {
+              "function": "wrapfs_unlocked_ioctl",
+              "slot": "unlocked_ioctl"
+            },
+            {
+              "function": "wrapfs_compat_ioctl",
+              "slot": "compat_ioctl"
+            },
+            {
+              "function": "wrapfs_open",
+              "slot": "open"
+            },
+            {
+              "function": "wrapfs_file_release",
+              "slot": "release"
+            },
+            {
+              "function": "wrapfs_flush",
+              "slot": "flush"
+            },
+            {
+              "function": "wrapfs_fsync",
+              "slot": "fsync"
+            },
+            {
+              "function": "wrapfs_fasync",
+              "slot": "fasync"
+            }
+          ],
+          "source": "thirdparty/wrapfs/file.c",
+          "table": "wrapfs_dir_fops",
+          "type": "file_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_permission",
+              "slot": "permission"
+            },
+            {
+              "function": "wrapfs_setattr",
+              "slot": "setattr"
+            },
+            {
+              "function": "wrapfs_getattr",
+              "slot": "getattr"
+            },
+            {
+              "function": "wrapfs_get_link",
+              "slot": "get_link"
+            },
+            {
+              "function": "wrapfs_listxattr",
+              "slot": "listxattr"
+            }
+          ],
+          "source": "thirdparty/wrapfs/inode.c",
+          "table": "wrapfs_symlink_iops",
+          "type": "inode_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_create",
+              "slot": "create"
+            },
+            {
+              "function": "wrapfs_lookup",
+              "slot": "lookup"
+            },
+            {
+              "function": "wrapfs_unlink",
+              "slot": "unlink"
+            },
+            {
+              "function": "wrapfs_symlink",
+              "slot": "symlink"
+            },
+            {
+              "function": "wrapfs_rename",
+              "slot": "rename"
+            },
+            {
+              "function": "wrapfs_permission",
+              "slot": "permission"
+            },
+            {
+              "function": "wrapfs_setattr",
+              "slot": "setattr"
+            },
+            {
+              "function": "wrapfs_getattr",
+              "slot": "getattr"
+            },
+            {
+              "function": "wrapfs_listxattr",
+              "slot": "listxattr"
+            }
+          ],
+          "source": "thirdparty/wrapfs/inode.c",
+          "table": "wrapfs_dir_iops",
+          "type": "inode_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_permission",
+              "slot": "permission"
+            },
+            {
+              "function": "wrapfs_setattr",
+              "slot": "setattr"
+            },
+            {
+              "function": "wrapfs_getattr",
+              "slot": "getattr"
+            },
+            {
+              "function": "wrapfs_listxattr",
+              "slot": "listxattr"
+            }
+          ],
+          "source": "thirdparty/wrapfs/inode.c",
+          "table": "wrapfs_main_iops",
+          "type": "inode_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_get_tree",
+              "slot": "get_tree"
+            }
+          ],
+          "source": "thirdparty/wrapfs/main.c",
+          "table": "wrapfs_context_ops",
+          "type": "fs_context_operations"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_init_fs_context",
+              "slot": "init_fs_context"
+            },
+            {
+              "function": "kill_anon_super",
+              "slot": "kill_sb"
+            }
+          ],
+          "source": "thirdparty/wrapfs/main.c",
+          "table": "wrapfs_fs_type",
+          "type": "file_system_type"
+        },
+        {
+          "assignments": [
+            {
+              "function": "wrapfs_put_super",
+              "slot": "put_super"
+            },
+            {
+              "function": "wrapfs_statfs",
+              "slot": "statfs"
+            },
+            {
+              "function": "wrapfs_evict_inode",
+              "slot": "evict_inode"
+            },
+            {
+              "function": "wrapfs_umount_begin",
+              "slot": "umount_begin"
+            },
+            {
+              "function": "wrapfs_alloc_inode",
+              "slot": "alloc_inode"
+            },
+            {
+              "function": "wrapfs_free_inode",
+              "slot": "free_inode"
+            }
+          ],
+          "source": "thirdparty/wrapfs/super.c",
+          "table": "wrapfs_sops",
+          "type": "super_operations"
+        }
+      ],
+      "registered_vfs_slots": [
+        "alloc_inode",
+        "compat_ioctl",
+        "create",
+        "d_init",
+        "d_release",
+        "d_revalidate",
+        "evict_inode",
+        "fasync",
+        "flush",
+        "free_inode",
+        "fsync",
+        "get_link",
+        "get_tree",
+        "getattr",
+        "init_fs_context",
+        "iterate_shared",
+        "kill_sb",
+        "listxattr",
+        "llseek",
+        "lookup",
+        "mmap",
+        "open",
+        "permission",
+        "put_super",
+        "read_iter",
+        "release",
+        "rename",
+        "setattr",
+        "statfs",
+        "symlink",
+        "umount_begin",
+        "unlink",
+        "unlocked_ioctl",
+        "write_iter"
+      ],
+      "sources": [
+        "thirdparty/wrapfs/dentry.c",
+        "thirdparty/wrapfs/file.c",
+        "thirdparty/wrapfs/inode.c",
+        "thirdparty/wrapfs/lookup.c",
+        "thirdparty/wrapfs/main.c",
+        "thirdparty/wrapfs/super.c"
+      ]
+    }
+  },
+  "wrapfs_kprobe_ranges": {
+    "create": {
+      "engaged_boots": 3,
+      "max": 2,
+      "min": 2,
+      "per_boot": [
+        2,
+        2,
+        2
+      ]
+    },
+    "fill_super": {
+      "engaged_boots": 3,
+      "max": 2,
+      "min": 2,
+      "per_boot": [
+        2,
+        2,
+        2
+      ]
+    },
+    "fsync": {
+      "engaged_boots": 3,
+      "max": 1,
+      "min": 1,
+      "per_boot": [
+        1,
+        1,
+        1
+      ]
+    },
+    "getattr": {
+      "engaged_boots": 3,
+      "max": 10,
+      "min": 10,
+      "per_boot": [
+        10,
+        10,
+        10
+      ]
+    },
+    "lookup": {
+      "engaged_boots": 3,
+      "max": 28,
+      "min": 28,
+      "per_boot": [
+        28,
+        28,
+        28
+      ]
+    },
+    "open": {
+      "engaged_boots": 3,
+      "max": 22,
+      "min": 22,
+      "per_boot": [
+        22,
+        22,
+        22
+      ]
+    },
+    "put_super": {
+      "engaged_boots": 3,
+      "max": 2,
+      "min": 2,
+      "per_boot": [
+        2,
+        2,
+        2
+      ]
+    },
+    "read_iter": {
+      "engaged_boots": 3,
+      "max": 15,
+      "min": 15,
+      "per_boot": [
+        15,
+        15,
+        15
+      ]
+    },
+    "readdir": {
+      "engaged_boots": 3,
+      "max": 10,
+      "min": 10,
+      "per_boot": [
+        10,
+        10,
+        10
+      ]
+    },
+    "rename": {
+      "engaged_boots": 3,
+      "max": 2,
+      "min": 2,
+      "per_boot": [
+        2,
+        2,
+        2
+      ]
+    },
+    "setattr": {
+      "engaged_boots": 3,
+      "max": 1,
+      "min": 1,
+      "per_boot": [
+        1,
+        1,
+        1
+      ]
+    },
+    "unlink": {
+      "engaged_boots": 3,
+      "max": 1,
+      "min": 1,
+      "per_boot": [
+        1,
+        1,
+        1
+      ]
+    },
+    "write_iter": {
+      "engaged_boots": 3,
+      "max": 2,
+      "min": 2,
+      "per_boot": [
+        2,
+        2,
+        2
+      ]
+    }
+  }
+}

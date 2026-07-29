@@ -118,7 +118,7 @@ dilutes pathname lookup overhead.
 | Case | Source/oracle fixed | `namei_ext` correctness in KVM | Feature-equivalent FUSE | RQ3 boundary record |
 | --- | --- | --- | --- | --- |
 | W1 Sandboxed Application File Sharing | Existing-object, two-application grant/revoke subset frozen from the XDG Documents portal API | Preflight passed: grant, revoke, cross-application isolation, lookup/readdir/open/stat, and unchanged lower object | Source system is FUSE; matched project implementation not run | Preflight records lower-object preservation; full ownership table open |
-| W2 Agent Workspaces | AgentFS-derived lifecycle trace fixed | Passed, three RQ1 terminal runs plus the formal RQ2 matrix | Same-oracle formal comparison passed: 10 paired blocks, 20 KVM boots, 10,000 lifecycle samples per condition | Open |
+| W2 Agent Workspaces | AgentFS-derived lifecycle trace fixed | Passed, three RQ1 terminal runs plus the formal RQ2 and RQ3 matrices | Same-oracle formal comparison passed: 10 paired blocks, 20 KVM boots, 10,000 lifecycle samples per condition | Formal matched `namei_ext`/Wrapfs-derived experiment passed: 37/37 pairwise oracles for both mechanisms, 21/21 fault cells, and runtime attribution in each of three KVM boots |
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Preflight passed: two concurrent real Bazel actions, distinct expected outputs, undeclared input hidden, lower objects unchanged | Not run | Preflight records lower-object preservation; full ownership table open |
 | W4 Service Configuration and Secret Rotation | AtomicWriter publication shape and nginx 1.26.3 live-reload oracle frozen; current/canary/invalid/rollback plan independently reviewed | Runner, BPF policy, fresh-boot KVM suite, and analyzer implemented; V2 exhausted three failed dependency preflights, and an undeclared `CONFIG_PROC_CHILDREN` requirement is the final root's strongest source-grounded timeout explanation | Not authorized; formal entrypoint remains blocked | Failed roots preserved; no completed state-transition, lower-object, counter, dmesg, or analysis evidence; keep as motivating scope rather than a paper row |
 | W5 Checkpoint/Restore and Migration | DMTCP plugin behavior identified | Not run | Not run | Not written |
@@ -139,11 +139,12 @@ Make entrypoint: `make kvm-application-file-sharing-preflight`.
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
-| RQ1 correctness: AgentFS-derived trace oracle for `namei_ext` and feature-equivalent FUSE | Passed, independently reviewed; 3 terminal KVM runs, 1,176 records each, zero failures, clean dmesg | `results/experiments/agent-workspace-matrix/20260722T020120Z-rq1run1/`, `-rq1run2/`, `-rq1run3/` |
+| RQ1 correctness: AgentFS-derived trace oracle for `namei_ext` and feature-equivalent FUSE | Passed, independently reviewed; 3 terminal KVM runs, 1,176 records each, zero failures, clean dmesg | `results/experiments/agent-workspace-matrix/20260722T020120Z-rq1run1/`, `20260722T020210Z-rq1run2/`, `20260722T020245Z-rq1run3/` |
 | RQ2 controlled lifecycle timing versus FUSE | Passed and independently reviewed: lifecycle p50 5.51 us versus 62.64 us, paired FUSE/namei_ext ratio 11.32x [11.24, 11.64]; 20/20 boots, 20,000/20,000 lifecycle samples, and 960/960 required oracles passed | `results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/` |
 | RQ2 operation decomposition | Mixed by design: `open` 8.35x and `readdir` 13.59x in favor of namei_ext; cache-hit `stat` and `access` favored FUSE; `exec` was inconclusive. This is a scoped AgentFS-derived lifecycle result, not an end-to-end agent-task speedup or a generic FUSE claim | Same raw root and `analysis/report.md` |
 | RQ2 result review | Valid; predeclared hypothesis supported; admitted as an OSDI/EuroSys-quality controlled mechanism result with supporting paper value | `docs/tmp/2026-07-27-agent-workspace-rq2-formal-v3-result-review.md` |
-| RQ3 boundary table | Open: source-tied ownership rows not yet written | — |
+| RQ3 matched stackable-FS boundary | Passed and independently reviewed: both `namei_ext` and the Wrapfs-derived implementation passed 37/37 pairwise AgentFS-derived oracles in all three boots; two verifier faults had exact rejection logs and all 19 runtime fault cells preserved lower-object manifests; 13 Wrapfs operation classes were observed at runtime | `results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/` |
+| RQ3 result review | Valid for the existing-object Agent workspace slice; supports a narrower executed method and failure boundary, not complete-system security or generality | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 
 ### C. Build Action Sandboxing (supporting RQ1 breadth)
 
@@ -230,6 +231,29 @@ one, two, and four workers. It does not prove zero overhead or generalize to
 active policy, other operations, cold caches, tails, or other machines.
 Earlier matrices and short preflights remain internal mechanism evidence.
 
+### F. Agent workspace ownership and containment (decisive RQ3 result)
+
+| Cell | Status | Raw root |
+| --- | --- | --- |
+| Matched semantic contract | Passed in three independent KVM boots: `namei_ext` and a Linux 7.1 port of official Wrapfs commit `464802c8fd1a25413b295161c9bb9a4ce7bfa33b` each passed all 37/37 pairwise AgentFS-derived oracles over the same ext4 lower tree | `results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/` |
+| Lower-file operation boundary | Passed 3/3: after selection, policy detach, and child-cgroup removal, read/write/fsync/fstat/fchmod used the already-open lower file and did not increment the BPF counter | Same raw root |
+| Stackable method attribution | Passed 3/3: 13 probed Wrapfs method classes executed, covering superblock setup/teardown, lookup, readdir, open, read, write, fsync, getattr, setattr, create, rename, and unlink | Same raw root |
+| Fail-closed matrix | Passed 3/3: two verifier-rejected programs plus 19 independently loaded malformed or unsupported runtime decisions; every runtime cell preserved statx/SHA-256 evidence for eight lower objects and exact manifests for two directories | Same raw root |
+| Deployed-source accounting | Nine `namei_ext` kernel integration files; six compiled Wrapfs sources with 34 unique VFS slots; 12 userspace FUSE callbacks and 15 compiled kernel FUSE client sources | Same raw root and `report.md` |
+| Result review | Valid for a scoped ownership and containment claim; not evidence that custom filesystems are unsafe or unnecessary | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
+
+Make entrypoint:
+`make experiment-agent-workspace-rq3 RUN_ID=<fresh-id>`.
+
+The supported RQ3 answer is workload-specific. For this existing-object Agent
+workspace view, policy execution is confined to lookup and directory iteration,
+and ordinary operations continue on the selected lower file. The matched
+stackable implementation owns and executes a broader filesystem-method surface.
+Invalid programs and unsupported outputs failed at the verifier or declared
+errno boundary in the tested matrix. This does not establish complete-system
+security or cover synthetic contents, copy-up, conflict resolution, distributed
+metadata, or arbitrary filesystem behavior.
+
 ## Open Questions
 
 1. What are the setup and steady-state costs of the W3 action view relative to
@@ -240,8 +264,9 @@ Earlier matrices and short preflights remain internal mechanism evidence.
    `namei_ext` into a cache or remote filesystem?
 3. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
    application oracle while staying within existing-object selection?
-4. What do the per-workload RQ3 ownership tables show for FUSE and the
-   relevant custom/stackable source system?
-5. Does the existing ccache macro ratio survive independent-run
+4. Does the existing ccache macro ratio survive independent-run
    median/dispersion reporting and a hardened FUSE configuration with caching
    and passthrough explicitly accounted for?
+5. Does the Agent workspace RQ3 boundary result generalize to a second
+   source-derived traditional workflow without requiring broader filesystem
+   semantics?

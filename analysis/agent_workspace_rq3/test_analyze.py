@@ -86,6 +86,46 @@ class AgentWorkspaceRq3AnalysisTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ANALYZE.read_jsonl(observations)
 
+    def test_replay_input_must_equal_ordered_boot_observations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            formal = Path(directory)
+            for index, value in enumerate(("one", "two", "three"), 1):
+                boot = formal / f"boot-{index}"
+                boot.mkdir()
+                (boot / "observations.jsonl").write_text(
+                    json.dumps({"boot": value}) + "\n",
+                    encoding="utf-8",
+                )
+            combined = formal / "observations.jsonl"
+            combined.write_text(
+                "".join(
+                    (formal / f"boot-{index}" / "observations.jsonl").read_text(
+                        encoding="utf-8"
+                    )
+                    for index in range(1, 4)
+                ),
+                encoding="utf-8",
+            )
+            run = {"observations": "observations.jsonl"}
+            ANALYZE.validate_replay_input(formal, combined, run)
+
+            combined.write_text("{}\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                ANALYZE.validate_replay_input(formal, combined, run)
+
+    def test_replay_input_rejects_path_escape(self):
+        with tempfile.TemporaryDirectory() as directory:
+            formal = Path(directory)
+            outside = formal.parent / "outside.jsonl"
+            outside.write_text("{}\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                ANALYZE.validate_replay_input(
+                    formal,
+                    outside,
+                    {"observations": "../outside.jsonl"},
+                )
+            outside.unlink()
+
     def test_one_record_rejects_duplicate_case(self):
         records = [
             {"case": "same", "pass": True},

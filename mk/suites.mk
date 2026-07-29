@@ -19,10 +19,12 @@ NAMEI_EXT_BLOCKED_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-service-config-rotation-preflight
 
 NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS := \
-	experiment-agent-workspace-rq2
+	experiment-agent-workspace-rq2 \
+	experiment-agent-workspace-rq3
 NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	$(NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS) \
-	kvm-agent-workspace-rq2
+	kvm-agent-workspace-rq2 \
+	kvm-agent-workspace-rq3
 
 # Implemented entrypoints that are not eligible for aggregate evidence
 # collection because their dependency gate is currently closed.

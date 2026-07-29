@@ -274,6 +274,33 @@ def read_jsonl(path: Path) -> list[dict]:
     return records
 
 
+def validate_replay_input(
+    formal_dir: Path,
+    input_path: Path,
+    run: dict,
+) -> None:
+    declared = run.get("observations")
+    if not isinstance(declared, str) or not declared:
+        raise ValueError("run.json lacks an observations path")
+    relative = Path(declared)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError("run.json observations path escapes the result root")
+    expected_path = (formal_dir / relative).resolve()
+    if input_path.resolve() != expected_path:
+        raise ValueError("replay input does not match run.json")
+
+    boot_dirs = sorted(path for path in formal_dir.glob("boot-*") if path.is_dir())
+    if len(boot_dirs) != 3:
+        raise ValueError("replay bundle must contain three boot directories")
+    combined = b"".join(
+        (boot / "observations.jsonl").read_bytes() for boot in boot_dirs
+    )
+    if input_path.read_bytes() != combined:
+        raise ValueError(
+            "declared observations are not the exact ordered boot observations"
+        )
+
+
 def one_record(
     records: list[dict],
     *,
@@ -342,6 +369,8 @@ def verify_hash_manifest(path: Path) -> int:
         if len(fields) != 2 or len(fields[0]) != 64:
             raise ValueError(f"{path}:{line_number}: malformed SHA-256 row")
         artifact = Path(fields[1].lstrip("*"))
+        if not artifact.is_absolute():
+            artifact = path.parent / artifact
         if not artifact.is_file():
             raise ValueError(f"{path}:{line_number}: missing {artifact}")
         if file_sha256(artifact) != fields[0]:
@@ -613,9 +642,19 @@ def analyze_boot(boot_dir: Path) -> dict:
         ),
         "fault_errnos": observed_faults,
         "fault_containment": validate_fault_containment(records),
-        "input_hash_rows": verify_hash_manifest(boot_dir / "inputs.sha256"),
+        "input_hash_rows": verify_hash_manifest(
+            boot_dir / (
+                "publication-inputs.sha256"
+                if (boot_dir / "publication-inputs.sha256").is_file()
+                else "inputs.sha256"
+            )
+        ),
         "artifact_hash_rows": verify_hash_manifest(
-            boot_dir / "artifacts.sha256"
+            boot_dir / (
+                "publication-artifacts.sha256"
+                if (boot_dir / "publication-artifacts.sha256").is_file()
+                else "artifacts.sha256"
+            )
         ),
         "provenance": provenance,
     }
@@ -722,6 +761,14 @@ def enabled_kernel_config(path: Path) -> set[str]:
 
 
 def source_accounting(root: Path, kernel_config: Path) -> dict:
+    def relative(path: Path) -> str:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+
+    def relative_tables(tables: list[dict]) -> list[dict]:
+        for table in tables:
+            table["source"] = relative(Path(table["source"]))
+        return tables
+
     kernel_dir = root / "kernel"
     kernel_source = kernel_dir / "fs/namei_ext.c"
     policy_source = root / "bpf/policies/agent_workspace_view.bpf.c"
@@ -785,7 +832,7 @@ def source_accounting(root: Path, kernel_config: Path) -> dict:
         raise ValueError("FUSE callback inventory is incomplete")
     return {
         "namei_ext_shared": {
-            "sources": [str(path) for path in kernel_integration],
+            "sources": [relative(path) for path in kernel_integration],
             "owned_state": [
                 "target registry",
                 "cgroup scope",
@@ -795,22 +842,22 @@ def source_accounting(root: Path, kernel_config: Path) -> dict:
             ],
         },
         "namei_ext_workload_policy": {
-            "source": str(policy_source),
+            "source": relative(policy_source),
             "entry_points": ["cgroup/namei_ext"],
         },
         "wrapfs_deployed_module": {
-            "makefile": str(wrapfs_makefile),
-            "sources": [str(path) for path in wrapfs_sources],
-            "operation_tables": wrapfs_tables,
+            "makefile": relative(wrapfs_makefile),
+            "sources": [relative(path) for path in wrapfs_sources],
+            "operation_tables": relative_tables(wrapfs_tables),
             "registered_vfs_slots": wrapfs_slots,
         },
         "fuse_deployed_filesystem": {
-            "daemon_source": str(fuse_source),
-            "daemon_operation_tables": fuse_tables,
+            "daemon_source": relative(fuse_source),
+            "daemon_operation_tables": relative_tables(fuse_tables),
             "registered_callbacks": fuse_slots,
-            "kernel_makefile": str(fuse_makefile),
-            "kernel_sources": [str(path) for path in fuse_kernel_sources],
-            "kernel_operation_tables": fuse_kernel_tables,
+            "kernel_makefile": relative(fuse_makefile),
+            "kernel_sources": [relative(path) for path in fuse_kernel_sources],
+            "kernel_operation_tables": relative_tables(fuse_kernel_tables),
             "kernel_registered_vfs_slots": fuse_kernel_slots,
         },
     }
@@ -974,20 +1021,58 @@ def render_markdown(result: dict) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--formal-dir", type=Path, required=True)
-    parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--json", type=Path, required=True)
-    parser.add_argument("--markdown", type=Path, required=True)
+    parser.add_argument("--formal-dir", type=Path)
+    parser.add_argument("--root", type=Path)
+    parser.add_argument("--json", type=Path)
+    parser.add_argument("--markdown", type=Path)
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--run", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--seed", type=int)
     args = parser.parse_args()
 
-    result = summarize(args.formal_dir, args.root)
-    args.json.parent.mkdir(parents=True, exist_ok=True)
-    args.markdown.parent.mkdir(parents=True, exist_ok=True)
-    args.json.write_text(
+    direct = any(
+        value is not None
+        for value in (args.formal_dir, args.root, args.json, args.markdown)
+    )
+    replay = any(
+        value is not None
+        for value in (args.input, args.run, args.output, args.seed)
+    )
+    if direct == replay:
+        parser.error("choose either direct formal-dir output or replay mode")
+    if direct:
+        if None in (args.formal_dir, args.root, args.json, args.markdown):
+            parser.error(
+                "direct mode requires --formal-dir, --root, --json, "
+                "and --markdown"
+            )
+        formal_dir = args.formal_dir
+        root = args.root
+        json_path = args.json
+        markdown_path = args.markdown
+    else:
+        if None in (args.input, args.run, args.output, args.seed):
+            parser.error(
+                "replay mode requires --input, --run, --output, and --seed"
+            )
+        run = json.loads(args.run.read_text(encoding="utf-8"))
+        formal_dir = args.run.parent
+        validate_replay_input(formal_dir, args.input, run)
+        root = formal_dir / "artifacts/source"
+        if not root.is_dir():
+            raise ValueError("replay bundle lacks captured source artifacts")
+        json_path = args.output / "summary.json"
+        markdown_path = args.output / "report.md"
+
+    result = summarize(formal_dir, root)
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(
         json.dumps(result, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    args.markdown.write_text(render_markdown(result), encoding="utf-8")
+    markdown_path.write_text(render_markdown(result), encoding="utf-8")
 
 
 if __name__ == "__main__":

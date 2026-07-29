@@ -23,6 +23,13 @@
       "analyzer": "analysis/fxmark/analyze.py",
       "seed": 20260726,
       "analysis_args": {}
+    },
+    {
+      "run": "results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/run.json",
+      "analyzer": "analysis/agent_workspace_rq3/analyze.py",
+      "seed": 20260728,
+      "require_all_artifacts": true,
+      "analysis_args": {}
     }
   ]
 }

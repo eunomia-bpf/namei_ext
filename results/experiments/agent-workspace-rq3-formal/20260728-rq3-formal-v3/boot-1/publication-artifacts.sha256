@@ -1,0 +1,9 @@
+b3aa1b13d1eb8b22512076dada8d1533443838a74ad5955eac3614d7bd079692  ../artifacts/runtime/kernel/arch/x86/boot/bzImage
+9d40255dfee8eb8ef5dab9269ceb5982893b83487c41d2bf635093a2b871c444  ../artifacts/runtime/bpf/agent_workspace_view.bpf.o
+10f65985a7e7e738697676cf086351a23bf391e103b1302a019fe43fa0cf7b1f  ../artifacts/runtime/agent-workspace/namei_ext_agent_workspace
+5c2ba870ff50dd0f7939b278774d9b938d99b363da0cbe852f9a9da33c664833  ../artifacts/runtime/agent-workspace-rq3/wrapfs/wrapfs.ko
+1c9ce6358a8ab9e947abb4a386b08bcf1f543f14304218715855d4bb54554046  ../artifacts/runtime/agent-workspace-rq3/wrapfs_agent_workspace_rq3
+8497c1f84dca8e0eec38a816dc62710d1669260669ace921c7bf531c628ea4d9  ../artifacts/runtime/agent-workspace-rq3/namei_ext_rq3_faults
+27ac72245624bfff9359bbfa1da1834cd0e4dea890d4184913da136fa1d25449  ../artifacts/runtime/bpf/rq3_invalid_ctx_write.bpf.o
+11dfc19b199a49b068eb04eda8a15dd84bc82e505b84dc5cad5f8209a98a1a63  ../artifacts/runtime/bpf/rq3_invalid_action.bpf.o
+3b20ca4a5bc60fd5435b60d9bf1bd5ec3388f73d2ff12c78ad87cb1664911c16  ../artifacts/runtime/bpf/rq3_fault_injection.bpf.o

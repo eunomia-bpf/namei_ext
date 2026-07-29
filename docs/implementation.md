@@ -1,6 +1,6 @@
 # Implementation
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 Orchestrator phase: BUILD_AND_EVALUATE after BOOTSTRAP step
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/` completed the latest paper
 reorganization pass and independent outer audit. Implementation artifacts below
@@ -123,10 +123,14 @@ entrypoints, and archived diagnostics:
 - `make phase1` runs current prototype validation only: host checks, component
   builds, KVM smoke, policy load, and KVM functional tests.
 - `make experiments` runs the implemented case-study gates: the Agent workspace
-  matrix and the Application File Sharing, Build Action Sandboxing, and
-  Service Configuration Rotation preflights.
+  matrix and the Application File Sharing and Build Action Sandboxing
+  preflights.
 - `make kvm-agent-workspace-matrix` runs the Agent workspace matrix and
   preserves raw KVM/FUSE outputs.
+- `make experiment-agent-workspace-rq2` runs the formal ten-pair
+  `namei_ext`/FUSE lifecycle comparison.
+- `make experiment-agent-workspace-rq3` runs the formal three-boot matched
+  `namei_ext`/Wrapfs-derived ownership and fault-containment matrix.
 - `make legacy-build-cache` is the canonical aggregate entrypoint for the
   historical traditional build/cache matrix.
 - `make kvm-application-file-sharing-preflight` runs the W1 Sandboxed
@@ -158,6 +162,25 @@ failures:
 The complete implementation record is
 `docs/tmp/2026-07-25-sandboxed-application-file-sharing-preflight-implementation.md`.
 
+The Agent workspace RQ3 implementation ports the official Wrapfs source at
+commit `464802c8fd1a25413b295161c9bb9a4ce7bfa33b` to the current Linux 7.1
+kernel and executes it over the same ext4 lower tree as `namei_ext`. One shared
+37-row semantic contract checks both implementations. Runtime kprobes attribute
+13 stackable operation classes. The independent fault suite covers two
+verifier rejections with exact logs plus 19 malformed or unsupported runtime
+decisions with exact lower-object manifests. The clean formal run completed
+three independent
+KVM boots with all pairwise oracles and fault cells passing:
+`results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/`.
+The result root is packaged under the common `namei_ext.run.v2` publication
+contract with captured tested source/runtime artifacts and replayable analysis.
+Implementation and result records are
+`docs/tmp/2026-07-28-namei-ext-rq3-fault-matrix-implementation.md`,
+`docs/tmp/2026-07-28-wrapfs-rq3-port-implementation.md`, and
+`docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md`. The
+portable bundle implementation is recorded in
+`docs/tmp/2026-07-28-agent-workspace-rq3-publication-bundle.md`.
+
 ## Current Implementation State
 
 The current prototype ABI implements `PASS`, `REDIRECT`, `HIDE`, and an initial
@@ -173,28 +196,22 @@ parent-directory aliases. Optional deny remains a design-target action, not a
 current prototype action.
 
 The paper direction needs admitted complete experiments, not isolated runner
-checks. These are the implementation work items for the active
-BUILD_AND_EVALUATE phase:
+checks. Agent workspace RQ1, RQ2, and RQ3 are now complete for the admitted
+existing-object slice. The active BUILD_AND_EVALUATE work is:
 
-1. Headline AgentFS-derived workspace lifecycle with source-derived oracle,
-   operation-weighted lookup/readdir trace, feature-equivalent FUSE comparison,
-   lower-filesystem semantic checks, and custom/stackable-FS boundary evidence.
-2. Decisive traditional build/cache transition, using Redis/nginx/PostgreSQL,
-   ccache/BuildKit-style workloads, or MEnv/SWE-Factory/SWE-rebench rows as
-   sources of real build/test oracles. The fixed state machine is hit, miss,
-   stale, corrupt, and epoch update, with feature-equivalent FUSE comparison
-   and raw result review. This remains part of the strong hypothesis; the
-   current prototype's lack of final-file target selection is an implementation
-   gap to close before the row can be admitted, not a reason to shrink the
-   paper. The concrete plans are
-   `docs/tmp/2026-07-13-environment-cache-complete-experiment-plan.md` and
-   `docs/tmp/2026-07-18-traditional-workloads-evaluation-plan.md`.
-3. Service configuration rotation uses the source-derived Kubernetes
-   AtomicWriter publication shape and nginx 1.26.3 reload oracle. Its focused
-   runner, BPF policy, fresh-boot suite, and analyzer are implemented; the real
-   KVM preflight and ten-boot formal run remain. The implementation is recorded
-   in
-   `docs/tmp/2026-07-28-service-config-rotation-implementation.md`.
+1. Add one second deep traditional correctness case. DMTCP
+   checkpoint/restore path virtualization is first because it has a
+   source-defined restart oracle and does not duplicate the completed Agent,
+   XDG, or Bazel workflows.
+2. Broaden RQ2 beyond cache-hot FxMark MRPL with one frozen cache-cold and
+   directory/metadata matrix, using FxMark and selected mdtest operations.
+3. Freeze a Spindle Pynamic/MPI source trace only after cross-filesystem
+   selection passes its dependency gate.
+4. Keep service configuration rotation behind a new reviewed dependency plan.
+   Its V2 protocol exhausted three failed preflights and is not paper evidence.
+5. Treat the old ccache hit/epoch/stale/corrupt matrix as supporting macro
+   evidence. It must not replace a source-derived workload because ccache
+   already owns cache lookup and validation in userspace.
 
 Older diagnostic-comparison records are retained only as archived provenance.
 Future implementation work follows the complete experiments above. Smoke
@@ -216,12 +233,9 @@ directory and registry-clear increment passed `make kvm-functional` in
 `docs/tmp/2026-07-13-namei-ext-select-target-final-dir-implementation.md`.
 That run verifies both selected-root final directory behavior and that a select
 policy after registry clear does not reuse a stale target.
-Future BUILD_AND_EVALUATE implementation work should add only the remaining
-bounded semantics required by the admitted Agent workspace oracle, plus
-full-lifecycle traces and the Make-owned full matrix. Those actions must keep
-the existing one-decision
-`cgroup/namei_ext` ABI shape and must fail visibly on malformed or unsupported
-decisions.
+Future BUILD_AND_EVALUATE implementation work must keep the existing
+one-decision `cgroup/namei_ext` ABI shape and fail visibly on malformed or
+unsupported decisions.
 
 The first Agent workspace dependency preflight is implemented as
 `make kvm-agent-workspace-preflight` and recorded in
