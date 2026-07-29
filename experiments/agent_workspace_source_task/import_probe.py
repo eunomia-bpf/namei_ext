@@ -16,6 +16,10 @@ def identity(path: Path) -> dict[str, int | str]:
     }
 
 
+def same_object(left: dict[str, int | str], right: dict[str, int | str]) -> bool:
+    return left["device"] == right["device"] and left["inode"] == right["inode"]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--logical-root", required=True)
@@ -42,26 +46,31 @@ def main() -> int:
     expected_types_id = identity(expected_types)
     logical_test_id = identity(logical_test)
     expected_test_id = identity(expected_test)
+    cwd = Path.cwd()
+    cwd_id = identity(cwd)
+    logical_root_id = identity(logical_root)
+    expected_root_id = identity(expected_root)
     checks = {
-        "cwd_is_logical_root": os.getcwd() == str(logical_root),
+        "cwd_identity_matches": same_object(cwd_id, expected_root_id),
+        "logical_root_identity_matches": same_object(
+            logical_root_id, expected_root_id
+        ),
         "sys_path_has_exact_logical_src": expected_sys_path in os.sys.path,
         "click_file_is_logical": str(click_file) == str(
             logical_src / "click" / "__init__.py"
         ),
         "click_types_file_is_logical": str(click_types_file) == str(logical_types),
-        "types_identity_matches": (
-            logical_types_id["device"] == expected_types_id["device"]
-            and logical_types_id["inode"] == expected_types_id["inode"]
-        ),
-        "test_identity_matches": (
-            logical_test_id["device"] == expected_test_id["device"]
-            and logical_test_id["inode"] == expected_test_id["inode"]
-        ),
+        "types_identity_matches": same_object(logical_types_id, expected_types_id),
+        "test_identity_matches": same_object(logical_test_id, expected_test_id),
     }
     record = {
-        "schema": "namei_ext.agent_source_task.import.v1",
+        "schema": "namei_ext.agent_source_task.import.v2",
         "logical_root": str(logical_root),
         "expected_root": str(expected_root),
+        "cwd": str(cwd),
+        "cwd_identity": cwd_id,
+        "logical_root_identity": logical_root_id,
+        "expected_root_identity": expected_root_id,
         "effective_sys_path": os.sys.path,
         "required_sys_path": expected_sys_path,
         "click_file": str(click_file),

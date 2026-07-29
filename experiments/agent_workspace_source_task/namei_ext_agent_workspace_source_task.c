@@ -204,11 +204,6 @@ static int prepare_environment(const struct task_paths *paths,
 	char python_path[PATH_MAX];
 	int ret;
 
-	if (spec->cgroup) {
-		ret = namei_ext_move_self_to_cgroup(spec->cgroup);
-		if (ret)
-			return ret;
-	}
 	ret = drop_privileges(uid, gid);
 	if (ret)
 		return ret;
@@ -329,9 +324,16 @@ static int run_task_body(const struct task_paths *paths,
 		return ret;
 	}
 
+	if (spec->cgroup) {
+		ret = namei_ext_move_self_to_cgroup(spec->cgroup);
+		if (ret) {
+			wire->move_errno = -ret;
+			wire->internal_errno = -ret;
+			return ret;
+		}
+	}
 	ret = prepare_environment(paths, spec, uid, gid);
 	if (ret) {
-		wire->move_errno = -ret;
 		wire->internal_errno = -ret;
 		return ret;
 	}
@@ -999,7 +1001,6 @@ cleanup:
 		"{\"event\":\"agent-source-task-summary\","
 		"\"source_system\":\"SWE-Factory-Gym\","
 		"\"instance\":\"pallets__click-2622\","
-		"\"pytest_runs\":6,\"concurrent_pairs\":1,"
 		"\"failures\":%d,\"pass\":%s}\n",
 		failures, failures ? "false" : "true");
 	fclose(output);

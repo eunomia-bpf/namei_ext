@@ -113,6 +113,18 @@ boot passes.
 - The parser now requires the exact structured classname and test name instead
   of the optional JUnit file attribute. The substantive 39/1 and 40/0 gates are
   unchanged.
+- KVM preflight attempt 2 reached the real policy attach path. The physical
+  controls and both overlapping concurrent source-task views produced the exact
+  intended pytest outcomes and object identities. It stopped because the v1
+  probe recorded that cwd did not equal the logical lookup spelling. That
+  record did not preserve the actual cwd string; kernel target-selection and
+  `getcwd()` semantics explain why a lower-object cwd is expected.
+- Independent review confirmed that this cwd behavior follows target selection
+  semantics. Import records now preserve the cwd string and require exact
+  device/inode agreement among cwd, logical workspace root, and assigned lower
+  root. Their schema is `namei_ext.agent_source_task.import.v2`.
+- The same review removed hard-coded raw summary event counts and separated
+  cgroup-move error attribution from other child environment failures.
 - `git diff --check` passes.
 
 ## Remaining Work
@@ -125,3 +137,6 @@ evidence review permit the three-boot formal run.
 
 Attempt 1 is recorded in
 `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-1.md`.
+Attempt 2 and its independent review are recorded in
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-2.md` and
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-2-review.md`.

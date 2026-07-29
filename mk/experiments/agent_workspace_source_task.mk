@@ -208,7 +208,7 @@ agent-workspace-source-task-finalize:
 	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(AGENT_SOURCE_TASK_ACTIVE_DIR),$(AGENT_SOURCE_TASK_ACTIVE_REPETITIONS))
 	! jq -e 'select(.pass != true)' \
 		"$(AGENT_SOURCE_TASK_ACTIVE_DIR)/observations.jsonl" >/dev/null
-	test "$$(jq -s '[.[] | select(.event == "agent-source-task-summary" and .pytest_runs == 6 and .concurrent_pairs == 1 and .failures == 0 and .pass == true)] | length' \
+	test "$$(jq -s '[.[] | select(.event == "agent-source-task-summary" and .failures == 0 and .pass == true)] | length' \
 		"$(AGENT_SOURCE_TASK_ACTIVE_DIR)/observations.jsonl")" = \
 		"$(AGENT_SOURCE_TASK_ACTIVE_REPETITIONS)"
 	test "$$(jq -s '[.[] | select(.event == "agent-source-task-state" and .pass == true)] | length' \
@@ -233,7 +233,7 @@ agent-workspace-source-task-finalize:
 				"$$boot/$$state-pytest.json" >/dev/null; \
 		done; \
 		for state in $(AGENT_SOURCE_TASK_STATES); do \
-			jq -e '.pass == true and .checks.cwd_is_logical_root == true and .checks.sys_path_has_exact_logical_src == true and .checks.click_file_is_logical == true and .checks.click_types_file_is_logical == true and .checks.types_identity_matches == true and .checks.test_identity_matches == true' \
+			jq -e '.schema == "namei_ext.agent_source_task.import.v2" and .pass == true and .checks.cwd_identity_matches == true and .checks.logical_root_identity_matches == true and .checks.sys_path_has_exact_logical_src == true and .checks.click_file_is_logical == true and .checks.click_types_file_is_logical == true and .checks.types_identity_matches == true and .checks.test_identity_matches == true and .cwd_identity.device == .expected_root_identity.device and .cwd_identity.inode == .expected_root_identity.inode and .logical_root_identity.device == .expected_root_identity.device and .logical_root_identity.inode == .expected_root_identity.inode' \
 				"$$boot/$$state-import.json" >/dev/null; \
 			test ! -s "$$boot/$$state-probe.stderr.log"; \
 			test ! -s "$$boot/$$state-parser.stderr.log"; \
