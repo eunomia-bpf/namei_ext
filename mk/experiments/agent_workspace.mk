@@ -34,7 +34,12 @@ __experiment_agent_workspace_preflight: __namei_ext_guest_prepare
 kvm-agent-workspace-matrix: $(KERNEL_IMAGE) bpf agent-workspace
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR))
 	$(call NAMEI_EXT_RUN_START,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR),agent-workspace,agentfs-derived,kvm_agent_workspace_lifecycle_matrix,$(AGENT_WORKSPACE_MATRIX_JSON),agent_workspace_view.bpf.c,namei_ext_agent_workspace+fuse)
-	$(call NAMEI_EXT_KVM_RUN_CAPTURE,$(KERNEL_IMAGE),__experiment_agent_workspace_matrix,,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR),$(AGENT_WORKSPACE_MATRIX_RESULT_DIR))
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" __namei_ext_kvm_capture \
+		RUN_ID="$(RUN_ID)" \
+		NAMEI_EXT_KVM_CAPTURE_IMAGE="$(KERNEL_IMAGE)" \
+		NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET=__experiment_agent_workspace_matrix \
+		NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)" \
+		NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(AGENT_WORKSPACE_MATRIX_RESULT_DIR)"
 	$(call NAMEI_EXT_RUN_VALIDATE_CANONICAL,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR),$(AGENT_WORKSPACE_MATRIX_JSON))
 	$(call NAMEI_EXT_RUN_COMPLETE,$(AGENT_WORKSPACE_MATRIX_RESULT_DIR))
 

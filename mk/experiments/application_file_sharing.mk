@@ -20,7 +20,12 @@ NAMEI_EXT_HARNESS_LIBRARY ?= $(BUILD_ROOT)/runner/libnamei_ext_harness.a
 kvm-application-file-sharing-preflight: $(KERNEL_IMAGE) bpf application-file-sharing
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(APPLICATION_FILE_SHARING_RESULT_DIR))
 	$(call NAMEI_EXT_RUN_START,$(APPLICATION_FILE_SHARING_RESULT_DIR),application-file-sharing,xdg-document-portal,kvm_application_file_sharing_preflight,$(APPLICATION_FILE_SHARING_JSON),application_file_sharing.bpf.c,namei_ext_application_file_sharing)
-	$(call NAMEI_EXT_KVM_RUN_CAPTURE,$(KERNEL_IMAGE),__experiment_application_file_sharing_preflight,,$(APPLICATION_FILE_SHARING_RESULT_DIR),$(APPLICATION_FILE_SHARING_RESULT_DIR))
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" __namei_ext_kvm_capture \
+		RUN_ID="$(RUN_ID)" \
+		NAMEI_EXT_KVM_CAPTURE_IMAGE="$(KERNEL_IMAGE)" \
+		NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET=__experiment_application_file_sharing_preflight \
+		NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$(APPLICATION_FILE_SHARING_RESULT_DIR)" \
+		NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(APPLICATION_FILE_SHARING_RESULT_DIR)"
 	$(call NAMEI_EXT_RUN_VALIDATE_CANONICAL,$(APPLICATION_FILE_SHARING_RESULT_DIR),$(APPLICATION_FILE_SHARING_JSON))
 	$(call NAMEI_EXT_RUN_COMPLETE,$(APPLICATION_FILE_SHARING_RESULT_DIR))
 

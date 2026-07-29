@@ -35,7 +35,9 @@ A new formal suite must:
    `results/`;
 3. create a new result root, start its lifecycle on the host, and refuse an
    existing `RUN_ID`;
-4. use `NAMEI_EXT_KVM_RUN_CAPTURE` so launcher failures and logs are preserved;
+4. call `__namei_ext_kvm_capture` with the outer `RUN_ID` and named image,
+   guest target, boot-root, run-root, CPU-pin, and timeout variables so run
+   identity, launcher failures, and logs are preserved;
 5. validate raw observations and artifacts while the run is `running`, then
    use `NAMEI_EXT_RUN_COMPLETE` before starting analysis;
 6. separate `inputs.sha256` from `artifacts.sha256`;
@@ -69,7 +71,20 @@ every planned condition and repetition. They must compare the observed boot
 and cell key sets exactly with the declared matrix and establish the kernel
 identity from inside each guest.
 
-`NAMEI_EXT_KVM_RUN_CAPTURE` accepts an optional outer timeout after the host
-CPU pin argument. Suites with live daemons or other blocking external
-processes should freeze this value in their benchmark configuration so a stuck
-guest or VM fails the run instead of blocking the matrix indefinitely.
+The internal `__namei_ext_kvm_capture` target is the suite-facing KVM
+interface. It keeps the positional transport macro private to `mk/kvm.mk` and
+requires explicit `NAMEI_EXT_KVM_CAPTURE_*` variables. Suites with live daemons
+or other blocking external processes should set
+`NAMEI_EXT_KVM_CAPTURE_TIMEOUT` from a frozen benchmark configuration so a
+stuck guest or VM fails the run instead of blocking the matrix indefinitely.
+
+Guest suites use `NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE` for the common
+kernel configuration, commit, release, `uname`, `/proc/version`, and command
+line files. Build ID, BTF, clocksource, kernel flavor, and workload-specific
+oracles remain suite-owned. Guest Makefiles are sealed and validated through
+the helpers in `multi_boot.mk`.
+
+Nested `boot.json` files are always invalid. A suite that stores
+condition-level raw `observations.jsonl` below a boot directory must pass their
+exact expected count to the multi-boot collection and validation helpers; the
+default remains zero.

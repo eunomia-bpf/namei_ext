@@ -22,7 +22,12 @@ NAMEI_EXT_HARNESS_LIBRARY ?= $(BUILD_ROOT)/runner/libnamei_ext_harness.a
 kvm-build-action-sandboxing-preflight: $(KERNEL_IMAGE) bpf build-action-sandboxing workload-bazel
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(BUILD_ACTION_SANDBOXING_RESULT_DIR))
 	$(call NAMEI_EXT_RUN_START,$(BUILD_ACTION_SANDBOXING_RESULT_DIR),build-action-sandboxing,bazel-action-sandboxing,kvm_bazel_action_preflight,$(BUILD_ACTION_SANDBOXING_JSON),build_action_sandboxing.bpf.c,namei_ext_build_action_sandboxing)
-	$(call NAMEI_EXT_KVM_RUN_CAPTURE,$(KERNEL_IMAGE),__experiment_build_action_sandboxing_preflight,,$(BUILD_ACTION_SANDBOXING_RESULT_DIR),$(BUILD_ACTION_SANDBOXING_RESULT_DIR))
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" __namei_ext_kvm_capture \
+		RUN_ID="$(RUN_ID)" \
+		NAMEI_EXT_KVM_CAPTURE_IMAGE="$(KERNEL_IMAGE)" \
+		NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET=__experiment_build_action_sandboxing_preflight \
+		NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$(BUILD_ACTION_SANDBOXING_RESULT_DIR)" \
+		NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(BUILD_ACTION_SANDBOXING_RESULT_DIR)"
 	$(call NAMEI_EXT_RUN_VALIDATE_CANONICAL,$(BUILD_ACTION_SANDBOXING_RESULT_DIR),$(BUILD_ACTION_SANDBOXING_JSON))
 	$(call NAMEI_EXT_RUN_COMPLETE,$(BUILD_ACTION_SANDBOXING_RESULT_DIR))
 

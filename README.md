@@ -27,6 +27,7 @@ bench/                  VFS performance workloads
 mk/experiments/         Make-owned KVM suites for individual case studies
 mk/benchmarks/          Make-owned standard performance matrices
 mk/suites.mk             suite registry and evidence-level aggregates
+mk/kvm.mk                named KVM capture entrypoint and guest evidence
 mk/results.mk           shared run lifecycle and raw-artifact validation
 mk/multi_boot.mk        shared multi-boot mechanics and host provenance
 analysis/               derived statistics and figures from raw observations
@@ -79,8 +80,9 @@ one-line DMTCP restart-environment fix and source-native A-to-B pathvirt
 baseline have passed their host dependency preflight. The
 `kvm-checkpoint-restore-preflight` entrypoint now runs patched DMTCP
 PathTranslator, `namei_ext`, and the withdrawn fail-closed control in one
-modified-kernel boot. This entrypoint is implementation-ready but has not yet
-produced KVM evidence or authorized a formal matrix.
+modified-kernel boot. Two failed KVM dependency attempts are preserved with
+their exact diagnostics; the entrypoint has not yet completed successfully or
+authorized a formal matrix.
 
 Canonical KVM case-study result roots contain `run.json`,
 `observations.jsonl`, `command.txt`, source and artifact hash manifests,
@@ -96,6 +98,8 @@ directory per boot. Suite Makefiles own only their workload matrix and
 correctness gates; `mk/kvm.mk` owns execution and `mk/results.mk` owns the
 minimum result contract. Multi-boot completion also requires exact agreement
 between the declared and observed matrix and in-guest kernel identity.
+Condition-level nested observation files are rejected unless the owning suite
+declares their exact count.
 
 `configs/publication/published-formal.json` identifies result bundles intended
 for paper-facing publication. `make result-contract` requires each indexed

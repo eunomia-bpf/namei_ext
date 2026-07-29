@@ -283,7 +283,14 @@ agent-workspace-rq2-run-matrix:
 			$(call AGENT_WORKSPACE_RQ2_WRITE_GUEST_MAKEFILE); \
 			guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
 			host_started_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
-			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __agent_workspace_rq2_guest,,$$boot_dir,$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR),$(AGENT_WORKSPACE_RQ2_HOST_CPUS)); \
+			$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+				__namei_ext_kvm_capture \
+				RUN_ID="$(RUN_ID)" \
+				NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
+				NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="-f Makefile -f $$guest_makefile_rel __agent_workspace_rq2_guest" \
+				NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
+				NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(AGENT_WORKSPACE_RQ2_ACTIVE_DIR)" \
+				NAMEI_EXT_KVM_CAPTURE_HOST_CPUS="$(AGENT_WORKSPACE_RQ2_HOST_CPUS)"; \
 			host_completed_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
 			jq -c -n --argjson order_index "$$order_index" \
 				--argjson repetition "$$repetition" \
@@ -389,8 +396,7 @@ agent-workspace-rq2-report:
 experiment-agent-workspace-rq2: kvm-agent-workspace-rq2
 
 __agent_workspace_rq2_guest: __namei_ext_guest_prepare
-	test "$(notdir $(lastword $(MAKEFILE_LIST)))" = guest.mk
-	(cd "$(dir $(lastword $(MAKEFILE_LIST)))" && sha256sum -c guest.mk.sha256)
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_GUEST_MAKEFILE,$(lastword $(MAKEFILE_LIST)))
 	case "$(CONDITION)" in namei_ext|fuse) ;; *) exit 1;; esac
 	test -n "$(REPETITION)"
 	test -x "$(AGENT_WORKSPACE_RQ2_RUNNER)"
@@ -423,10 +429,11 @@ __agent_workspace_rq2_guest: __namei_ext_guest_prepare
 	: >"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/stdout.log"
 	: >"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/stderr.log"
 	: >"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/raw-runner.jsonl"
-	cp "$(AGENT_WORKSPACE_RQ2_KERNEL_CONFIG)" \
-		"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/kernel.config"
-	printf '%s\n' "$(AGENT_WORKSPACE_RQ2_KERNEL_COMMIT)" \
-		>"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/kernel-commit.txt"
+	$(call NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE,\
+		$(AGENT_WORKSPACE_RQ2_BOOT_DIR),\
+		$(AGENT_WORKSPACE_RQ2_KERNEL_CONFIG),\
+		$(AGENT_WORKSPACE_RQ2_KERNEL_COMMIT),\
+		$(AGENT_WORKSPACE_RQ2_KERNEL_RELEASE))
 	actual_notes_sha=$$(sha256sum /sys/kernel/notes | awk '{print $$1}'); \
 	test "$$actual_notes_sha" = "$(AGENT_WORKSPACE_RQ2_KERNEL_NOTES_SHA256)"; \
 	printf '%s  %s\n' "$$actual_notes_sha" /sys/kernel/notes \
@@ -438,13 +445,6 @@ __agent_workspace_rq2_guest: __namei_ext_guest_prepare
 	printf '%s  %s\n' "$$actual_btf_sha" /sys/kernel/btf/vmlinux \
 		>"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/kernel-btf.sha256"
 	grep -q ' [Tt] namei_ext_lookup$$' /proc/kallsyms
-	actual_release=$$(uname -r); \
-	test "$$actual_release" = "$(AGENT_WORKSPACE_RQ2_KERNEL_RELEASE)"; \
-	printf '%s\n' "$$actual_release" \
-		>"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/kernel-release.txt"
-	uname -a >"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/uname.txt"
-	cat /proc/version >"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/proc-version.txt"
-	cat /proc/cmdline >"$(AGENT_WORKSPACE_RQ2_BOOT_DIR)/kernel-cmdline.txt"
 	clocksource=$$(cat /sys/devices/system/clocksource/clocksource0/current_clocksource); \
 	test "$$clocksource" = tsc; \
 	printf '%s\n' "$$clocksource" \

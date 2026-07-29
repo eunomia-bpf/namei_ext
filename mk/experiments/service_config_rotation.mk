@@ -18,7 +18,7 @@ SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES := \
 	nginx-canary-test.stdout.log nginx-canary-test.stderr.log \
 	nginx-invalid-test.stdout.log nginx-invalid-test.stderr.log \
 	nginx-rollback-test.stdout.log nginx-rollback-test.stderr.log \
-	nginx-version.txt kernel.config \
+	nginx-version.txt kernel.config kernel-commit.txt kernel-release.txt \
 	uname.txt proc-version.txt kernel-cmdline.txt dmesg.log
 SERVICE_CONFIG_ROTATION_BOOT_FILES := \
 	$(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES) evidence.sha256
@@ -204,20 +204,27 @@ service-config-rotation-run-matrix:
 		$(call SERVICE_CONFIG_ROTATION_WRITE_GUEST_MAKEFILE); \
 		guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
 		host_started_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
-		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __service_config_rotation_guest,,$$boot_dir,$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR),,$(SERVICE_CONFIG_ROTATION_KVM_TIMEOUT_SECONDS)); \
+		$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+			__namei_ext_kvm_capture \
+			RUN_ID="$(RUN_ID)" \
+			NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
+			NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="-f Makefile -f $$guest_makefile_rel __service_config_rotation_guest" \
+			NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
+			NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(SERVICE_CONFIG_ROTATION_ACTIVE_DIR)" \
+			NAMEI_EXT_KVM_CAPTURE_TIMEOUT="$(SERVICE_CONFIG_ROTATION_KVM_TIMEOUT_SECONDS)"; \
 		host_completed_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
-			jq --arg started_at "$$host_started_at" \
-				--arg completed_at "$$host_completed_at" \
-				'.host_launch = {started_at:$$started_at,completed_at:$$completed_at}' \
-				"$$boot_dir/boot.json" >"$$boot_dir/boot.json.tmp"; \
-			mv -f "$$boot_dir/boot.json.tmp" "$$boot_dir/boot.json"; \
-			(cd "$$boot_dir" && \
-				for file in $(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES); do \
-					test -f "$$file"; \
-					test ! -L "$$file"; \
-				done && \
-				sha256sum $(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES) \
-					>evidence.sha256); \
+		jq --arg started_at "$$host_started_at" \
+			--arg completed_at "$$host_completed_at" \
+			'.host_launch = {started_at:$$started_at,completed_at:$$completed_at}' \
+			"$$boot_dir/boot.json" >"$$boot_dir/boot.json.tmp"; \
+		mv -f "$$boot_dir/boot.json.tmp" "$$boot_dir/boot.json"; \
+		(cd "$$boot_dir" && \
+			for file in $(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES); do \
+				test -f "$$file"; \
+				test ! -L "$$file"; \
+			done && \
+			sha256sum $(SERVICE_CONFIG_ROTATION_BOOT_EVIDENCE_FILES) \
+				>evidence.sha256); \
 		done
 
 service-config-rotation-finalize:
@@ -336,9 +343,7 @@ service-config-rotation-report:
 experiment-service-config-rotation: kvm-service-config-rotation
 
 __service_config_rotation_guest: __namei_ext_guest_prepare
-	test "$(notdir $(lastword $(MAKEFILE_LIST)))" = guest.mk
-	(cd "$(dir $(lastword $(MAKEFILE_LIST)))" && \
-		sha256sum -c guest.mk.sha256)
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_GUEST_MAKEFILE,$(lastword $(MAKEFILE_LIST)))
 	test -n "$(REPETITION)"
 	test "$(SERVICE_CONFIG_ROTATION_GUEST_TIMEOUT)" = "5"
 	test -x "$(SERVICE_CONFIG_ROTATION_GUEST_RUNNER)"
@@ -350,14 +355,12 @@ __service_config_rotation_guest: __namei_ext_guest_prepare
 	printf '{"event":"service-config-rotation-start","result_level":"kvm_service_config_rotation","repetition":%s,"pass":true}\n' \
 		"$(REPETITION)" \
 		>"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/raw-runner.jsonl"
-	cp "$(SERVICE_CONFIG_ROTATION_GUEST_KERNEL_CONFIG)" \
-		"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/kernel.config"
-	actual_release=$$(uname -r); \
-	test "$$actual_release" = "$(SERVICE_CONFIG_ROTATION_GUEST_KERNEL_RELEASE)"
+	$(call NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE,\
+		$(SERVICE_CONFIG_ROTATION_BOOT_DIR),\
+		$(SERVICE_CONFIG_ROTATION_GUEST_KERNEL_CONFIG),\
+		$(SERVICE_CONFIG_ROTATION_GUEST_KERNEL_COMMIT),\
+		$(SERVICE_CONFIG_ROTATION_GUEST_KERNEL_RELEASE))
 	grep -q ' [Tt] namei_ext_lookup$$' /proc/kallsyms
-	uname -a >"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/uname.txt"
-	cat /proc/version >"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/proc-version.txt"
-	cat /proc/cmdline >"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/kernel-cmdline.txt"
 	"$(SERVICE_CONFIG_ROTATION_GUEST_NGINX)" -V \
 		>"$(SERVICE_CONFIG_ROTATION_BOOT_DIR)/nginx-version.txt" 2>&1
 	grep -F 'nginx/$(NGINX_VERSION)' \

@@ -50,17 +50,25 @@ test "$$(wc -l <"$(1)")" = "$(2)"; \
 	>"$$(basename "$(1)").sha256")
 endef
 
+define NAMEI_EXT_MULTI_BOOT_VALIDATE_GUEST_MAKEFILE
+test "$(notdir $(1))" = guest.mk
+(cd "$(dir $(1))" && sha256sum -c guest.mk.sha256)
+endef
+
 define NAMEI_EXT_MULTI_BOOT_VALIDATE_TREE
 test "$$(find "$(1)/boots" -mindepth 1 -maxdepth 1 -type d | wc -l)" = \
 	"$(2)"
 test "$$(find "$(1)/boots" -mindepth 1 -maxdepth 1 ! -type d | wc -l)" = \
 	"0"
-test "$$(find "$(1)/boots" -mindepth 3 \
-	\( -name boot.json -o -name observations.jsonl \) | wc -l)" = "0"
+test "$$(find "$(1)/boots" -mindepth 3 -name boot.json | wc -l)" = "0"
+test "$$(find "$(1)/boots" -mindepth 3 -name observations.jsonl \
+	! -type f | wc -l)" = "0"
+test "$$(find "$(1)/boots" -mindepth 3 -name observations.jsonl | wc -l)" = \
+	"$(or $(3),0)"
 endef
 
 define NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS
-$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_TREE,$(1),$(2))
+$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_TREE,$(1),$(2),$(3))
 while IFS= read -r -d '' boot; do \
 	test -f "$$boot/observations.jsonl"; \
 	cat "$$boot/observations.jsonl"; \
@@ -69,7 +77,7 @@ done < <(find "$(1)/boots" -mindepth 1 -maxdepth 1 -type d -print0 | \
 endef
 
 define NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES
-$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_TREE,$(1),$(2))
+$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_TREE,$(1),$(2),$(4))
 while IFS= read -r -d '' boot; do \
 	for file in $(3); do \
 		test -f "$$boot/$$file"; \

@@ -15,7 +15,8 @@ include $(ROOT_DIR)/mk/results.mk
 include $(ROOT_DIR)/mk/multi_boot.mk
 
 .PHONY: test validate-only create-only multi-boot-collect-only \
-	multi-boot-validate-only analysis-publish-only \
+	multi-boot-collect-nested-only multi-boot-validate-only \
+	multi-boot-validate-nested-only analysis-publish-only \
 	published-result-contract clean
 
 analysis-publish-only:
@@ -24,11 +25,8 @@ analysis-publish-only:
 
 published-result-contract:
 	PYTHONPATH="$(ROOT_DIR)/tests/infrastructure" \
-		python3 \
-		"$(ROOT_DIR)/tests/infrastructure/test_validate_published_results.py"
-	PYTHONPATH="$(ROOT_DIR)/tests/infrastructure" \
-		python3 \
-		"$(ROOT_DIR)/tests/infrastructure/test_analysis_lifecycle.py"
+		python3 -m unittest discover \
+		-s "$(ROOT_DIR)/tests/infrastructure" -p 'test_*.py' -v
 	python3 "$(ROOT_DIR)/tests/infrastructure/validate_published_results.py" \
 		--repo "$(ROOT_DIR)" \
 		--index "$(ROOT_DIR)/configs/publication/published-formal.json"
@@ -219,8 +217,26 @@ test: published-result-contract
 		printf '%s\n' 'extra nested observations unexpectedly passed' >&2; \
 		exit 1; \
 	fi
-	rm "$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json" \
+	rm "$(MULTI_BOOT_ROOT)/boots/one/nested/boot.json"
+	$(MAKE) --no-print-directory multi-boot-collect-nested-only
+	$(MAKE) --no-print-directory multi-boot-validate-nested-only
+	test "$$(wc -l <"$(MULTI_BOOT_ROOT)/observations.jsonl")" = "2"
+	install -d "$(MULTI_BOOT_ROOT)/boots/two/nested"
+	printf '{"boot":"second-extra"}\n' \
+		>"$(MULTI_BOOT_ROOT)/boots/two/nested/observations.jsonl"
+	if $(MAKE) --no-print-directory multi-boot-collect-nested-only; then \
+		printf '%s\n' 'wrong nested observation count unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rm "$(MULTI_BOOT_ROOT)/boots/two/nested/observations.jsonl" \
 		"$(MULTI_BOOT_ROOT)/boots/one/nested/observations.jsonl"
+	ln -s ../../two/observations.jsonl \
+		"$(MULTI_BOOT_ROOT)/boots/one/nested/observations.jsonl"
+	if $(MAKE) --no-print-directory multi-boot-collect-nested-only; then \
+		printf '%s\n' 'nested observation symlink unexpectedly passed' >&2; \
+		exit 1; \
+	fi
+	rm "$(MULTI_BOOT_ROOT)/boots/one/nested/observations.jsonl"
 	rm "$(MULTI_BOOT_ROOT)/boots/two/required.txt"
 	if $(MAKE) --no-print-directory multi-boot-validate-only; then \
 		printf '%s\n' 'missing multi-boot artifact unexpectedly passed' >&2; \
@@ -272,8 +288,14 @@ create-only:
 multi-boot-collect-only:
 	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(MULTI_BOOT_ROOT),2)
 
+multi-boot-collect-nested-only:
+	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(MULTI_BOOT_ROOT),2,1)
+
 multi-boot-validate-only:
 	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(MULTI_BOOT_ROOT),2,boot.json observations.jsonl required.txt)
+
+multi-boot-validate-nested-only:
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(MULTI_BOOT_ROOT),2,boot.json observations.jsonl required.txt,1)
 
 clean:
 	rm -rf "$(OUTPUT_ROOT)"

@@ -202,7 +202,14 @@ kvm-checkpoint-restore-preflight: kernel kernel-provenance bpf \
 	$(call CHECKPOINT_RESTORE_WRITE_GUEST_MAKEFILE); \
 	guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
 	host_started_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
-	$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __checkpoint_restore_guest,,$$boot_dir,$(CHECKPOINT_RESTORE_PREFLIGHT_RESULT_DIR),,$(CHECKPOINT_RESTORE_KVM_TIMEOUT_SECONDS)); \
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+		__namei_ext_kvm_capture \
+		RUN_ID="$(RUN_ID)" \
+		NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
+		NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="-f Makefile -f $$guest_makefile_rel __checkpoint_restore_guest" \
+		NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
+		NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(CHECKPOINT_RESTORE_PREFLIGHT_RESULT_DIR)" \
+		NAMEI_EXT_KVM_CAPTURE_TIMEOUT="$(CHECKPOINT_RESTORE_KVM_TIMEOUT_SECONDS)"; \
 	host_completed_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
 	jq --arg started_at "$$host_started_at" \
 		--arg completed_at "$$host_completed_at" \
@@ -224,7 +231,7 @@ checkpoint-restore-finalize:
 	test -n "$(CHECKPOINT_RESTORE_ACTIVE_DIR)"
 	jq -e '.status == "running" and (.failed_at | not)' \
 		"$(CHECKPOINT_RESTORE_ACTIVE_DIR)/run.json" >/dev/null
-	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(CHECKPOINT_RESTORE_ACTIVE_DIR),1)
+	$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(CHECKPOINT_RESTORE_ACTIVE_DIR),1,3)
 	jq -s -e \
 		'. as $$rows | ([$$rows[] | select(.event == "checkpoint-restore-summary") | .condition] | sort) == ["namei_ext","pathvirt","withdrawn"] and all($$rows[]; .pass == true)' \
 		"$(CHECKPOINT_RESTORE_ACTIVE_DIR)/observations.jsonl" >/dev/null
@@ -232,7 +239,7 @@ checkpoint-restore-finalize:
 		"$(CHECKPOINT_RESTORE_ACTIVE_DIR)/observations.jsonl" >/dev/null
 	sha256sum -c "$(CHECKPOINT_RESTORE_ACTIVE_DIR)/inputs.sha256"
 	(cd "$(CHECKPOINT_RESTORE_ACTIVE_DIR)" && sha256sum -c artifacts.sha256)
-	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(CHECKPOINT_RESTORE_ACTIVE_DIR),1,$(CHECKPOINT_RESTORE_BOOT_FILES))
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(CHECKPOINT_RESTORE_ACTIVE_DIR),1,$(CHECKPOINT_RESTORE_BOOT_FILES),3)
 	boot="$(CHECKPOINT_RESTORE_ACTIVE_DIR)/boots/preflight"; \
 	(cd "$$boot" && sha256sum -c guest.mk.sha256); \
 	(cd "$$boot" && sha256sum -c evidence.sha256); \
@@ -273,9 +280,7 @@ checkpoint-restore-analyze:
 	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$(CHECKPOINT_RESTORE_ACTIVE_DIR)/analysis)
 
 __checkpoint_restore_guest: __namei_ext_guest_prepare
-	test "$(notdir $(lastword $(MAKEFILE_LIST)))" = guest.mk
-	(cd "$(dir $(lastword $(MAKEFILE_LIST)))" && \
-		sha256sum -c guest.mk.sha256)
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_GUEST_MAKEFILE,$(lastword $(MAKEFILE_LIST)))
 	test "$(CHECKPOINT_RESTORE_GUEST_TIMEOUT)" = "120"
 	test "$(CHECKPOINT_RESTORE_GUEST_UPSTREAM_TIMEOUT)" = "120"
 	test -x "$(CHECKPOINT_RESTORE_GUEST_RUNNER)"
@@ -289,18 +294,12 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 	command -v setpriv >/dev/null
 	test -c /dev/fuse
 	install -d "$(CHECKPOINT_RESTORE_BOOT_DIR)/conditions"
-	cp "$(CHECKPOINT_RESTORE_GUEST_KERNEL_CONFIG)" \
-		"$(CHECKPOINT_RESTORE_BOOT_DIR)/kernel.config"
-	printf '%s\n' "$(CHECKPOINT_RESTORE_GUEST_KERNEL_COMMIT)" \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/kernel-commit.txt"
-	actual_release=$$(uname -r); \
-	test "$$actual_release" = "$(CHECKPOINT_RESTORE_GUEST_KERNEL_RELEASE)"; \
-	printf '%s\n' "$$actual_release" \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/kernel-release.txt"
+	$(call NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE,\
+		$(CHECKPOINT_RESTORE_BOOT_DIR),\
+		$(CHECKPOINT_RESTORE_GUEST_KERNEL_CONFIG),\
+		$(CHECKPOINT_RESTORE_GUEST_KERNEL_COMMIT),\
+		$(CHECKPOINT_RESTORE_GUEST_KERNEL_RELEASE))
 	grep -q ' [Tt] namei_ext_lookup$$' /proc/kallsyms
-	uname -a >"$(CHECKPOINT_RESTORE_BOOT_DIR)/uname.txt"
-	cat /proc/version >"$(CHECKPOINT_RESTORE_BOOT_DIR)/proc-version.txt"
-	cat /proc/cmdline >"$(CHECKPOINT_RESTORE_BOOT_DIR)/kernel-cmdline.txt"
 	runtime_uid=$$(stat -c %u "$(CHECKPOINT_RESTORE_BOOT_DIR)"); \
 	runtime_gid=$$(stat -c %g "$(CHECKPOINT_RESTORE_BOOT_DIR)"); \
 	jq -n --argjson uid "$$runtime_uid" --argjson gid "$$runtime_gid" \

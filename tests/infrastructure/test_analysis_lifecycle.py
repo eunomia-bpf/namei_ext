@@ -76,6 +76,11 @@ class AnalysisLifecycleTest(unittest.TestCase):
                 "FXMARK_FAST_PATH_ANALYSIS",
             ),
             (
+                "fxmark-rq2-report",
+                "FXMARK_RESULT_DIR",
+                "FXMARK_ANALYSIS",
+            ),
+            (
                 "service-config-rotation-analyze",
                 "SERVICE_CONFIG_ROTATION_ACTIVE_DIR",
                 "SERVICE_CONFIG_ROTATION_ANALYSIS",

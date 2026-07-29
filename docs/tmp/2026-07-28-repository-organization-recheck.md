@@ -137,3 +137,25 @@ For Checkpoint/Restore and Migration, the correct order is:
 4. reuse the existing KVM, result, and multi-boot contracts;
 5. add an analysis-only consumer and focused negative tests; and
 6. register only the preflight until it passes.
+
+## Infrastructure Follow-up
+
+The bounded cleanup identified above was started later on 2026-07-28. All
+suite call sites now use the named `__namei_ext_kvm_capture` entrypoint; the
+seven-argument transport macro remains private to `mk/kvm.mk`. Recursive
+callers preserve the outer `RUN_ID`, and the entrypoint validates it against
+the parent run before launch. Common guest kernel evidence and guest-Makefile
+validation are shared, FxMark fast-path uses the existing pinned-host helpers,
+and the FxMark RQ2 analyzer publishes through the same contract-gated atomic
+analysis lifecycle as the other formal suites.
+
+The migration also exposed a real checkpoint blocker: the multi-boot tree
+validator prohibited the three condition-level `observations.jsonl` files that
+the checkpoint suite intentionally preserves. The shared validator now accepts
+an explicit exact count while retaining a default of zero and continuing to
+reject every nested `boot.json`. Positive and negative result-contract
+fixtures cover this exception.
+
+The remaining duplicate BPF/FUSE external-inventory commands and host-launch
+timestamp insertion are smaller follow-ups. They do not justify a directory
+move or a generic experiment-template abstraction.

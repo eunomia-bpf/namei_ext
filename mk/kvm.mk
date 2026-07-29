@@ -51,7 +51,19 @@ define NAMEI_EXT_GUEST_ASSERT_DMESG_CLEAN
 ! grep -E '$(NAMEI_EXT_DMESG_FAILURE_PATTERN)' "$(1)" >/dev/null
 endef
 
-.PHONY: kvm-smoke kvm-policy-load kvm-policy-semantic kvm-functional kvm-bench \
+define NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE
+cp "$(strip $(2))" "$(strip $(1))/kernel.config"
+printf '%s\n' "$(strip $(3))" >"$(strip $(1))/kernel-commit.txt"
+actual_release=$$(uname -r); \
+test "$$actual_release" = "$(strip $(4))"; \
+printf '%s\n' "$$actual_release" >"$(strip $(1))/kernel-release.txt"
+uname -a >"$(strip $(1))/uname.txt"
+cat /proc/version >"$(strip $(1))/proc-version.txt"
+cat /proc/cmdline >"$(strip $(1))/kernel-cmdline.txt"
+endef
+
+.PHONY: __namei_ext_kvm_capture \
+	kvm-smoke kvm-policy-load kvm-policy-semantic kvm-functional kvm-bench \
 	__namei_ext_guest_prepare __phase1_guest_smoke __phase1_guest_policy_load \
 	__phase1_guest_policy_semantic __phase1_guest_functional \
 	__phase1_guest_bench
@@ -66,6 +78,15 @@ KVM_CORE_ENTRYPOINTS := \
 	$(CURRENT_EXPERIMENT_TARGETS)
 
 $(KVM_CORE_ENTRYPOINTS): kernel-provenance
+
+__namei_ext_kvm_capture:
+	test -n "$(NAMEI_EXT_KVM_CAPTURE_IMAGE)"
+	test -n "$(NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET)"
+	test -d "$(NAMEI_EXT_KVM_CAPTURE_BOOT_DIR)"
+	test -f "$(NAMEI_EXT_KVM_CAPTURE_RUN_DIR)/run.json"
+	jq -e --arg run_id "$(RUN_ID)" '.run_id == $$run_id' \
+		"$(NAMEI_EXT_KVM_CAPTURE_RUN_DIR)/run.json" >/dev/null
+	$(call NAMEI_EXT_KVM_RUN_CAPTURE,$(strip $(NAMEI_EXT_KVM_CAPTURE_IMAGE)),$(strip $(NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET)),$(strip $(NAMEI_EXT_KVM_CAPTURE_GUEST_VARS)),$(strip $(NAMEI_EXT_KVM_CAPTURE_BOOT_DIR)),$(strip $(NAMEI_EXT_KVM_CAPTURE_RUN_DIR)),$(strip $(NAMEI_EXT_KVM_CAPTURE_HOST_CPUS)),$(strip $(NAMEI_EXT_KVM_CAPTURE_TIMEOUT)))
 
 __namei_ext_guest_prepare:
 	if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi

@@ -15,6 +15,7 @@ FXMARK_PATCHED_KERNEL_NOTES ?= $(FXMARK_OUTPUT)/patched-vmlinux.notes
 FXMARK_STOCK_KERNEL_NOTES ?= $(FXMARK_OUTPUT)/stock-vmlinux.notes
 FXMARK_CELL_TIMEOUT ?= 900
 FXMARK_ANALYSIS_SEED ?= 20260726
+FXMARK_ANALYSIS ?= $(ROOT_DIR)/analysis/fxmark/analyze.py
 FXMARK_RESULT_DIR ?= $(RESULT_ROOT)/experiments/fxmark-rq2/$(RUN_ID)
 FXMARK_PREFLIGHT_RESULT_DIR ?= $(RESULT_ROOT)/experiments/fxmark-rq2-preflight/$(RUN_ID)
 FXMARK_GUEST_MOUNT ?= /tmp/namei-ext-fxmark-rq2
@@ -100,9 +101,7 @@ printf '%s := %s\n' \
 	'FXMARK_BPF_STATS' "$(FXMARK_BPF_STATS)" \
 	'FXMARK_REQUIRE_AFFINITY' "$(if $(strip $(4)),$(4),0)" \
 	>"$$guest_makefile"; \
-test "$$(wc -l <"$$guest_makefile")" = "21"; \
-! grep -F "$(ROOT_DIR)/" "$$guest_makefile" >/dev/null; \
-(cd "$$boot_dir" && sha256sum guest.mk >guest.mk.sha256)
+$(call NAMEI_EXT_MULTI_BOOT_SEAL_GUEST_MAKEFILE,$$guest_makefile,21)
 endef
 
 .PHONY: fxmark-source fxmark-rq2-build fxmark-kernel-pair \
@@ -243,7 +242,13 @@ kvm-fxmark-rq2-preflight: fxmark-kernel-pair fxmark-rq2-build bpf
 		guest_makefile="$$boot_dir/guest.mk"; \
 		$(call FXMARK_WRITE_GUEST_MAKEFILE,$(FXMARK_PREFLIGHT_DURATION),MRPL,1); \
 		guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
-		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest,,$$boot_dir,$(FXMARK_PREFLIGHT_RESULT_DIR)); \
+		$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+			__namei_ext_kvm_capture \
+			RUN_ID="$(RUN_ID)" \
+			NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
+			NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest" \
+			NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
+			NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(FXMARK_PREFLIGHT_RESULT_DIR)"; \
 	done
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-boots.txt"
 	LC_ALL=C sort -o "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt" "$(FXMARK_PREFLIGHT_RESULT_DIR)/expected-cells.txt"
@@ -352,7 +357,13 @@ kvm-fxmark-rq2: fxmark-kernel-pair fxmark-rq2-build bpf
 			guest_makefile="$$boot_dir/guest.mk"; \
 			$(call FXMARK_WRITE_GUEST_MAKEFILE,$(FXMARK_DURATION),$(FXMARK_TYPES),$(FXMARK_CORES)); \
 			guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
-			$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest,,$$boot_dir,$(FXMARK_RESULT_DIR)); \
+			$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+				__namei_ext_kvm_capture \
+				RUN_ID="$(RUN_ID)" \
+				NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
+				NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest" \
+				NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
+				NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(FXMARK_RESULT_DIR)"; \
 		done; \
 	done
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-rq2-finalize \
@@ -394,25 +405,28 @@ fxmark-rq2-finalize:
 	$(call NAMEI_EXT_RUN_COMPLETE,$(FXMARK_RESULT_DIR))
 
 fxmark-rq2-report:
-	jq -e '.status == "completed"' "$(FXMARK_RESULT_DIR)/run.json" >/dev/null
+	$(call NAMEI_EXT_RUN_VALIDATE_COMPLETE,$(FXMARK_RESULT_DIR))
 	sha256sum -c "$(FXMARK_RESULT_DIR)/inputs.sha256"
 	sha256sum -c "$(FXMARK_RESULT_DIR)/artifacts.sha256"
-	python3 "$(ROOT_DIR)/analysis/fxmark/analyze.py" \
+	$(call NAMEI_EXT_ANALYSIS_PREPARE,$(FXMARK_RESULT_DIR)/analysis)
+	python3 "$(FXMARK_ANALYSIS)" \
 		--input "$(FXMARK_RESULT_DIR)/observations.jsonl" \
-		--output "$(FXMARK_RESULT_DIR)/analysis" \
+		--output "$(FXMARK_RESULT_DIR)/analysis.tmp" \
 		--run "$(FXMARK_RESULT_DIR)/run.json" \
 		--seed "$(FXMARK_ANALYSIS_SEED)"
 	for file in summary.json summary.csv report.md throughput.png throughput.pdf; do \
-		test -s "$(FXMARK_RESULT_DIR)/analysis/$$file"; \
+		test -s "$(FXMARK_RESULT_DIR)/analysis.tmp/$$file"; \
 	done
+	jq -e '(.cells | type == "array" and length > 0) and (.bootstrap_seed | type == "number") and (.verdict.tested_hypothesis == "supported" or .verdict.tested_hypothesis == "contradicted" or .verdict.tested_hypothesis == "inconclusive_or_mixed")' \
+		"$(FXMARK_RESULT_DIR)/analysis.tmp/summary.json" >/dev/null
+	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$(FXMARK_RESULT_DIR)/analysis)
 
 experiment-fxmark-rq2: kvm-fxmark-rq2
 	$(MAKE) -C "$(ROOT_DIR)" fxmark-rq2-report \
 		RUN_ID="$(RUN_ID)"
 
 __fxmark_rq2_guest:
-	test "$(notdir $(lastword $(MAKEFILE_LIST)))" = guest.mk
-	(cd "$(dir $(lastword $(MAKEFILE_LIST)))" && sha256sum -c guest.mk.sha256)
+	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_GUEST_MAKEFILE,$(lastword $(MAKEFILE_LIST)))
 	test -n "$(CONDITION)"
 	test -n "$(REPETITION)"
 	test -n "$(FXMARK_RUN_DURATION)"
@@ -493,8 +507,11 @@ __fxmark_rq2_guest:
 	printf '%s\n' "$(FXMARK_BPF_STATS)" >/proc/sys/kernel/bpf_stats_enabled
 	mount -t tmpfs -o "size=$(FXMARK_TMPFS_SIZE),noatime" tmpfs "$(FXMARK_GUEST_MOUNT)"
 	: >"$(FXMARK_BOOT_RESULT_DIR)/observations.jsonl"
-	cp "$(FXMARK_BOOT_KERNEL_CONFIG)" "$(FXMARK_BOOT_RESULT_DIR)/kernel.config"
-	printf '%s\n' "$(FXMARK_BOOT_KERNEL_COMMIT)" >"$(FXMARK_BOOT_RESULT_DIR)/kernel-commit.txt"
+	$(call NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE,\
+		$(FXMARK_BOOT_RESULT_DIR),\
+		$(FXMARK_BOOT_KERNEL_CONFIG),\
+		$(FXMARK_BOOT_KERNEL_COMMIT),\
+		$(FXMARK_BOOT_KERNEL_RELEASE))
 	actual_notes_sha=$$(sha256sum /sys/kernel/notes | awk '{print $$1}'); \
 	test "$$actual_notes_sha" = "$(FXMARK_BOOT_KERNEL_NOTES_SHA256)"; \
 	printf '%s  %s\n' "$$actual_notes_sha" /sys/kernel/notes >"$(FXMARK_BOOT_RESULT_DIR)/kernel-notes.sha256"; \
@@ -505,12 +522,6 @@ __fxmark_rq2_guest:
 	if grep -q ' [Tt] namei_ext_lookup$$' /proc/kallsyms; then actual_flavor=patched; else actual_flavor=stock; fi; \
 	test "$$actual_flavor" = "$(FXMARK_BOOT_KERNEL_FLAVOR)"; \
 	printf '%s\n' "$$actual_flavor" >"$(FXMARK_BOOT_RESULT_DIR)/kernel-flavor.txt"
-	actual_release=$$(uname -r); \
-	test "$$actual_release" = "$(FXMARK_BOOT_KERNEL_RELEASE)"; \
-	printf '%s\n' "$$actual_release" >"$(FXMARK_BOOT_RESULT_DIR)/kernel-release.txt"
-	uname -a >"$(FXMARK_BOOT_RESULT_DIR)/uname.txt"
-	cat /proc/version >"$(FXMARK_BOOT_RESULT_DIR)/proc-version.txt"
-	cat /proc/cmdline >"$(FXMARK_BOOT_RESULT_DIR)/kernel-cmdline.txt"
 	clocksource=$$(cat /sys/devices/system/clocksource/clocksource0/current_clocksource); \
 	test "$$clocksource" = tsc; \
 	printf '%s\n' "$$clocksource" >"$(FXMARK_BOOT_RESULT_DIR)/clocksource-before.txt"

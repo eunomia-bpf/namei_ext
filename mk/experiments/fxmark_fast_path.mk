@@ -37,34 +37,6 @@ test "$(FXMARK_FAST_PATH_REPETITIONS)" = 30
 test "$(FXMARK_FAST_PATH_DURATION)" = 30
 endef
 
-define FXMARK_FAST_PATH_CAPTURE_HOST
-lscpu >"$(1)/host-lscpu.txt"
-lscpu -e=CPU,CORE,SOCKET,NODE,ONLINE,MAXMHZ,MINMHZ \
-	>"$(1)/host-lscpu-extended.txt"
-cat /proc/stat >"$(1)/host-proc-stat-before.txt"
-cat /proc/interrupts >"$(1)/host-proc-interrupts-before.txt"
-printf '%s\n' "$(FXMARK_FAST_PATH_HOST_CPUS)" >"$(1)/host-cpu-pin.txt"
-pin_start=$$(printf '%s\n' "$(FXMARK_FAST_PATH_HOST_CPUS)" | cut -d- -f1); \
-pin_end=$$(printf '%s\n' "$(FXMARK_FAST_PATH_HOST_CPUS)" | cut -d- -f2); \
-jq -n --argjson start "$$pin_start" --argjson end "$$pin_end" \
-	'[range($$start; $$end + 1)]' >"$(1)/host-cpu-pin.json"; \
-printf 'intel_pstate_no_turbo=%s\n' \
-	"$$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)" \
-	>"$(1)/host-cpu-frequency-policy.txt"; \
-for cpu in $$(seq "$$pin_start" "$$pin_end"); do \
-	printf 'cpu=%s governor=%s driver=%s max_khz=%s\n' "$$cpu" \
-		"$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/scaling_governor")" \
-		"$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/scaling_driver")" \
-		"$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/cpuinfo_max_freq")" \
-		>>"$(1)/host-cpu-frequency-policy.txt"; \
-done
-vng_path=$$(command -v "$(VNG)"); \
-vng_module_path=$$(python3 -c 'import virtme_ng.run; print(virtme_ng.run.__file__)'); \
-"$(VNG)" --version >"$(1)/vng-version.txt"; \
-sha256sum "$$vng_path" >"$(1)/vng-executable.sha256"; \
-sha256sum "$$vng_module_path" >"$(1)/vng-run-module.sha256"
-endef
-
 define FXMARK_FAST_PATH_START
 $(call NAMEI_EXT_VALIDATE_HOST_CPU_PIN,$(FXMARK_FAST_PATH_HOST_CPUS),$(KVM_CPUS))
 test "$$(cat "$(KERNEL_COMMIT_FILE)")" = \
@@ -94,7 +66,7 @@ jq --slurpfile artifacts "$(1)/artifacts/manifest.json" -e \
 	'.layout == "paired-boot-matrix" and .kernel_artifacts == $$artifacts[0] and .kernel.commit == $$patched and .kernel_artifacts.patched.commit == $$patched and .kernel_commit == $$patched and .kernel_commits.patched == $$patched and .kernel_artifacts.stock.commit == $$stock and .kernel_commits.stock == $$stock' \
 	"$(1)/run.json" >/dev/null
 printf '%s\n' "$(4)" >"$(1)/command.txt"
-$(call FXMARK_FAST_PATH_CAPTURE_HOST,$(1))
+$(call NAMEI_EXT_MULTI_BOOT_CAPTURE_PINNED_HOST,$(1),$(FXMARK_FAST_PATH_HOST_CPUS))
 : >"$(1)/launch-order.jsonl"
 sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
 	"$(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk" \
@@ -102,7 +74,8 @@ sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
 	"$(ROOT_DIR)/Makefile" \
 	"$(ROOT_DIR)/mk/benchmarks/fxmark.mk" \
 	"$(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk" \
-	"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/kvm.mk" \
+	"$(ROOT_DIR)/mk/results.mk" "$(ROOT_DIR)/mk/multi_boot.mk" \
+	"$(ROOT_DIR)/mk/kvm.mk" \
 	"$(ROOT_DIR)/mk/kernel.mk" \
 	"$(ROOT_DIR)/tools/kvm/verify_vcpu_affinity.py" \
 	"$(ROOT_DIR)/tools/kvm/test_verify_vcpu_affinity.py" \
@@ -160,7 +133,14 @@ for repetition in $$(seq 1 "$(2)"); do \
 		guest_makefile_rel="$${guest_makefile#$(ROOT_DIR)/}"; \
 		host_started_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
 		test -n "$$host_started_at"; \
-		$(call NAMEI_EXT_KVM_RUN_CAPTURE,$$image,-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest,,$$boot_dir,$(1),$(FXMARK_FAST_PATH_HOST_CPUS)); \
+		$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+			__namei_ext_kvm_capture \
+			RUN_ID="$(RUN_ID)" \
+			NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
+			NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="-f Makefile -f $$guest_makefile_rel __fxmark_rq2_guest" \
+			NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
+			NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(1)" \
+			NAMEI_EXT_KVM_CAPTURE_HOST_CPUS="$(FXMARK_FAST_PATH_HOST_CPUS)"; \
 		host_completed_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
 		test -n "$$host_completed_at"; \
 		jq -cn \
@@ -181,8 +161,7 @@ for repetition in $$(seq 1 "$(2)"); do \
 		mv -f "$$boot_dir/boot.json.tmp" "$$boot_dir/boot.json"; \
 	done; \
 done
-cat /proc/stat >"$(1)/host-proc-stat-after.txt"
-cat /proc/interrupts >"$(1)/host-proc-interrupts-after.txt"
+$(call NAMEI_EXT_MULTI_BOOT_CAPTURE_PINNED_HOST_AFTER,$(1))
 endef
 
 define FXMARK_FAST_PATH_FINALIZE
