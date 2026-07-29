@@ -19,6 +19,7 @@ include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
+include $(ROOT_DIR)/configs/benchmarks/build_action_rq2.mk
 include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
 include $(ROOT_DIR)/configs/benchmarks/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/kernel.mk
@@ -32,6 +33,7 @@ include $(ROOT_DIR)/mk/experiments/agent_workspace.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
+include $(ROOT_DIR)/mk/experiments/build_action_rq2.mk
 include $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
 include $(ROOT_DIR)/mk/experiments/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
@@ -169,6 +171,8 @@ help:
 	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
 	@printf '%s\n' '                       run two concurrent source-derived Bazel actions through namei_ext in KVM'
+	@printf '%s\n' '  make kvm-build-action-rq2-preflight'
+	@printf '%s\n' '                       run one paired namei_ext/official-sandboxfs Bazel action-view preflight'
 	@printf '%s\n' '  make kvm-service-config-rotation-preflight'
 	@printf '%s\n' '                       run one live nginx current/canary/invalid/rollback state machine in KVM'
 	@printf '%s\n' '  make experiment-service-config-rotation'

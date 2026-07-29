@@ -197,13 +197,14 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         for relative in (
             "mk/benchmarks/fxmark.mk",
             "mk/experiments/checkpoint_restore.mk",
+            "mk/experiments/build_action_rq2.mk",
         ):
             source = (ROOT / relative).read_text(encoding="utf-8")
             self.assertGreaterEqual(
                 source.count(
                     "$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY"
                 ),
-                2,
+                3 if relative.endswith("build_action_rq2.mk") else 2,
                 relative,
             )
             self.assertNotIn("findmnt -rn -o FSTYPE,TARGET", source)
@@ -244,6 +245,38 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         self.assertIn('"/usr/bin/true" -j prog show', completed.stdout)
         self.assertNotIn(f'test -d " {result_dir}"', completed.stdout)
         self.assertNotIn('" /usr/bin/true" -j', completed.stdout)
+
+    def test_sandboxfs_build_is_source_pinned_and_locked(self):
+        config = (
+            ROOT / "configs/benchmarks/workload-sources.mk"
+        ).read_text(encoding="utf-8")
+        workload = (ROOT / "mk/workload.mk").read_text(encoding="utf-8")
+        lock = ROOT / "thirdparty/locks/sandboxfs-0.2.0.Cargo.lock"
+
+        self.assertRegex(
+            config,
+            r"SANDBOXFS_COMMIT \?= [0-9a-f]{40}",
+        )
+        self.assertRegex(
+            config,
+            r"SANDBOXFS_ARCHIVE_SHA256 \?= [0-9a-f]{64}",
+        )
+        self.assertRegex(
+            config,
+            r"SANDBOXFS_CARGO_LOCK_SHA256 \?= [0-9a-f]{64}",
+        )
+        self.assertRegex(
+            config,
+            r"SANDBOXFS_BINARY_SHA256 \?= [0-9a-f]{64}",
+        )
+        self.assertIn(
+            "thirdparty/locks/sandboxfs-0.2.0.Cargo.lock",
+            config,
+        )
+        self.assertIn("cargo build --release --locked", workload)
+        self.assertIn('test ! -e "$(SANDBOXFS_SRC)/Cargo.lock"', workload)
+        self.assertTrue(lock.is_file())
+        self.assertGreater(lock.stat().st_size, 0)
 
 
 if __name__ == "__main__":

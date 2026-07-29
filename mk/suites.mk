@@ -9,6 +9,7 @@ NAMEI_EXT_CURRENT_GATE_TARGETS := \
 NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-application-file-sharing-preflight \
 	kvm-build-action-sandboxing-preflight \
+	kvm-build-action-rq2-preflight \
 	kvm-agent-workspace-rq2-preflight \
 	kvm-checkpoint-restore-preflight \
 	kvm-fxmark-rq2-preflight \

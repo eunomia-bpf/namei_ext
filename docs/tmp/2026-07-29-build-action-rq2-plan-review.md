@@ -60,3 +60,27 @@ experiment template:
 `GO` for implementation after the plan revisions above. The implementation
 must pass source-level contract tests and an independent code review before the
 first real KVM preflight.
+
+## Official-Source Follow-up
+
+A subsequent read-only audit of sandboxfs 0.2.0 found one fairness defect in
+the frozen wording: the plan gave sandboxfs read-only mappings while
+`namei_ext` retained lower-filesystem write semantics. That would compare a
+view mechanism plus an extra sandboxfs-specific denial policy against a view
+mechanism alone.
+
+The plan now sets sandboxfs mappings to `writable:true`. Both conditions
+therefore rely on the same lower object modes and ownership, while the
+generated action performs the same read-only command. This change repairs
+feature equivalence; it does not change the RQ, hypothesis, workload, baseline,
+primary metric, scale, sample count, or positive-result criterion.
+
+The same source audit also made two lifecycle requirements explicit:
+
+- use a unique sandbox ID for every action and lifecycle sample, because
+  sandboxfs provides create and destroy requests but no reset request; and
+- wait for matching create/destroy acknowledgements, verify destroyed IDs
+  disappear, close the reconfiguration stream, unmount, and require a clean
+  daemon exit.
+
+With those corrections, the implementation verdict remains `GO`.

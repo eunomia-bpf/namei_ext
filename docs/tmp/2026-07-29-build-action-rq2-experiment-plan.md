@@ -96,8 +96,10 @@
     undeclared names;
   - `namei_ext` installs `N` declared-name decisions plus one root selection
     per action and hides every other child under the selected root;
-  - sandboxfs installs `N` read-only mappings per action, omitting undeclared
-    files;
+  - sandboxfs installs `N` writable mappings per action, omitting undeclared
+    files; `writable` here means that sandboxfs forwards write permission
+    checks to the same lower objects rather than imposing a baseline-specific
+    read-only policy, and the generated action itself remains read-only;
   - the generated BUILD file, command, expected output hash, lower objects,
     Bazel flags, CPU count, memory, and action concurrency barrier are
     byte-identical across mechanisms;
@@ -135,6 +137,8 @@
   - `namei_ext` records lookup, readdir, select, and hide actions;
   - sandboxfs is the mounted filesystem serving both action views and its
     daemon remains live for the measured window;
+  - every sample uses two unique sandbox IDs, both IDs are destroyed after the
+    actions finish, and their old paths disappear from lookup and readdir;
   - detach/unmount and process cleanup complete; dmesg is clean.
 - Repetitions, seeds, and uncertainty: ten paired boot blocks, alternating
   condition order. Each boot runs three lifecycle samples per scale and reduces
@@ -163,6 +167,11 @@
   entries. The preflight inserts and reads back 4,096 distinct entries, clears
   them, verifies map occupancy returns to zero, and records verifier/load
   evidence before the 64-input action pair runs.
+- sandboxfs lifecycle gate: start official sandboxfs with stdin/stdout
+  reconfiguration, one reconfiguration worker, a zero metadata TTL, and no
+  node cache; require a matching successful acknowledgement for every create
+  and destroy request. Close the input stream, unmount with `fusermount -u`,
+  and require a zero daemon exit status.
 - Full completion rule: exactly 20 completed formal boot roots, 180 passing
   lifecycle samples, 60 per scale, ten complete paired block ratios per scale,
   no missing/replaced/excluded cells, and all artifact and correctness gates
@@ -197,3 +206,6 @@
   generated action and explicit view lifecycle. It evaluates existing-object
   view construction, not Linux namespace/process/network sandboxing, remote
   execution, CAS transfer, or output upload.
+- Reconfiguration isolation: sandbox IDs are never reused, because sandboxfs
+  has no reset operation and old kernel dentries must not be allowed to satisfy
+  a later lifecycle sample.

@@ -36,6 +36,8 @@ test: published-result-contract
 		python3 "$(ROOT_DIR)/analysis/fxmark/test_analyze.py"
 	PYTHONPATH="$(ROOT_DIR)/analysis/agent_workspace" \
 		python3 "$(ROOT_DIR)/analysis/agent_workspace/test_analyze.py"
+	PYTHONPATH="$(ROOT_DIR)/analysis/build_action_rq2" \
+		python3 "$(ROOT_DIR)/analysis/build_action_rq2/test_analyze.py"
 	rm -rf "$(OUTPUT)"
 	$(call NAMEI_EXT_RESULT_ROOT_CREATE,$(OUTPUT))
 	printf '%s\n' 'make result-contract' >"$(OUTPUT)/command.txt"

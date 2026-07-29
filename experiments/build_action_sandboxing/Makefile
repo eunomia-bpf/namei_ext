@@ -14,7 +14,8 @@ CC ?= cc
 
 .PHONY: all clean
 
-all: $(OUTPUT)/namei_ext_build_action_sandboxing
+all: $(OUTPUT)/namei_ext_build_action_sandboxing \
+	$(OUTPUT)/namei_ext_build_action_rq2
 
 $(OUTPUT):
 	install -d "$@"
@@ -29,6 +30,16 @@ $(HARNESS_LIBRARY): $(HARNESS_SOURCES)
 	$(MAKE) -C "$(ROOT_DIR)/runner" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 $(OUTPUT)/namei_ext_build_action_sandboxing: namei_ext_build_action_sandboxing.c $(HARNESS_LIBRARY) $(LIBBPF_A) | $(OUTPUT)
+	$(CC) -g -O2 -Wall -Wextra \
+		-I"$(ROOT_DIR)/runner/include" \
+		-I"$(KERNEL_DIR)/tools/lib" \
+		-I"$(KERNEL_DIR)/tools/include" \
+		-I"$(KERNEL_DIR)/tools/include/uapi" \
+		-I"$(LIBBPF_OUTPUT)" \
+		-o "$@" "$<" "$(HARNESS_LIBRARY)" "$(LIBBPF_A)" -lelf -lz
+
+$(OUTPUT)/namei_ext_build_action_rq2: namei_ext_build_action_rq2.c \
+		$(HARNESS_LIBRARY) $(LIBBPF_A) | $(OUTPUT)
 	$(CC) -g -O2 -Wall -Wextra \
 		-I"$(ROOT_DIR)/runner/include" \
 		-I"$(KERNEL_DIR)/tools/lib" \
