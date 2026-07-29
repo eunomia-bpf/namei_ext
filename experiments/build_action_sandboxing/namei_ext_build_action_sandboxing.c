@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <namei_ext_harness.h>
 #include <stdbool.h>
@@ -21,6 +22,7 @@
 #define ACTION_A_INPUT "declared-input-A\n"
 #define ACTION_B_INPUT "declared-input-B\n"
 #define UNDECLARED_INPUT "undeclared-input-must-stay-hidden\n"
+#define RESULT_LEVEL "kvm_bazel_action_rq1"
 
 enum build_action_sandboxing_counter {
 	BAS_COUNTER_TOTAL = 0,
@@ -47,12 +49,21 @@ struct bazel_action {
 	pid_t pid;
 };
 
+struct action_view_observation {
+	struct stat logical_input;
+	struct stat lower_input;
+	int logical_errno;
+	int lower_errno;
+	int private_errno;
+	int move_errno;
+};
+
 static void emit_case(FILE *out, const char *name, bool pass, int err,
 		      const char *detail)
 {
 	fprintf(out,
 		"{\"event\":\"build-action-sandboxing-case\","
-		"\"result_level\":\"kvm_bazel_action_preflight\","
+		"\"result_level\":\"" RESULT_LEVEL "\","
 		"\"case\":\"%s\",\"pass\":%s,\"errno\":%d,"
 		"\"detail\":\"%s\"}\n",
 		name, pass ? "true" : "false", err, detail);
@@ -64,7 +75,7 @@ static void emit_counter(FILE *out, const char *name,
 {
 	fprintf(out,
 		"{\"event\":\"build-action-sandboxing-policy-counter\","
-		"\"result_level\":\"kvm_bazel_action_preflight\","
+		"\"result_level\":\"" RESULT_LEVEL "\","
 		"\"counter\":\"%s\",\"value\":%llu,\"pass\":%s}\n",
 		name, value, pass ? "true" : "false");
 	fflush(out);
@@ -85,6 +96,171 @@ static int check_counter(FILE *out,
 	pass = value > 0;
 	emit_counter(out, name, value, pass);
 	return pass ? 0 : -EINVAL;
+}
+
+static int write_exact(int fd, const void *buf, size_t len)
+{
+	const char *cursor = buf;
+
+	while (len) {
+		ssize_t written = write(fd, cursor, len);
+
+		if (written < 0) {
+			if (errno == EINTR)
+				continue;
+			return -errno;
+		}
+		cursor += written;
+		len -= (size_t)written;
+	}
+	return 0;
+}
+
+static int read_exact(int fd, void *buf, size_t len)
+{
+	char *cursor = buf;
+
+	while (len) {
+		ssize_t bytes = read(fd, cursor, len);
+
+		if (bytes < 0) {
+			if (errno == EINTR)
+				continue;
+			return -errno;
+		}
+		if (!bytes)
+			return -EIO;
+		cursor += bytes;
+		len -= (size_t)bytes;
+	}
+	return 0;
+}
+
+static int observe_action_view(const char *cgroup, const char *logical_input,
+			       const char *lower_input,
+			       const char *logical_private,
+			       struct action_view_observation *observation)
+{
+	int pipefd[2];
+	pid_t pid;
+	int ret;
+
+	memset(observation, 0, sizeof(*observation));
+	if (pipe2(pipefd, O_CLOEXEC))
+		return -errno;
+	pid = fork();
+	if (pid < 0) {
+		ret = -errno;
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return ret;
+	}
+	if (!pid) {
+		struct action_view_observation child = {};
+		struct stat private_stat;
+		int move_ret;
+
+		close(pipefd[0]);
+		move_ret = namei_ext_move_self_to_cgroup(cgroup);
+		if (move_ret)
+			child.move_errno = -move_ret;
+		if (!child.move_errno && stat(logical_input, &child.logical_input))
+			child.logical_errno = errno;
+		if (!child.move_errno && stat(lower_input, &child.lower_input))
+			child.lower_errno = errno;
+		if (!child.move_errno) {
+			if (!stat(logical_private, &private_stat))
+				child.private_errno = 0;
+			else
+				child.private_errno = errno;
+		}
+		ret = write_exact(pipefd[1], &child, sizeof(child));
+		close(pipefd[1]);
+		_exit(ret ? 126 : 0);
+	}
+	close(pipefd[1]);
+	ret = read_exact(pipefd[0], observation, sizeof(*observation));
+	close(pipefd[0]);
+	if (namei_ext_wait_child(pid) && !ret)
+		ret = -ECHILD;
+	return ret;
+}
+
+static bool same_object_stat(const struct stat *before,
+			     const struct stat *after)
+{
+	return before->st_dev == after->st_dev &&
+	       before->st_ino == after->st_ino &&
+	       before->st_mode == after->st_mode &&
+	       before->st_size == after->st_size;
+}
+
+static void emit_action_view(FILE *out, const char *action,
+			     const struct action_view_observation *observation,
+			     int observation_ret)
+{
+	bool pass = !observation_ret && !observation->move_errno &&
+		    !observation->logical_errno && !observation->lower_errno &&
+		    observation->private_errno == ENOENT &&
+		    observation->logical_input.st_dev ==
+			    observation->lower_input.st_dev &&
+		    observation->logical_input.st_ino ==
+			    observation->lower_input.st_ino;
+
+	fprintf(out,
+		"{\"event\":\"build-action-sandboxing-view\","
+		"\"result_level\":\"" RESULT_LEVEL "\","
+		"\"action\":\"%s\",\"observation_errno\":%d,"
+		"\"move_errno\":%d,\"logical_errno\":%d,"
+		"\"lower_errno\":%d,\"private_errno\":%d,"
+		"\"logical_dev\":\"%" PRIuMAX "\","
+		"\"logical_ino\":\"%" PRIuMAX "\","
+		"\"lower_dev\":\"%" PRIuMAX "\","
+		"\"lower_ino\":\"%" PRIuMAX "\",\"pass\":%s}\n",
+		action, observation_ret ? -observation_ret : 0,
+		observation->move_errno, observation->logical_errno,
+		observation->lower_errno, observation->private_errno,
+		(uintmax_t)observation->logical_input.st_dev,
+		(uintmax_t)observation->logical_input.st_ino,
+		(uintmax_t)observation->lower_input.st_dev,
+		(uintmax_t)observation->lower_input.st_ino,
+		pass ? "true" : "false");
+	fflush(out);
+}
+
+static bool emit_lower_object(FILE *out, const char *object,
+			      const struct stat *before,
+			      const struct stat *after, int after_errno,
+			      bool bytes_expected)
+{
+	bool metadata_unchanged = !after_errno &&
+				  same_object_stat(before, after);
+	bool pass = metadata_unchanged && bytes_expected;
+
+	fprintf(out,
+		"{\"event\":\"build-action-sandboxing-lower-object\","
+		"\"result_level\":\"" RESULT_LEVEL "\","
+		"\"object\":\"%s\",\"after_errno\":%d,"
+		"\"before_dev\":\"%" PRIuMAX "\","
+		"\"before_ino\":\"%" PRIuMAX "\","
+		"\"before_mode\":\"%" PRIoMAX "\","
+		"\"before_size\":\"%" PRIdMAX "\","
+		"\"after_dev\":\"%" PRIuMAX "\","
+		"\"after_ino\":\"%" PRIuMAX "\","
+		"\"after_mode\":\"%" PRIoMAX "\","
+		"\"after_size\":\"%" PRIdMAX "\","
+		"\"metadata_unchanged\":%s,\"bytes_expected\":%s,"
+		"\"pass\":%s}\n",
+		object, after_errno,
+		(uintmax_t)before->st_dev, (uintmax_t)before->st_ino,
+		(uintmax_t)before->st_mode, (intmax_t)before->st_size,
+		(uintmax_t)after->st_dev, (uintmax_t)after->st_ino,
+		(uintmax_t)after->st_mode, (intmax_t)after->st_size,
+		metadata_unchanged ? "true" : "false",
+		bytes_expected ? "true" : "false",
+		pass ? "true" : "false");
+	fflush(out);
+	return pass;
 }
 
 static int write_bazel_workspace(const char *workspace,
@@ -209,6 +385,8 @@ int main(int argc, char **argv)
 	char cgroup_b[PATH_MAX] = {};
 	char view[PATH_MAX] = {};
 	char logical_action[PATH_MAX] = {};
+	char logical_input[PATH_MAX] = {};
+	char logical_private[PATH_MAX] = {};
 	char target_a[PATH_MAX] = {};
 	char target_b[PATH_MAX] = {};
 	char input_a[PATH_MAX] = {};
@@ -228,16 +406,26 @@ int main(int argc, char **argv)
 	char bazel_output_b[PATH_MAX] = {};
 	char saved_output_a[PATH_MAX] = {};
 	char saved_output_b[PATH_MAX] = {};
+	char saved_input_a[PATH_MAX] = {};
+	char saved_input_b[PATH_MAX] = {};
+	char saved_private_a[PATH_MAX] = {};
+	char saved_private_b[PATH_MAX] = {};
 	char stdout_a[PATH_MAX] = {};
 	char stdout_b[PATH_MAX] = {};
 	char stderr_a[PATH_MAX] = {};
 	char stderr_b[PATH_MAX] = {};
 	struct bazel_action action_a = {};
 	struct bazel_action action_b = {};
-	struct stat input_a_before;
-	struct stat input_b_before;
-	struct stat input_a_after;
-	struct stat input_b_after;
+	struct stat input_a_before = {};
+	struct stat input_b_before = {};
+	struct stat private_a_before = {};
+	struct stat private_b_before = {};
+	struct stat input_a_after = {};
+	struct stat input_b_after = {};
+	struct stat private_a_after = {};
+	struct stat private_b_after = {};
+	struct action_view_observation view_a_observation = {};
+	struct action_view_observation view_b_observation = {};
 	uint64_t cgroup_id_a = 0;
 	uint64_t cgroup_id_b = 0;
 	FILE *out;
@@ -288,6 +476,8 @@ int main(int argc, char **argv)
 	}
 	BUILD_PATH(view, root, "view");
 	BUILD_PATH(logical_action, view, "action");
+	BUILD_PATH(logical_input, logical_action, "input.txt");
+	BUILD_PATH(logical_private, logical_action, "private.txt");
 	BUILD_PATH(target_a, root, "target-a");
 	BUILD_PATH(target_b, root, "target-b");
 	BUILD_PATH(input_a, target_a, "input.txt");
@@ -307,6 +497,10 @@ int main(int argc, char **argv)
 	BUILD_PATH(bazel_output_b, workspace_b, "bazel-bin/result.txt");
 	BUILD_PATH(saved_output_a, argv[4], "action-a-output.txt");
 	BUILD_PATH(saved_output_b, argv[4], "action-b-output.txt");
+	BUILD_PATH(saved_input_a, argv[4], "lower-action-a-input.txt");
+	BUILD_PATH(saved_input_b, argv[4], "lower-action-b-input.txt");
+	BUILD_PATH(saved_private_a, argv[4], "lower-action-a-private.txt");
+	BUILD_PATH(saved_private_b, argv[4], "lower-action-b-private.txt");
 	BUILD_PATH(stdout_a, argv[4], "stdout-bazel-action-a.log");
 	BUILD_PATH(stdout_b, argv[4], "stdout-bazel-action-b.log");
 	BUILD_PATH(stderr_a, argv[4], "stderr-bazel-action-a.log");
@@ -319,7 +513,9 @@ int main(int argc, char **argv)
 	    namei_ext_write_text(input_b, ACTION_B_INPUT) ||
 	    namei_ext_write_text(private_a, UNDECLARED_INPUT) ||
 	    namei_ext_write_text(private_b, UNDECLARED_INPUT) ||
-	    stat(input_a, &input_a_before) || stat(input_b, &input_b_before)) {
+	    stat(input_a, &input_a_before) || stat(input_b, &input_b_before) ||
+	    stat(private_a, &private_a_before) ||
+	    stat(private_b, &private_b_before)) {
 		emit_case(out, "fixture", false, errno,
 			  "declared and undeclared input fixture failed");
 		fails++;
@@ -404,6 +600,29 @@ int main(int argc, char **argv)
 	if (ret)
 		goto cleanup;
 
+	ret = observe_action_view(cgroup_a, logical_input, input_a,
+				  logical_private, &view_a_observation);
+	emit_action_view(out, "action-a", &view_a_observation, ret);
+	fails += !!ret || view_a_observation.move_errno ||
+		 view_a_observation.logical_errno ||
+		 view_a_observation.lower_errno ||
+		 view_a_observation.private_errno != ENOENT ||
+		 view_a_observation.logical_input.st_dev !=
+			 view_a_observation.lower_input.st_dev ||
+		 view_a_observation.logical_input.st_ino !=
+			 view_a_observation.lower_input.st_ino;
+	ret = observe_action_view(cgroup_b, logical_input, input_b,
+				  logical_private, &view_b_observation);
+	emit_action_view(out, "action-b", &view_b_observation, ret);
+	fails += !!ret || view_b_observation.move_errno ||
+		 view_b_observation.logical_errno ||
+		 view_b_observation.lower_errno ||
+		 view_b_observation.private_errno != ENOENT ||
+		 view_b_observation.logical_input.st_dev !=
+			 view_b_observation.lower_input.st_dev ||
+		 view_b_observation.logical_input.st_ino !=
+			 view_b_observation.lower_input.st_ino;
+
 	action_a = (struct bazel_action){
 		.name = "action-a",
 		.workspace = workspace_a,
@@ -467,45 +686,61 @@ release_and_wait:
 	}
 
 	ret = namei_ext_read_text_equals(bazel_output_a, ACTION_A_INPUT) ?
-		      0 :
+		      namei_ext_copy_file(bazel_output_a, saved_output_a) :
 		      -EIO;
 	emit_case(out, "action_a_output_oracle", !ret, ret ? -ret : 0,
 		  "same logical pathname produced action A's declared bytes");
 	fails += !!ret;
-	if (!ret) {
-		ret = namei_ext_copy_file(bazel_output_a, saved_output_a);
-		if (ret)
-			fails++;
-	}
 	ret = namei_ext_read_text_equals(bazel_output_b, ACTION_B_INPUT) ?
-		      0 :
+		      namei_ext_copy_file(bazel_output_b, saved_output_b) :
 		      -EIO;
 	emit_case(out, "action_b_output_oracle", !ret, ret ? -ret : 0,
 		  "same logical pathname produced action B's declared bytes");
 	fails += !!ret;
-	if (!ret) {
-		ret = namei_ext_copy_file(bazel_output_b, saved_output_b);
-		if (ret)
-			fails++;
-	}
-	ret = stat(input_a, &input_a_after) || stat(input_b, &input_b_after) ?
-		      -errno :
-		      0;
-	if (!ret &&
-	    (input_a_before.st_dev != input_a_after.st_dev ||
-	     input_a_before.st_ino != input_a_after.st_ino ||
-	     input_a_before.st_mode != input_a_after.st_mode ||
-	     input_a_before.st_size != input_a_after.st_size ||
-	     input_b_before.st_dev != input_b_after.st_dev ||
-	     input_b_before.st_ino != input_b_after.st_ino ||
-	     input_b_before.st_mode != input_b_after.st_mode ||
-	     input_b_before.st_size != input_b_after.st_size ||
-	     !namei_ext_read_text_equals(private_a, UNDECLARED_INPUT) ||
-	     !namei_ext_read_text_equals(private_b, UNDECLARED_INPUT)))
-		ret = -EIO;
-	emit_case(out, "lower_inputs_unchanged", !ret, ret ? -ret : 0,
-		  "lower filesystem retained declared and undeclared objects");
+
+	ret = stat(input_a, &input_a_after) ? errno : 0;
+	fails += !emit_lower_object(
+		out, "action-a-input", &input_a_before, &input_a_after, ret,
+		namei_ext_read_text_equals(input_a, ACTION_A_INPUT));
+	ret = stat(input_b, &input_b_after) ? errno : 0;
+	fails += !emit_lower_object(
+		out, "action-b-input", &input_b_before, &input_b_after, ret,
+		namei_ext_read_text_equals(input_b, ACTION_B_INPUT));
+	ret = stat(private_a, &private_a_after) ? errno : 0;
+	fails += !emit_lower_object(
+		out, "action-a-private", &private_a_before, &private_a_after,
+		ret, namei_ext_read_text_equals(private_a, UNDECLARED_INPUT));
+	ret = stat(private_b, &private_b_after) ? errno : 0;
+	fails += !emit_lower_object(
+		out, "action-b-private", &private_b_before, &private_b_after,
+		ret, namei_ext_read_text_equals(private_b, UNDECLARED_INPUT));
+	ret = namei_ext_copy_file(input_a, saved_input_a);
+	if (!ret)
+		ret = namei_ext_copy_file(input_b, saved_input_b);
+	if (!ret)
+		ret = namei_ext_copy_file(private_a, saved_private_a);
+	if (!ret)
+		ret = namei_ext_copy_file(private_b, saved_private_b);
+	emit_case(out, "preserve_raw_objects", !ret, ret ? -ret : 0,
+		  "four lower objects copied for independent byte checks");
 	fails += !!ret;
+	emit_case(out, "lower_inputs_unchanged",
+		  same_object_stat(&input_a_before, &input_a_after) &&
+			  same_object_stat(&input_b_before, &input_b_after) &&
+			  same_object_stat(&private_a_before,
+					   &private_a_after) &&
+			  same_object_stat(&private_b_before,
+					   &private_b_after) &&
+			  namei_ext_read_text_equals(input_a,
+						     ACTION_A_INPUT) &&
+			  namei_ext_read_text_equals(input_b,
+						     ACTION_B_INPUT) &&
+			  namei_ext_read_text_equals(private_a,
+						     UNDECLARED_INPUT) &&
+			  namei_ext_read_text_equals(private_b,
+						     UNDECLARED_INPUT),
+		  0,
+		  "lower filesystem retained declared and undeclared objects");
 
 	fails += !!check_counter(out, &policy, "lookup",
 				 BAS_COUNTER_LOOKUP);
@@ -551,7 +786,7 @@ cleanup:
 		fails++;
 	fprintf(out,
 		"{\"event\":\"build-action-sandboxing-summary\","
-		"\"result_level\":\"kvm_bazel_action_preflight\","
+		"\"result_level\":\"" RESULT_LEVEL "\","
 		"\"workload\":\"build-action-sandboxing\","
 		"\"source_system\":\"bazel-action-sandboxing\","
 		"\"bazel_actions\":2,\"concurrent\":%s,"

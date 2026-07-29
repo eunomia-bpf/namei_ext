@@ -20,6 +20,7 @@ include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_readdir.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
+include $(ROOT_DIR)/configs/benchmarks/build_action_sandboxing.mk
 include $(ROOT_DIR)/configs/benchmarks/build_action_rq2.mk
 include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
 include $(ROOT_DIR)/configs/benchmarks/checkpoint_restore.mk
@@ -54,6 +55,9 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 	checkpoint-restore-pathvirt-host-preflight \
 	kvm-checkpoint-restore-preflight checkpoint-restore-finalize \
 	checkpoint-restore-analyze checkpoint-restore-analysis-test \
+	kvm-build-action-sandboxing-preflight kvm-build-action-sandboxing-rq1 \
+	build-action-sandboxing-run build-action-sandboxing-finalize \
+	build-action-sandboxing-analyze experiment-build-action-sandboxing-rq1 \
 	spindle-staging kvm-spindle-staging-preflight kvm-spindle-staging \
 	spindle-staging-run-matrix spindle-staging-finalize \
 	spindle-staging-analyze experiment-spindle-staging \
@@ -188,6 +192,9 @@ help:
 	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
 	@printf '%s\n' '                       run the XDG-derived two-application grant/revoke preflight in KVM'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
+	@printf '%s\n' '                       run one real Bazel action-view boot with the current allowlist policy'
+	@printf '%s\n' '  make experiment-build-action-sandboxing-rq1'
+	@printf '%s\n' '                       run three fresh Bazel action-view boots and summarize RQ1 evidence'
 	@printf '%s\n' '                       run two concurrent source-derived Bazel actions through namei_ext in KVM'
 	@printf '%s\n' '  make kvm-build-action-rq2-preflight'
 	@printf '%s\n' '                       run one paired namei_ext/official-sandboxfs Bazel action-view preflight'

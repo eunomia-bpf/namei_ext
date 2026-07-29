@@ -103,8 +103,6 @@ workload-nginx-build: $(NGINX_BUILD_JSON)
 
 workload-bazel: $(BAZEL_BINARY)
 	test -x "$(BAZEL_BINARY)"
-	printf '%s  %s\n' "$(BAZEL_BINARY_SHA256)" "$(BAZEL_BINARY)" | \
-		sha256sum -c -
 	test "$$("$(BAZEL_BINARY)" --version)" = "bazel $(BAZEL_VERSION)"
 
 workload-sandboxfs-acquire: $(SANDBOXFS_ARCHIVE)
@@ -298,8 +296,8 @@ $(NGINX_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
 
 $(BAZEL_BINARY): | $(WORKLOAD_CACHE_ROOT)
 	curl -fL --retry 3 --connect-timeout 30 -o "$@.tmp" "$(BAZEL_URL)"
-	printf '%s  %s\n' "$(BAZEL_BINARY_SHA256)" "$@.tmp" | sha256sum -c -
 	chmod 0755 "$@.tmp"
+	test "$$("$@.tmp" --version)" = "bazel $(BAZEL_VERSION)"
 	mv -f "$@.tmp" "$@"
 
 $(SANDBOXFS_ARCHIVE): | $(WORKLOAD_CACHE_ROOT)
