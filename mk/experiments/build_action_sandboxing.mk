@@ -186,7 +186,9 @@ build-action-sandboxing-finalize:
 				bazel_action_b action_a_output_oracle \
 				action_b_output_oracle preserve_raw_objects \
 				lower_inputs_unchanged detach_policy \
-				clear_action_a_target clear_action_b_target; do \
+				clear_action_a_target clear_action_b_target \
+				remove_action_a_cgroup \
+				remove_action_b_cgroup; do \
 			test "$$(jq -s --arg case_name "$$case_name" \
 				'[.[] | select(.event == "build-action-sandboxing-case" and .case == $$case_name and .pass == true)] | length' \
 				"$$boot/observations.jsonl")" = 1; \
@@ -226,11 +228,11 @@ build-action-sandboxing-analyze:
 	$(call NAMEI_EXT_RUN_VALIDATE_COMPLETE,$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR))
 	mkdir "$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis"
 	jq -s \
-		'{schema:"namei_ext.build_action_sandboxing_rq1.summary.v1",boots:([.[] | select(.event == "build-action-sandboxing-summary" and .pass == true)] | length),bazel_actions:([.[] | select(.event == "build-action-sandboxing-case" and (.case == "bazel_action_a" or .case == "bazel_action_b") and .pass == true)] | length),action_views:([.[] | select(.event == "build-action-sandboxing-view" and .pass == true)] | length),lower_objects:([.[] | select(.event == "build-action-sandboxing-lower-object" and .pass == true)] | length),verdict:"supported"}' \
+		'{schema:"namei_ext.build_action_sandboxing_rq1.summary.v1",boots:([.[] | select(.event == "build-action-sandboxing-summary" and .pass == true)] | length),bazel_actions:([.[] | select(.event == "build-action-sandboxing-case" and (.case == "bazel_action_a" or .case == "bazel_action_b") and .pass == true)] | length),action_views:([.[] | select(.event == "build-action-sandboxing-view" and .pass == true)] | length),lower_objects:([.[] | select(.event == "build-action-sandboxing-lower-object" and .pass == true)] | length),cgroup_removals:([.[] | select(.event == "build-action-sandboxing-case" and (.case == "remove_action_a_cgroup" or .case == "remove_action_b_cgroup") and .pass == true)] | length)}' \
 		"$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/observations.jsonl" \
 		>"$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis/summary.json"
 	jq -e \
-		'.boots > 0 and .bazel_actions == (2 * .boots) and .action_views == (2 * .boots) and .lower_objects == (4 * .boots) and .verdict == "supported"' \
+		'.boots > 0 and .bazel_actions == (2 * .boots) and .action_views == (2 * .boots) and .lower_objects == (4 * .boots) and .cgroup_removals == (2 * .boots)' \
 		"$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis/summary.json" \
 		>/dev/null
 	printf '%s\n' \
@@ -240,7 +242,8 @@ build-action-sandboxing-analyze:
 		"Passing Bazel actions: $$(jq -r .bazel_actions "$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis/summary.json")" \
 		"Passing action views: $$(jq -r .action_views "$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis/summary.json")" \
 		"Preserved lower objects: $$(jq -r .lower_objects "$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis/summary.json")" \
-		'Verdict: supported for the tested Bazel existing-object action-view subset.' \
+		"Removed action cgroups: $$(jq -r .cgroup_removals "$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis/summary.json")" \
+		'Scope: tested Bazel existing-object action-view subset.' \
 		>"$(BUILD_ACTION_SANDBOXING_ACTIVE_DIR)/analysis/report.md"
 
 __build_action_sandboxing_guest: __namei_ext_guest_prepare

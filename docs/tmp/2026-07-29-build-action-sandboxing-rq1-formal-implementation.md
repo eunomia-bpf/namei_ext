@@ -119,3 +119,54 @@ temporary workspace before `exec`.
 This is a runner path-resolution defect, not a policy or oracle result. The
 guest invocation now passes absolute controller, policy, observation, Bazel,
 and result paths. The frozen workload and correctness checks are unchanged.
+
+## Preflight Attempt 2
+
+Raw result:
+`results/experiments/build-action-sandboxing-rq1-preflight/20260729T175205Z-w3-preflight02/`.
+
+The unchanged one-boot workload passed end to end. Both Bazel actions reached
+the common barrier, completed, and produced their distinct expected bytes.
+Both action-view records matched the selected lower device/inode, the hidden
+child returned `ENOENT`, all four lower-object records passed, all seven policy
+counters were positive, teardown left no external BPF/FUSE state, and dmesg
+passed the declared failure scan.
+
+## Formal Run
+
+Raw result:
+`results/experiments/build-action-sandboxing-rq1/20260729T175251Z-w3-formal01/`.
+
+The formal command completed three fresh boots from clean source commit
+`eee4d5d95d844d5a1045f5f9773301fbb94a89fa` and clean kernel commit
+`621aff8d1bb52fad718f11fd882c956d6a5686ae`. The generated summary records:
+
+- 3 passing boots;
+- 6 passing Bazel actions;
+- 6 matching action-specific logical/lower views;
+- 12 preserved lower objects.
+
+Per-boot policy counters were:
+
+- lookup: 57,383; 57,485; 57,613;
+- readdir: 8,048; 8,042; 8,048;
+- select: 8 in every boot;
+- allow lookup/readdir: 6/2 in every boot;
+- hide lookup/readdir: 4/6 in every boot.
+
+The raw result now requires an independent result review before W3 is promoted
+to current paper evidence.
+
+## Formal 01 Result Review
+
+The independent review classified formal 01 as invalid with one evidence
+blocker. Both cgroup removals affected the controller's final failure count but
+did not have individual raw case records. The remaining workload, path-view,
+lower-object, policy-engagement, teardown, inventory, and kernel-health
+observations were complete and passing.
+
+The controller now emits `remove_action_a_cgroup` and
+`remove_action_b_cgroup`, and the host finalizer requires each event exactly
+once per boot. The analyzer reports observed counts without a hard-coded
+scientific verdict. This is an instrumentation repair; the workload, oracle,
+policy, and three-boot matrix are unchanged.

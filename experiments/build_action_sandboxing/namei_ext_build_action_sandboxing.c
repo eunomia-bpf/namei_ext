@@ -780,10 +780,18 @@ cleanup:
 			  ret ? -ret : 0, "action B target registry cleared");
 		fails += !!ret;
 	}
-	if (cgroup_a[0] && rmdir(cgroup_a) && errno != ENOENT)
-		fails++;
-	if (cgroup_b[0] && rmdir(cgroup_b) && errno != ENOENT)
-		fails++;
+	if (cgroup_a[0]) {
+		ret = rmdir(cgroup_a) && errno != ENOENT ? -errno : 0;
+		emit_case(out, "remove_action_a_cgroup", !ret,
+			  ret ? -ret : 0, "action A cgroup removed");
+		fails += !!ret;
+	}
+	if (cgroup_b[0]) {
+		ret = rmdir(cgroup_b) && errno != ENOENT ? -errno : 0;
+		emit_case(out, "remove_action_b_cgroup", !ret,
+			  ret ? -ret : 0, "action B cgroup removed");
+		fails += !!ret;
+	}
 	fprintf(out,
 		"{\"event\":\"build-action-sandboxing-summary\","
 		"\"result_level\":\"" RESULT_LEVEL "\","
