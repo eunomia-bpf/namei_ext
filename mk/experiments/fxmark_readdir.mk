@@ -134,6 +134,7 @@ sha256sum "$(ROOT_DIR)/configs/benchmarks/fxmark.mk" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-rq2-fxmark-readdir-implementation.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-28-rq2-fxmark-readdir-implementation-review.md" \
 	"$(ROOT_DIR)/docs/tmp/2026-07-29-rq2-fxmark-readdir-kvm-preflight-attempt-1.md" \
+	"$(ROOT_DIR)/docs/tmp/2026-07-29-rq2-fxmark-readdir-kvm-preflight-attempt-2.md" \
 	>"$(1)/inputs.sha256"
 if test -n "$(6)"; then \
 	test -f "$(6)"; \
@@ -302,7 +303,7 @@ jq -e '.status == "running" and (.completed_at | not) and (.failed_at | not)' \
 	"$(1)/run.json" >/dev/null
 LC_ALL=C sort -o "$(1)/expected-boots.txt" "$(1)/expected-boots.txt"
 LC_ALL=C sort -o "$(1)/expected-cells.txt" "$(1)/expected-cells.txt"
-$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(1),$$((5 * $(2))),$$((5 * $(2))))
+$(call NAMEI_EXT_MULTI_BOOT_COLLECT_OBSERVATIONS,$(1),$$((5 * $(2))))
 jq -s -r '.[] | "\(.repetition)|\(.condition)|\(.type)|\(.workers)"' \
 	"$(1)/observations.jsonl" | LC_ALL=C sort \
 	>"$(1)/observed-cells.txt"

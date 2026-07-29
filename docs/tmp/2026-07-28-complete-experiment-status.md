@@ -263,11 +263,12 @@ The paper-level RQ2 evidence is currently strong for cache-hot FxMark MRPL,
 MRPM, and MRPH and the Agent workspace lifecycle. A corrected FxMark
 `MRDL`/`MRDM` private/shared-directory suite is now implemented with exact
 logical-name, candidate-entry BPF attribution, offset-correct FUSE, five-boot
-preflight, 50-boot formal, and analyzer gates. Attempt 1 passed the stock and
-unattached boots, then failed an incorrect attribution equation at the first
-PASS cell; the repaired exact equation records VFS buffer-boundary retries.
-Cache-cold operations, mdtest/IOR metadata breadth, and Filebench mixed
-profiles also have not produced formal matrices.
+preflight, 50-boot formal, and analyzer gates. Attempt 2 completed all five
+boots and all 20 guest cells, including the repaired exact attribution
+equation, but a host tree-depth gate failed before top-level collection and
+analysis. The collector call is repaired for the final allowed preflight
+attempt. Cache-cold operations, mdtest/IOR metadata breadth, and Filebench
+mixed profiles also have not produced formal matrices.
 
 ## RQ3: Ownership And Fault Containment
 
