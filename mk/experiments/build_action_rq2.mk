@@ -10,7 +10,7 @@ BUILD_ACTION_RQ2_POLICY ?= \
 	$(BUILD_ROOT)/bpf/build_action_sandboxing.bpf.o
 BUILD_ACTION_RQ2_POLICY_SOURCE ?= \
 	$(ROOT_DIR)/bpf/policies/build_action_sandboxing.bpf.c
-BUILD_ACTION_RQ2_BPFTOOL ?= /usr/local/sbin/bpftool
+BUILD_ACTION_RQ2_BPFTOOL ?= $(KERNEL_BPFTOOL)
 BUILD_ACTION_RQ2_ANALYSIS ?= \
 	$(ROOT_DIR)/analysis/build_action_rq2/analyze.py
 BUILD_ACTION_RQ2_PLAN ?= \
@@ -46,6 +46,10 @@ printf '%s  %s\n' "$(SANDBOXFS_BINARY_SHA256)" "$(SANDBOXFS_BINARY)" | \
 	sha256sum -c -
 printf '%s  %s\n' "$(SANDBOXFS_LIBFUSE_RUNTIME_SHA256)" \
 	"$(SANDBOXFS_LIBFUSE_RUNTIME)" | sha256sum -c -
+test -x "$(BUILD_ACTION_RQ2_BPFTOOL)"
+test "$$(cat "$(KERNEL_BPFTOOL_SOURCE_STAMP)")" = \
+	"$$(git -C "$(KERNEL_DIR)" rev-parse HEAD)"
+grep -aFq 'cgroup/namei_ext' "$(BUILD_ACTION_RQ2_BPFTOOL)"
 install -d "$(1)/artifacts/kernel" "$(1)/artifacts/runtime" \
 	"$(1)/artifacts/source/sandboxfs"
 install -m 0444 "$(KERNEL_IMAGE)" "$(1)/artifacts/kernel/bzImage"
@@ -88,9 +92,11 @@ jq -n \
 	--arg sandboxfs_binary_sha256 "$$(sha256sum "$(1)/artifacts/runtime/sandboxfs" | awk '{print $$1}')" \
 	--arg libfuse_version "$(SANDBOXFS_LIBFUSE_VERSION)" \
 	--arg libfuse_sha256 "$$(sha256sum "$(1)/artifacts/runtime/libfuse.so.2" | awk '{print $$1}')" \
-		--arg bazel_version "$$("$(BAZEL_BINARY)" --version)" \
-		--arg bazel_sha256 "$$(sha256sum "$(BAZEL_BINARY)" | awk '{print $$1}')" \
-	'{kernel:{commit:$$kernel_commit,release:$$kernel_release,build_id:$$kernel_build_id,notes_sha256:$$kernel_notes_sha256,btf_sha256:$$kernel_btf_sha256,image:"artifacts/kernel/bzImage",config:"artifacts/kernel/config"},runtime:{runner:"artifacts/runtime/namei_ext_build_action_rq2",policy:"artifacts/runtime/build_action_sandboxing.bpf.o",sandboxfs:"artifacts/runtime/sandboxfs",libfuse:"artifacts/runtime/libfuse.so.2",bazel:"artifacts/runtime/bazel",bpftool:"artifacts/runtime/bpftool"},source:{sandboxfs:{commit:$$sandboxfs_commit,archive:"artifacts/source/sandboxfs/source.tar.gz",archive_sha256:$$sandboxfs_archive_sha256,cargo_lock:"artifacts/source/sandboxfs/Cargo.lock",cargo_lock_sha256:$$sandboxfs_lock_sha256,build:"artifacts/source/sandboxfs/build.json",build_log:"artifacts/source/sandboxfs/build.log",ldd:"artifacts/source/sandboxfs/ldd.txt",binary_sha256:$$sandboxfs_binary_sha256,libfuse_version:$$libfuse_version,libfuse_sha256:$$libfuse_sha256},bazel:{version:$$bazel_version,sha256:$$bazel_sha256}}}' \
+	--arg bazel_version "$$("$(BAZEL_BINARY)" --version)" \
+	--arg bazel_sha256 "$$(sha256sum "$(BAZEL_BINARY)" | awk '{print $$1}')" \
+	--arg bpftool_version "$$("$(1)/artifacts/runtime/bpftool" version)" \
+	--arg bpftool_sha256 "$$(sha256sum "$(1)/artifacts/runtime/bpftool" | awk '{print $$1}')" \
+	'{kernel:{commit:$$kernel_commit,release:$$kernel_release,build_id:$$kernel_build_id,notes_sha256:$$kernel_notes_sha256,btf_sha256:$$kernel_btf_sha256,image:"artifacts/kernel/bzImage",config:"artifacts/kernel/config"},runtime:{runner:"artifacts/runtime/namei_ext_build_action_rq2",policy:"artifacts/runtime/build_action_sandboxing.bpf.o",sandboxfs:"artifacts/runtime/sandboxfs",libfuse:"artifacts/runtime/libfuse.so.2",bazel:"artifacts/runtime/bazel",bpftool:"artifacts/runtime/bpftool",bpftool_version:$$bpftool_version,bpftool_sha256:$$bpftool_sha256,bpftool_source_commit:$$kernel_commit},source:{sandboxfs:{commit:$$sandboxfs_commit,archive:"artifacts/source/sandboxfs/source.tar.gz",archive_sha256:$$sandboxfs_archive_sha256,cargo_lock:"artifacts/source/sandboxfs/Cargo.lock",cargo_lock_sha256:$$sandboxfs_lock_sha256,build:"artifacts/source/sandboxfs/build.json",build_log:"artifacts/source/sandboxfs/build.log",ldd:"artifacts/source/sandboxfs/ldd.txt",binary_sha256:$$sandboxfs_binary_sha256,libfuse_version:$$libfuse_version,libfuse_sha256:$$libfuse_sha256},bazel:{version:$$bazel_version,sha256:$$bazel_sha256}}}' \
 	>"$(1)/artifacts/manifest.json"
 jq -e '.kernel.commit | length == 40' \
 	"$(1)/artifacts/manifest.json" >/dev/null
@@ -98,6 +104,15 @@ jq -e '.kernel.release | length > 0' \
 	"$(1)/artifacts/manifest.json" >/dev/null
 jq -e '.kernel.build_id | length > 0' \
 	"$(1)/artifacts/manifest.json" >/dev/null
+jq -e '.runtime.bpftool_sha256 | length == 64' \
+	"$(1)/artifacts/manifest.json" >/dev/null
+jq -e '.runtime.bpftool_version | type == "string" and length > 0' \
+	"$(1)/artifacts/manifest.json" >/dev/null
+jq -e '.runtime.bpftool_source_commit == .kernel.commit' \
+	"$(1)/artifacts/manifest.json" >/dev/null
+test "$$(jq -r '.runtime.bpftool_sha256' \
+	"$(1)/artifacts/manifest.json")" = \
+	"$$(sha256sum "$(1)/artifacts/runtime/bpftool" | awk '{print $$1}')"
 (cd "$(1)" && find artifacts -type f -print0 | LC_ALL=C sort -z | \
 	xargs -0 sha256sum >artifacts.sha256)
 endef
@@ -170,6 +185,9 @@ endef
 	build-action-rq2-finalize build-action-rq2-mark-complete \
 		build-action-rq2-report __build_action_rq2_guest
 
+kvm-build-action-rq2-preflight: NAMEI_EXT_REQUIRE_CLEAN = 1
+kvm-build-action-rq2-preflight: experiment-source-clean
+
 kvm-build-action-rq2: NAMEI_EXT_REQUIRE_CLEAN = 1
 kvm-build-action-rq2: experiment-source-clean
 
@@ -177,7 +195,7 @@ build-action-rq2-analysis-test:
 	python3 -m unittest discover -s "$(ROOT_DIR)/analysis/build_action_rq2" \
 		-p 'test_*.py' -v
 
-kvm-build-action-rq2-preflight: $(KERNEL_IMAGE) bpf \
+kvm-build-action-rq2-preflight: kernel-bpftool $(KERNEL_IMAGE) bpf \
 		build-action-sandboxing workload-bazel workload-sandboxfs-build
 	$(call BUILD_ACTION_RQ2_START,$(BUILD_ACTION_RQ2_PREFLIGHT_RESULT_DIR),$(BUILD_ACTION_RQ2_PREFLIGHT_REPETITIONS),$(BUILD_ACTION_RQ2_PREFLIGHT_SAMPLES),$(subst $(NAMEI_EXT_SPACE),$(NAMEI_EXT_COMMA),$(strip $(BUILD_ACTION_RQ2_PREFLIGHT_SCALES))),$(BUILD_ACTION_RQ2_CAPACITY_PROBE),make kvm-build-action-rq2-preflight RUN_ID=$(RUN_ID))
 	$(MAKE) --no-print-directory build-action-rq2-run-matrix \
@@ -198,7 +216,7 @@ kvm-build-action-rq2-preflight: $(KERNEL_IMAGE) bpf \
 		RUN_ID="$(RUN_ID)" \
 		BUILD_ACTION_RQ2_ACTIVE_DIR="$(BUILD_ACTION_RQ2_PREFLIGHT_RESULT_DIR)"
 
-kvm-build-action-rq2: $(KERNEL_IMAGE) bpf build-action-sandboxing \
+kvm-build-action-rq2: kernel-bpftool $(KERNEL_IMAGE) bpf build-action-sandboxing \
 		workload-bazel workload-sandboxfs-build
 	$(call BUILD_ACTION_RQ2_START,$(BUILD_ACTION_RQ2_RESULT_DIR),$(BUILD_ACTION_RQ2_REPETITIONS),$(BUILD_ACTION_RQ2_SAMPLES),$(subst $(NAMEI_EXT_SPACE),$(NAMEI_EXT_COMMA),$(strip $(BUILD_ACTION_RQ2_SCALES))),0,make kvm-build-action-rq2 RUN_ID=$(RUN_ID))
 	$(MAKE) --no-print-directory build-action-rq2-run-matrix \

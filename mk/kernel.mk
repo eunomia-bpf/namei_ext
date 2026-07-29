@@ -7,6 +7,9 @@ KERNEL_SOURCE_COMMIT_STAMP ?= $(KERNEL_BUILD_DIR)/.source-commit
 KERNEL_BUILT_COMMIT_FILE ?= $(KERNEL_BUILD_DIR)/.built-commit
 KERNEL_RELEASE_HEADER ?= $(KERNEL_BUILD_DIR)/include/generated/utsrelease.h
 KERNEL_MERGE_CONFIG ?= $(KERNEL_DIR)/scripts/kconfig/merge_config.sh
+KERNEL_BPFTOOL_BUILD_DIR ?= $(BUILD_ROOT)/kernel-bpftool
+KERNEL_BPFTOOL ?= $(KERNEL_BPFTOOL_BUILD_DIR)/bpftool
+KERNEL_BPFTOOL_SOURCE_STAMP ?= $(KERNEL_BPFTOOL_BUILD_DIR)/.source-commit
 override KERNEL_LOCK_ROOT := $(ROOT_DIR)/.cache/locks
 override KERNEL_BUILD_LOCK := $(KERNEL_LOCK_ROOT)/kernel-build.lock
 STOCK_KERNEL_COMMIT ?= 062871f1371b2e02a272ff5279c6479aff0a37ef
@@ -66,7 +69,7 @@ test -z "$$(GIT_INDEX_FILE="$$index" git -C "$(KERNEL_DIR)" \
 	--exclude='.source-commit-*')"
 endef
 
-.PHONY: kernel-lock-ready kernel-source-identity kernel-config kernel-objects kernel kernel-provenance \
+.PHONY: kernel-lock-ready kernel-source-identity kernel-bpftool kernel-config kernel-objects kernel kernel-provenance \
 	kernel-stock-source kernel-stock-config kernel-stock \
 	kernel-stock-provenance kernel-clean FORCE
 
@@ -89,6 +92,27 @@ kernel-source-identity: | kernel-lock-ready
 		printf '%s\n' "$$commit" >"$(KERNEL_SOURCE_COMMIT_STAMP).tmp"; \
 		mv -f "$(KERNEL_SOURCE_COMMIT_STAMP).tmp" "$(KERNEL_SOURCE_COMMIT_STAMP)"; \
 	fi
+
+kernel-bpftool: | kernel-lock-ready
+	exec 9>"$(KERNEL_BUILD_LOCK)"; \
+	flock 9; \
+	commit="$(KERNEL_SOURCE_COMMIT)"; \
+	current=$$(cat "$(KERNEL_BPFTOOL_SOURCE_STAMP)" 2>/dev/null || true); \
+	if test "$$current" != "$$commit"; then \
+		rm -rf "$(KERNEL_BPFTOOL_BUILD_DIR)"; \
+		install -d "$(KERNEL_BPFTOOL_BUILD_DIR)"; \
+		printf '%s\n' "$$commit" >"$(KERNEL_BPFTOOL_SOURCE_STAMP)"; \
+	fi; \
+	$(MAKE) -C "$(KERNEL_DIR)/tools/bpf/bpftool" \
+		OUTPUT="$(KERNEL_BPFTOOL_BUILD_DIR)/" \
+		SKIP_LLVM=1 SKIP_LIBBFD=1 SKIP_CRYPTO=1 \
+		VMLINUX_BTF= VMLINUX_H= -j"$(JOBS)"; \
+	test -x "$(KERNEL_BPFTOOL)"; \
+	test "$$(cat "$(KERNEL_BPFTOOL_SOURCE_STAMP)")" = "$$commit"; \
+	grep -Fq 'BPF_CGROUP_NAMEI_EXT,' \
+		"$(KERNEL_DIR)/tools/bpf/bpftool/cgroup.c"; \
+	grep -aFq 'cgroup/namei_ext' "$(KERNEL_BPFTOOL)"; \
+	"$(KERNEL_BPFTOOL)" version
 
 kernel-config: $(KERNEL_BUILD_DIR)/include/config/auto.conf
 	grep '^CONFIG_NAMEI_EXT=y' "$(KERNEL_BUILD_DIR)/.config"

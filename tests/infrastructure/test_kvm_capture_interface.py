@@ -251,6 +251,11 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
             ROOT / "configs/benchmarks/workload-sources.mk"
         ).read_text(encoding="utf-8")
         workload = (ROOT / "mk/workload.mk").read_text(encoding="utf-8")
+        kernel = (ROOT / "mk/kernel.mk").read_text(encoding="utf-8")
+        suite = (
+            ROOT / "mk/experiments/build_action_rq2.mk"
+        ).read_text(encoding="utf-8")
+        normalized_suite = " ".join(suite.replace("\\\n", " ").split())
         lock = ROOT / "thirdparty/locks/sandboxfs-0.2.0.Cargo.lock"
 
         self.assertRegex(
@@ -283,6 +288,51 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         self.assertIn(
             '"$(SANDBOXFS_LIBFUSE_RUNTIME_SHA256)"',
             workload,
+        )
+        self.assertIn("kernel-bpftool:", kernel)
+        self.assertIn(
+            "grep -Fq 'BPF_CGROUP_NAMEI_EXT,'",
+            kernel,
+        )
+        self.assertIn(
+            '"$(KERNEL_DIR)/tools/bpf/bpftool/cgroup.c"',
+            kernel,
+        )
+        self.assertIn(
+            "grep -aFq 'cgroup/namei_ext' \"$(KERNEL_BPFTOOL)\"",
+            kernel,
+        )
+        self.assertIn(
+            "BUILD_ACTION_RQ2_BPFTOOL ?= $(KERNEL_BPFTOOL)",
+            suite,
+        )
+        self.assertIn("bpftool_source_commit:$$kernel_commit", suite)
+        self.assertIn(
+            '--arg bpftool_sha256 "$$(sha256sum "$(1)/artifacts/runtime/bpftool"',
+            suite,
+        )
+        self.assertIn(
+            '--arg bpftool_version "$$("$(1)/artifacts/runtime/bpftool" version)"',
+            normalized_suite,
+        )
+        self.assertIn(
+            "test \"$$(jq -r '.runtime.bpftool_sha256' "
+            "\"$(1)/artifacts/manifest.json\")\" = "
+            "\"$$(sha256sum \"$(1)/artifacts/runtime/bpftool\" | "
+            "awk '{print $$1}')\"",
+            normalized_suite,
+        )
+        self.assertIn(
+            "kvm-build-action-rq2-preflight: experiment-source-clean",
+            suite,
+        )
+        self.assertIn(
+            "kvm-build-action-rq2-preflight: kernel-bpftool",
+            suite,
+        )
+        self.assertNotIn(
+            "BUILD_ACTION_RQ2_BPFTOOL ?= /usr/local/sbin/bpftool",
+            suite,
         )
         self.assertTrue(lock.is_file())
         self.assertGreater(lock.stat().st_size, 0)
