@@ -2037,6 +2037,7 @@ int main(int argc, char **argv)
 	char sandbox_stderr[PATH_MAX];
 	char cgroup_a[PATH_MAX];
 	char cgroup_b[PATH_MAX];
+	char bazel_path[PATH_MAX];
 	unsigned int scales[MAX_SCALES];
 	size_t scale_count = 0;
 	unsigned int repetition;
@@ -2068,7 +2069,11 @@ int main(int argc, char **argv)
 	condition = argv[1];
 	policy_path = argv[2];
 	sandboxfs_binary = argv[3];
-	bazel = argv[4];
+	if (!realpath(argv[4], bazel_path)) {
+		perror("realpath bazel");
+		return 2;
+	}
+	bazel = bazel_path;
 	result_jsonl = argv[5];
 	result_dir = argv[6];
 	cgroup_root = argv[7];

@@ -255,6 +255,10 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         suite = (
             ROOT / "mk/experiments/build_action_rq2.mk"
         ).read_text(encoding="utf-8")
+        runner = (
+            ROOT
+            / "experiments/build_action_sandboxing/namei_ext_build_action_rq2.c"
+        ).read_text(encoding="utf-8")
         normalized_suite = " ".join(suite.replace("\\\n", " ").split())
         lock = ROOT / "thirdparty/locks/sandboxfs-0.2.0.Cargo.lock"
 
@@ -333,6 +337,16 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         self.assertNotIn(
             "BUILD_ACTION_RQ2_BPFTOOL ?= /usr/local/sbin/bpftool",
             suite,
+        )
+        self.assertIn("realpath(argv[4], bazel_path)", runner)
+        self.assertIn("bazel = bazel_path;", runner)
+        self.assertLess(
+            runner.index("realpath(argv[4], bazel_path)"),
+            runner.index("bazel = bazel_path;"),
+        )
+        self.assertLess(
+            runner.index("bazel = bazel_path;"),
+            runner.rindex("ret = run_sample("),
         )
         self.assertTrue(lock.is_file())
         self.assertGreater(lock.stat().st_size, 0)
