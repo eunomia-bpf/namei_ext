@@ -11,6 +11,7 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-build-action-sandboxing-preflight \
 	kvm-build-action-rq2-preflight \
 	kvm-agent-workspace-rq2-preflight \
+	kvm-agent-workspace-source-task-rq1-preflight \
 	kvm-checkpoint-restore-preflight \
 	kvm-spindle-staging-preflight \
 	kvm-toolchain-environment-preflight \

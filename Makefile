@@ -20,6 +20,7 @@ include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_readdir.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
+include $(ROOT_DIR)/configs/benchmarks/agent_workspace_source_task.mk
 include $(ROOT_DIR)/configs/benchmarks/application_file_sharing.mk
 include $(ROOT_DIR)/configs/benchmarks/build_action_sandboxing.mk
 include $(ROOT_DIR)/configs/benchmarks/build_action_rq2.mk
@@ -35,6 +36,7 @@ include $(ROOT_DIR)/mk/kvm.mk
 include $(ROOT_DIR)/mk/workload.mk
 include $(ROOT_DIR)/mk/experiments/legacy_build_cache.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace.mk
+include $(ROOT_DIR)/mk/experiments/agent_workspace_source_task.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace_rq3.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
@@ -51,7 +53,8 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 .DEFAULT_GOAL := phase1
 
 .PHONY: all phase1 phase1-smoke check-prereqs result-contract abi bpf bench functional \
-	policy-load policy-semantic runner agent-workspace application-file-sharing \
+	policy-load policy-semantic runner agent-workspace \
+	agent-workspace-source-task application-file-sharing \
 	build-action-sandboxing service-config-rotation checkpoint-restore \
 	checkpoint-restore-pathvirt-host-preflight \
 	kvm-checkpoint-restore-preflight checkpoint-restore-finalize \
@@ -66,6 +69,12 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 	kvm-toolchain-environment toolchain-environment-run \
 	toolchain-environment-finalize toolchain-environment-analyze \
 	experiment-toolchain-environment \
+	kvm-agent-workspace-source-task-rq1-preflight \
+	kvm-agent-workspace-source-task-rq1 \
+	agent-workspace-source-task-run \
+	agent-workspace-source-task-finalize \
+	agent-workspace-source-task-analyze \
+	experiment-agent-workspace-source-task-rq1 \
 	kvm-application-file-sharing-rq1 application-file-sharing-run \
 	application-file-sharing-finalize application-file-sharing-analyze \
 	experiment-application-file-sharing-rq1 \
@@ -193,6 +202,10 @@ help:
 	@printf '%s\n' '                       run ten paired namei_ext/FUSE boots and generate the RQ2 report'
 	@printf '%s\n' '  make experiment-agent-workspace-rq3'
 	@printf '%s\n' '                       run the matched namei_ext/Wrapfs boundary and fail-closed matrix'
+	@printf '%s\n' '  make kvm-agent-workspace-source-task-rq1-preflight'
+	@printf '%s\n' '                       run one real Click issue task through concurrent Agent workspace views'
+	@printf '%s\n' '  make experiment-agent-workspace-source-task-rq1'
+	@printf '%s\n' '                       run three fresh Click source-task workspace boots for RQ1'
 	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
 	@printf '%s\n' '                       run one XDG-derived grant/revoke workload boot in KVM'
 	@printf '%s\n' '  make experiment-application-file-sharing-rq1'
