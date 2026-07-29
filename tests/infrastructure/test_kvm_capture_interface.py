@@ -348,6 +348,8 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
             runner.index("bazel = bazel_path;"),
             runner.rindex("ret = run_sample("),
         )
+        self.assertEqual(runner.count("\"printf '%%s' '%s' > '%s'; \""), 2)
+        self.assertEqual(runner.count("\"printf '%%s' '%s' > '%s'\\\",\\n\""), 1)
         self.assertTrue(lock.is_file())
         self.assertGreater(lock.stat().st_size, 0)
 

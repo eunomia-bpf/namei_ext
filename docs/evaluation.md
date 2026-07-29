@@ -153,13 +153,14 @@ Make entrypoint: `make kvm-application-file-sharing-preflight`.
 | Same logical path, distinct declared-input roots | Passed; action A and B produced their expected distinct 17-byte outputs | Same raw root |
 | Undeclared existing input hidden from lookup and readdir | Passed; policy recorded 4 `SELECT`, 2 lookup `HIDE`, and 2 readdir `HIDE` decisions | Same raw root |
 | Lower-filesystem preservation and kernel health | Passed; declared and undeclared lower objects remained unchanged; zero false records and no declared dmesg failure signature | Same raw root |
-| Matched official sandboxfs 0.2.0 comparison | Frozen RQ2 plan and implementation complete: same two-action Bazel oracle, declared-input allowlist, post-setup unknown-file check, paired alternating KVM matrix, and paired-bootstrap analysis. Real paired preflight is the next gate; no performance result exists yet | `docs/tmp/2026-07-29-build-action-rq2-experiment-plan.md`; `docs/tmp/2026-07-28-build-action-rq2-infrastructure-implementation.md` |
+| Matched official sandboxfs 0.2.0 comparison | No performance result. The frozen RQ2 implementation exhausted three failed paired preflights before reaching the sandboxfs arm. Attempt 3 proved that both real Bazel actions ran successfully and exposed a deterministic harness-oracle mismatch: marker files included a newline while the runner required an exact no-newline value. The mismatch is repaired, but the closed protocol does not authorize a fourth run; a separately reviewed dependency plan is required before another paired preflight | `docs/tmp/2026-07-29-build-action-rq2-experiment-plan.md`; `docs/tmp/2026-07-28-build-action-rq2-kvm-preflight-attempt-3.md` |
 
 Correctness entrypoint: `make kvm-build-action-sandboxing-preflight`.
 RQ2 dependency entrypoint:
 `make kvm-build-action-rq2-preflight RUN_ID=<fresh-id>`.
 The formal `make experiment-build-action-rq2` path is implemented but remains
-outside aggregate formal-suite membership until that paired preflight passes.
+outside aggregate formal-suite membership. The three-attempt preflight
+protocol is closed without a valid pair, so no formal run is authorized.
 
 ### D. ccache compile macrobenchmark (existing performance evidence)
 

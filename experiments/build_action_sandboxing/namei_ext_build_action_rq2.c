@@ -767,8 +767,8 @@ static int write_bazel_workspace(const char *workspace,
 		"    name = \"result\",\n"
 		"    outs = [\"result.txt\"],\n"
 		"    cmd = \"set -eu; out=\\\"$$PWD/$@\\\"; "
-		"printf '%%s\\\\n' '%s' > '%s'; "
-		"printf '%%s\\\\n' '%s' > '%s'; "
+		"printf '%%s' '%s' > '%s'; "
+		"printf '%%s' '%s' > '%s'; "
 		"while test ! -e '%s'; do sleep 0.01; done; "
 		"cd '%s'; "
 		"test \\\"$$(find . -mindepth 1 -maxdepth 1 -type f "
@@ -782,7 +782,7 @@ static int write_bazel_workspace(const char *workspace,
 		"LC_ALL=C sort | while IFS= read -r f; do cat \\\"$$f\\\"; "
 		"done | sha256sum | awk '{print $$1}'); "
 		"printf '%%s\\\\n%%s\\\\n' '%s' \\\"$$hash\\\" > \\\"$$out\\\"; "
-		"printf '%%s\\\\n' '%s' > '%s'\",\n"
+		"printf '%%s' '%s' > '%s'\",\n"
 		")\n",
 		sample_id, started, sample_id, ready, release, logical_action,
 		scale, sample_id, sample_id, finished);
