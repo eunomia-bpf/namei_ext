@@ -105,11 +105,23 @@ boot passes.
 - `make help` exposes the two new public experiment entrypoints.
 - `make agent-workspace-source-task-source` obtained the fixed Click commit and
   verified a clean checkout.
+- KVM preflight attempt 1 prepared and ran both physical source-task controls:
+  base produced exactly 39 passes and the intended single failure, while
+  completed produced 40 passes. It stopped before BPF attachment because
+  pytest 8 omitted the optional JUnit `file` attribute required by the first
+  parser implementation.
+- The parser now requires the exact structured classname and test name instead
+  of the optional JUnit file attribute. The substantive 39/1 and 40/0 gates are
+  unchanged.
 - `git diff --check` passes.
 
 ## Remaining Work
 
-The real modified-kernel KVM preflight has not run. It must verify the exact
-39/1 and 40/0 controls, task dependencies, absolute import path, concurrent
-overlap, switch, rollback, withdrawal, lower-file preservation, and cleanup.
-Only a successful real preflight permits the three-boot formal run.
+A fresh modified-kernel KVM preflight must reach the real BPF attach path and
+verify the exact 39/1 and 40/0 controls, task dependencies, absolute import
+path, concurrent overlap, switch, rollback, withdrawal, lower-file
+preservation, and cleanup. Only a successful real preflight and independent
+evidence review permit the three-boot formal run.
+
+Attempt 1 is recorded in
+`docs/tmp/2026-07-29-agent-workspace-source-task-rq1-preflight-attempt-1.md`.

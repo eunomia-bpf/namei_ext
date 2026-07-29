@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 
 
 FAILED_TEST = "test_choice_get_invalid_choice_message"
+FAILED_CLASSNAME = "tests.test_types"
 
 
 def main() -> int:
@@ -42,8 +43,8 @@ def main() -> int:
             and errors == 0
             and skipped == 0
             and len(failed) == 1
+            and failed[0]["classname"] == FAILED_CLASSNAME
             and failed[0]["name"] == FAILED_TEST
-            and failed[0]["file"] == "tests/test_types.py"
         )
     else:
         expected = (

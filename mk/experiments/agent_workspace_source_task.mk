@@ -224,7 +224,7 @@ agent-workspace-source-task-finalize:
 	while IFS= read -r -d '' boot; do \
 		for state in physical-base concurrent-b-base \
 				logical-b-rollback-base; do \
-			jq -e '.expected == "base" and .tests == 40 and .passed == 39 and .failures == 1 and .errors == 0 and .skipped == 0 and .failed == [{classname:"tests.test_types",file:"tests/test_types.py",name:"test_choice_get_invalid_choice_message"}] and .pass == true' \
+			jq -e '.expected == "base" and .tests == 40 and .passed == 39 and .failures == 1 and .errors == 0 and .skipped == 0 and .failed == [{classname:"tests.test_types",file:"",name:"test_choice_get_invalid_choice_message"}] and .pass == true' \
 				"$$boot/$$state-pytest.json" >/dev/null; \
 		done; \
 		for state in physical-completed concurrent-a-completed \
