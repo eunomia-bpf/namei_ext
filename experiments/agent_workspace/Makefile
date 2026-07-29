@@ -54,7 +54,8 @@ $(LIBFUSE_SOURCE_STAMP): $(LIBFUSE_ARCHIVE) Makefile
 	test -f "$(LIBFUSE_CONFIG_BUILD)/libfuse_config.h"
 	printf '%s\n' "$(AGENT_WORKSPACE_LIBFUSE_VERSION)" >"$@"
 
-$(OUTPUT)/namei_ext_agent_workspace: namei_ext_agent_workspace.c $(LIBBPF_A) \
+$(OUTPUT)/namei_ext_agent_workspace: namei_ext_agent_workspace.c \
+		../agent_workspace_rq3/semantic_oracles.h $(LIBBPF_A) \
 		$(ROOT_DIR)/configs/benchmarks/agent_workspace.mk | $(OUTPUT)
 	$(CC) -g -O2 -Wall -Wextra \
 		-DAGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES=$(AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES) \

@@ -26,6 +26,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "../agent_workspace_rq3/semantic_oracles.h"
+
 struct attached_policy {
 	struct bpf_object *obj;
 	int cgroup_fd;
@@ -46,6 +48,26 @@ enum agent_workspace_counter {
 static const char *result_event = "agent-workspace-preflight";
 static const char *result_level = "kvm_agent_workspace_dependency_preflight";
 
+static void emit_semantic_oracle(FILE *out, const char *name, bool pass,
+				 int err)
+{
+	const struct rq3_semantic_contract *contract;
+
+	if (strcmp(result_event, "agent-workspace-rq3"))
+		return;
+	contract = rq3_semantic_contract_for_case(name, true);
+	if (!contract)
+		return;
+	fprintf(out,
+		"{\"event\":\"rq3-semantic-oracle\","
+		"\"result_level\":\"kvm_agent_workspace_rq3\","
+		"\"condition\":\"namei_ext\",\"oracle_id\":\"%s\","
+		"\"case\":\"%s\",\"operation\":\"%s\","
+		"\"expected\":\"%s\",\"pass\":%s,\"errno\":%d}\n",
+		contract->oracle_id, name, contract->operation,
+		contract->expected, pass ? "true" : "false", err);
+}
+
 static void emit_case(FILE *out, const char *name, bool pass, int err,
 		      const char *detail)
 {
@@ -54,6 +76,7 @@ static void emit_case(FILE *out, const char *name, bool pass, int err,
 		"\"pass\":%s,\"errno\":%d,\"detail\":\"%s\"}\n",
 		result_event, result_level, name, pass ? "true" : "false",
 		err, detail);
+	emit_semantic_oracle(out, name, pass, err);
 	fflush(out);
 }
 
@@ -152,6 +175,31 @@ static int write_file(const char *path, const char *value)
 	if (close(fd) && len >= 0)
 		return -errno;
 	if (len < 0)
+		return -errno;
+	return 0;
+}
+
+static int write_file_exclusive(const char *path, const char *value)
+{
+	size_t length = strlen(value);
+	ssize_t written;
+	int fd;
+
+	fd = open(path, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0644);
+	if (fd < 0)
+		return -errno;
+	written = write(fd, value, length);
+	if (written < 0) {
+		int saved_errno = errno;
+
+		close(fd);
+		return -saved_errno;
+	}
+	if ((size_t)written != length) {
+		close(fd);
+		return -EIO;
+	}
+	if (close(fd))
 		return -errno;
 	return 0;
 }
@@ -346,12 +394,16 @@ static int expect_symlink_read(FILE *out, const char *name, const char *path,
 }
 
 static int expect_workspace_readdir(FILE *out, const char *name, const char *path,
-				    bool want_generated)
+				    bool want_generated,
+				    bool want_cached_negative)
 {
+	bool saw_cached_negative = false;
 	bool saw_main = false;
 	bool saw_deleted = false;
+	bool saw_git = false;
 	bool saw_link = false;
 	bool saw_generated = false;
+	bool saw_src = false;
 	struct dirent *de;
 	DIR *dir;
 
@@ -368,8 +420,14 @@ static int expect_workspace_readdir(FILE *out, const char *name, const char *pat
 			saw_deleted = true;
 		if (!strcmp(de->d_name, "link.txt"))
 			saw_link = true;
+		if (!strcmp(de->d_name, "src"))
+			saw_src = true;
+		if (!strcmp(de->d_name, ".git"))
+			saw_git = true;
 		if (!strcmp(de->d_name, "generated.txt"))
 			saw_generated = true;
+		if (!strcmp(de->d_name, "cached-negative.txt"))
+			saw_cached_negative = true;
 	}
 	if (errno) {
 		emit_case(out, name, false, errno, "readdir failed");
@@ -378,8 +436,9 @@ static int expect_workspace_readdir(FILE *out, const char *name, const char *pat
 	}
 	closedir(dir);
 
-	if (saw_main && saw_link && !saw_deleted &&
-	    saw_generated == want_generated) {
+	if (saw_main && saw_link && saw_src && saw_git && !saw_deleted &&
+	    saw_generated == want_generated &&
+	    saw_cached_negative == want_cached_negative) {
 		emit_case(out, name, true, 0,
 			  "workspace directory view matched");
 		return 0;
@@ -559,6 +618,17 @@ static int run_exec_once(const char *path)
 	return -EIO;
 }
 
+static int expect_exec(FILE *out, const char *name, const char *path)
+{
+	int err;
+
+	err = run_exec_once(path);
+	emit_case(out, name, err == 0, err ? -err : 0,
+		  err ? "logical executable failed" :
+			"logical executable completed");
+	return err ? -1 : 0;
+}
+
 static int measure_exec_latency(FILE *out, const char *name, const char *path,
 				unsigned int reps)
 {
@@ -685,6 +755,58 @@ static int measure_workspace_lifecycle(FILE *out, const char *name,
 	return failures ? -1 : 0;
 }
 
+static int create_rq3_generated_file(FILE *out, const char *path)
+{
+	static const char contents[] = "generated-in-upper\n";
+	struct stat st;
+	ssize_t written;
+	int saved_errno;
+	int fd;
+
+	fd = open(path, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0644);
+	if (fd < 0) {
+		saved_errno = errno;
+		goto fail;
+	}
+	written = write(fd, contents, sizeof(contents) - 1);
+	if (written != (ssize_t)sizeof(contents) - 1) {
+		saved_errno = written < 0 ? errno : EIO;
+		goto fail_close;
+	}
+	if (fsync(fd)) {
+		saved_errno = errno;
+		goto fail_close;
+	}
+	if (fchmod(fd, 0640)) {
+		saved_errno = errno;
+		goto fail_close;
+	}
+	if (fstat(fd, &st)) {
+		saved_errno = errno;
+		goto fail_close;
+	}
+	if (!S_ISREG(st.st_mode) || (st.st_mode & 0777) != 0640 ||
+	    st.st_size != (off_t)(sizeof(contents) - 1)) {
+		saved_errno = EINVAL;
+		goto fail_close;
+	}
+	if (close(fd)) {
+		saved_errno = errno;
+		goto fail;
+	}
+	emit_case(out, "upper_epoch_create_write_fsync_fchmod_fstat", true, 0,
+		  "logical file completed create/write/fsync/fchmod/fstat");
+	return 0;
+
+fail_close:
+	close(fd);
+fail:
+	emit_case(out, "upper_epoch_create_write_fsync_fchmod_fstat", false,
+		  saved_errno,
+		  "logical create/write/fsync/fchmod/fstat sequence failed");
+	return -saved_errno;
+}
+
 static int expect_final_manifest(FILE *out, const char *logical_main,
 				 const char *logical_deleted,
 				 const char *logical_generated,
@@ -700,6 +822,185 @@ static int expect_final_manifest(FILE *out, const char *logical_main,
 	emit_manifest(out, "final_tree_manifest", pass,
 		      pass ? "logical tree matched expected upper epoch manifest" :
 			     "logical tree manifest mismatch");
+	return pass ? 0 : -1;
+}
+
+struct rq3_manifest_paths {
+	const char *logical_main;
+	const char *logical_deleted;
+	const char *logical_generated;
+	const char *logical_cached_negative;
+	const char *base_main;
+	const char *base_deleted;
+	const char *base_src_app;
+	const char *base_git_head;
+	const char *base_link;
+	const char *base_generated;
+	const char *base_cached_negative;
+	const char *upper_main;
+	const char *upper_deleted;
+	const char *upper_src_app;
+	const char *upper_git_head;
+	const char *upper_link;
+	const char *upper_generated;
+	const char *upper_renamed;
+	const char *upper_cached_negative;
+};
+
+struct rq3_lower_manifest {
+	bool base_main_preserved;
+	bool base_deleted_preserved;
+	bool base_src_preserved;
+	bool base_git_preserved;
+	bool base_symlink_preserved;
+	bool base_generated_absent;
+	bool base_cached_negative_absent;
+	bool upper_main_preserved;
+	bool upper_deleted_preserved;
+	bool upper_src_preserved;
+	bool upper_git_preserved;
+	bool upper_symlink_preserved;
+	bool upper_generated_present;
+	bool upper_renamed_absent;
+	bool upper_cached_negative_absent;
+	bool visible_main;
+	bool visible_deleted;
+	bool visible_generated;
+	bool visible_cached_negative;
+};
+
+static bool symlink_target_matches_quiet(const char *path, const char *want)
+{
+	char buffer[PATH_MAX] = {};
+	ssize_t length;
+
+	length = readlink(path, buffer, sizeof(buffer) - 1);
+	return length >= 0 && !strcmp(buffer, want);
+}
+
+static int capture_rq3_visible_manifest(
+	struct rq3_lower_manifest *manifest,
+	const struct rq3_manifest_paths *paths)
+{
+	manifest->visible_main =
+		read_file_matches_quiet(paths->logical_main, "upper-main\n");
+	manifest->visible_deleted =
+		!stat_errno_quiet(paths->logical_deleted, ENOENT);
+	manifest->visible_generated =
+		read_file_matches_quiet(paths->logical_generated,
+					"generated-in-upper\n");
+	manifest->visible_cached_negative =
+		!stat_errno_quiet(paths->logical_cached_negative, ENOENT);
+	return manifest->visible_main && !manifest->visible_deleted &&
+		       manifest->visible_generated &&
+		       !manifest->visible_cached_negative
+	       ? 0
+	       : -1;
+}
+
+static int emit_rq3_lower_tree_manifest(
+	FILE *out, struct rq3_lower_manifest *manifest,
+	const struct rq3_manifest_paths *paths)
+{
+	manifest->base_main_preserved =
+		read_file_matches_quiet(paths->base_main, "base-main\n");
+	manifest->base_deleted_preserved =
+		read_file_matches_quiet(paths->base_deleted, "base-deleted\n");
+	manifest->base_src_preserved =
+		read_file_matches_quiet(paths->base_src_app, "base-app\n");
+	manifest->base_git_preserved =
+		read_file_matches_quiet(paths->base_git_head,
+					"ref: refs/heads/main\n");
+	manifest->base_symlink_preserved =
+		symlink_target_matches_quiet(paths->base_link, "main.txt");
+	manifest->base_generated_absent =
+		stat_errno_quiet(paths->base_generated, ENOENT);
+	manifest->base_cached_negative_absent =
+		stat_errno_quiet(paths->base_cached_negative, ENOENT);
+	manifest->upper_main_preserved =
+		read_file_matches_quiet(paths->upper_main, "upper-main\n");
+	manifest->upper_deleted_preserved =
+		read_file_matches_quiet(paths->upper_deleted, "upper-deleted\n");
+	manifest->upper_src_preserved =
+		read_file_matches_quiet(paths->upper_src_app,
+					"agent-edited-app\n");
+	manifest->upper_git_preserved =
+		read_file_matches_quiet(paths->upper_git_head,
+					"ref: refs/heads/agent\n");
+	manifest->upper_symlink_preserved =
+		symlink_target_matches_quiet(paths->upper_link, "main.txt");
+	manifest->upper_generated_present =
+		read_file_matches_quiet(paths->upper_generated,
+					"generated-in-upper\n");
+	manifest->upper_renamed_absent =
+		stat_errno_quiet(paths->upper_renamed, ENOENT);
+	manifest->upper_cached_negative_absent =
+		stat_errno_quiet(paths->upper_cached_negative, ENOENT);
+	bool pass =
+		manifest->base_main_preserved &&
+		manifest->base_deleted_preserved &&
+		manifest->base_src_preserved &&
+		manifest->base_git_preserved &&
+		manifest->base_symlink_preserved &&
+		manifest->base_generated_absent &&
+		manifest->base_cached_negative_absent &&
+		manifest->upper_main_preserved &&
+		manifest->upper_deleted_preserved &&
+		manifest->upper_src_preserved &&
+		manifest->upper_git_preserved &&
+		manifest->upper_symlink_preserved &&
+		manifest->upper_generated_present &&
+		manifest->upper_renamed_absent &&
+		manifest->upper_cached_negative_absent &&
+		manifest->visible_main && !manifest->visible_deleted &&
+		manifest->visible_generated && !manifest->visible_cached_negative;
+
+	fprintf(out,
+		"{\"event\":\"rq3-lower-tree-manifest\","
+		"\"result_level\":\"kvm_agent_workspace_rq3\","
+		"\"condition\":\"namei_ext\",\"pass\":%s,"
+		"\"base_main_preserved\":%s,"
+		"\"base_deleted_preserved\":%s,"
+		"\"base_src_preserved\":%s,"
+		"\"base_git_preserved\":%s,"
+		"\"base_symlink_preserved\":%s,"
+		"\"base_generated_absent\":%s,"
+		"\"base_cached_negative_absent\":%s,"
+		"\"upper_main_preserved\":%s,"
+		"\"upper_deleted_preserved\":%s,"
+		"\"upper_src_preserved\":%s,"
+		"\"upper_git_preserved\":%s,"
+		"\"upper_symlink_preserved\":%s,"
+		"\"upper_generated_present\":%s,"
+		"\"upper_renamed_absent\":%s,"
+		"\"upper_cached_negative_absent\":%s,"
+		"\"visible_main\":%s,"
+		"\"visible_deleted\":%s,"
+		"\"visible_generated\":%s,"
+		"\"visible_cached_negative\":%s}\n",
+		pass ? "true" : "false",
+		manifest->base_main_preserved ? "true" : "false",
+		manifest->base_deleted_preserved ? "true" : "false",
+		manifest->base_src_preserved ? "true" : "false",
+		manifest->base_git_preserved ? "true" : "false",
+		manifest->base_symlink_preserved ? "true" : "false",
+		manifest->base_generated_absent ? "true" : "false",
+		manifest->base_cached_negative_absent ? "true" : "false",
+		manifest->upper_main_preserved ? "true" : "false",
+		manifest->upper_deleted_preserved ? "true" : "false",
+		manifest->upper_src_preserved ? "true" : "false",
+		manifest->upper_git_preserved ? "true" : "false",
+		manifest->upper_symlink_preserved ? "true" : "false",
+		manifest->upper_generated_present ? "true" : "false",
+		manifest->upper_renamed_absent ? "true" : "false",
+		manifest->upper_cached_negative_absent ? "true" : "false",
+		manifest->visible_main ? "true" : "false",
+		manifest->visible_deleted ? "true" : "false",
+		manifest->visible_generated ? "true" : "false",
+		manifest->visible_cached_negative ? "true" : "false");
+	emit_semantic_oracle(out, "final_tree_manifest", pass,
+			     pass ? 0 : EINVAL);
+	fflush(out);
 	return pass ? 0 : -1;
 }
 
@@ -843,6 +1144,102 @@ static int clear_targets(FILE *out, const char *name)
 	return 0;
 }
 
+static int leave_and_remove_child_cgroup(FILE *out, const char *cgroup_path)
+{
+	char parent_path[4096];
+	char procs_path[4096];
+	char pid_buf[32];
+	char *slash;
+	ssize_t written;
+	int len;
+	int fd;
+
+	if (snprintf(parent_path, sizeof(parent_path), "%s", cgroup_path) >=
+	    (int)sizeof(parent_path))
+		goto invalid;
+	slash = strrchr(parent_path, '/');
+	if (!slash || slash == parent_path)
+		goto invalid;
+	*slash = '\0';
+	if (!strcmp(parent_path, "/sys/fs") ||
+	    snprintf(procs_path, sizeof(procs_path), "%s/cgroup.procs",
+		     parent_path) >= (int)sizeof(procs_path))
+		goto invalid;
+	fd = open(procs_path, O_WRONLY | O_CLOEXEC);
+	if (fd < 0)
+		goto fail;
+	len = snprintf(pid_buf, sizeof(pid_buf), "%ld\n", (long)getpid());
+	if (len <= 0 || len >= (int)sizeof(pid_buf)) {
+		close(fd);
+		errno = EOVERFLOW;
+		goto fail;
+	}
+	written = write(fd, pid_buf, len);
+	if (written != len) {
+		int saved_errno = written < 0 ? errno : EIO;
+
+		close(fd);
+		errno = saved_errno;
+		goto fail;
+	}
+	if (close(fd))
+		goto fail;
+	if (rmdir(cgroup_path))
+		goto fail;
+	emit_case(out, "rq3_child_cgroup_removed", true, 0,
+		  "runner left and removed detached child cgroup");
+	return 0;
+
+invalid:
+	errno = EINVAL;
+fail:
+	emit_case(out, "rq3_child_cgroup_removed", false, errno,
+		  "runner could not leave and remove child cgroup");
+	return -1;
+}
+
+static int enter_child_cgroup(FILE *out, const char *cgroup_path)
+{
+	char procs_path[4096];
+	char pid_buf[32];
+	ssize_t written;
+	int len;
+	int fd;
+
+	if (snprintf(procs_path, sizeof(procs_path), "%s/cgroup.procs",
+		     cgroup_path) >= (int)sizeof(procs_path)) {
+		errno = ENAMETOOLONG;
+		goto fail;
+	}
+	fd = open(procs_path, O_WRONLY | O_CLOEXEC);
+	if (fd < 0)
+		goto fail;
+	len = snprintf(pid_buf, sizeof(pid_buf), "%ld\n", (long)getpid());
+	if (len <= 0 || len >= (int)sizeof(pid_buf)) {
+		close(fd);
+		errno = EOVERFLOW;
+		goto fail;
+	}
+	written = write(fd, pid_buf, len);
+	if (written != len) {
+		int saved_errno = written < 0 ? errno : EIO;
+
+		close(fd);
+		errno = saved_errno;
+		goto fail;
+	}
+	if (close(fd))
+		goto fail;
+	emit_case(out, "rq3_child_cgroup_entered", true, 0,
+		  "runner entered dedicated child cgroup");
+	return 0;
+
+fail:
+	emit_case(out, "rq3_child_cgroup_entered", false, errno,
+		  "runner could not enter dedicated child cgroup");
+	return -1;
+}
+
 static int set_policy_parent(FILE *out, const char *name, const char *command,
 			     const char *parent_dir)
 {
@@ -929,17 +1326,204 @@ static int expect_policy_counter(FILE *out, struct attached_policy *policy,
 	return 0;
 }
 
+static int read_policy_counter(struct attached_policy *policy, __u32 key,
+			       __u64 *value)
+{
+	struct bpf_map *map;
+	int map_fd;
+
+	map = bpf_object__find_map_by_name(policy->obj, "aw_counters");
+	if (!map) {
+		errno = ENOENT;
+		return -1;
+	}
+	map_fd = bpf_map__fd(map);
+	if (map_fd < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+	return bpf_map_lookup_elem(map_fd, &key, value);
+}
+
+static int rq3_open_and_exercise_fd(FILE *out,
+				    struct attached_policy *policy,
+				    const char *logical_path,
+				    const char *lower_path, int *open_fd)
+{
+	static const char before[] = "data-before\n";
+	static const char after[] = "data-after\n";
+	char buf[sizeof(before)] = {};
+	struct stat st;
+	__u64 counter_before = 0;
+	__u64 counter_after = 0;
+	ssize_t nread;
+	ssize_t nwritten;
+	int fd;
+	int failures = 0;
+
+	fd = open(logical_path, O_RDWR | O_CLOEXEC);
+	if (fd < 0) {
+		emit_case(out, "rq3_selected_fd_open", false, errno,
+			  "open through selected workspace failed");
+		return -1;
+	}
+	emit_case(out, "rq3_selected_fd_open", true, 0,
+		  "selected lower file opened");
+	if (read_policy_counter(policy, AW_COUNTER_TOTAL, &counter_before)) {
+		emit_case(out, "rq3_fd_counter_before", false, errno,
+			  "policy counter snapshot after open failed");
+		close(fd);
+		return -1;
+	}
+	emit_counter(out, "rq3_fd_total_before", counter_before, true,
+		     "counter snapshot after pathname open");
+
+	nread = read(fd, buf, sizeof(before) - 1);
+	if (nread != (ssize_t)sizeof(before) - 1 ||
+	    memcmp(buf, before, sizeof(before) - 1)) {
+		emit_case(out, "rq3_fd_read", false,
+			  nread < 0 ? errno : EIO,
+			  "read on selected fd mismatched");
+		failures++;
+	} else {
+		emit_case(out, "rq3_fd_read", true, 0,
+			  "read on selected fd matched lower bytes");
+	}
+	if (lseek(fd, 0, SEEK_SET) < 0) {
+		emit_case(out, "rq3_fd_seek", false, errno,
+			  "seek on selected fd failed");
+		failures++;
+	}
+	nwritten = write(fd, after, sizeof(after) - 1);
+	if (nwritten != (ssize_t)sizeof(after) - 1 ||
+	    ftruncate(fd, sizeof(after) - 1)) {
+		emit_case(out, "rq3_fd_write", false,
+			  nwritten < 0 ? errno : EIO,
+			  "write on selected fd failed");
+		failures++;
+	} else {
+		emit_case(out, "rq3_fd_write", true, 0,
+			  "write on selected fd completed");
+	}
+	if (fsync(fd)) {
+		emit_case(out, "rq3_fd_fsync", false, errno,
+			  "fsync on selected fd failed");
+		failures++;
+	} else {
+		emit_case(out, "rq3_fd_fsync", true, 0,
+			  "fsync on selected fd completed");
+	}
+	if (fstat(fd, &st)) {
+		emit_case(out, "rq3_fd_fstat", false, errno,
+			  "fstat on selected fd failed");
+		failures++;
+	} else {
+		emit_case(out, "rq3_fd_fstat", true, 0,
+			  "fstat on selected fd completed");
+	}
+	if (fchmod(fd, 0600)) {
+		emit_case(out, "rq3_fd_fchmod", false, errno,
+			  "fchmod on selected fd failed");
+		failures++;
+	} else {
+		emit_case(out, "rq3_fd_fchmod", true, 0,
+			  "fchmod on selected fd completed");
+	}
+	if (read_policy_counter(policy, AW_COUNTER_TOTAL, &counter_after)) {
+		emit_case(out, "rq3_fd_counter_after", false, errno,
+			  "policy counter snapshot after fd operations failed");
+		failures++;
+	} else {
+		emit_counter(out, "rq3_fd_total_after", counter_after, true,
+			     "counter snapshot after fd-only operations");
+	}
+	emit_case(out, "rq3_fd_policy_not_reentered",
+		  counter_before == counter_after, 0,
+		  counter_before == counter_after ?
+			  "fd-only operations did not execute namei policy" :
+			  "policy counter changed during fd-only operations");
+	if (counter_before != counter_after)
+		failures++;
+	if (!read_file_matches_quiet(lower_path, after)) {
+		emit_case(out, "rq3_fd_lower_mutation", false, EIO,
+			  "selected lower file did not receive fd mutation");
+		failures++;
+	} else {
+		emit_case(out, "rq3_fd_lower_mutation", true, 0,
+			  "selected lower file received exact fd mutation");
+	}
+	if (failures) {
+		close(fd);
+		return -1;
+	}
+	*open_fd = fd;
+	return 0;
+}
+
+static int rq3_use_fd_after_detach(FILE *out, int fd,
+				   const char *lower_path)
+{
+	static const char before[] = "data-after\n";
+	static const char after[] = "old-fd\n";
+	char buf[sizeof(before)] = {};
+	ssize_t nread;
+	ssize_t nwritten;
+	int failures = 0;
+
+	if (lseek(fd, 0, SEEK_SET) < 0) {
+		emit_case(out, "rq3_old_fd_seek", false, errno,
+			  "old fd seek after detach failed");
+		failures++;
+	}
+	nread = read(fd, buf, sizeof(before) - 1);
+	if (nread != (ssize_t)sizeof(before) - 1 ||
+	    memcmp(buf, before, sizeof(before) - 1)) {
+		emit_case(out, "rq3_old_fd_read", false,
+			  nread < 0 ? errno : EIO,
+			  "old fd read after detach mismatched");
+		failures++;
+	} else {
+		emit_case(out, "rq3_old_fd_read", true, 0,
+			  "old fd remained a valid lower file after detach");
+	}
+	if (lseek(fd, 0, SEEK_SET) < 0)
+		failures++;
+	nwritten = write(fd, after, sizeof(after) - 1);
+	if (nwritten != (ssize_t)sizeof(after) - 1 ||
+	    ftruncate(fd, sizeof(after) - 1) || fsync(fd)) {
+		emit_case(out, "rq3_old_fd_write", false,
+			  nwritten < 0 ? errno : EIO,
+			  "old fd write after detach failed");
+		failures++;
+	} else {
+		emit_case(out, "rq3_old_fd_write", true, 0,
+			  "old fd write after detach completed");
+	}
+	if (!read_file_matches_quiet(lower_path, after)) {
+		emit_case(out, "rq3_old_fd_lower_mutation", false, EIO,
+			  "old fd mutation did not reach lower file");
+		failures++;
+	} else {
+		emit_case(out, "rq3_old_fd_lower_mutation", true, 0,
+			  "old fd mutation reached the same lower file");
+	}
+	return failures ? -1 : 0;
+}
+
 int main(int argc, char **argv)
 {
 	const char *cgroup_path = "/sys/fs/cgroup";
 	const char *policy_path;
 	const char *result_path;
 	const char *source_trace_path = NULL;
+	const char *work_root;
 	struct attached_policy policy = {
 		.cgroup_fd = -1,
 		.prog_fd = -1,
 	};
-	char root[] = "/tmp/namei-ext-agent-workspace-XXXXXX";
+	struct rq3_lower_manifest rq3_manifest = {};
+	struct rq3_manifest_paths rq3_manifest_paths = {};
+	char root[PATH_MAX];
 	char view[PATH_MAX];
 	char base[PATH_MAX];
 	char upper[PATH_MAX];
@@ -981,9 +1565,13 @@ int main(int argc, char **argv)
 	char upper_src_app[PATH_MAX];
 	char base_git_head[PATH_MAX];
 	char upper_git_head[PATH_MAX];
+	char logical_data_path[PATH_MAX];
+	char upper_data_path[PATH_MAX];
 	FILE *out;
 	bool matrix_mode = false;
 	bool rq2_mode = false;
+	bool rq3_mode = false;
+	int rq3_open_fd = -1;
 	int fails = 0;
 	int err;
 	int argi = 1;
@@ -998,11 +1586,16 @@ int main(int argc, char **argv)
 		result_event = "agent-workspace-rq2";
 		result_level = "kvm_agent_workspace_rq2_boot";
 		argi++;
+	} else if (argi < argc && !strcmp(argv[argi], "--rq3")) {
+		rq3_mode = true;
+		result_event = "agent-workspace-rq3";
+		result_level = "kvm_agent_workspace_rq3";
+		argi++;
 	}
 
 	if (argc - argi < 2 || argc - argi > 4) {
 		fprintf(stderr,
-			"usage: %s [--matrix|--rq2] AGENT_WORKSPACE_POLICY_BPF_O RESULT_JSONL [CGROUP] [SOURCE_TRACE]\n",
+			"usage: %s [--matrix|--rq2|--rq3] AGENT_WORKSPACE_POLICY_BPF_O RESULT_JSONL [CGROUP] [SOURCE_TRACE]\n",
 			argv[0]);
 		return 2;
 	}
@@ -1014,11 +1607,24 @@ int main(int argc, char **argv)
 		cgroup_path = argv[argi + 2];
 		source_trace_path = argv[argi + 3];
 	}
+	work_root = getenv("NAMEI_EXT_AGENT_WORKSPACE_WORK_ROOT");
+	if (!work_root || !work_root[0])
+		work_root = "/tmp";
+	if (snprintf(root, sizeof(root),
+		     "%s/namei-ext-agent-workspace-XXXXXX", work_root) < 0 ||
+	    strlen(root) >= sizeof(root) - 1) {
+		fprintf(stderr, "agent workspace root path is too long\n");
+		return 2;
+	}
 
 	out = fopen(result_path, "a");
 	if (!out) {
 		perror("fopen result");
 		return 2;
+	}
+	if (rq3_mode && enter_child_cgroup(out, cgroup_path)) {
+		fclose(out);
+		return 1;
 	}
 
 	if (!mkdtemp(root)) {
@@ -1095,7 +1701,11 @@ int main(int argc, char **argv)
 		     "app.txt") ||
 	    set_path(base_git_head, sizeof(base_git_head), base_git, "HEAD") ||
 	    set_path(upper_git_head, sizeof(upper_git_head), upper_git,
-		     "HEAD")) {
+		     "HEAD") ||
+	    set_path(logical_data_path, sizeof(logical_data_path), view,
+		     "ws/data-path.txt") ||
+	    set_path(upper_data_path, sizeof(upper_data_path), upper,
+		     "data-path.txt")) {
 		emit_case(out, "set_paths", false, ENAMETOOLONG,
 			  "path construction failed");
 		fails++;
@@ -1120,7 +1730,7 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "setup_source_dirs", true, 0,
 		  "source-like src and .git directories created");
-	if (matrix_mode || rq2_mode) {
+	if (matrix_mode || rq2_mode || rq3_mode) {
 		if (!source_trace_path) {
 			emit_case(out, "agentfs_source_trace_artifact", false,
 				  EINVAL, "source trace path missing");
@@ -1152,6 +1762,12 @@ int main(int argc, char **argv)
 	    symlink("main.txt", upper_link)) {
 		emit_case(out, "setup_files", false, errno,
 			  "workspace file setup failed");
+		fails++;
+		goto cleanup;
+	}
+	if (rq3_mode && write_file(upper_data_path, "data-before\n")) {
+		emit_case(out, "setup_rq3_data_path", false, errno,
+			  "RQ3 data-path fixture setup failed");
 		fails++;
 		goto cleanup;
 	}
@@ -1208,7 +1824,7 @@ int main(int argc, char **argv)
 	fails += !!expect_stat_errno(out, "selected_root_final_visible",
 				     logical_root, 0);
 	fails += !!expect_workspace_readdir(out, "base_epoch_readdir",
-					    logical_root, false);
+					    logical_root, false, false);
 	fails += !!expect_read_file(out, "base_epoch_main", logical_main,
 				    "base-main\n");
 	fails += !!expect_mode(out, "base_epoch_main_mode", logical_main, 0644);
@@ -1225,12 +1841,16 @@ int main(int argc, char **argv)
 				     logical_deleted, ENOENT);
 	fails += !!expect_symlink_read(out, "base_epoch_symlink",
 				       logical_link, "main.txt");
+	fails += !!expect_read_file(out, "base_epoch_symlink_follow",
+				    logical_link, "base-main\n");
+	if (rq3_mode)
+		fails += !!expect_exec(out, "base_epoch_exec_tool", logical_tool);
 
 	fails += !!register_target(out, "register_upper_target", 1, upper);
 	fails += !!expect_stat_errno(out, "upper_selected_root_final_visible",
 				     logical_root, 0);
 	fails += !!expect_workspace_readdir(out, "upper_epoch_readdir_before_write",
-					    logical_root, false);
+					    logical_root, false, false);
 	fails += !!expect_read_file(out, "upper_epoch_main", logical_main,
 				    "upper-main\n");
 	fails += !!expect_mode(out, "upper_epoch_main_mode", logical_main, 0600);
@@ -1247,10 +1867,16 @@ int main(int argc, char **argv)
 				     logical_deleted, ENOENT);
 	fails += !!expect_symlink_read(out, "upper_epoch_symlink",
 				       logical_link, "main.txt");
+	fails += !!expect_read_file(out, "upper_epoch_symlink_follow",
+				    logical_link, "upper-main\n");
+	if (rq3_mode)
+		fails += !!expect_exec(out, "upper_epoch_exec_tool", logical_tool);
 	fails += !!expect_stat_errno(out, "upper_generated_negative_before_write",
 				     logical_generated, ENOENT);
 
-	err = write_file(logical_generated, "generated-in-upper\n");
+	err = rq3_mode ?
+		create_rq3_generated_file(out, logical_generated) :
+		write_file(logical_generated, "generated-in-upper\n");
 	if (err) {
 		emit_case(out, "upper_epoch_write", false, -err,
 			  "logical write failed");
@@ -1263,7 +1889,7 @@ int main(int argc, char **argv)
 					    "generated-in-upper\n");
 		fails += !!expect_workspace_readdir(
 			out, "upper_epoch_readdir_after_write",
-			logical_root, true);
+			logical_root, true, false);
 		fails += !!expect_stat_errno(out, "base_not_materialized",
 					     base_generated, ENOENT);
 	}
@@ -1274,7 +1900,10 @@ int main(int argc, char **argv)
 	fails += !!expect_stat_errno(out,
 				     "agentfs_cached_negative_before_create",
 				     logical_cached_negative, ENOENT);
-	err = write_file(logical_cached_negative, "cached-negative-created\n");
+	err = rq3_mode ?
+		write_file_exclusive(logical_cached_negative,
+				     "cached-negative-created\n") :
+		write_file(logical_cached_negative, "cached-negative-created\n");
 	if (err) {
 		emit_case(out, "agentfs_cached_negative_create", false, -err,
 			  "cached-negative create through logical path failed");
@@ -1289,7 +1918,10 @@ int main(int argc, char **argv)
 						    "agentfs_cached_negative_visible",
 						    logical_cached_negative,
 						    "cached-negative-created\n");
-	}
+			fails += !!expect_workspace_readdir(
+				out, "agentfs_cached_negative_readdir_visible",
+				logical_root, true, true);
+		}
 	if (rename(logical_generated, logical_renamed)) {
 		emit_case(out, "agentfs_rename_generated_to_renamed", false,
 			  errno, "logical rename failed");
@@ -1329,30 +1961,63 @@ int main(int argc, char **argv)
 			    macro_elapsed, fails == 0, "ns",
 			    "source lifecycle create/rename/unlink macro measured");
 	}
-	fails += !!expect_final_manifest(out, logical_main, logical_deleted,
-					 logical_generated, base_generated);
+	if (rq3_mode) {
+		rq3_manifest_paths = (struct rq3_manifest_paths) {
+			.logical_main = logical_main,
+			.logical_deleted = logical_deleted,
+			.logical_generated = logical_generated,
+			.logical_cached_negative = logical_cached_negative,
+			.base_main = base_main,
+			.base_deleted = base_deleted,
+			.base_src_app = base_src_app,
+			.base_git_head = base_git_head,
+			.base_link = base_link,
+			.base_generated = base_generated,
+			.base_cached_negative = base_cached_negative,
+			.upper_main = upper_main,
+			.upper_deleted = upper_deleted,
+			.upper_src_app = upper_src_app,
+			.upper_git_head = upper_git_head,
+			.upper_link = upper_link,
+			.upper_generated = upper_generated,
+			.upper_renamed = upper_renamed,
+			.upper_cached_negative = upper_cached_negative,
+		};
+
+		fails += !!capture_rq3_visible_manifest(
+			&rq3_manifest, &rq3_manifest_paths);
+	} else {
+		fails += !!expect_final_manifest(out, logical_main,
+						logical_deleted,
+						logical_generated,
+						base_generated);
+	}
+	if (rq3_mode)
+		fails += !!rq3_open_and_exercise_fd(
+			out, &policy, logical_data_path, upper_data_path,
+			&rq3_open_fd);
 	if (rq2_mode)
 		fails += !!measure_workspace_lifecycle(
 			out, "namei_ext_lifecycle_ns",
 			logical_lifecycle_created, logical_lifecycle_renamed,
 			AGENT_WORKSPACE_RQ2_LIFECYCLE_SAMPLES);
-	fails += !!measure_stat_latency(out, "namei_ext_stat_main_ns",
-					logical_main, 0, rq2_mode ?
-					AGENT_WORKSPACE_RQ2_STAT_SAMPLES : 100);
-	fails += !!measure_open_latency(out, "namei_ext_open_main_ns",
-					logical_main, rq2_mode ?
-					AGENT_WORKSPACE_RQ2_OPEN_SAMPLES : 100);
-	fails += !!measure_access_latency(out, "namei_ext_access_main_ns",
-					  logical_main, R_OK, rq2_mode ?
-					  AGENT_WORKSPACE_RQ2_ACCESS_SAMPLES :
-					  100);
-	fails += !!measure_exec_latency(out, "namei_ext_exec_tool_ns",
-					logical_tool, rq2_mode ?
-					AGENT_WORKSPACE_RQ2_EXEC_SAMPLES : 20);
-	fails += !!measure_readdir_latency(out, "namei_ext_readdir_ws_ns",
-					   logical_root, rq2_mode ?
-					   AGENT_WORKSPACE_RQ2_READDIR_SAMPLES :
-					   50);
+	if (!rq3_mode) {
+		fails += !!measure_stat_latency(
+			out, "namei_ext_stat_main_ns", logical_main, 0,
+			rq2_mode ? AGENT_WORKSPACE_RQ2_STAT_SAMPLES : 100);
+		fails += !!measure_open_latency(
+			out, "namei_ext_open_main_ns", logical_main,
+			rq2_mode ? AGENT_WORKSPACE_RQ2_OPEN_SAMPLES : 100);
+		fails += !!measure_access_latency(
+			out, "namei_ext_access_main_ns", logical_main, R_OK,
+			rq2_mode ? AGENT_WORKSPACE_RQ2_ACCESS_SAMPLES : 100);
+		fails += !!measure_exec_latency(
+			out, "namei_ext_exec_tool_ns", logical_tool,
+			rq2_mode ? AGENT_WORKSPACE_RQ2_EXEC_SAMPLES : 20);
+		fails += !!measure_readdir_latency(
+			out, "namei_ext_readdir_ws_ns", logical_root,
+			rq2_mode ? AGENT_WORKSPACE_RQ2_READDIR_SAMPLES : 50);
+	}
 
 	fails += !!expect_policy_counter(out, &policy, "total",
 					 AW_COUNTER_TOTAL, true);
@@ -1376,8 +2041,51 @@ int main(int argc, char **argv)
 		fails++;
 	} else {
 		emit_case(out, "detach_policy", true, 0, "policy detached");
+		fails += !!clear_targets(out, "clear_targets_after_detach");
+
+		if (load_and_attach(policy_path, cgroup_path, &policy)) {
+			emit_case(out, "attach_after_clear_for_containment", false,
+				  errno, "load or attach after target clear failed");
+			fails++;
+		} else {
+			emit_case(out, "attach_after_clear_for_containment", true, 0,
+				  "policy attached after target clear");
+			fails += !!expect_stat_errno(
+				out, "invalid_unregistered_target_contained",
+				logical_main, ENOENT);
+			fails += !!set_policy_parent(
+				out, "policy_scope_restore_global", "global", NULL);
+			err = destroy_policy(&policy);
+			if (err) {
+				emit_case(out, "detach_after_containment", false,
+					  -err,
+					  "policy detach after containment failed");
+				fails++;
+			} else {
+				emit_case(out, "detach_after_containment", true, 0,
+					  "policy detached after containment");
+			}
+		}
+		if (rq3_mode)
+			fails += !!leave_and_remove_child_cgroup(out, cgroup_path);
+		if (rq3_mode && rq3_open_fd >= 0) {
+			fails += !!rq3_use_fd_after_detach(
+				out, rq3_open_fd, upper_data_path);
+			if (close(rq3_open_fd)) {
+				emit_case(out, "rq3_old_fd_close", false, errno,
+					  "old fd close failed");
+				fails++;
+			} else {
+				emit_case(out, "rq3_old_fd_close", true, 0,
+					  "old fd closed after cgroup removal");
+			}
+			rq3_open_fd = -1;
+		}
 		fails += !!expect_stat_errno(out, "logical_after_detach",
 					     logical_main, ENOENT);
+		if (rq3_mode)
+			fails += !!emit_rq3_lower_tree_manifest(
+				out, &rq3_manifest, &rq3_manifest_paths);
 		fails += !!expect_read_file(out, "base_main_preserved", base_main,
 					    "base-main\n");
 		fails += !!expect_read_file(out, "base_deleted_preserved",
@@ -1385,33 +2093,11 @@ int main(int argc, char **argv)
 		fails += !!expect_stat_errno(out,
 					     "base_cached_negative_unmodified",
 					     base_cached_negative, ENOENT);
-		fails += !!clear_targets(out, "clear_targets_after_detach");
-	}
-
-	if (load_and_attach(policy_path, cgroup_path, &policy)) {
-		emit_case(out, "attach_after_clear_for_containment", false,
-			  errno, "load or attach after target clear failed");
-		fails++;
-	} else {
-		emit_case(out, "attach_after_clear_for_containment", true, 0,
-			  "policy attached after target clear");
-		fails += !!expect_stat_errno(out,
-					     "invalid_unregistered_target_contained",
-					     logical_main, ENOENT);
-		fails += !!set_policy_parent(out, "policy_scope_restore_global",
-					     "global", NULL);
-		err = destroy_policy(&policy);
-		if (err) {
-			emit_case(out, "detach_after_containment", false, -err,
-				  "policy detach after containment failed");
-			fails++;
-		} else {
-			emit_case(out, "detach_after_containment", true, 0,
-				  "policy detached after containment");
-		}
 	}
 
 cleanup:
+	if (rq3_open_fd >= 0)
+		close(rq3_open_fd);
 	if (policy.attached)
 		destroy_policy(&policy);
 	unlink(base_main);
@@ -1435,6 +2121,7 @@ cleanup:
 	unlink(upper_tool);
 	unlink(upper_src_app);
 	unlink(upper_git_head);
+	unlink(upper_data_path);
 	rmdir(base_src);
 	rmdir(base_git);
 	rmdir(upper_src);
@@ -1446,13 +2133,16 @@ cleanup:
 	rmdir(root);
 	emit_case(out,
 		  rq2_mode ? "agent_workspace_rq2_summary" :
+		  rq3_mode ? "agent_workspace_rq3_summary" :
 		  matrix_mode ? "agent_workspace_matrix_summary" :
 				"agent_workspace_preflight_summary",
 		  fails == 0, fails,
 		  fails ? (rq2_mode ? "agent workspace RQ2 failures" :
+			   rq3_mode ? "agent workspace RQ3 failures" :
 			   matrix_mode ? "agent workspace matrix failures" :
 					 "agent workspace preflight failures") :
 			  (rq2_mode ? "agent workspace RQ2 passed" :
+			   rq3_mode ? "agent workspace RQ3 passed" :
 			   matrix_mode ? "agent workspace matrix passed" :
 					 "agent workspace preflight passed"));
 	fclose(out);

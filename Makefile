@@ -31,6 +31,7 @@ include $(ROOT_DIR)/mk/workload.mk
 include $(ROOT_DIR)/mk/experiments/legacy_build_cache.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace.mk
 include $(ROOT_DIR)/mk/experiments/agent_workspace_rq2.mk
+include $(ROOT_DIR)/mk/experiments/agent_workspace_rq3.mk
 include $(ROOT_DIR)/mk/experiments/application_file_sharing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_rq2.mk
