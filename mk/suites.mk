@@ -12,6 +12,7 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-build-action-rq2-preflight \
 	kvm-agent-workspace-rq2-preflight \
 	kvm-checkpoint-restore-preflight \
+	kvm-spindle-staging-preflight \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-fast-path-preflight \
 	kvm-fxmark-readdir-preflight
@@ -25,7 +26,9 @@ NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS := \
 NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	$(NAMEI_EXT_FORMAL_CASE_STUDY_TARGETS) \
 	kvm-agent-workspace-rq2 \
-	kvm-agent-workspace-rq3
+	kvm-agent-workspace-rq3 \
+	experiment-spindle-staging \
+	kvm-spindle-staging
 
 # Implemented entrypoints that are not eligible for aggregate evidence
 # collection because their dependency gate is currently closed.

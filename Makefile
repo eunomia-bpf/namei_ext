@@ -23,6 +23,7 @@ include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
 include $(ROOT_DIR)/configs/benchmarks/build_action_rq2.mk
 include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
 include $(ROOT_DIR)/configs/benchmarks/checkpoint_restore.mk
+include $(ROOT_DIR)/configs/benchmarks/spindle_staging.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/results.mk
@@ -38,6 +39,7 @@ include $(ROOT_DIR)/mk/experiments/build_action_sandboxing.mk
 include $(ROOT_DIR)/mk/experiments/build_action_rq2.mk
 include $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
 include $(ROOT_DIR)/mk/experiments/checkpoint_restore.mk
+include $(ROOT_DIR)/mk/experiments/spindle_staging.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
@@ -50,6 +52,9 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 	checkpoint-restore-pathvirt-host-preflight \
 	kvm-checkpoint-restore-preflight checkpoint-restore-finalize \
 	checkpoint-restore-analyze checkpoint-restore-analysis-test \
+	spindle-staging kvm-spindle-staging-preflight kvm-spindle-staging \
+	spindle-staging-run-matrix spindle-staging-finalize \
+	spindle-staging-analyze experiment-spindle-staging \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
@@ -188,6 +193,10 @@ help:
 	@printf '%s\n' '                       validate patched DMTCP pathvirt restart mapping before KVM integration'
 	@printf '%s\n' '  make kvm-checkpoint-restore-preflight'
 	@printf '%s\n' '                       run patched DMTCP, namei_ext, and withdrawn control in one modified-kernel boot'
+	@printf '%s\n' '  make kvm-spindle-staging-preflight'
+	@printf '%s\n' '                       run one source-derived Spindle staging boot with 47 focal objects'
+	@printf '%s\n' '  make experiment-spindle-staging'
+	@printf '%s\n' '                       run three fresh Spindle staging boots and generate the RQ1 report'
 	@printf '%s\n' '  make kvm-fxmark-rq2-preflight'
 	@printf '%s\n' '                       run one real MRPL cell in six isolated stock/patched/FUSE KVM boots'
 	@printf '%s\n' '  make kvm-fxmark-rq2'
@@ -243,6 +252,7 @@ clean: kernel-lock-ready docker-clean
 	$(MAKE) -C "$(ROOT_DIR)/experiments/application_file_sharing" BUILD_ROOT="$(BUILD_ROOT)" clean; \
 	$(MAKE) -C "$(ROOT_DIR)/experiments/build_action_sandboxing" BUILD_ROOT="$(BUILD_ROOT)" clean; \
 	$(MAKE) -C "$(ROOT_DIR)/experiments/service_config_rotation" BUILD_ROOT="$(BUILD_ROOT)" clean; \
+	$(MAKE) -C "$(ROOT_DIR)/experiments/spindle_staging" BUILD_ROOT="$(BUILD_ROOT)" clean; \
 	$(MAKE) -C "$(ROOT_DIR)/bench/fxmark" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" OUTPUT="$(BUILD_ROOT)/fxmark-rq2" clean; \
 	rm -rf "$(BUILD_ROOT)/workloads" "$(CACHE_ROOT)/workloads"; \
 	rm -rf "$(BUILD_ROOT)"

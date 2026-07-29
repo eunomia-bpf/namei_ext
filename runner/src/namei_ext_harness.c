@@ -292,7 +292,7 @@ int namei_ext_cgroup_id(const char *path, uint64_t *id_out)
 }
 
 int namei_ext_register_target(const char *cgroup_path,
-			       const char *target_dir, uint32_t target_id)
+			       const char *target_path, uint32_t target_id)
 {
 	pid_t pid = fork();
 
@@ -307,7 +307,7 @@ int namei_ext_register_target(const char *cgroup_path,
 
 		if (namei_ext_move_self_to_cgroup(cgroup_path))
 			_exit(1);
-		target_fd = open(target_dir, O_PATH | O_DIRECTORY | O_CLOEXEC);
+		target_fd = open(target_path, O_PATH | O_CLOEXEC);
 		if (target_fd < 0)
 			_exit(1);
 		register_fd = open("/sys/kernel/debug/namei_ext/register_target",

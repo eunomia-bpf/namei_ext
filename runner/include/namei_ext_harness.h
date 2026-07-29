@@ -27,7 +27,7 @@ int namei_ext_wait_child(pid_t pid);
 int namei_ext_cgroup_id(const char *path, uint64_t *id_out);
 
 int namei_ext_register_target(const char *cgroup_path,
-			       const char *target_dir, uint32_t target_id);
+			       const char *target_path, uint32_t target_id);
 int namei_ext_clear_targets(const char *cgroup_path);
 int namei_ext_policy_parent_exact(const char *cgroup_path,
 				   const char *parent_dir);
