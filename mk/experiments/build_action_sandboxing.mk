@@ -293,11 +293,11 @@ __build_action_sandboxing_guest_inner:
 	"$(BUILD_ACTION_SANDBOXING_RUN_DIR)/artifacts/runtime/bazel" \
 		--version >"$(BUILD_ACTION_SANDBOXING_BOOT_DIR)/bazel-version.txt"
 	: >"$(BUILD_ACTION_SANDBOXING_BOOT_DIR)/observations.jsonl"
-	"$(BUILD_ACTION_SANDBOXING_RUN_DIR)/artifacts/runtime/namei_ext_build_action_sandboxing" \
-		"$(BUILD_ACTION_SANDBOXING_RUN_DIR)/artifacts/runtime/build_action_sandboxing.bpf.o" \
-		"$(BUILD_ACTION_SANDBOXING_BOOT_DIR)/observations.jsonl" \
-		"$(BUILD_ACTION_SANDBOXING_RUN_DIR)/artifacts/runtime/bazel" \
-		"$(BUILD_ACTION_SANDBOXING_BOOT_DIR)" /sys/fs/cgroup \
+	"$(abspath $(BUILD_ACTION_SANDBOXING_RUN_DIR)/artifacts/runtime/namei_ext_build_action_sandboxing)" \
+		"$(abspath $(BUILD_ACTION_SANDBOXING_RUN_DIR)/artifacts/runtime/build_action_sandboxing.bpf.o)" \
+		"$(abspath $(BUILD_ACTION_SANDBOXING_BOOT_DIR)/observations.jsonl)" \
+		"$(abspath $(BUILD_ACTION_SANDBOXING_RUN_DIR)/artifacts/runtime/bazel)" \
+		"$(abspath $(BUILD_ACTION_SANDBOXING_BOOT_DIR))" /sys/fs/cgroup \
 		>"$(BUILD_ACTION_SANDBOXING_BOOT_DIR)/stdout-controller.log" \
 		2>"$(BUILD_ACTION_SANDBOXING_BOOT_DIR)/stderr-controller.log"
 	! jq -e 'select(has("pass") and .pass != true)' \

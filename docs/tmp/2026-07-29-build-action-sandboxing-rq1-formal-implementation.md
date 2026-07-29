@@ -103,3 +103,19 @@ The implementation still requires:
 3. an independent review of the complete raw result.
 
 Until those steps pass, this implementation is not current W3 evidence.
+
+## Preflight Attempt 1
+
+Raw result:
+`results/experiments/build-action-sandboxing-rq1-preflight/20260729T175002Z-w3-preflight01/`.
+
+The first real boot reached the current policy and passed both action-view
+device/inode checks, hidden-child lookup, all four lower-object preservation
+checks, detach, target clearing, external inventory, and dmesg. The Bazel
+children did not reach the barrier. Their executable path was relative to the
+repository when the controller spawned them, but each child changed to its
+temporary workspace before `exec`.
+
+This is a runner path-resolution defect, not a policy or oracle result. The
+guest invocation now passes absolute controller, policy, observation, Bazel,
+and result paths. The frozen workload and correctness checks are unchanged.
