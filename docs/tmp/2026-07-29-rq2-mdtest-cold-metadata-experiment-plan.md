@@ -1,25 +1,32 @@
 # Experiment Plan: RQ2 mdtest Cold Metadata
 
-Status: paused draft. This plan has not passed independent plan review. Do not
-implement or run its KVM targets until the baseline and source decisions below
-are repaired and reviewed.
+Status: independently reviewed and approved for implementation and one real KVM
+preflight. Formal execution remains prohibited until the implementation and
+preflight evidence receive their own reviews.
 
-Before admission, the next revision must:
+The 2026-07-30 revision resolves the paused draft's source and baseline
+questions:
 
-1. verify the current official IOR/mdtest release and pin a reviewed upstream
-   commit rather than assuming the feasibility-probe revision remains the
-   final experiment source;
-2. use or extend the official libfuse low-level passthrough example, with
-   explicit callback coverage and cache settings, instead of assuming the
-   existing project loopback is a sufficient create/stat/remove baseline;
-3. include a matched stock-kernel condition in the same mdtest matrix, or
-   obtain explicit plan-review approval for excluding it based on stronger
-   same-workload evidence;
-4. verify in a dependency preflight that selecting the intermediate ext4
-   directory exercises the intended hook for create, cold stat, and remove
-   without changing mdtest; and
-5. re-evaluate the proposed 40-boot budget only after the official source,
-   FUSE baseline, cache-drop method, and operation parser are concrete.
+1. pin the current official IOR 4.0.0 release at commit
+   `967a9f65109760db8a3ac14a7fdd007f337d2960`; its release notes explicitly
+   include broad mdtest correctness fixes;
+2. build the official libfuse 3.18.2 low-level
+   `example/passthrough_ll.c` at commit
+   `033844748010a3b8265bf1c90b9ae8ffe4cd9ca7` and use that unmodified binary
+   for timing;
+3. include a matched stock-kernel control in the same workload matrix;
+4. require the real preflight to prove intermediate-directory selection for
+   unmodified mdtest create, cold stat, and cold remove; and
+5. use five conditions, ten paired blocks, and 50 formal boots after fixing the
+   cache and CPU-allocation protocol below.
+
+The independent review on 2026-07-30 returned NO-GO on the first review round.
+This revision adds mdtest's official hard-warning mode, freezes the exact
+summary statistic, uses homogeneous host cores, supplies complete root-safe MPI
+and foreground FUSE commands, aligns the selected component with the logical
+path, and fixes the ext4 construction protocol. A follow-up review confirmed
+that all six blocking findings are closed and returned GO. The review history is
+`docs/tmp/2026-07-30-rq2-mdtest-cold-metadata-plan-review.md`.
 
 ## Research Question
 
@@ -35,7 +42,7 @@ Before admission, the next revision must:
 
 ## Paper-Value Admission
 
-- Planned role: decisive RQ2 breadth experiment.
+- Planned role: decisive for the cache-cold and mutating-metadata scope of RQ2.
 - Largest credible paper story this experiment could unlock: `namei_ext`
   retains the lower filesystem's metadata path for both read-only and mutating
   operations, while a feature-equivalent FUSE view remains responsible for
@@ -66,10 +73,10 @@ Before admission, the next revision must:
 
 ## Expected And Alternative Outcomes
 
-- Current expected answer: `SELECT` has higher median mdtest mean operations
-  per second than feature-equivalent FUSE for file creation, cold stat, and
-  cold removal at both one and four ranks; each paired 95% bootstrap interval
-  for `SELECT/FUSE` is above one.
+- Current expected answer: `SELECT` has higher median mdtest per-iteration
+  aggregate operations per second than feature-equivalent FUSE for file
+  creation, cold stat, and cold removal at both one and four ranks; each paired
+  95% bootstrap interval for `SELECT/FUSE` is above one.
 - Strongest competing explanation: ext4 and cache-drop costs dominate enough
   that the FUSE request path no longer matters, or policy dispatch and target
   selection cost as much as FUSE after metadata caches are discarded.
@@ -79,43 +86,66 @@ Before admission, the next revision must:
 
 ## Published Precedent And Real Assets
 
-- Official benchmark: IOR/mdtest 3.3.0, commit
-  `9959a615fb7ca400a5b21b93be76f466cbb42b95`, from
+- Official benchmark: IOR/mdtest 4.0.0, commit
+  `967a9f65109760db8a3ac14a7fdd007f337d2960`, from
   <https://github.com/hpc/ior>.
 - Official operation definitions: mdtest's POSIX file create, stat, and remove
-  phases and its reported mean operations per second. The upstream source
-  computes each rank's aggregate operation rate and reports max, min, mean,
-  and standard deviation.
+  phases and its reported per-iteration aggregate operation rate. For rates,
+  mdtest takes the slowest post-barrier rank rate, multiplies it by the rank
+  count, and summarizes that aggregate across internal iterations. With
+  `-i 1`, the per-iteration Max, Min, and Mean columns contain the same one
+  aggregate observation. The parser uses the Mean column from the matching
+  `SUMMARY rate` row.
 - Published use: metadata-service papers including IndexFS and InfiniFS use
   mdtest create/stat/remove rates; InfiniFS follows prior work in using
   zero-length files to isolate metadata performance.
-- Filesystem: a new local ext4 image for every cell. The image is formatted
-  with enough inodes for the declared namespace and mounted inside the guest.
+- Official FUSE baseline: libfuse 3.18.2, commit
+  `033844748010a3b8265bf1c90b9ae8ffe4cd9ca7`, using its unmodified
+  low-level `example/passthrough_ll.c`. Meson builds a release-mode static
+  libfuse and links the example against that pinned library, so no host
+  libfuse can enter the measured baseline.
+- Filesystem: every rank-count cell creates a 2 GiB sparse image under a
+  guest-local 4 GiB tmpfs, formats it as ext4 with 262,144 inodes and
+  `lazy_itable_init=0,lazy_journal_init=0`, and mounts it with `noatime`.
+  The source/target directory is a new empty `bench` directory under that
+  ext4 mount. The maximum formal cell creates 131,072 zero-length files.
 - Runtime: Open MPI 4.1.6 with one or four local ranks.
 - Necessary glue: one controller configures the logical view, launches the
-  unmodified mdtest binary, drops caches between official phases, validates the
-  resulting tree, and records BPF or FUSE engagement. No mdtest source patch is
-  allowed.
+  unmodified mdtest binary, remounts the official FUSE view between phases,
+  drops caches before stat and removal, validates the resulting tree, and
+  records BPF or FUSE engagement. No mdtest or libfuse passthrough source patch
+  is allowed in the timed comparison.
 
 ## Comparison
 
 ### Proposed mechanism
 
 `SELECT` attaches the existing `cgroup/namei_ext` policy to the mdtest process
-group. Lookup of one `bench` component under the exact logical parent selects a
-registered ext4 directory. File creation, stat, removal, inode lifetime, and
-all data and metadata semantics remain lower-ext4 operations.
+group. Lookup of the logical `view` component under
+`/run/namei-ext-mdtest/logical` selects the registered physical
+`/run/namei-ext-mdtest/ext4/bench` directory. File creation, stat, removal,
+inode lifetime, and all data and metadata semantics remain lower-ext4
+operations.
 
 ### Main baseline
 
 Feature-equivalent FUSE is the only main baseline. It exposes the same ext4
-directory at the same logical pathname through the project's multithreaded
-loopback implementation. It keeps
-`default_permissions,kernel_cache,attr_timeout=3600,entry_timeout=3600,negative_timeout=3600`
-and may use all four guest vCPUs. The implementation must provide every
-callback required by the admitted mdtest phases and record measured callback
-counts. FUSE is run because the paper needs a matched numerical comparison on
-this exact workload; citation alone cannot establish the cost of this policy.
+directory at the same logical pathname through the official libfuse 3.18.2
+low-level passthrough example on the patched kernel with no `namei_ext` program
+attached. It runs multithreaded with
+`default_permissions`, `cache=always`, `timeout=86400`, and `clone_fd`, which
+favor FUSE caching and multithreaded request receipt within each phase. The
+source's callback table covers the mdtest-required lookup, getattr, create,
+mkdir, unlink, rmdir, open, release, and readdir operations. FUSE is run because
+the paper needs a matched numerical comparison on this exact workload;
+citation alone cannot establish the cost of this policy.
+
+The FUSE daemon is recreated before create, stat, and remove. The view is
+unmounted after each phase, so no FUSE dentry, inode, or attribute cache can
+survive into the next phase. The lower ext4 filesystem remains mounted and
+retains the same namespace. This gives FUSE favorable caching within a phase
+while making the stat and remove phase starts comparable to the cache-dropped
+non-FUSE conditions.
 
 If FUSE matches or wins while the correctness and engagement gates pass, the
 paper cannot claim an RQ2 advantage for that operation.
@@ -123,21 +153,31 @@ paper cannot claim an RQ2 advantage for that operation.
 ### Controls
 
 - `unattached`: the same modified kernel and logical path with no policy. This
-  is the lower-bound control for total metadata-path cost.
+  is the lower-bound control for total metadata-path cost. The physical
+  `bench` directory is bind-mounted at logical `view`.
 - `PASS`: the same exact-parent attachment and operation mix, but the decision
-  continues ordinary lookup. This isolates dispatch and BPF policy cost.
+  continues ordinary lookup. The physical `bench` directory is bind-mounted at
+  logical `view`; the policy runs on `view` before normal lookup reaches that
+  mount. This isolates dispatch and BPF policy cost.
 - `SELECT`: the proposed registered-target path.
+- `stock`: the matched stock kernel with the same ext4 image and logical bind
+  mount. This controls whether the patch changes cold or mutating metadata even
+  while unattached.
 
-The matched-stock kernel is not rerun. The existing 60-boot host-pinned FxMark
-confirmation already answers the unused cache-hot fast-path question, while
-the present uncertainty is active-policy cost versus FUSE. Filebench is not
-added because it would introduce a second weaker workload without changing the
-decision.
+Stock and patched kernel configurations are identical except for
+`CONFIG_NAMEI_EXT`. All five conditions use the same ext4 format, logical path
+length, item count, rank placement, phase commands, cache-drop sequence, and
+host CPU pin. Filebench is not added because it would introduce a weaker
+second workload without changing the paper decision.
 
-All four conditions boot the same modified kernel, use the same ext4 format,
-logical path length, item count, rank placement, phase commands, cache-drop
-sequence, and host CPU pin. The FUSE daemon's CPU time and callback counts are
-reported separately rather than hidden from the comparison.
+The guest has eight vCPUs. mdtest ranks are confined to vCPUs 0--3 in every
+condition. The multithreaded FUSE daemon is confined to vCPUs 4--7, so the
+four-rank client receives the same four cores as every non-FUSE condition and
+the baseline is not starved of daemon CPU. The QEMU vCPUs are pinned in order
+to homogeneous host CPUs 8--15, all of which report the same 3.2 GHz maximum
+frequency and distinct core IDs. Turbo is disabled and the performance
+governor is enabled. Daemon CPU time and context switches are reported
+separately rather than hidden from the comparison.
 
 ## Workload And Metrics
 
@@ -145,28 +185,62 @@ Each cell runs unmodified mdtest with POSIX, file-only, unique-per-rank
 directories, one iteration, and zero-length files:
 
 ```text
-mdtest -a POSIX -F -u -i 1 -n <items-per-rank>
+timeout --signal=TERM --kill-after=10s 900s \
+  taskset -c 0-3 mpirun --allow-run-as-root \
+  --bind-to core --map-by core --report-bindings -np <ranks> \
+  mdtest -a POSIX -F -u -i 1 -n <items-per-rank> \
+  --warningAsErrors \
+  -d /run/namei-ext-mdtest/logical/view
 ```
+
+Before each FUSE phase, the controller launches the pinned binary in the
+foreground and confines all of its threads to guest vCPUs 4--7:
+
+```text
+taskset -c 4-7 passthrough_ll -f \
+  -o source=/run/namei-ext-mdtest/ext4/bench \
+  -o default_permissions,cache=always,timeout=86400,clone_fd \
+  /run/namei-ext-mdtest/logical/view
+```
+
+Mount readiness has a 30-second timeout. Every mdtest phase has the 900-second
+timeout shown above; FUSE shutdown has a 30-second timeout; and each KVM boot
+has a 7,200-second hard timeout. Any timeout fails the cell or boot.
 
 The controller invokes the official phases separately:
 
-1. create-only (`-C`);
-2. verify exactly `items * ranks` regular files and `ranks + 2` directories;
-3. `sync`, write `3` to `/proc/sys/vm/drop_caches`, then stat-only (`-T`);
+1. mount or select the logical view and run create-only (`-C`);
+2. verify the source-derived exact file and directory cardinality;
+3. for FUSE, unmount the create view; then `sync`, write `3` to
+   `/proc/sys/vm/drop_caches`, remount FUSE when applicable, and run stat-only
+   (`-T`);
 4. verify the namespace is unchanged;
-5. `sync`, write `3` to `/proc/sys/vm/drop_caches`, then remove-only (`-r`);
+5. unmount FUSE when applicable; then `sync`, write `3` to
+   `/proc/sys/vm/drop_caches`, remount FUSE when applicable, and run
+   remove-only (`-r`);
 6. verify that the ext4 test root is empty.
 
 The split invocation preserves mdtest's phase implementations while making the
-stat and removal phases explicitly cache-cold. The raw record includes
-`/proc/sys/fs/dentry-state`, `/proc/sys/fs/inode-state`, `/proc/meminfo`, and
-the exact successful cache-drop events before interpreting those phases.
+stat and removal phases explicitly cache-cold. The source preflight must first
+confirm that the separate 4.0.0 invocations create, stat, and remove the same
+names without an mdtest patch. Raw output preserves each mdtest stdout/stderr,
+mount state, `/proc/meminfo` before and after each drop, and the requested
+cache-drop value, requested bytes, actual `write(2)` return value, and `errno`.
 
 Primary metrics:
 
-- mdtest-reported mean file-creation operations/s;
-- mdtest-reported mean cold-file-stat operations/s;
-- mdtest-reported mean cold-file-removal operations/s.
+- mdtest-reported per-iteration aggregate file-creation operations/s;
+- mdtest-reported per-iteration aggregate cold-file-stat operations/s;
+- mdtest-reported per-iteration aggregate cold-file-removal operations/s.
+
+The parser first locates `SUMMARY rate: (of 1 iterations)`, then matches exactly
+one `File creation`, `File stat`, or `File removal` row. With default
+per-rank-detail output disabled, each row must contain exactly four numeric
+columns: per-iteration Max, Min, Mean, and Std Dev. The parser records the third
+numeric column, Mean. Because `-i 1`, it also requires Max, Min, and Mean to
+agree within printed precision and Std Dev to be zero. It rejects duplicate or
+missing summaries, non-finite values, and any warning or error output. It does
+not recompute throughput from controller wall time.
 
 Primary comparison: paired `SELECT/FUSE` median ratio and 95% bootstrap
 confidence interval for every operation and rank count.
@@ -175,24 +249,33 @@ Secondary decomposition:
 
 - `PASS/unattached` and `SELECT/PASS` ratios;
 - client and FUSE daemon user/system CPU time and context switches;
-- FUSE callback counts by operation;
-- BPF program run count and run time, collected after the timed phases;
+- FUSE daemon liveness and `/dev/fuse` ownership during each phase;
+- BPF attachment identity and an untimed post-phase operation-attribution
+  probe;
 - cache-state observations immediately before and after each drop.
 
 Correctness gates timing:
 
-- every mdtest phase exits zero and reports the expected single nonzero
-  operation;
+- every mdtest phase exits zero and reports the expected nonzero create, stat,
+  or remove rate with the other file-operation rates zero;
+- every phase uses `--warningAsErrors`, and neither stdout nor stderr contains
+  an mdtest warning or error;
 - exact file and directory cardinality holds after create and stat;
-- removal leaves the test root empty;
-- the process leader and all MPI descendants execute in the declared cgroup
-  for attached conditions;
+- after create and stat, recursive cardinality including the physical `bench`
+  root is exactly `items * ranks` regular files and `ranks + 2` directories;
+  after removal, `bench` exists and has no children;
+- in every condition, the process leader and the exact
+  `OMPI_COMM_WORLD_RANK=0..ranks-1` set are observed in the declared cgroup;
 - `PASS` and `SELECT` retain one stable attached program identity;
-- `PASS` and `SELECT` have positive, operation-attributable policy counts;
+- the untimed `PASS` and `SELECT` probes exercise the attached program after
+  each measured phase without enabling BPF runtime statistics during timing;
 - `SELECT` resolves the logical root to the registered ext4 object;
-- FUSE is mounted for the complete measured lifecycle and records positive
-  create/getattr/unlink/rmdir request counts;
-- lower ext4 is mounted in every condition, all cleanup completes, and no
+- every FUSE phase uses the official low-level passthrough binary, has a live
+  daemon that owns `/dev/fuse`, and exposes FUSE_SUPER_MAGIC at the logical
+  path; exact lower-tree creation and removal prove the mounted path forwarded
+  the mutating operations;
+- the phase row contains the actual ext4 `statfs(2)` filesystem type, lower
+  ext4 is mounted in every condition, all cleanup completes, and no
   residual BPF attachment, FUSE mount, open `/dev/fuse` descriptor, loop
   device, or workload cgroup remains;
 - the declared kernel failure scan has no project-relevant diagnostic.
@@ -201,18 +284,23 @@ The benchmark records source and kernel Git commits, config, commands, raw
 stdout/stderr, mount information, observations, CPU placement, and tool
 versions.
 
+The owning target validates raw observations and publishes analysis while the
+run state is still `running`. Only after successful atomic analysis publication
+does it mark the run `completed`; the analysis target rejects completed runs
+and pre-existing final analysis output.
+
 ## Planned Runs
 
 | Run group | Role | Conditions | Ranks | Items/rank | Repetitions | Decision consequence |
 | --- | --- | --- | --- | ---: | ---: | --- |
-| real preflight | dependency | unattached, PASS, SELECT, FUSE | 1, 4 | 4,096 | 1 paired block | proves the exact source, ext4, cache-drop, policy, FUSE, MPI, parser, and cleanup paths run |
-| formal matrix | decisive | unattached, PASS, SELECT, FUSE | 1, 4 | 32,768 | 10 paired blocks | supplies six primary operation/rank comparisons and active-cost decomposition |
+| real preflight | dependency | stock, unattached, PASS, SELECT, FUSE | 1, 4 | 4,096 | 1 paired block | proves the exact source, ext4, cache-drop, policy, FUSE, MPI, parser, CPU placement, and cleanup paths run |
+| formal matrix | decisive | stock, unattached, PASS, SELECT, FUSE | 1, 4 | 32,768 | 10 paired blocks | supplies six primary operation/rank comparisons and active-cost decomposition |
 
 Each condition receives a fresh KVM boot. Conditions rotate across blocks.
 Within a boot, the one- and four-rank cell order alternates by block, and every
 cell receives a new ext4 image. Formal execution therefore consists of 40
-fresh boots and 80 complete mdtest lifecycles; no preflight sample enters the
-formal analysis.
+fresh patched-kernel boots plus ten stock-kernel boots and 100 complete mdtest
+lifecycles; no preflight sample enters the formal analysis.
 
 ## Execution
 
@@ -223,39 +311,56 @@ formal analysis.
   `results/experiments/mdtest-cold-metadata-rq2-preflight/<RUN_ID>/`.
 - Formal result root:
   `results/experiments/mdtest-cold-metadata-rq2/<RUN_ID>/`.
-- A preflight passes only when all eight cells complete and an independent
+- A preflight passes only when all ten cells complete and an independent
   reviewer recomputes the source, correctness, engagement, cache-drop, and
   cleanup evidence.
 - At most three real preflight attempts are allowed. Host build failures before
   result-root creation do not count. A failed KVM root counts and remains
   immutable.
 - The formal matrix is authorized only after implementation review and a valid
-  preflight review. It completes only when all 80 cells and all 40 boots
+  preflight review. It completes only when all 100 cells and all 50 boots
   terminate and the analysis includes every declared cell.
 
 ## Interpretation
 
+Validity is decided first. Any correctness, engagement, source, cache-drop,
+cleanup, comparison-fairness, or matrix-completion failure makes the run
+invalid/incomplete, and no performance verdict is assigned. For a valid complete
+matrix:
+
 - Positive: all six `SELECT/FUSE` intervals are above one.
 - Contradictory: at least one interval is entirely below one.
-- Mixed: at least one interval crosses one and none is entirely below one, or
-  operation directions differ.
-- Invalid/incomplete: any correctness, engagement, source, cache-drop,
-  cleanup, comparison-fairness, or matrix-completion gate fails.
+- Mixed: no interval is entirely below one and at least one interval crosses
+  one.
 
 The target paper figure groups create, cold stat, and cold remove by rank,
 normalized to FUSE with confidence intervals. A companion table reports raw
-operations/s, active-policy ratios, BPF runs, FUSE callbacks, and CPU cost.
+operations/s, active-policy ratios, untimed BPF attribution, FUSE daemon
+resource use, and client CPU cost.
 No geomean can turn a mixed or contradicted cell into a positive result.
 
 ## Reproducibility Notes
 
-- IOR/mdtest: 3.3.0,
-  `9959a615fb7ca400a5b21b93be76f466cbb42b95`.
+- IOR/mdtest: 4.0.0,
+  `967a9f65109760db8a3ac14a7fdd007f337d2960`.
+- libfuse: 3.18.2,
+  `033844748010a3b8265bf1c90b9ae8ffe4cd9ca7`.
 - Open MPI: 4.1.6 in the current build/runtime environment.
+- IOR build: `CC=mpicc CFLAGS=-O2`, with the resulting unmodified `mdtest`
+  binary and build log captured.
+- libfuse build: Meson release mode with
+  `default_library=static`, `examples=true`, `tests=false`, `utils=false`, and
+  `enable-io-uring=false`; the static link and version output are checked
+  before KVM.
 - Kernel: the clean current modified-kernel commit captured by the run.
-- Guest: four vCPUs, 8 GiB memory, host CPUs 4--7, turbo disabled, performance
-  governor, and the existing stable-TSC KVM command line.
+- Guest: eight vCPUs, 8 GiB memory, host CPUs 8--15, turbo disabled,
+  performance governor, and the existing stable-TSC KVM command line.
 - Formal analysis bootstrap seed: `20260729`.
-- The source-feasibility probe built unmodified mdtest 3.3.0 with the available
-  Open MPI toolchain and completed separate create, stat, and remove commands
-  with one and two ranks. It is dependency evidence only.
+- Formal analysis uses 10,000 paired bootstrap resamples and the percentile
+  2.5th and 97.5th quantiles for each median-ratio interval.
+- Expected wall time is two to eight hours for the complete 50-boot formal
+  matrix on the current host; this estimate is scheduling information, not a
+  correctness or result gate.
+- The earlier source-feasibility probe covered mdtest 3.3.0 only and is now
+  superseded. The real preflight must build and exercise the pinned 4.0.0
+  source and official libfuse 3.18.2 baseline.

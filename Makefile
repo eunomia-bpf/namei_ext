@@ -19,6 +19,7 @@ include $(ROOT_DIR)/configs/benchmarks/phase1.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_readdir.mk
+include $(ROOT_DIR)/configs/benchmarks/mdtest_cold_metadata.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace_source_task.mk
 include $(ROOT_DIR)/configs/benchmarks/application_file_sharing.mk
@@ -51,6 +52,7 @@ include $(ROOT_DIR)/mk/experiments/kubernetes_configmap_publication.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
+include $(ROOT_DIR)/mk/experiments/mdtest_cold_metadata.mk
 
 .DEFAULT_GOAL := phase1
 
@@ -100,6 +102,12 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 	fxmark-fast-path-report experiment-fxmark-fast-path \
 	kvm-fxmark-readdir-preflight kvm-fxmark-readdir \
 	fxmark-readdir-report experiment-fxmark-readdir \
+	mdtest-cold-metadata-source mdtest-cold-metadata-build \
+		mdtest-cold-metadata-source-feasibility \
+		kvm-mdtest-cold-metadata-preflight kvm-mdtest-cold-metadata-rq2 \
+		mdtest-cold-metadata-analyze \
+		mdtest-cold-metadata-analysis-test \
+		experiment-mdtest-cold-metadata-rq2 \
 	kvm-service-config-rotation-preflight kvm-service-config-rotation \
 	service-config-rotation-report experiment-service-config-rotation \
 	experiments current-experiment-gates formal-case-studies formal-performance \
@@ -267,6 +275,10 @@ help:
 	@printf '%s\n' '                       run one host-pinned corrected MRDL/MRDM five-condition block'
 	@printf '%s\n' '  make experiment-fxmark-readdir'
 	@printf '%s\n' '                       run the frozen corrected directory-enumeration matrix and report'
+	@printf '%s\n' '  make kvm-mdtest-cold-metadata-preflight'
+	@printf '%s\n' '                       run one five-condition mdtest create/cold-stat/cold-remove preflight block'
+	@printf '%s\n' '  make experiment-mdtest-cold-metadata-rq2'
+	@printf '%s\n' '                       run the reviewed ten-block mdtest cold/mutating metadata matrix'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Historical experiment reproduction:'
 	@printf '%s\n' '  make legacy-build-cache'
