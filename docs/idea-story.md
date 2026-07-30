@@ -58,10 +58,35 @@ implementation boundary differs from custom or stackable filesystem ownership.
 
 ## Contribution And Evidence Program
 
-Primary contribution: the design and implementation of `namei_ext`, a
-`sched_ext`-style VFS name-resolution extension point whose eBPF policy selects
-bounded lookup and directory-enumeration behavior while the kernel and lower
-filesystem retain VFS object and data-path ownership.
+Primary contribution: the design and Linux implementation of `namei_ext`, a
+VFS mechanism that lets verified policy select an existing object during
+pathname resolution without transferring filesystem ownership to that policy.
+The implementation exposes one bounded action vocabulary at component lookup,
+final lookup, and directory iteration. Each policy remains responsible for
+coherent lookup/readdir results, which workload oracles test. The mechanism
+preserves registered target lifetime across RCU/ref-walk and concurrent
+replacement, resumes normal VFS permission/open completion, and bypasses
+unattached or unmanaged paths before policy-context construction. The
+`sched_ext` analogy explains the policy-versus-mechanism ownership split, but
+adding another BPF interface is not the contribution.
+
+### Why the mechanism is nontrivial
+
+1. Linux name resolution is split across intermediate-component walking,
+   final-component open/create handling, and lower-filesystem directory
+   iteration. Independent callbacks can make lookup and readdir disagree.
+2. Cache-hot name resolution uses RCU-walk. Policy cannot take sleeping locks
+   or ordinary object references there. Successful in-place conversion must not
+   reinvoke policy merely to apply its action, while a complete VFS restart may
+   execute policy again; the ABI is at-least-once rather than exactly-once
+   across that restart.
+3. BPF cannot safely return arbitrary pointers or path strings. Registered
+   `struct path` objects require opaque IDs, RCU-safe replacement, borrowed
+   lifetime during RCU-walk, and existing namei sequence validation before
+   stable use.
+4. The decision point is on every pathname component. A static key and
+   conservative RCU exact-parent filter preserve the ordinary VFS path when the
+   extension is unused or the current parent is unmanaged.
 
 Evidence program:
 
@@ -118,6 +143,13 @@ Evidence program:
   manifests. Runtime probes observed 13 stackable
   filesystem operation classes, while an already selected `namei_ext`
   descriptor continued through lower-file operations without re-entering BPF.
+- Sandboxed Application File Sharing RQ1 source control:
+  `results/experiments/application-file-sharing-source-oracle-rq1/20260730T-xdg-source-formal01/`
+  completed three fresh KVM boots against official `xdg-document-portal`
+  1.18.4. All 15 official-source states and 15 `namei_ext` states agreed
+  operation by operation across grant, cross-application isolation, and
+  immediate revoke. Both mechanisms preserved their direct lower object;
+  `namei_ext` additionally matched logical and registered lower object identity.
 - Kubernetes ConfigMap publication RQ1:
   `results/experiments/kubernetes-configmap-publication-rq1/20260729T-kubernetes-configmap-publication-rq1-01/`
   completed three fresh KVM boots against the official v1.30.0
@@ -156,6 +188,7 @@ Evidence program:
 | 2026-07-25 | Use cases grounded in industrial demand evidence (`docs/tmp/2026-07-25-usecase-industrial-demand-survey.md`): six domains re-implemented lookup-time object selection at wrong layers. Service/config rotation promoted to the third use case; build/cache repositioned as access-point view governance; remote filesystem cache recorded as motivation evidence. |
 | 2026-07-29 | The headline Agent workspace RQ1 case was deepened with released SWE-Factory-Gym task `pallets__click-2622`: three fresh KVM boots passed 12/12 policy-backed task states and 6/6 physical source controls across base/completed, concurrent, switch, rollback, and withdrawal checks. The claim remains existing-object workspace view selection, not complete AgentFS or end-to-end agent execution. |
 | 2026-07-29 | Kubernetes ConfigMap publication became the fifth reviewed RQ1 workflow: three fresh KVM boots passed the official `AtomicWriter` V0/V1/no-op/rollback payload-view oracle with stable root and old descriptors, non-root mode-sensitive reads, exact selected-object identity, and unchanged lower generations. Full projected-volume materialization and service reload remain outside the claim. |
+| 2026-07-30 | Sandboxed Application File Sharing was upgraded from a documentation-derived probe to an official-source control. Three fresh KVM boots ran `xdg-document-portal` 1.18.4 first and `namei_ext` second; all 15 source and 15 `namei_ext` grant/isolation/revoke states agreed exactly, with lower-object preservation and clean midpoint isolation. |
 
 ## Guardrails
 

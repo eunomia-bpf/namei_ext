@@ -1,6 +1,5 @@
 \documentclass[10pt]{article}
 
-\usepackage[UTF8]{ctex}
 \usepackage[margin=1in]{geometry}
 \usepackage{array}
 \usepackage{graphicx}
@@ -15,7 +14,7 @@
 \newcommand{\file}[1]{\path{#1}}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
-\title{\namei: A \code{sched_ext}-Style Extension Point for VFS Name Resolution}
+\title{\namei: Programmable VFS Name Resolution without Filesystem Ownership}
 \author{Anonymous}
 \date{}
 
@@ -24,41 +23,37 @@
 
 \begin{abstract}
 Modern agent, build, and service systems increasingly construct task-specific
-filesystem views around ordinary tools. The risk is binding a pathname to the
-wrong lower object, which can corrupt an agent workspace, reuse stale build
-state, or expose an unintended service configuration. The root cause is a
-boundary mismatch in which workload state changes pathname-to-object selection
-during name resolution, while permissions, data operations, writes,
-persistence, and consistency should remain lower-filesystem responsibilities.
-Existing mechanisms either materialize a namespace before lookup, mediate access
-through security hooks, or cross into broader FUSE, stackable, or custom
-filesystem ownership. We argue that the missing narrow boundary is policy at VFS
-name resolution, where pathname-to-object selection and directory visibility are
-decided. Realizing this boundary is hard because policy must run at lookup and
-readdir, return bounded kernel-validated actions, and remain comparable under the
-same correctness condition against FUSE and broader filesystem boundaries.
-\namei implements this ownership split as a \code{sched_ext}-style VFS extension point.
-One \code{cgroup/namei_ext} decision function lets eBPF choose pass, redirect,
-hide, and \code{SELECT_TARGET} actions over kernel-registered lower paths while
-the kernel retains filesystem ownership. Five source-derived RQ1 workflows
-pass reviewed KVM oracles. In the headline Agent case, two concurrent process
-groups select different existing Click workspace roots at one pathname; a
-released task observes 39/40 tests on the base view and 40/40 on the completed
-view, and switch/rollback changes both object identity and task outcome.
-Supporting workflows cover sandboxed application sharing, Bazel action views,
-the already-materialized payload-view subset of Kubernetes
-\code{AtomicWriter}, and toolchain environments. On the matched Agent
-lifecycle, median latency is 5.51\,\(\mu\)s versus
-62.64\,\(\mu\)s for FUSE. On cache-hot FxMark, \code{SELECT} delivers
-1.052--1.088\(\times\) cached-FUSE throughput across three path-walk tests,
-while a separate 60-boot experiment meets its predeclared
-patched-unattached fast-path criterion. On corrected FxMark directory
-enumeration, \code{SELECT} delivers 2.20--3.66\(\times\) FUSE throughput in
-five of six cells; at four shared-directory workers, the two are
-indistinguishable.
-Finally, a matched Wrapfs-derived experiment passes 37/37 workspace oracles and
-21/21 fault cells in each of three boots while demonstrating the broader
-filesystem-method surface owned by the stackable implementation.
+filesystem views around ordinary tools. Binding a pathname to the wrong lower
+object can corrupt an agent workspace, reuse stale build state, or expose an
+unintended service configuration. The root cause is a boundary mismatch:
+workload state changes pathname-to-object selection during name resolution,
+while permissions, data operations, writes, persistence, and consistency
+should remain lower-filesystem responsibilities. Existing mechanisms either
+construct a namespace before lookup, mediate access without selecting another
+object, or cross into broader FUSE, stackable, or custom filesystem ownership.
+We argue that the missing narrow boundary is programmable object selection at
+VFS name resolution. Realizing this boundary is not a matter of inserting a
+callback: Linux name resolution spans intermediate and final components plus
+directory iteration, cache-hot walks run under RCU, selected objects can be
+replaced concurrently, and unrelated lookups cannot pay policy-dispatch cost.
+\namei places one bounded eBPF decision at component lookup, final lookup, and
+directory iteration. The kernel validates actions over registered paths,
+preserves target lifetime across RCU/ref-walk, and resumes ordinary VFS
+completion; an early scope filter bypasses unrelated lookups. Five
+source-controlled or source-derived workflows, including official
+\code{xdg-document-portal} 1.18.4, pass reviewed KVM oracles. In
+the headline Agent case,
+two concurrent process groups select different Click workspace roots
+at one pathname; a released task observes 39/40 tests on the base view and
+40/40 on the completed view, while switch and rollback change object identity
+and task outcome. Against feature-equivalent FUSE, the Agent lifecycle takes
+5.51\,\(\mu\)s versus 62.64\,\(\mu\)s, and cache-hot FxMark
+\code{SELECT} reaches 1.052--1.088\(\times\) FUSE throughput; a separate
+60-boot experiment meets its patched-unattached fast-path criterion. Directory
+enumeration reaches 2.20--3.66\(\times\) FUSE throughput in five of six cells,
+and a matched Wrapfs-derived experiment passes 37/37 workspace oracles and
+21/21 fault cells in each of three boots while exposing the broader
+filesystem-method boundary.
 \end{abstract}
 
 \input{sections/01-introduction}

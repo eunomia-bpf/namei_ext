@@ -60,12 +60,13 @@ the source system or lower filesystem.
 \hline
 Workload & Source oracle & \namei evidence & Result evidence \\
 \hline
-Application file sharing (supporting)~\cite{xdg_documents_portal} & The XDG
-Documents portal grant state selects one existing host document for one
-application and hides it from another. & \namei selects or hides the document
-by application and grant state. & Three fresh KVM boots passed 15/15 states:
-3 granted views, 12 hidden views, exact logical/lower object identity, and
-unchanged lower and unrelated objects. \\
+Application file sharing (supporting)~\cite{xdg_documents_portal} & Official
+\code{xdg-document-portal} 1.18.4 executes \code{Add}, grant, cross-application
+isolation, and revoke through its FUSE view. & \namei selects or hides the same
+existing-object view by application and grant state. & Three fresh KVM boots
+passed 15/15 official-source and 15/15 \namei states with exact operation and
+enumeration agreement. The \namei visible path matched its registered lower
+object; both mechanisms preserved their direct lower object. \\
 Agent workspaces~\cite{agentfs_repo,swe_factory_repo,swe_factory_gym_dataset} & AgentFS-derived branch
 state selects staged/base objects and hides whiteouts; a released Click task
 distinguishes base from completed source. & \namei selects or hides existing
@@ -109,6 +110,42 @@ lookup/readdir coherence and lower-filesystem behavior for each admitted source
 oracle. A workload is outside \namei's boundary if the oracle needs synthetic
 contents, data-path mediation, write-conflict handling, or custom metadata
 ownership in the common path.
+
+The VFS construction invariants are independent of any one source workflow.
+Table~\ref{tab:mechanism-validation} therefore tests the RCU path, registered
+target lifetime, parent prefilter, and return to ordinary VFS completion
+directly in the modified-kernel KVM.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\begin{tabular}{@{}L{0.22\linewidth}L{0.45\linewidth}L{0.25\linewidth}@{}}
+\hline
+Construction invariant & Modified-kernel KVM check & Result \\
+\hline
+RCU/ref-walk selection & Force \code{RESOLVE_CACHED} for a final selected
+directory and an intermediate selected component. & Both entered
+selected-target handling from RCU-walk and completed after in-place
+legitimization, without a full path-walk restart. \\
+Registered-target lifetime & Replace one target ID 128 times while another
+process continuously reads through the selected pathname. & Every read
+observed one complete old or new payload. \\
+Parent prefilter & Attach a policy to one exact parent; probe lookup and
+readdir under that parent and a second, unrelated parent. & The managed parent
+was filtered and the unrelated parent retained the lower view; a separate
+zero-invocation control confirmed policy dispatch was bypassed. \\
+Ordinary VFS completion & Select an existing directory and file, then execute
+stat, open/read, and directory enumeration through the logical path. & The
+functional suite observed expected success, errors, bytes, and directory
+entries; source-workload oracles separately checked identity and lower-object
+preservation. \\
+\hline
+\end{tabular}
+\caption{Mechanism checks underlying RQ1. These checks validate construction
+invariants; they are not additional workload or performance claims.}
+\label{tab:mechanism-validation}
+\end{table}
+\FloatBarrier
 
 \subsection{RQ2: Cost Versus FUSE}
 

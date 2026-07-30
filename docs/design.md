@@ -1,6 +1,6 @@
 # Design
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 Current status: frozen BUILD_AND_EVALUATE contract after BOOTSTRAP step 0005 in
 `docs/tmp/bootstrap/step-0005-20260714T174151-0700/step-report.md`.
 
@@ -14,6 +14,14 @@ is policy: an eBPF program chooses bounded lookup and directory-enumeration
 actions. The non-programmable ownership stays with the kernel and lower
 filesystem: path walking, dentries, inodes, permissions, file operations, page
 cache, writes, persistence, and consistency.
+
+The central design problem is not exposing another BPF attachment type. It is
+letting policy select an existing VFS object without taking over the path walk
+or filesystem semantics. That requires one decision contract across
+intermediate components, final lookup/open, and directory iteration;
+action-specific handling for RCU/ref-walk; registered-target lifetime across
+concurrent replacement; normal VFS permission/open completion after selection;
+and an early fast path for unattached or unmanaged parents.
 
 ## Position
 
@@ -32,6 +40,15 @@ The design sits in a four-point mechanism sequence:
 The paper should not argue that these mechanisms are invalid. It should ask
 when their broader boundary is unnecessary because the oracle-relevant behavior
 is only pathname-to-object selection or visibility over existing lower objects.
+ExtFUSE and FUSE-BPF are the closest architectural challenge: both can execute
+BPF-assisted lookup or backing-object logic, but do so inside a mounted FUSE
+filesystem boundary. The `namei_ext` distinction must be stated in ownership
+terms: ordinary VFS paths remain the selected objects, RCU/ref-walk and target
+replacement are VFS responsibilities, normal permission/open completion
+resumes after selection, and unrelated VFS parents can bypass policy before
+dispatch. FUSE-BPF's `root_dir`/`no_daemon` passthrough mode means daemon
+elimination is not the distinction; the remaining difference is the mounted
+FUSE instance, FUSE inodes, and filesystem-operation forwarding surface.
 
 ## Policy Contract
 
@@ -44,19 +61,37 @@ directory enumeration. `SELECT_TARGET` uses a kernel-held registered `struct
 path` selected by an opaque target ID. An intermediate selected target must be
 a directory; a final target may be an existing regular file or directory.
 Final file lookup, stat, access, ordinary open, and exec continue through normal
-VFS completion and lower-filesystem file operations. Create-through-select,
-symbolic-link and special-file targets, type-incompatible use, and synthetic
-parent-directory aliases such as listing an otherwise nonexistent `ws` entry
-from its parent fail closed or remain unsupported.
+VFS completion and lower-filesystem file operations. Both `REDIRECT` and
+`SELECT_TARGET` reject `LOOKUP_CREATE`; symbolic-link and special-file targets,
+type-incompatible use, and synthetic parent-directory aliases such as listing
+an otherwise nonexistent `ws` entry from its parent fail closed or remain
+unsupported.
 
-Registration grants object-capability reachability: the logical path is checked
-for traversal, and the selected target inode and mount retain their ordinary
-permission checks, but lookup does not replay traversal through the target's
-physical parents. The registry pins object identity rather than a live physical
-pathname; rename or unlink does not revoke an existing registration, so the
-controller must replace or clear it. The policy does not synthesize file
-contents, allocate VFS objects, mediate reads/writes after open, persist custom
-metadata, or implement distributed indexes or cross-path transactions.
+During RCU-walk, a selected target is borrowed from an RCU-published registry.
+The registry retains the target path until a grace period after replacement or
+removal. Existing namei dentry and mount sequence validation obtains stable
+references or rejects a changed walk before the selected object is used outside
+RCU. Ref-walk takes independent path references directly.
+
+Successful in-place RCU-to-ref conversion applies the saved action without
+reinvoking the BPF program. If namei returns `-ECHILD`, the VFS may restart the
+complete path walk and execute policy again. The ABI is therefore at-least-once
+across a full VFS restart; policy-visible side effects must be idempotent.
+
+The common path first checks the global BPF static key, then a conservative RCU
+index of exact managed parents. Unattached and unrelated paths bypass context
+construction and cgroup discovery. A positive prefilter result still runs the
+authoritative attachment and scope checks; a false negative is forbidden.
+
+Registration makes the existing object selectable by opaque ID. The logical
+path is checked for traversal, and the selected target inode and mount retain
+their ordinary permission checks, but lookup does not replay traversal through
+the target's physical parents. The registry pins object identity rather than a
+live physical pathname; rename or unlink does not revoke an existing
+registration, so the controller must replace or clear it. The policy does not
+synthesize file contents, allocate VFS objects, mediate reads/writes after open,
+persist custom metadata, or implement distributed indexes or cross-path
+transactions.
 
 The requirement-to-design mapping is:
 
@@ -64,7 +99,7 @@ The requirement-to-design mapping is:
 | --- | --- | --- |
 | State-conditioned lookup/readdir policy | Policy invoked at lookup and directory-enumeration events | Decisions happen at the affected name operation. |
 | Preserve lower-filesystem semantics | Return only path-view actions over lower objects | Data, writes, permissions, page cache, and persistence stay lower-filesystem owned. |
-| Lookup/readdir coherence | Use one decision contract for both event types | Directory visibility and lookup selection agree. |
+| Lookup/readdir coherence | Use one action vocabulary for both event types and test both directions in each workload oracle | The policy, not the kernel, is responsible for making directory visibility agree with lookup selection. |
 | Bounded/verifiable policy | Use eBPF verifier, bounded output fields, and kernel validation | Malformed or unsupported decisions fail visibly. |
 | Per-workload scope | Attach at `cgroup/namei_ext` | Workspaces, agents, builds, and services can change policy without replacing the filesystem. |
 | Observable provenance | Preserve per-operation events and raw artifacts | Reports derive from raw trace and oracle evidence. |

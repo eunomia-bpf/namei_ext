@@ -1,7 +1,7 @@
 # Paper Evaluation Notes
 
 Status: routing note for the paper draft.
-Last updated: 2026-07-29.
+Last updated: 2026-07-30.
 
 The old process-heavy evaluation plan was archived to
 `docs/tmp/2026-07-25-archived-process-docs/evaluation.md` on 2026-07-25 and
@@ -20,7 +20,7 @@ skill, not by this repository.
 | Raw logs, JSON/JSONL, benchmark outputs, generated summaries | `results/` |
 | Current handoff pointer | `research/STATE.md` |
 | Complete experiment inventory | `docs/tmp/2026-07-28-complete-experiment-status.md` |
-| Formal application file sharing RQ1 review | `docs/tmp/2026-07-29-application-file-sharing-rq1-formal01-result-review.md` |
+| Formal application file sharing source-oracle RQ1 review | `docs/tmp/2026-07-30-application-file-sharing-source-oracle-rq1-formal01-result-review.md` |
 | Formal Agent source-task RQ1 review | `docs/tmp/2026-07-29-agent-workspace-source-task-rq1-formal01-result-review.md` |
 | Formal Agent workspace RQ3 review | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 | Formal corrected FxMark readdir review | `docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md` |

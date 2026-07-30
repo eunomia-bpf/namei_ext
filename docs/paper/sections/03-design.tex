@@ -21,25 +21,68 @@ kernel validation.
 \begin{figure}[t]
 \centering
 \scriptsize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{c c c c c}
-\fbox{\begin{tabular}{c}workload\\cgroup\end{tabular}} &
-\begin{tabular}{c}$\longrightarrow$\\lookup/readdir\end{tabular} &
-\fbox{\begin{tabular}{c}VFS\\name resolution\end{tabular}} &
-\begin{tabular}{c}$\longrightarrow$\\event\end{tabular} &
-\fbox{\begin{tabular}{c}eBPF\\policy\end{tabular}} \\
-&&&& $\downarrow$ \\
-\fbox{\begin{tabular}{c}lower FS owns\\dentries, inodes, data, writes\end{tabular}} &
-\begin{tabular}{c}$\longleftarrow$\\ordinary VFS path\end{tabular} &
-\fbox{\begin{tabular}{c}kernel validates\\bounded action\end{tabular}} &
-\begin{tabular}{c}$\longleftarrow$\\pass/redirect/hide/select\end{tabular} &
-\fbox{\begin{tabular}{c}policy output\\no FS methods\end{tabular}}
-\end{tabular}
-\caption{\namei keeps policy at VFS name resolution. The policy chooses bounded
-path-view actions, while the kernel and lower filesystem continue to own
-filesystem objects and data semantics.}
+\fbox{\parbox{0.94\linewidth}{
+\centering
+\textbf{Linux VFS name-resolution machinery}\\[2pt]
+\begin{tabular}{@{}c|c|c@{}}
+component walk & final open/create & lower directory iterator \\
+\end{tabular}\\[3pt]
+static key and exact-parent filter: disabled or unrelated paths continue
+without context construction\\[3pt]
+$\downarrow$ managed parent\\[-2pt]
+\fbox{\parbox{0.82\linewidth}{
+\centering
+one eBPF decision contract supplies policy for \code{LOOKUP} or
+\code{READDIR}\\
+\code{PASS}, \code{HIDE}, bounded component \code{REDIRECT}, or registered
+target ID
+}}\\[3pt]
+$\downarrow$ kernel action handling\\[-2pt]
+\begin{tabular}{@{}c|c|c@{}}
+\begin{tabular}{c}\code{PASS}/\code{REDIRECT}\\stay in or convert\\the current walk\end{tabular} &
+\begin{tabular}{c}\code{SELECT_TARGET}\\borrow registered path\\under RCU, then validate\end{tabular} &
+\begin{tabular}{c}\code{READDIR}\\filter lower entries\\preserve iterator position\end{tabular} \\
+\end{tabular}\\[3pt]
+$\downarrow$\\[-2pt]
+ordinary VFS permission, path-walk, open, and iterator completion\\[2pt]
+$\downarrow$\\[-2pt]
+lower filesystem retains dentries, inodes, data, writes, page cache,
+persistence, and consistency
+}}
+\caption{\namei changes policy inside existing VFS name resolution rather than
+introducing a filesystem service. The decision supplier is common, but the
+kernel handles each action according to the component, final-open, readdir, and
+RCU/ref-walk requirements of the surrounding VFS path.}
 \label{fig:overview}
 \end{figure}
+
+\subsection{One Decision Across Resolution Paths}
+
+Linux does not resolve every name through one function. Intermediate
+components pass through the component walk, the trailing component of
+\code{open()} has separate create and open handling, and \code{readdir()}
+obtains names from a filesystem iterator. \namei applies one policy contract at
+all three points rather than assigning each call site an independent rule
+language. The input identifies a lookup or directory-entry event; policy state
+and the current parent/name pair determine the result.
+
+The action meanings are consistent across those paths. \code{PASS} exposes the
+ordinary lower result. \code{HIDE} returns absence from lookup and suppresses
+the corresponding directory entry. \code{REDIRECT} substitutes a validated
+component name for lookup or for the emitted directory entry.
+\code{SELECT_TARGET} selects a registered existing object during lookup;
+directory iteration over a selected directory proceeds after that directory
+has been opened. The current design does not use \code{SELECT_TARGET} to invent
+directory entries, because synthetic aliases require an object model and
+stable iterator positions beyond existing-entry filtering.
+
+The ABI gives lookup and readdir one action vocabulary, but the kernel invokes
+the two event types independently. A policy is responsible for making its
+lookup result and directory view coherent; workload oracles test that
+obligation. Target selection changes the object on which subsequent ordinary
+VFS processing operates. Create semantics remain outside selection:
+\code{REDIRECT} and \code{SELECT_TARGET} reject \code{LOOKUP_CREATE}, and the
+policy does not decide target creation or copy-up behavior.
 
 \subsection{Name-Resolution Boundary Goals}
 
@@ -74,6 +117,33 @@ boundary.}
 \label{tab:req-design}
 \end{table}
 
+\subsection{Fast-Path Contract}
+
+The extension sits on a system-wide hot path, so its cost model is part of the
+interface rather than an implementation afterthought. When no program is
+attached, lookup and directory iteration must follow the ordinary VFS path
+after one static-key test. When a program is attached to a limited set of
+parents, an unrelated parent must be rejected before policy-context
+construction or workload-scope discovery. This first test is conservative:
+false positives may execute the authoritative scope check, but a false
+negative would bypass policy and is forbidden.
+
+For managed parents, cache-hot lookup may already be in RCU-walk. The decision
+contract therefore cannot require a sleeping lock or an owned dentry/mount
+reference. \namei separates the BPF decision from action-specific object
+handling: pass-through can remain in RCU-walk, while an action that needs
+refcounted state must use normal namei conversion and validation. Walk mode is
+not exposed as workload policy, so the same pathname and policy state do not
+produce different decisions merely because the VFS cache changed.
+
+A successful in-place conversion applies the saved decision without calling
+the program again. If conversion fails and ordinary namei returns
+\code{ECHILD}, however, the VFS may restart the complete pathname walk and
+execute policy again. The interface therefore provides at-least-once execution
+across full VFS restarts, not exactly-once execution. Policies must keep
+externally visible side effects idempotent; map reads and writes that define the
+decision remain subject to the same restart rule.
+
 \subsection{Policy Model}
 
 The workloads require policy to see lookup and directory-enumeration events,
@@ -90,13 +160,23 @@ The output passes the lower lookup, redirects selection to a replacement
 component, hides a name from lookup and directory enumeration, or selects a
 registered lower object. Access-control denial remains outside the model
 because \namei focuses on selecting or hiding existing objects during name
-resolution. Directory enumeration uses the same decision function so that
-aliases returned by readdir match the objects selected by lookup.
+resolution. Directory enumeration uses the same decision function and action
+vocabulary as lookup; the policy must implement the corresponding direction,
+and evaluation checks the resulting lookup/readdir view.
 
-The kernel checks the decision, preserves normal permission and
-lower-filesystem checks for the selected object, maintains ordinary VFS path
-resolution invariants, and fails invalid decisions visibly instead of falling
-back to a weaker policy.
+The policy cannot return a kernel pointer or an arbitrary pathname. A control
+plane first registers an open existing object, and the kernel retains its
+\code{struct path} under an opaque ID. The policy may return only that ID.
+Intermediate selections must identify directories; final selections may
+identify existing regular files or directories. The selected object then
+continues through normal namei validation, permission checks, open completion,
+and lower-filesystem file operations.
+
+The kernel also validates action type, name bounds, target identity, selected
+object type, create restrictions, and path-walk scope. Invalid decisions fail
+visibly rather than falling back to a weaker policy. This registered-object
+model bounds what policy can select without turning the hook into arbitrary
+recursive path rewriting.
 
 \subsection{Filesystem Ownership Boundary}
 

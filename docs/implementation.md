@@ -157,21 +157,23 @@ entrypoints, and archived diagnostics:
 The implementation record for this control-plane alignment is
 `docs/tmp/2026-07-13-build-evaluate-make-control-plane-alignment.md`.
 
-The formal W1 workload is implemented by
-`bpf/policies/application_file_sharing.bpf.c` and
+The formal W1 source-oracle workload combines the official
+`xdg-document-portal` 1.18.4 FUSE implementation with
+`bpf/policies/application_file_sharing.bpf.c`,
+`experiments/application_file_sharing/xdg_document_portal_oracle.c`, and
 `experiments/application_file_sharing/namei_ext_application_file_sharing.c`.
-The policy scopes a managed logical document by parent device/inode and name,
-then keys its grant by application cgroup ID. Each child records document and
-payload lookup, payload read, complete directory enumeration, unrelated-path
-bytes, and logical/lower object identity from its application cgroup. The
-formal run passed all 15 states across three fresh KVM boots, preserved every
-lower object, and completed detach, target clear, and both cgroup removals in
-each boot:
-`results/experiments/application-file-sharing-rq1/20260729T1824Z-w1-formal01/`.
+Each boot runs the official portal first, verifies empty midpoint BPF/FUSE
+state, and then runs `namei_ext`. Both mechanisms execute the same five
+grant/isolation/revoke states with complete lookup, read, and directory
+enumeration observations. The reviewed formal run completed three fresh KVM
+boots with 15/15 official-source and 15/15 `namei_ext` states in exact
+agreement, lower-object preservation, positive source/policy engagement, and
+complete cleanup:
+`results/experiments/application-file-sharing-source-oracle-rq1/20260730T-xdg-source-formal01/`.
 Implementation and result records are
-`docs/tmp/2026-07-29-application-file-sharing-rq1-formal-implementation.md`
+`docs/tmp/2026-07-30-application-file-sharing-source-oracle-rq1-implementation.md`
 and
-`docs/tmp/2026-07-29-application-file-sharing-rq1-formal01-result-review.md`.
+`docs/tmp/2026-07-30-application-file-sharing-source-oracle-rq1-formal01-result-review.md`.
 
 The Agent workspace source-task workload is implemented by
 `bpf/policies/agent_workspace_source_task.bpf.c` and

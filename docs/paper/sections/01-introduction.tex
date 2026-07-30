@@ -48,35 +48,36 @@ is to separate that policy from filesystem ownership by letting a bounded
 policy choose path-view actions at lookup and readdir time, then returning to
 ordinary VFS and lower-filesystem semantics.
 
-Making that separation practical creates three technical challenges. First, the
-policy must run at the lookup and directory-enumeration operations that decide
-the visible object, not in a separate namespace-construction phase. Second, the
-policy output must be bounded and kernel-validated so the lower filesystem keeps
-permissions, writes, data, page cache, persistence, and consistency. Third, the
-same correctness condition must be usable to compare this boundary with a
-feature-equivalent FUSE policy service and with the broader ownership required
-by custom or stackable filesystems.
+Realizing this separation is not a matter of inserting one callback. Linux
+resolves intermediate components, final open/create components, and directory
+entries through different paths, yet lookup and readdir must expose one
+coherent view. Cache-hot lookup uses lockless RCU-walk, where policy cannot take
+sleeping locks or ordinary object references, and an RCU fallback cannot
+casually replay a BPF decision that may update maps or emit events. Selecting an
+object outside the visible parent must remain valid across concurrent
+replacement and then resume ordinary VFS permission and open completion.
+Finally, every pathname component is a system-wide hot path, so unattached and
+unmanaged lookups must avoid context construction and policy dispatch.
 
-We present \namei as a \code{sched_ext}-style extension point for the VFS.
-eBPF chooses name-resolution policy, while the kernel keeps the VFS mechanisms
-that own objects and execute filesystem semantics~\cite{linux_sched_ext}. One
-eBPF decision function receives lookup and directory-enumeration events,
-returns bounded pass, redirect, hide, or \code{SELECT_TARGET} actions over
-kernel-registered lower paths, and relies on kernel validation before ordinary
-VFS execution resumes.
-The policy does not implement file operations, allocate dentries or inodes, run
-a filesystem daemon, or materialize a namespace tree. Together, these choices
-answer the three challenges. The hook is placed at name resolution, the action
-space is bounded and validated, and the mechanism preserves the same lower
-objects used by the FUSE rows and referenced in the
-custom/stackable-filesystem boundary account.
+We present \namei, which makes object selection programmable without making the
+policy a filesystem. One eBPF decision function serves component-lookup,
+final-lookup, and directory-entry call sites through two event types and
+returns bounded pass, redirect, hide, or \code{SELECT_TARGET} actions. Existing
+targets are registered as kernel-held \code{struct path} objects and selected
+by opaque ID; RCU-walk may borrow a target until ordinary namei validation
+obtains stable references, and normal VFS permission and open processing then
+continues on the selected object. A static key and an RCU parent-scope filter
+bypass the extension before context construction when no relevant policy
+exists. The resulting ownership split is analogous to \code{sched_ext}: policy
+is programmable, while the kernel retains the subsystem machinery that owns
+objects and executes semantics~\cite{linux_sched_ext}.
 
 We evaluate whether this ownership split is sufficient for source-derived
 path-view policies, cheaper than feature-equivalent FUSE placement, and more
 contained than broader filesystem ownership. RQ1 asks whether KVM workloads pass
 the same correctness conditions while preserving lower-filesystem semantics.
-Reviewed formal KVM runs pass fixed oracles for Agent workspaces,
-application-sharing grants, concurrent Bazel action views, the
+Reviewed formal KVM runs pass fixed oracles for Agent workspaces, official XDG
+Documents portal application-sharing grants, concurrent Bazel action views, the
 already-materialized payload-view subset of Kubernetes \code{AtomicWriter},
 and toolchain environment selection. The headline Agent result includes three
 fresh boots of
@@ -96,16 +97,15 @@ and all 21 fault cells in each of three boots, while runtime tracing exposes
 the broader stackable filesystem-method boundary.
 
 The paper's primary contribution is the design and Linux implementation of
-\namei as one systems boundary: a \code{sched_ext}-style VFS extension point
-that places bounded policy at lookup and directory enumeration while preserving
-VFS and lower-filesystem ownership. The paper makes three concrete
-contributions:
+\namei as one systems boundary: programmable selection of existing objects
+during VFS name resolution while preserving VFS and lower-filesystem ownership.
+The paper makes two concrete contributions:
 \begin{itemize}
-\item the boundary design and policy contract for lookup and readdir
-(Section~\ref{sec:design});
-\item a modified-Linux prototype with one eBPF decision function, the real
-\code{cgroup/namei_ext} attachment path, and kernel validation for bounded
-actions (Section~\ref{sec:implementation}); and
+\item the design and modified-Linux implementation of one bounded decision
+contract across component lookup, final lookup, and readdir, including
+registered-target lifetime across RCU/ref-walk, normal VFS completion, and a
+scope-aware fast path (Sections~\ref{sec:design}
+and~\ref{sec:implementation}); and
 \item an evaluation that holds workload correctness fixed while comparing
 \namei with feature-equivalent FUSE and recording which responsibilities would
 move into custom or stackable filesystems (Section~\ref{sec:evaluation}).

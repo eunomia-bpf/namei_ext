@@ -1,6 +1,6 @@
 # Evaluation
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 This file holds the scientific evaluation state: use cases, experiment
 matrices, result pointers, and open questions. Research process rules and
@@ -111,13 +111,32 @@ The critical kernel-maintainer result is the patched-but-unattached cost.
 Macro compile time cannot establish that fast path because compiler work
 dilutes pathname lookup overhead.
 
+### VFS construction validation
+
+These checks validate the interface construction separately from workload
+breadth and performance:
+
+| Invariant | Evidence | Current result |
+| --- | --- | --- |
+| RCU/ref-walk selection | Force final-directory and intermediate-component selection with `openat2(RESOLVE_CACHED)` | Passed in modified-kernel KVM; both entered selected-target handling from RCU-walk and completed after in-place legitimization without a full path-walk restart |
+| Registered-target replacement | Replace one target ID 128 times while another process continuously reads through the selected pathname | Passed; every read observed one complete old or new payload |
+| Exact-parent prefilter | Attach policy to one parent, probe a second parent, and run an attached exact-empty counter control | Functional lookup/readdir kept the unrelated lower view; the control recorded zero BPF invocations |
+| Normal VFS completion | Select existing directories/files, then execute stat, open/read, and readdir through the logical path | The functional suite passed expected success, error, byte, and directory-entry checks; source-workload oracles separately checked identity and unchanged lower objects |
+| Policy execution semantics | Convert in place where possible and permit a full VFS `-ECHILD` restart | The wrapper does not reinvoke policy merely to apply a saved action, but a full restart is at-least-once; policy side effects must be idempotent |
+
+The first four rows are recorded in
+`docs/tmp/2026-07-27-namei-ext-rcu-target-selection-implementation.md`,
+`docs/tmp/2026-07-27-namei-ext-global-parent-fast-path-implementation.md`, and
+the corresponding Phase 1 result roots. The restart row is an ABI semantic,
+not an exactly-once claim.
+
 ## Experiment Matrix Status
 
 ### Case-study implementation status
 
 | Case | Source/oracle fixed | `namei_ext` correctness in KVM | Feature-equivalent FUSE | RQ3 boundary record |
 | --- | --- | --- | --- | --- |
-| W1 Sandboxed Application File Sharing | Existing-object, two-application grant/revoke subset frozen from the XDG Documents portal API | Passed and independently reviewed: three fresh KVM boots, 15/15 lifecycle states, 3/3 granted views, 12/12 hidden views, and exact logical/lower object identity | Source system is FUSE; matched project performance implementation not run | Lower object and unrelated same-named path remained unchanged; policy/target/cgroup cleanup passed in every boot; full ownership table open |
+| W1 Sandboxed Application File Sharing | Official `xdg-document-portal` 1.18.4 and its FUSE view execute the existing-object, two-application grant/revoke oracle before the matched `namei_ext` arm | Passed and independently reviewed: three fresh KVM boots, 15/15 official-source states, 15/15 `namei_ext` states, exact state-by-state operation agreement, and exact visible logical/lower identity for `namei_ext` | The official source FUSE implementation executed as the RQ1 correctness control; no matched performance result is claimed | Both mechanisms preserved their direct lower object; the unrelated same-named path, source teardown, policy/target/cgroup cleanup, midpoint isolation, and dmesg checks passed in every boot |
 | W2 Agent Workspaces | AgentFS-derived lifecycle plus released SWE-Factory-Gym `pallets__click-2622` source task fixed | Passed and independently reviewed: the lifecycle matrix plus three fresh source-task boots, 12/12 policy-backed task states, 6/6 physical source controls, concurrent completed/base views, switch, rollback, and withdrawal | Same-oracle formal comparison passed: 10 paired blocks, 20 KVM boots, 10,000 lifecycle samples per condition | Formal matched `namei_ext`/Wrapfs-derived experiment passed: 37/37 pairwise oracles for both mechanisms, 21/21 fault cells, and runtime attribution in each of three KVM boots |
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Passed and independently reviewed: three fresh KVM boots, six Bazel actions, six action-specific logical/lower inode matches, twelve preserved lower objects, and all allow/hide/select branches | Not run; RQ2 owns the separately frozen sandboxfs comparison | Policy/target/cgroup cleanup and lower-object preservation passed in every boot; full ownership table open |
 | W4 Service Configuration and Secret Rotation | Official Kubernetes v1.30.0 `AtomicWriter` payload publication fixed as V0, V1, V1 no-op, and V0 rollback under one stable root; full nginx live reload remains a separate extension | Passed and independently reviewed: three fresh KVM boots, 12/12 source states, 12/12 `namei_ext` states, 6/6 direct controls, 24/24 stable-root dirfd checks, 12/12 old-fd checks, and 36/36 lower-object checks | Not run; this is RQ1 breadth only | Payload-view subset admitted as supporting RQ1 evidence. Materialization, symlink/inotify behavior, service validation/reload, performance, and broader filesystem comparison remain open |
@@ -129,15 +148,16 @@ dilutes pathname lookup overhead.
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
-| XDG-derived two-application grant/revoke lifecycle | Passed and independently reviewed in three fresh modified-kernel KVM boots: all 15 states passed; application A was hidden before grant, visible after grant, and hidden after revoke; application B remained hidden | `results/experiments/application-file-sharing-rq1/20260729T1824Z-w1-formal01/` |
-| Lookup, read, enumeration, and object identity | Passed: all 12 hidden states returned `ENOENT` for document/payload lookup and completed readdir without listing `document`; all three granted states listed the name, read expected bytes, and matched logical/lower document and payload device/inode | Same raw root |
-| Lower object, unrelated path, and cleanup | Passed: 3/3 lower-object records preserved device, inode, mode, size, and bytes; 15/15 unrelated-path reads matched; all policy detaches, target clears, six cgroup removals, external BPF/FUSE inventory checks, and dmesg scans passed | Same raw root |
-| Policy engagement | Passed in every boot: 210 lookup, 30 readdir, 3 `SELECT`, 12 lookup `HIDE`, and 4 readdir `HIDE` events per boot | Same raw root |
-| Independent result review | Valid; the tested existing-object XDG Documents portal grant/revoke subset supports RQ1 breadth, without claiming portal compatibility or performance | `docs/tmp/2026-07-29-application-file-sharing-rq1-formal01-result-review.md` |
+| Official-source two-application grant/revoke lifecycle | Passed and independently reviewed in three fresh modified-kernel KVM boots. Official `xdg-document-portal` 1.18.4 and `namei_ext` each passed 15/15 states with exact state-by-state agreement: application A was hidden before grant, visible immediately after grant, and hidden immediately after revoke; application B remained hidden | `results/experiments/application-file-sharing-source-oracle-rq1/20260730T-xdg-source-formal01/` |
+| Lookup, read, enumeration, and object identity | Passed: all 24 hidden states across both mechanisms returned `ENOENT` for document/payload operations and completed readdir without the document; all six granted states listed the name and read the complete expected payload. The three granted `namei_ext` states matched logical/lower document and payload device/inode | Same raw root |
+| Lower object, unrelated path, and cleanup | Passed: both mechanisms preserved lower-object device, inode, mode, owner, size, timestamps, and bytes in all three boots; unrelated-object controls passed; source teardown, midpoint isolation, policy detach, target clear, six cgroup removals, three-stage external BPF/FUSE inventories, and dmesg scans passed | Same raw root |
+| Policy and source engagement | All five pinned upstream portal tests executed without skip/failure/timeout. The official portal FUSE view mounted and served the source states. `namei_ext` recorded 210 lookup, 30 readdir, 3 `SELECT`, 12 lookup `HIDE`, and 4 readdir `HIDE` events per boot | Same raw root |
+| Independent result review | Valid supporting RQ1 source-fidelity evidence. The claim is the official portal's existing-object read grant/isolation/revoke subset, not complete portal compatibility, sandbox enforcement, writes, persistence, or performance | `docs/tmp/2026-07-30-application-file-sharing-source-oracle-rq1-formal01-result-review.md` |
 | Matched FUSE performance comparison | Open; the source system establishes FUSE behavior, but no matched timing result exists | — |
 
-Entry points: `make kvm-application-file-sharing-preflight` and
-`make experiment-application-file-sharing-rq1`.
+Entry points:
+`make kvm-application-file-sharing-source-oracle-preflight` and
+`make experiment-application-file-sharing-source-oracle-rq1`.
 
 ### B. Agent Workspaces (headline)
 

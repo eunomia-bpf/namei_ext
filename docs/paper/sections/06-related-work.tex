@@ -12,15 +12,32 @@ metadata services require broader filesystem-service or object-model ownership.
 FUSE~\cite{linux_fuse}, FUSE passthrough~\cite{linux_fuse_passthrough},
 ExtFUSE~\cite{extfuse}, and FUSE-BPF~\cite{fuse_bpf_patch} demonstrate the
 value of placing filesystem policy in, or accelerating, a filesystem-service
-boundary. RFUSE, CoFS, and DFUSE further show that this boundary can be
+boundary. ExtFUSE installs thin eBPF request handlers in a FUSE interposition
+driver and may fall back to its user-space filesystem; the FUSE layer still
+defines the mounted filesystem's request handling and cache interaction.
+FUSE-BPF associates backing objects through a FUSE lookup response and lets BPF
+filter or alter operations within that stacked filesystem. It can also run
+passthrough with \code{root_dir} and \code{no_daemon}, so daemon elimination is
+not the architectural distinction. FUSE-BPF still creates a mounted FUSE
+filesystem, FUSE inodes, and a filesystem-operation forwarding surface that
+includes lookup, readdir, open, I/O, create, delete, rename, and xattr.
+
+\namei instead places the decision in ordinary VFS name resolution. It creates
+no filesystem instance or FUSE inode: registered targets remain lower-VFS
+paths, target replacement follows VFS/RCU lifetime rules, and successful
+selection exits the extension and resumes ordinary permission and open
+completion. Its static-key and parent filter also define cost for processes and
+parents outside the policy scope.
+
+RFUSE, CoFS, and DFUSE further show that the FUSE boundary can be
 optimized or specialized with scalable kernel-userspace communication, fixed
 container-image lookup structures, and distributed-cache consistency
 support~\cite{rfuse_fast24,cofs_fast26,distfuse_arxiv25}. These systems make
 FUSE the RQ2 baseline family, not a strawman: a fair comparison must implement
 the same path-view policy under the same source oracle and justify the FUSE
-caching/passthrough configuration. \namei instead keeps policy needed by the
-source oracle at VFS name resolution when the workload only needs path
-selection or visibility over existing objects.
+caching/passthrough configuration. \namei applies only when the source oracle
+needs selection or visibility over existing objects and does not need the
+broader filesystem service.
 
 \subsection{Custom, Stackable, And Metadata-Service Filesystems}
 

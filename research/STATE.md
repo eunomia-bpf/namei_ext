@@ -1,6 +1,6 @@
 # Research State
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 This file is only a handoff pointer. Research process state, gates, and
 orchestration belong to the orchestrator skill, not to this repository.
@@ -24,10 +24,14 @@ orchestration belong to the orchestrator skill, not to this repository.
 
 - `namei_ext` is a `sched_ext`-style VFS name-resolution extension point, not a
   BPF filesystem.
-- The contribution is the design and Linux implementation of that extension
-  point as one systems boundary. eBPF chooses bounded lookup/readdir policy;
-  the kernel and lower filesystem keep VFS object ownership, path walking,
-  permissions, data path, writes, page cache, persistence, and consistency.
+- The contribution is the design and Linux implementation of a VFS mechanism
+  that selects existing objects during pathname resolution without transferring
+  filesystem ownership to policy. It integrates one bounded decision contract
+  across component lookup, final lookup, and directory iteration, preserves
+  registered-target lifetime across RCU/ref-walk, resumes normal VFS
+  permission/open completion, and bypasses unattached or unmanaged parents
+  before policy-context construction. eBPF is the policy vehicle, not the
+  novelty by itself.
 - RQ1 asks expressiveness/sufficiency for source-derived state-dependent
   path-view policies. RQ2 measures cost versus feature-equivalent FUSE. RQ3
   evaluates the verifier-bounded, fail-closed ownership boundary versus custom
@@ -51,9 +55,12 @@ orchestration belong to the orchestrator skill, not to this repository.
   policy-backed task states, 6/6 physical source controls, three overlapping
   completed/base view pairs, switch, rollback, and withdrawal under
   `results/experiments/agent-workspace-source-task-rq1/20260729T-agent-source-task-formal01/`.
-- Application file sharing RQ1: three fresh KVM boots, 15/15 lifecycle states,
-  39/39 setup/lifecycle/cleanup cases, and preserved lower objects under
-  `results/experiments/application-file-sharing-rq1/20260729T1824Z-w1-formal01/`.
+- Application file sharing RQ1 source control: three fresh KVM boots ran
+  official `xdg-document-portal` 1.18.4 before the matched `namei_ext` arm.
+  All 15 official-source and 15 `namei_ext` grant/isolation/revoke states
+  agreed operation by operation, with lower-object preservation and clean
+  midpoint isolation, under
+  `results/experiments/application-file-sharing-source-oracle-rq1/20260730T-xdg-source-formal01/`.
 - Bazel build action RQ1: three fresh KVM boots, six completed Bazel actions,
   six logical/lower object matches, and 12 preserved lower objects under
   `results/experiments/build-action-sandboxing-rq1/20260729T180121Z-w3-formal02/`.
