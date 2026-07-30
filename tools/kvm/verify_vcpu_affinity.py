@@ -105,7 +105,11 @@ def write_result(path, payload):
     temporary.replace(path)
 
 
-def verify_until(host, port, expected, timeout_seconds, poll_seconds=0.1):
+def verify_until(host, port, expected, timeout_seconds, poll_seconds=0.1,
+                 initial_delay_seconds=0.0):
+    if initial_delay_seconds < 0:
+        raise ValueError("initial delay must be nonnegative")
+    time.sleep(initial_delay_seconds)
     deadline = time.monotonic() + timeout_seconds
     last_error = "QMP not observed"
     last_observations = []
@@ -120,6 +124,7 @@ def verify_until(host, port, expected, timeout_seconds, poll_seconds=0.1):
                     "status": "verified",
                     "verified_at": utc_now(),
                     "qmp": {"host": host, "port": port},
+                    "initial_delay_seconds": initial_delay_seconds,
                     "expected_host_cpus": expected,
                     "expected_vcpu_mapping": [
                         {"vcpu_index": index, "host_cpu": host_cpu}
@@ -139,6 +144,7 @@ def verify_until(host, port, expected, timeout_seconds, poll_seconds=0.1):
         "status": "failed",
         "failed_at": utc_now(),
         "qmp": {"host": host, "port": port},
+        "initial_delay_seconds": initial_delay_seconds,
         "expected_host_cpus": expected,
         "expected_vcpu_mapping": [
             {"vcpu_index": index, "host_cpu": host_cpu}
@@ -156,12 +162,14 @@ def main():
     parser.add_argument("--port", type=int, default=3636)
     parser.add_argument("--expected", required=True)
     parser.add_argument("--timeout-seconds", type=float, default=20.0)
+    parser.add_argument("--initial-delay-seconds", type=float, default=0.0)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
     expected = parse_cpu_list(args.expected)
     verified, payload = verify_until(
-        args.host, args.port, expected, args.timeout_seconds)
+        args.host, args.port, expected, args.timeout_seconds,
+        initial_delay_seconds=args.initial_delay_seconds)
     write_result(args.output, payload)
     return 0 if verified else 1
 

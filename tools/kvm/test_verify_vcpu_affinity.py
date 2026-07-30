@@ -83,6 +83,27 @@ class VcpuAffinityTests(unittest.TestCase):
         self.assertGreater(payload["attempts"], 0)
         self.assertIn("not listening", payload["error"])
 
+    def test_verify_until_waits_before_first_qmp_connection(self):
+        observations = [
+            {"vcpu_index": 0, "host_tid": 1234, "cpus_allowed": [8]},
+        ]
+        with mock.patch.object(
+                verify, "observe_affinity", return_value=observations) as observe, \
+                mock.patch.object(verify.time, "sleep") as sleep:
+            passed, payload = verify.verify_until(
+                "127.0.0.1", 3636, [8], 1.0,
+                initial_delay_seconds=3.0)
+        self.assertTrue(passed)
+        sleep.assert_called_once_with(3.0)
+        observe.assert_called_once_with("127.0.0.1", 3636)
+        self.assertEqual(payload["initial_delay_seconds"], 3.0)
+
+    def test_verify_until_rejects_negative_initial_delay(self):
+        with self.assertRaises(ValueError):
+            verify.verify_until(
+                "127.0.0.1", 3636, [8], 1.0,
+                initial_delay_seconds=-1.0)
+
 
 if __name__ == "__main__":
     unittest.main()
