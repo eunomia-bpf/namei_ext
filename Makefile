@@ -87,6 +87,13 @@ include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 	kvm-application-file-sharing-rq1 application-file-sharing-run \
 	application-file-sharing-finalize application-file-sharing-analyze \
 	experiment-application-file-sharing-rq1 \
+	application-file-sharing-source \
+	kvm-application-file-sharing-source-oracle-preflight \
+	kvm-application-file-sharing-source-oracle-rq1 \
+	application-file-sharing-source-oracle-run \
+	application-file-sharing-source-oracle-finalize \
+	application-file-sharing-source-oracle-analyze \
+	experiment-application-file-sharing-source-oracle-rq1 \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
@@ -215,10 +222,10 @@ help:
 	@printf '%s\n' '                       run one real Click issue task through concurrent Agent workspace views'
 	@printf '%s\n' '  make experiment-agent-workspace-source-task-rq1'
 	@printf '%s\n' '                       run three fresh Click source-task workspace boots for RQ1'
-	@printf '%s\n' '  make kvm-application-file-sharing-preflight'
-	@printf '%s\n' '                       run one XDG-derived grant/revoke workload boot in KVM'
-	@printf '%s\n' '  make experiment-application-file-sharing-rq1'
-	@printf '%s\n' '                       run three fresh XDG-derived grant/revoke workload boots and summarize RQ1 evidence'
+	@printf '%s\n' '  make kvm-application-file-sharing-source-oracle-preflight'
+	@printf '%s\n' '                       run official xdg-document-portal and namei_ext through the same five-state oracle in one KVM boot'
+	@printf '%s\n' '  make experiment-application-file-sharing-source-oracle-rq1'
+	@printf '%s\n' '                       run three fresh source-faithful application-file-sharing boots and summarize RQ1 evidence'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
 	@printf '%s\n' '                       run one real Bazel action-view boot with the current allowlist policy'
 	@printf '%s\n' '  make experiment-build-action-sandboxing-rq1'

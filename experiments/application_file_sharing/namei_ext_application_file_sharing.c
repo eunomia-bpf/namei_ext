@@ -128,26 +128,40 @@ static int observe_text(const char *path, const char *expected,
 {
 	char buffer[4096];
 	size_t expected_length = strlen(expected);
-	ssize_t bytes;
+	size_t offset = 0;
+	bool matches = true;
 	int fd;
 
 	*bytes_expected = false;
-	if (expected_length >= sizeof(buffer))
-		return E2BIG;
 	fd = open(path, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return errno;
-	bytes = read(fd, buffer, sizeof(buffer));
-	if (bytes < 0) {
-		int saved_errno = errno;
+	for (;;) {
+		ssize_t bytes = read(fd, buffer, sizeof(buffer));
 
-		close(fd);
-		return saved_errno;
+		if (bytes < 0) {
+			int saved_errno = errno;
+
+			if (saved_errno == EINTR)
+				continue;
+			close(fd);
+			return saved_errno;
+		}
+		if (!bytes)
+			break;
+		if (offset > expected_length ||
+		    (size_t)bytes > expected_length - offset ||
+		    memcmp(buffer, expected + offset, (size_t)bytes))
+			matches = false;
+		if (SIZE_MAX - offset < (size_t)bytes) {
+			close(fd);
+			return EOVERFLOW;
+		}
+		offset += (size_t)bytes;
 	}
 	if (close(fd))
 		return errno;
-	*bytes_expected = bytes == (ssize_t)expected_length &&
-			  !memcmp(buffer, expected, expected_length);
+	*bytes_expected = matches && offset == expected_length;
 	return 0;
 }
 
@@ -321,13 +335,24 @@ static bool emit_state(FILE *out, const char *state, bool expected_visible,
 	return pass;
 }
 
+static bool same_timespec(const struct timespec *left,
+			  const struct timespec *right)
+{
+	return left->tv_sec == right->tv_sec &&
+	       left->tv_nsec == right->tv_nsec;
+}
+
 static bool same_metadata(const struct stat *before,
 			  const struct stat *after)
 {
 	return before->st_dev == after->st_dev &&
 	       before->st_ino == after->st_ino &&
 	       before->st_mode == after->st_mode &&
-	       before->st_size == after->st_size;
+	       before->st_uid == after->st_uid &&
+	       before->st_gid == after->st_gid &&
+	       before->st_size == after->st_size &&
+	       same_timespec(&before->st_mtim, &after->st_mtim) &&
+	       same_timespec(&before->st_ctim, &after->st_ctim);
 }
 
 static bool emit_lower_object(FILE *out, const struct stat *before,
@@ -346,18 +371,34 @@ static bool emit_lower_object(FILE *out, const struct stat *before,
 		"\"before_dev\":\"%" PRIuMAX "\","
 		"\"before_ino\":\"%" PRIuMAX "\","
 		"\"before_mode\":\"%" PRIoMAX "\","
+		"\"before_uid\":%" PRIuMAX ",\"before_gid\":%" PRIuMAX ","
 		"\"before_size\":\"%" PRIdMAX "\","
+		"\"before_mtime_sec\":\"%" PRIdMAX "\","
+		"\"before_mtime_nsec\":%ld,"
+		"\"before_ctime_sec\":\"%" PRIdMAX "\","
+		"\"before_ctime_nsec\":%ld,"
 		"\"after_dev\":\"%" PRIuMAX "\","
 		"\"after_ino\":\"%" PRIuMAX "\","
 		"\"after_mode\":\"%" PRIoMAX "\","
+		"\"after_uid\":%" PRIuMAX ",\"after_gid\":%" PRIuMAX ","
 		"\"after_size\":\"%" PRIdMAX "\","
+		"\"after_mtime_sec\":\"%" PRIdMAX "\","
+		"\"after_mtime_nsec\":%ld,"
+		"\"after_ctime_sec\":\"%" PRIdMAX "\","
+		"\"after_ctime_nsec\":%ld,"
 		"\"metadata_unchanged\":%s,\"bytes_expected\":%s,"
 		"\"pass\":%s}\n",
 		after_errno,
 		(uintmax_t)before->st_dev, (uintmax_t)before->st_ino,
-		(uintmax_t)before->st_mode, (intmax_t)before->st_size,
+		(uintmax_t)before->st_mode, (uintmax_t)before->st_uid,
+		(uintmax_t)before->st_gid, (intmax_t)before->st_size,
+		(intmax_t)before->st_mtim.tv_sec, before->st_mtim.tv_nsec,
+		(intmax_t)before->st_ctim.tv_sec, before->st_ctim.tv_nsec,
 		(uintmax_t)after->st_dev, (uintmax_t)after->st_ino,
-		(uintmax_t)after->st_mode, (intmax_t)after->st_size,
+		(uintmax_t)after->st_mode, (uintmax_t)after->st_uid,
+		(uintmax_t)after->st_gid, (intmax_t)after->st_size,
+		(intmax_t)after->st_mtim.tv_sec, after->st_mtim.tv_nsec,
+		(intmax_t)after->st_ctim.tv_sec, after->st_ctim.tv_nsec,
 		metadata_unchanged ? "true" : "false",
 		bytes_expected ? "true" : "false",
 		pass ? "true" : "false");

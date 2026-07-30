@@ -1,0 +1,19 @@
+FROM debian:bookworm-slim
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    dbus \
+    fuse3 \
+    libcap2-bin \
+    libfuse3-dev \
+    libgdk-pixbuf-2.0-dev \
+    libglib2.0-dev \
+    libjson-glib-dev \
+    libpipewire-0.3-dev \
+    libsystemd-dev \
+    meson \
+    ninja-build \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
