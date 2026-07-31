@@ -287,6 +287,16 @@ one, two, and four workers. It does not prove zero overhead or generalize to
 active policy, other operations, cold caches, tails, or other machines.
 Earlier matrices and short preflights remain internal mechanism evidence.
 
+The reviewed mdtest cold and mutating metadata branch closed as incomplete
+after all three permitted real KVM preflights failed before the workload. The
+third attempt validly demonstrated exact vCPU pinning and independent read-back,
+but the launcher exited before the guest barrier and produced no mdtest, MPI,
+FUSE, BPF, filesystem, or performance observation. The result is
+dependency-only, formal execution is not authorized, and no number from these
+roots is paper evidence. The independent result review is
+`docs/tmp/2026-07-30-rq2-mdtest-cold-metadata-preflight-result-review.md`.
+Cache-cold and broader mutating-metadata cost therefore remain unresolved.
+
 ### G. Agent workspace ownership and containment (decisive RQ3 result)
 
 | Cell | Status | Raw root |

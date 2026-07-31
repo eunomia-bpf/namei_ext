@@ -47,24 +47,40 @@ WARNING: Failed to pin vCPUs
 No lookup policy, FUSE process, MPI rank, or mdtest phase executed. This attempt
 therefore supplies no RQ2 workload or performance result.
 
-## Root Cause
+## QMP Failure And Later Correction
 
 Installed virtme-ng 1.40 enables one TCP QMP server for `--pin`, starts an
-asynchronous pin worker, and sends both `qmp_capabilities` and
-`query-cpus-fast` as JSON without the newline required by QMP's line-oriented
-protocol. The worker then waits with `readline()`.
+asynchronous pin worker, and failed while waiting for the QMP capability
+response in this attempt.
 
-Attempt 1 and attempt 2 expose the two sides of that race:
+Attempts 1 and 2 are consistent with a failure in the installed asynchronous
+QMP pinning path:
 
-- in attempt 1, the independent verifier connected first and observed all
-  eight unpinned vCPU TIDs with host-wide CPU masks;
-- after the added delay in attempt 2, virtme-ng's worker connected first,
-  blocked during capability negotiation, and occupied the QMP endpoint, so the
-  independent verifier could not connect.
+- attempt 1 observed eight unpinned vCPU TIDs with host-wide CPU masks; and
+- attempt 2 recorded a QMP capability-negotiation failure while the independent
+  verifier received connection refusals.
 
-The three-second delay was therefore a false diagnosis repair. It did not
-weaken the gate or create a false pass, but it cannot make the installed
-virtme-ng pin implementation complete its QMP protocol.
+The artifacts do not establish client connection order, endpoint ownership, or
+why the QMP server closed.
+
+The three-second delay was therefore a failed synchronization repair. It did
+not weaken the gate or create a false pass, but it did not make the installed
+virtme-ng pin implementation complete.
+
+A later source check after attempt 3 corrected an over-attribution in the
+initial diagnosis. Upstream virtme-ng's repaired pin implementation also sends
+complete JSON objects without an explicit newline before reading QMP replies.
+The missing newline is therefore not established as the cause. The immutable
+artifacts prove only that the installed asynchronous worker failed capability
+negotiation while the independent verifier could not connect; they do not
+contain enough QMP or process-lifecycle evidence to identify why the server
+closed. Upstream commit `8f74cceecb163a5d5b08e70c101de85920eb624c`
+moves pinning into `virtme-run` immediately before QEMU launch to repair QMP
+connection timing:
+
+```text
+https://github.com/arighi/virtme-ng/commit/8f74cceecb163a5d5b08e70c101de85920eb624c
+```
 
 ## Next Step
 

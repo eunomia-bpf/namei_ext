@@ -3,10 +3,10 @@
 ## Motivation
 
 The second mdtest preflight proved that delaying the independent verifier cannot
-repair virtme-ng 1.40 `--pin`. The installed worker sends QMP commands without
-line terminators and then blocks waiting for a response. The last permitted
-preflight therefore needs a deterministic controller path that does not use the
-broken worker.
+repair the installed virtme-ng 1.40 `--pin` path. Its asynchronous worker failed
+QMP capability negotiation and prevented the independent verifier from
+connecting. The last permitted preflight therefore needs a deterministic
+controller path that does not use that worker.
 
 ## Design
 
@@ -105,3 +105,14 @@ Follow-up repair verdict: GO
 
 This verdict approves committing the repair and launching only the third
 mdtest preflight. It does not approve formal execution.
+
+## Post-Run Correction
+
+The controller and independent verifier both succeeded in attempt 3, so this
+repair closed the affinity defect. A later inspection of upstream virtme-ng
+corrected the initial explanation: absence of an explicit newline in the old
+client is not a proven cause because the upstream repaired client uses the same
+complete-JSON send form. The evidence supports an asynchronous QMP lifecycle
+failure, not a missing-newline conclusion. Upstream subsequently moved the
+pinning thread into `virtme-run` immediately before QEMU launch in commit
+`8f74cceecb163a5d5b08e70c101de85920eb624c`.

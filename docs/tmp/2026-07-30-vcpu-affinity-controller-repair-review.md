@@ -27,8 +27,8 @@ tests without launching a VM.
 The reviewer found no P0/P1 issue or path by which an incorrect vCPU mapping
 could receive final success. It confirmed:
 
-1. The missing-newline diagnosis follows from the installed virtme-ng source
-   and the two different failed QMP observations.
+1. The installed asynchronous QMP pin path failed in the two different ways
+   captured by attempts 1 and 2.
 2. vng receives an explicit local QMP option and no `--pin`.
 3. The controller requires contiguous vCPU indexes, the exact vCPU count,
    valid TIDs, singleton `sched_setaffinity()` calls, and successful read-back.
@@ -67,3 +67,14 @@ Follow-up repair verdict: GO
 The verdict approves committing this repair and launching preflight attempt 3
 under a new result root. It does not reuse either failed root and does not
 approve formal execution.
+
+## Post-Review Correction
+
+After attempt 3, a primary-source check of upstream virtme-ng showed that its
+repaired QMP client also sends complete JSON objects without explicit newline
+terminators. The review's earlier missing-newline causal attribution was
+therefore too strong. The raw evidence establishes asynchronous QMP pin failure,
+not its exact protocol-level cause. This correction does not change the repair
+verdict: attempt 3 independently proved that the project controller and
+read-only verifier produced the exact ordered singleton mapping before the
+launcher failed later.
