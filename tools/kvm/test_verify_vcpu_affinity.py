@@ -72,6 +72,39 @@ class VcpuAffinityTests(unittest.TestCase):
         self.assertFalse(server.is_alive())
         self.assertEqual(response, [{"cpu-index": 0, "thread-id": 1234}])
 
+    def test_query_vcpus_releases_endpoint_for_reconnect(self):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        port = listener.getsockname()[1]
+
+        def serve():
+            for tid in (1234, 5678):
+                connection, _ = listener.accept()
+                with connection:
+                    connection.sendall(
+                        b'{"QMP":{"version":{},"capabilities":[]}}\n')
+                    stream = connection.makefile("r", encoding="utf-8")
+                    json.loads(stream.readline())
+                    connection.sendall(b'{"return":{}}\n')
+                    json.loads(stream.readline())
+                    connection.sendall(
+                        json.dumps({
+                            "return": [
+                                {"cpu-index": 0, "thread-id": tid}
+                            ]
+                        }).encode("utf-8") + b"\n")
+            listener.close()
+
+        server = threading.Thread(target=serve)
+        server.start()
+        first = verify.query_vcpus("127.0.0.1", port)
+        second = verify.query_vcpus("127.0.0.1", port)
+        server.join(timeout=2)
+        self.assertFalse(server.is_alive())
+        self.assertEqual(first[0]["thread-id"], 1234)
+        self.assertEqual(second[0]["thread-id"], 5678)
+
     def test_verify_until_records_timeout(self):
         with mock.patch.object(
                 verify, "observe_affinity",

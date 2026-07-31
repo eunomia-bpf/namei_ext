@@ -37,6 +37,8 @@ test "$(MDTEST_TMPFS_SIZE)" = 4G
 test "$(MDTEST_EXT4_IMAGE_SIZE)" = 2G
 test "$(MDTEST_EXT4_INODES)" = 262144
 test "$(MDTEST_ANALYSIS_SEED)" = 20260729
+test "$(NAMEI_EXT_QMP_HOST)" = 127.0.0.1
+test "$(NAMEI_EXT_QMP_PORT)" = 3636
 test "$(KVM_APPEND)" = \
 	"loglevel=7 panic=30 oops=panic tsc=reliable clocksource=tsc"
 test "$(VNG_MODULE_FLAGS)" = --skip-modules
@@ -246,8 +248,10 @@ test "$$(jq -s '[.[] | [.repetition,.condition,.ranks,.operation]] | unique | le
 			"$$boot/boot.json" >/dev/null; \
 		test "$$(cat "$$boot/kernel-flavor.txt")" = "$$expected_flavor"; \
 		test "$$(cat "$$boot/kernel-commit.txt")" = "$$expected_commit"; \
-		jq -e '.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified" and [.vcpus[].cpus_allowed] == [[8],[9],[10],[11],[12],[13],[14],[15]]' \
+		jq -e '.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified" and .qmp == {host:"127.0.0.1",port:3636} and (.verified_at | type == "string" and length > 0) and .expected_host_cpus == [8,9,10,11,12,13,14,15] and .expected_vcpu_mapping == [range(0; 8) as $$index | {vcpu_index:$$index,host_cpu:(8 + $$index)}] and [.vcpus[] | [.vcpu_index,.cpus_allowed]] == [range(0; 8) as $$index | [$$index,[8 + $$index]]]' \
 			"$$boot/vcpu-affinity.json" >/dev/null; \
+		jq -e '.schema == "namei_ext.vcpu_affinity_pin.v1" and .status == "pinned" and .qmp == {host:"127.0.0.1",port:3636} and (.pinned_at | type == "string" and length > 0) and .expected_host_cpus == [8,9,10,11,12,13,14,15] and .expected_vcpu_mapping == [range(0; 8) as $$index | {vcpu_index:$$index,host_cpu:(8 + $$index)}] and [.vcpus[] | [.vcpu_index,.cpus_allowed]] == [range(0; 8) as $$index | [$$index,[8 + $$index]]]' \
+			"$$boot/vcpu-affinity-pin.json" >/dev/null; \
 		for file in bpf-programs-before.json bpf-programs-after.json; do \
 			jq -e 'type == "array" and length == 0' "$$boot/$$file" >/dev/null; \
 		done; \
@@ -418,6 +422,7 @@ mdtest-cold-metadata-kernel-pair: kernel kernel-stock kernel-provenance \
 mdtest-cold-metadata-analysis-test:
 	(cd "$(ROOT_DIR)/analysis/mdtest_cold_metadata" && \
 		python3 -m unittest -v)
+	python3 "$(ROOT_DIR)/tools/kvm/test_pin_vcpu_affinity.py"
 	python3 "$(ROOT_DIR)/tools/kvm/test_verify_vcpu_affinity.py"
 
 kvm-mdtest-cold-metadata-preflight kvm-mdtest-cold-metadata-rq2: \

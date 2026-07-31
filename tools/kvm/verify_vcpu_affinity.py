@@ -42,20 +42,20 @@ def qmp_response(stream):
 def query_vcpus(host, port):
     with socket.create_connection((host, port), timeout=1.0) as connection:
         connection.settimeout(1.0)
-        stream = connection.makefile("r", encoding="utf-8")
-        greeting = qmp_response(stream)
-        if "QMP" not in greeting:
-            raise RuntimeError("missing QMP greeting")
-        for command in ("qmp_capabilities", "query-cpus-fast"):
-            request = json.dumps({"execute": command}) + "\n"
-            connection.sendall(request.encode("utf-8"))
-            response = qmp_response(stream)
-            if "error" in response:
-                raise RuntimeError(
-                    f"QMP {command} failed: {response['error']}")
-            if "return" not in response:
-                raise RuntimeError(f"QMP {command} returned no result")
-        return response["return"]
+        with connection.makefile("r", encoding="utf-8") as stream:
+            greeting = qmp_response(stream)
+            if "QMP" not in greeting:
+                raise RuntimeError("missing QMP greeting")
+            for command in ("qmp_capabilities", "query-cpus-fast"):
+                request = json.dumps({"execute": command}) + "\n"
+                connection.sendall(request.encode("utf-8"))
+                response = qmp_response(stream)
+                if "error" in response:
+                    raise RuntimeError(
+                        f"QMP {command} failed: {response['error']}")
+                if "return" not in response:
+                    raise RuntimeError(f"QMP {command} returned no result")
+            return response["return"]
 
 
 def read_allowed_cpus(tid):
