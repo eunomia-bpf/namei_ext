@@ -79,3 +79,22 @@ outputs are directed outside the source tree. The reviewer rechecked these
 fixes, found no remaining issue in the reviewed scope, and returned:
 
 **PRE-KVM V3 GO**
+
+## V3 Result Review Status
+
+V3 completed the guest matrix with every semantic, engagement, residual,
+cleanup, and dmesg oracle passing, but the result root failed in the host
+finalizer. Its two filesystem checks searched for `FSTYPE ext4` and
+`FSTYPE tmpfs`; the `findmnt` data rows place filesystem type in the third
+column after target and source. The validator now checks that exact column.
+The immutable failed root and its evidence boundary are recorded in
+`2026-08-01-semantic-continuation-preflight-v3.md`. A separate review must decide
+formal-run readiness; the earlier GO does not authorize a formal run by itself.
+
+The independent raw-result review confirmed that V3 contains no failed guest
+oracle and that the first ext4 grep is the exact host-finalize failure. It also
+validated the corrected third-column predicates against both captured tables.
+Because another preflight would only repeat this deterministic host parser after
+three bounded attempts, the review returned:
+
+**FORMAL GO**

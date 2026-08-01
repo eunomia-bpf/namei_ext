@@ -174,8 +174,10 @@ semantic-continuation-finalize:
 			"$$boot/boot.json" >/dev/null; \
 		test "$$(cat "$$boot/runner.status")" = 0; \
 		test "$$(cat "$$boot/cleanup.status")" = 0; \
-		grep -Eq 'FSTYPE[[:space:]]+ext4' "$$boot/ext4-filesystem.txt"; \
-		grep -Eq 'FSTYPE[[:space:]]+tmpfs' "$$boot/tmpfs-filesystem.txt"; \
+		awk 'NR > 1 && $$3 == "ext4" { found = 1 } END { exit !found }' \
+			"$$boot/ext4-filesystem.txt"; \
+		awk 'NR > 1 && $$3 == "tmpfs" { found = 1 } END { exit !found }' \
+			"$$boot/tmpfs-filesystem.txt"; \
 	done
 	! jq -e 'select(has("pass") and .pass != true)' \
 		"$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/observations.jsonl" >/dev/null
