@@ -104,3 +104,20 @@ synthetic tests, and finalizer all use the new counter.
 No further review round is opened. The next gate is the real one-pair KVM
 preflight, whose result requires an independent raw-result review before any
 formal run.
+
+## Real Preflight Attempt 1
+
+Run `20260801T111359Z-b3eb222` failed before either controller started. The
+portal guest successfully booted the modified kernel and passed the initial
+inventory, clocksource, and dmesg gates. It created and formatted the ext4
+image, but virtme's guest root did not provide a creatable `/mnt` parent, so
+`install -d /mnt/namei-ext-rq2` failed. The outer target recorded mechanism
+status 2, successful cleanup, clean post-inventory and dmesg, and marked the
+result root failed. Its observation stream is empty; it is not mechanism or
+performance evidence and will not be reused.
+
+The mountpoint moves to the guest's writable `/tmp` tree. This does not change
+the measured filesystem: the loop image is mounted on that directory before
+fixture creation, and the existing `findmnt`, `statfs`, and runner gates still
+require the resulting fixture root to be ext4. A second preflight will use a
+fresh result root.

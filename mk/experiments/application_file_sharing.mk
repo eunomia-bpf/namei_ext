@@ -1215,7 +1215,7 @@ __application_file_sharing_rq2_official_guest_inner:
 	$(call APPLICATION_FILE_SHARING_VALIDATE_EXTERNAL,$(APPLICATION_FILE_SHARING_RQ2_BOOT_DIR),before)
 	: >"$(APPLICATION_FILE_SHARING_RQ2_BOOT_DIR)/observations.jsonl"
 	ext4_image=/tmp/namei-ext-rq2-$$(printf '%02d' "$(APPLICATION_FILE_SHARING_RQ2_PAIR)")-$$(printf '%02d' "$(APPLICATION_FILE_SHARING_RQ2_ORDER)").img; \
-	ext4_mount=/mnt/namei-ext-rq2; \
+	ext4_mount=/tmp/namei-ext-rq2-mount; \
 	mechanism_status=0; \
 	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
 		__application_file_sharing_rq2_official_guest_mechanism \
