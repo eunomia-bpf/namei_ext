@@ -408,7 +408,7 @@ int afs_rq2_run_measured(FILE *out, const char *mechanism,
 }
 
 int afs_rq2_emit_single_oracle(FILE *out, const char *mechanism,
-			      const char *phase, int parent_fd,
+			      const char *stream, const char *phase, int parent_fd,
 			      const char *document_id)
 {
 	struct afs_rq2_transaction observation;
@@ -416,7 +416,7 @@ int afs_rq2_emit_single_oracle(FILE *out, const char *mechanism,
 					  &observation);
 
 	emit_transaction(out, "application-file-sharing-rq2-oracle",
-			 mechanism, "policy-view", phase, 0, &observation);
+			 mechanism, stream, phase, 0, &observation);
 	return ret;
 }
 

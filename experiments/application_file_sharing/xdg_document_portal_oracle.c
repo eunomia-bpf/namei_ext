@@ -694,8 +694,9 @@ static int run_rq2_direct_control(FILE *out, const char *root,
 	}
 	if (!ret)
 		ret = afs_rq2_emit_single_oracle(
-			out, "xdg-document-portal", "direct-before-warmup",
-			parent_fd, AFS_RQ2_DOCUMENT_ID);
+			out, "xdg-document-portal", "direct-ext4",
+			"direct-before-warmup", parent_fd,
+			AFS_RQ2_DOCUMENT_ID);
 	if (!ret)
 		ret = afs_rq2_run_warmup(parent_fd, AFS_RQ2_DOCUMENT_ID,
 					 warmup_count);
@@ -746,8 +747,8 @@ static int run_rq2_portal_measurement(
 		(uint32_t)mount_status->st_dev,
 		major(mount_status->st_dev), minor(mount_status->st_dev));
 	ret = afs_rq2_emit_single_oracle(
-		out, "xdg-document-portal", "first-after-grant", parent_fd,
-		document_id);
+		out, "xdg-document-portal", "policy-view",
+		"first-after-grant", parent_fd, document_id);
 	if (!ret)
 		ret = afs_rq2_run_warmup(parent_fd, document_id, warmup_count);
 	if (!ret)

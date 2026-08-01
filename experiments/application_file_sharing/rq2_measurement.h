@@ -77,7 +77,7 @@ int afs_rq2_run_measured(FILE *out, const char *mechanism,
 			 const char *stream, int parent_fd,
 			 const char *document_id, uint32_t sample_count);
 int afs_rq2_emit_single_oracle(FILE *out, const char *mechanism,
-			      const char *phase, int parent_fd,
+			      const char *stream, const char *phase, int parent_fd,
 			      const char *document_id);
 int afs_rq2_emit_hidden_oracle(FILE *out, const char *mechanism,
 			      const char *phase, int parent_fd,

@@ -993,14 +993,22 @@ kvm-application-file-sharing-rq2-official-preflight: experiment-source-clean \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_PAIRS=1 \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_WARMUP=10 \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_SAMPLES=100
-	$(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-finalize \
+	if ! $(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-finalize \
 		RUN_ID="$(RUN_ID)" \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_DIR="$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_PREFLIGHT_RESULT_DIR)" \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_PAIRS=1 \
-		APPLICATION_FILE_SHARING_RQ2_ACTIVE_SAMPLES=100
-	$(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-analyze \
+		APPLICATION_FILE_SHARING_RQ2_ACTIVE_SAMPLES=100; then \
+		failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+		$(call NAMEI_EXT_MARK_RUN_FAILED,$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_PREFLIGHT_RESULT_DIR),$$failed_at,finalization); \
+		exit 1; \
+	fi
+	if ! $(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-analyze \
 		RUN_ID="$(RUN_ID)" \
-		APPLICATION_FILE_SHARING_RQ2_ACTIVE_DIR="$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_PREFLIGHT_RESULT_DIR)"
+		APPLICATION_FILE_SHARING_RQ2_ACTIVE_DIR="$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_PREFLIGHT_RESULT_DIR)"; then \
+		failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+		$(call NAMEI_EXT_MARK_RUN_FAILED,$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_PREFLIGHT_RESULT_DIR),$$failed_at,analysis); \
+		exit 1; \
+	fi
 	$(call NAMEI_EXT_RUN_COMPLETE,$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_PREFLIGHT_RESULT_DIR))
 
 kvm-application-file-sharing-rq2-official: NAMEI_EXT_REQUIRE_CLEAN = 1
@@ -1020,14 +1028,22 @@ kvm-application-file-sharing-rq2-official: experiment-source-clean \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_PAIRS=10 \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_WARMUP=1000 \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_SAMPLES=10000
-	$(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-finalize \
+	if ! $(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-finalize \
 		RUN_ID="$(RUN_ID)" \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_DIR="$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_RESULT_DIR)" \
 		APPLICATION_FILE_SHARING_RQ2_ACTIVE_PAIRS=10 \
-		APPLICATION_FILE_SHARING_RQ2_ACTIVE_SAMPLES=10000
-	$(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-analyze \
+		APPLICATION_FILE_SHARING_RQ2_ACTIVE_SAMPLES=10000; then \
+		failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+		$(call NAMEI_EXT_MARK_RUN_FAILED,$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_RESULT_DIR),$$failed_at,finalization); \
+		exit 1; \
+	fi
+	if ! $(MAKE) -C "$(ROOT_DIR)" application-file-sharing-rq2-official-analyze \
 		RUN_ID="$(RUN_ID)" \
-		APPLICATION_FILE_SHARING_RQ2_ACTIVE_DIR="$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_RESULT_DIR)"
+		APPLICATION_FILE_SHARING_RQ2_ACTIVE_DIR="$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_RESULT_DIR)"; then \
+		failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+		$(call NAMEI_EXT_MARK_RUN_FAILED,$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_RESULT_DIR),$$failed_at,analysis); \
+		exit 1; \
+	fi
 	$(call NAMEI_EXT_RUN_COMPLETE,$(APPLICATION_FILE_SHARING_RQ2_OFFICIAL_RESULT_DIR))
 
 experiment-application-file-sharing-rq2-official: \

@@ -150,3 +150,34 @@ full diagnosis and validation obligations are recorded in
 `docs/tmp/2026-08-01-parent-device-encoding-fix.md`. The failed root is
 immutable and will not be repaired or reused. The third preflight will use a
 fresh result root after host builds and tests pass.
+
+## Real Preflight Attempt 3 And Closure
+
+Run `20260801T113049Z-3ee783a` exercised both mechanisms end to end after the
+device-encoding repair. Both boots passed mechanism, cleanup, post-inventory,
+and dmesg checks. The official portal and `namei_ext` each completed 100
+policy-view and 100 direct-ext4 measured transactions with no failed operation
+oracle. Immediate grant and revoke observations agreed. Portal FUSE request
+deltas covered file and directory operations; the `namei_ext` measured window
+recorded 300 `SELECT` actions and 100 scope-matched visible `READDIR` actions.
+
+The frozen analyzer nevertheless rejected the run. The portal daemon had nine
+captured threads before measurement and ten after measurement, so the required
+all-thread resource delta was undefined. No analysis outputs were produced.
+Because the outer target did not yet mark finalizer or analysis failures, the
+root was manually given a terminal failure label. That mutation is not emitted
+by the recorded Make target and makes the already-failed root unsuitable for
+paper evidence. It remains immutable and will not be rerun or repaired.
+
+An independent raw-result review classifies the run as invalid, the hypothesis
+as inconclusive, the research value as dependency-only, and the paper impact as
+none. The review is
+`docs/tmp/2026-08-01-rq2-official-xdg-portal-preflight-review.md` and ends in
+`Final verdict: NO-GO`. This was the third allowed real preflight; the formal
+ten-pair run is not authorized.
+
+Two forward-only implementation repairs remain in the source tree. The owning
+Make targets now mark finalizer and analysis failures automatically, and the
+single-transaction emitter accepts an explicit stream label so a direct
+control cannot be mislabeled as a policy-view observation. Neither repair
+changes or promotes the closed raw result.

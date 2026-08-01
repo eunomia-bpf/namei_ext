@@ -1,6 +1,6 @@
 # Evaluation
 
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 
 This file holds the scientific evaluation state: use cases, experiment
 matrices, result pointers, and open questions. Research process rules and
@@ -139,17 +139,17 @@ does not replace the bounded 128-replacement construction check above and is
 not paper evidence. The immutable outcome and stopping decision are recorded
 in `docs/tmp/2026-07-31-rq3-target-lifetime-preflight10-kcsan-negative.md`.
 
-The next admitted experiment addresses RQ2 baseline credibility rather than
-adding another workload. It compares the already-correct W1 existing-object
-grant/view slice with unmodified `xdg-document-portal` 1.22.1 and `namei_ext`
-in separate paired KVM boots. Only the same frozen application-visible
-stat/open/read/readdir transaction is timed; portal startup, D-Bus
-construction, permission-store lifetime, and synthetic hierarchy are excluded
-from the primary metric. The official portal is an official-source
-external-validity baseline, not a claim that the two complete systems are
-feature-equivalent and not an independent placement-causality experiment. The
-frozen plan is
-`docs/tmp/2026-08-01-rq2-official-xdg-portal-performance-plan.md`.
+The attempted official-source W1 RQ2 comparison is closed without a performance
+result. Its third and final preflight exercised both official
+`xdg-document-portal` 1.22.1 and `namei_ext` end to end on dedicated ext4
+fixtures. Both mechanisms passed the same 100 measured application-visible
+transactions and showed positive file and directory mechanism engagement, but
+the portal daemon created a tenth thread during the measured interval. The
+frozen analyzer therefore could not compute the required all-thread resource
+delta. The run is invalid for performance, no formal ten-pair execution is
+authorized, and no latency from the preflight is paper evidence. The complete
+judgment is
+`docs/tmp/2026-08-01-rq2-official-xdg-portal-preflight-review.md`.
 
 ## Experiment Matrix Status
 
@@ -174,7 +174,7 @@ frozen plan is
 | Lower object, unrelated path, and cleanup | Passed: both mechanisms preserved lower-object device, inode, mode, owner, size, timestamps, and bytes in all three boots; unrelated-object controls passed; source teardown, midpoint isolation, policy detach, target clear, six cgroup removals, three-stage external BPF/FUSE inventories, and dmesg scans passed | Same raw root |
 | Policy and source engagement | All five pinned upstream portal tests executed without skip/failure/timeout. The official portal FUSE view mounted and served the source states. `namei_ext` recorded 210 lookup, 30 readdir, 3 `SELECT`, 12 lookup `HIDE`, and 4 readdir `HIDE` events per boot | Same raw root |
 | Independent result review | Valid supporting RQ1 source-fidelity evidence. The claim is the official portal's existing-object read grant/isolation/revoke subset, not complete portal compatibility, sandbox enforcement, writes, persistence, or performance | `docs/tmp/2026-07-30-application-file-sharing-source-oracle-rq1-formal01-result-review.md` |
-| Matched FUSE performance comparison | Open; the source system establishes FUSE behavior, but no matched timing result exists | — |
+| Matched official FUSE performance comparison | Closed without a result after three permitted preflights. Attempt 3 passed 100 official-portal and 100 `namei_ext` policy-view transactions plus direct controls, but a changing portal thread set invalidated the mandatory resource analysis. No latency or ratio is admitted and no formal run is authorized | `results/experiments/application-file-sharing-rq2-official-preflight/20260801T113049Z-3ee783a/`; `docs/tmp/2026-08-01-rq2-official-xdg-portal-preflight-review.md` |
 
 Entry points:
 `make kvm-application-file-sharing-source-oracle-preflight` and
@@ -343,9 +343,9 @@ metadata, or arbitrary filesystem behavior.
 
 ## Open Questions
 
-1. Does the direction of the RQ2 feature-equivalent result generalize to the
-   admitted official-source W1 comparison under a frozen application-visible
-   transaction?
+1. Does selecting an existing file or directory reconnect to ordinary VFS
+   semantics across a standard filesystem conformance suite, rather than only
+   across the operations exercised by the current workload oracles?
 2. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?

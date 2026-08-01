@@ -79,3 +79,23 @@ This repair establishes compatibility with `stat(2)` map keys on the tested
 architecture and ext4 lower filesystem. The UAPI still exposes a compound
 device number rather than separate major/minor fields; an upstream ABI proposal
 should specify the encoding explicitly or expose major/minor separately.
+
+## Modified-Kernel Result
+
+The committed repair is kernel commit
+`b07117a3cb41826a34af5ca61e3e2c81dade793f`. A full kernel image and
+provenance build completed before the third KVM preflight.
+
+In fresh result root
+`results/experiments/application-file-sharing-rq2-official-preflight/20260801T113049Z-3ee783a/`,
+the loop-backed ext4 parent matched the userspace scope key. The real attached
+policy selected the registered document and enforced visibility: the measured
+interval recorded 300 `SELECT` actions and 100 scope-matched visible `READDIR`
+actions, and the complete grant/revoke oracle passed. This closes the original
+device-encoding defect.
+
+The paired performance preflight itself is not valid evidence because its
+independent resource analysis failed for an unrelated changing portal thread
+set. That outcome and the decision not to run the formal comparison are
+recorded in
+`docs/tmp/2026-08-01-rq2-official-xdg-portal-preflight-review.md`.

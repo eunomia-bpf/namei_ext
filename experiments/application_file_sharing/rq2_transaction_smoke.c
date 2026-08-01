@@ -42,7 +42,8 @@ int main(int argc, char **argv)
 		ret = -errno;
 		goto out;
 	}
-	ret = afs_rq2_emit_single_oracle(out, "host-filesystem-smoke", "initial",
+	ret = afs_rq2_emit_single_oracle(out, "host-filesystem-smoke",
+					 "host-filesystem-smoke", "initial",
 					 parent_fd, AFS_RQ2_DOCUMENT_ID);
 	if (!ret)
 		ret = afs_rq2_run_warmup(parent_fd, AFS_RQ2_DOCUMENT_ID, 2);

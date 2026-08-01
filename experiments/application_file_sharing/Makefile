@@ -67,6 +67,8 @@ rq2-host-smoke: $(OUTPUT)/rq2_transaction_smoke
 		"$(OUTPUT)/rq2-transaction-smoke.jsonl" >/dev/null
 	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-sample" and .pass == true)] | length' \
 		"$(OUTPUT)/rq2-transaction-smoke.jsonl")" = 3
+	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-oracle" and .stream == "host-filesystem-smoke" and .phase == "initial" and .pass == true)] | length' \
+		"$(OUTPUT)/rq2-transaction-smoke.jsonl")" = 1
 	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-process-snapshot" and .role == "client" and .pass == true)] | length' \
 		"$(OUTPUT)/rq2-transaction-smoke.jsonl")" = 2
 	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-hidden-oracle" and .document_stat_errno == 2 and .directory_entries == 2 and .pass == true)] | length' \

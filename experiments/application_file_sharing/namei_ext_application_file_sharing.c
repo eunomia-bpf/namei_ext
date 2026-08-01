@@ -514,7 +514,8 @@ static int run_rq2_direct_control(FILE *out, const char *root,
 	}
 	if (!ret)
 		ret = afs_rq2_emit_single_oracle(
-			out, "namei_ext", "direct-before-warmup", parent_fd,
+			out, "namei_ext", "direct-ext4",
+			"direct-before-warmup", parent_fd,
 			AFS_RQ2_DOCUMENT_ID);
 	if (!ret)
 		ret = afs_rq2_run_warmup(parent_fd, AFS_RQ2_DOCUMENT_ID,
@@ -551,7 +552,8 @@ static int run_rq2_namei_measurement(
 		goto out;
 	}
 	ret = afs_rq2_emit_single_oracle(
-		out, "namei_ext", "first-after-grant", parent_fd, document_id);
+		out, "namei_ext", "policy-view", "first-after-grant",
+		parent_fd, document_id);
 	if (!ret)
 		ret = afs_rq2_run_warmup(parent_fd, document_id, warmup_count);
 	if (!ret)
