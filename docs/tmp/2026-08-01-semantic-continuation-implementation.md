@@ -61,15 +61,32 @@ BPF counters immediately before and after each selected child and require every
 expected operand target to be hit. Residual rows inspect the physical case
 directories after each arm.
 
+Protocol v2 additionally records one counter-delta row after every selected
+operation. Each row freezes whether that operation must select a target set,
+must PASS, or must cause no policy decision. S16 identity rows preserve the
+actual and expected device/inode values. Operation rows classify descriptor
+returns so only descriptor numbers are normalized; byte counts and ordinary
+syscall returns remain exact in the arm comparison. The S15 direct and selected
+unmanaged controls use distinct physical files.
+
+`configs/benchmarks/semantic_continuation_operations.tsv` is an independent
+80-row formal oracle for case, operation, expected decision class, target mask,
+and return kind. It is captured in each result root. The host finalizer requires
+one matching direct operation, selected operation, and selected engagement for
+every row, so the C mapping cannot validate itself.
+
 The host finalizer rejects a boot unless all of the following hold:
 
 - every raw row carrying `pass` is true;
 - direct and selected arms contain the complete profile-specific case set;
 - normalized operation outcomes are identical across arms;
+- every selected operation has one passing per-operation engagement row and all
+  non-descriptor return values match exactly across arms;
 - each selected case has the expected target engagement and each case has an
   empty lower-object residual check;
 - formal permission and `EXDEV` errors have the exact expected errno;
 - S16 tears down policy before its descriptor-relative operations;
+- both S16 arms preserve raw actual/expected device and inode identities;
 - the controller, fixture cleanup, ext4/tmpfs identity, and boot status pass;
 - dmesg contains none of the project failure signatures, an RCU stall, or a
   `namei_ext` failure diagnostic.

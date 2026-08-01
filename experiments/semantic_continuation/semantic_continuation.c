@@ -56,14 +56,6 @@ struct fixture {
 	char cgroup[PATH_MAX];
 };
 
-struct case_context {
-	FILE *out;
-	const char *arm;
-	const char *id;
-	unsigned int operations;
-	unsigned int failures;
-};
-
 struct counter_snapshot {
 	uint64_t pass;
 	uint64_t target[TARGET_MAX];
@@ -77,6 +69,31 @@ struct policy_state {
 	bool cgroup_created;
 	uint64_t cgroup_id;
 };
+
+struct case_context {
+	FILE *out;
+	const char *arm;
+	const char *id;
+	struct policy_state *policy_state;
+	struct counter_snapshot previous_counters;
+	bool track_binding;
+	unsigned int operations;
+	unsigned int failures;
+};
+
+enum operation_binding_kind {
+	OP_BINDING_NONE,
+	OP_BINDING_PASS,
+	OP_BINDING_TARGET,
+};
+
+struct operation_binding {
+	enum operation_binding_kind kind;
+	unsigned int target_mask;
+};
+
+static int read_counters(struct policy_state *state,
+			 struct counter_snapshot *snapshot);
 
 static void json_string(FILE *out, const char *value)
 {
@@ -117,6 +134,149 @@ static void emit_setup(FILE *out, const char *step, int error, bool pass)
 	fflush(out);
 }
 
+static bool operation_returns_fd(const char *operation)
+{
+	const char *fd_operations[] = {
+		"create", "create-child", "create-exclusive",
+		"create-exclusive-existing", "create-root-0600",
+		"create-target", "open-directory", "openat-create",
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(fd_operations); i++)
+		if (!strcmp(operation, fd_operations[i]))
+			return true;
+	return false;
+}
+
+static bool operation_has_no_selected_path(const char *operation)
+{
+	const char *operations[] = {
+		"close-after-write", "read-via-fd", "runner-error",
+		"seek-via-fd", "write", "write-eight", "write-secret",
+		"write-target", "write-via-fd",
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(operations); i++)
+		if (!strcmp(operation, operations[i]))
+			return true;
+	return false;
+}
+
+static struct operation_binding
+operation_binding(const struct case_context *ctx, const char *operation)
+{
+	struct operation_binding binding = {
+		.kind = OP_BINDING_TARGET,
+		.target_mask = 1U << TARGET_A,
+	};
+
+	if (operation_has_no_selected_path(operation)) {
+		binding.kind = OP_BINDING_NONE;
+		binding.target_mask = 0;
+		return binding;
+	}
+	if (!strcmp(ctx->id, "S15")) {
+		binding.kind = OP_BINDING_PASS;
+		binding.target_mask = 0;
+		return binding;
+	}
+	if (!strcmp(ctx->id, "S16")) {
+		if (strcmp(operation, "open-directory")) {
+			binding.kind = OP_BINDING_NONE;
+			binding.target_mask = 0;
+		}
+		return binding;
+	}
+	if (!strcmp(ctx->id, "S11") || !strcmp(ctx->id, "S12")) {
+		if (!strcmp(operation, "rename-a-to-b") ||
+		    !strcmp(operation, "link-a-to-b") ||
+		    (!strcmp(ctx->id, "S12") &&
+		     !strcmp(operation, "stat-link-relation")))
+			binding.target_mask = (1U << TARGET_A) | (1U << TARGET_B);
+		else if (!strcmp(operation, "read-destination") ||
+			 !strcmp(operation, "unlink-destination"))
+			binding.target_mask = 1U << TARGET_B;
+		return binding;
+	}
+	if (!strcmp(ctx->id, "S13") || !strcmp(ctx->id, "S14")) {
+		if (!strcmp(operation, "rename-ext4-to-tmpfs") ||
+		    !strcmp(operation, "link-ext4-to-tmpfs"))
+			binding.target_mask = (1U << TARGET_A) | (1U << TARGET_X);
+		else if (!strcmp(operation, "stat-destination"))
+			binding.target_mask = 1U << TARGET_X;
+	}
+	return binding;
+}
+
+static const char *binding_kind_name(enum operation_binding_kind kind)
+{
+	switch (kind) {
+	case OP_BINDING_NONE:
+		return "none";
+	case OP_BINDING_PASS:
+		return "pass";
+	case OP_BINDING_TARGET:
+		return "target";
+	}
+	return "invalid";
+}
+
+static int emit_operation_binding(struct case_context *ctx,
+				  const char *operation)
+{
+	struct operation_binding binding = operation_binding(ctx, operation);
+	struct counter_snapshot after = {};
+	uint64_t delta[TARGET_MAX] = {};
+	uint64_t pass_delta = 0;
+	int counter_error = read_counters(ctx->policy_state, &after);
+	bool monotonic = !counter_error && after.pass >= ctx->previous_counters.pass;
+	bool pass = monotonic;
+
+	for (uint32_t target = 1; target < TARGET_MAX; target++) {
+		if (!counter_error &&
+		    after.target[target] >= ctx->previous_counters.target[target])
+			delta[target] = after.target[target] -
+				ctx->previous_counters.target[target];
+		else
+			monotonic = false;
+	}
+	if (monotonic)
+		pass_delta = after.pass - ctx->previous_counters.pass;
+	pass = pass && monotonic;
+	for (uint32_t target = 1; target < TARGET_MAX; target++) {
+		if (binding.kind == OP_BINDING_TARGET &&
+		    (binding.target_mask & (1U << target)))
+			pass = pass && delta[target] > 0;
+		else
+			pass = pass && delta[target] == 0;
+	}
+	if (binding.kind == OP_BINDING_PASS)
+		pass = pass && pass_delta > 0;
+	else if (binding.kind == OP_BINDING_NONE)
+		pass = pass && pass_delta == 0;
+
+	fputs("{\"event\":\"semantic-continuation-operation-engagement\",\"arm\":\"selected\",\"case\":",
+	      ctx->out);
+	json_string(ctx->out, ctx->id);
+	fputs(",\"operation\":", ctx->out);
+	json_string(ctx->out, operation);
+	fputs(",\"expectation\":", ctx->out);
+	json_string(ctx->out, binding_kind_name(binding.kind));
+	fprintf(ctx->out,
+		",\"expected_target_mask\":%u,\"target_a_delta\":%" PRIu64
+		",\"target_b_delta\":%" PRIu64
+		",\"target_x_delta\":%" PRIu64
+		",\"pass_delta\":%" PRIu64
+		",\"counter_errno\":%d,\"pass\":%s}\n",
+		binding.target_mask, delta[TARGET_A], delta[TARGET_B],
+		delta[TARGET_X], pass_delta, counter_error ? -counter_error : 0,
+		pass ? "true" : "false");
+	fflush(ctx->out);
+	if (!counter_error)
+		ctx->previous_counters = after;
+	return pass ? 0 : -EINVAL;
+}
+
 static int emit_operation(struct case_context *ctx, const char *operation,
 			  long result, int error, const char *detail,
 			  bool pass)
@@ -128,12 +288,40 @@ static int emit_operation(struct case_context *ctx, const char *operation,
 	json_string(ctx->out, ctx->id);
 	fputs(",\"operation\":", ctx->out);
 	json_string(ctx->out, operation);
-	fprintf(ctx->out, ",\"return\":%ld,\"errno\":%d,\"detail\":",
-		result, error);
+	fprintf(ctx->out, ",\"return\":%ld,\"return_kind\":\"%s\",\"errno\":%d,\"detail\":",
+		result, operation_returns_fd(operation) ? "fd" : "value", error);
 	json_string(ctx->out, detail);
 	fprintf(ctx->out, ",\"pass\":%s}\n", pass ? "true" : "false");
 	fflush(ctx->out);
 	ctx->operations++;
+	if (!pass)
+		ctx->failures++;
+	int binding_ret = 0;
+	if (ctx->track_binding)
+		binding_ret = emit_operation_binding(ctx, operation);
+	if (binding_ret)
+		ctx->failures++;
+	return pass && !binding_ret ? 0 : -EINVAL;
+}
+
+static int emit_identity(struct case_context *ctx, const char *operation,
+			 const struct stat *actual, const struct stat *expected)
+{
+	bool pass = actual->st_dev == expected->st_dev &&
+		actual->st_ino == expected->st_ino;
+
+	fputs("{\"event\":\"semantic-continuation-identity\",\"arm\":", ctx->out);
+	json_string(ctx->out, ctx->arm);
+	fputs(",\"case\":", ctx->out);
+	json_string(ctx->out, ctx->id);
+	fputs(",\"operation\":", ctx->out);
+	json_string(ctx->out, operation);
+	fprintf(ctx->out,
+		",\"actual_dev\":%ju,\"actual_ino\":%ju,\"expected_dev\":%ju,\"expected_ino\":%ju,\"pass\":%s}\n",
+		(uintmax_t)actual->st_dev, (uintmax_t)actual->st_ino,
+		(uintmax_t)expected->st_dev, (uintmax_t)expected->st_ino,
+		pass ? "true" : "false");
+	fflush(ctx->out);
 	if (!pass)
 		ctx->failures++;
 	return pass ? 0 : -EINVAL;
@@ -1007,6 +1195,10 @@ static int case_s16_direct(struct case_context *ctx,
 			close(dirfd);
 		return -EINVAL;
 	}
+	if (emit_identity(ctx, "open-directory", &actual, &expected)) {
+		close(dirfd);
+		return -EINVAL;
+	}
 	int ret = dirfd_operations(ctx, dirfd);
 	close(dirfd);
 	return ret;
@@ -1117,6 +1309,7 @@ static int prepare_fixture(struct fixture *fixture, const char *ext4_root,
 			   const char *tmpfs_root, const char *logical,
 			   const char *cgroup_root)
 {
+	char direct_ext4[PATH_MAX];
 	char path[PATH_MAX];
 	int ret = prepare_arm_roots(&fixture->direct, "direct", ext4_root,
 				    tmpfs_root);
@@ -1156,11 +1349,15 @@ static int prepare_fixture(struct fixture *fixture, const char *ext4_root,
 	if (!ret)
 		ret = namei_ext_write_text(fixture->selected.unmanaged,
 					"ordinary-lower");
-	if (!ret && strlen(fixture->selected.unmanaged) >=
-			   sizeof(fixture->direct.unmanaged))
-		ret = -ENAMETOOLONG;
 	if (!ret)
-		strcpy(fixture->direct.unmanaged, fixture->selected.unmanaged);
+		ret = join_path(direct_ext4, sizeof(direct_ext4), ext4_root, "direct");
+	if (!ret)
+		ret = join_path(fixture->direct.unmanaged,
+				sizeof(fixture->direct.unmanaged), direct_ext4,
+				"unmanaged");
+	if (!ret)
+		ret = namei_ext_write_text(fixture->direct.unmanaged,
+					"ordinary-lower");
 	if (!ret && strlen(fixture->selected_a_lower) == 0) {
 		char selected_ext4[PATH_MAX];
 		char selected_tmpfs[PATH_MAX];
@@ -1330,7 +1527,8 @@ static int wait_status(pid_t pid)
 
 static int run_case_child(FILE *out, const char *arm,
 			  const struct arm_paths *paths, unsigned int number,
-			  const char *cgroup)
+			  const char *cgroup, struct policy_state *state,
+			  const struct counter_snapshot *initial)
 {
 	char id[8];
 	pid_t pid;
@@ -1345,8 +1543,12 @@ static int run_case_child(FILE *out, const char *arm,
 			.out = out,
 			.arm = arm,
 			.id = id,
+			.policy_state = state,
+			.track_binding = state && initial,
 		};
 		int ret = 0;
+		if (initial)
+			ctx.previous_counters = *initial;
 
 		if (cgroup)
 			ret = namei_ext_move_self_to_cgroup(cgroup);
@@ -1493,6 +1695,9 @@ static int run_selected_s16(FILE *out, const struct arm_paths *logical_paths,
 			.out = out,
 			.arm = "selected",
 			.id = id,
+			.policy_state = state,
+			.previous_counters = before,
+			.track_binding = true,
 		};
 		struct stat actual = {};
 		struct stat expected = {};
@@ -1513,6 +1718,9 @@ static int run_selected_s16(FILE *out, const struct arm_paths *logical_paths,
 		emit_operation(&ctx, "open-directory", dirfd,
 			       child_ret ? -child_ret : 0,
 			       "opened-object-identity", identity);
+		if (!child_ret)
+			child_ret = emit_identity(&ctx, "open-directory", &actual,
+						  &expected);
 		if (write(ready[1], &signal, 1) != 1)
 			child_ret = -EIO;
 		close(ready[1]);
@@ -1581,7 +1789,7 @@ static int run_arm(FILE *out, const char *arm,
 			int counter_error = read_counters(state, &before);
 
 			ret = run_case_child(out, arm, logical_paths, number,
-					     fixture->cgroup);
+					     fixture->cgroup, state, &before);
 			int snapshot_ret = read_counters(state, &after);
 			if (!counter_error)
 				counter_error = snapshot_ret;
@@ -1592,7 +1800,8 @@ static int run_arm(FILE *out, const char *arm,
 			if (!ret && !engaged)
 				ret = -EINVAL;
 		} else {
-			ret = run_case_child(out, arm, physical_paths, number, NULL);
+			ret = run_case_child(out, arm, physical_paths, number, NULL,
+					     NULL, NULL);
 		}
 		int residual_ret = 0;
 		if (!(!strcmp(arm, "selected") && number == 16))
@@ -1641,6 +1850,8 @@ static int cleanup_fixture(struct fixture *fixture, const char *ext4_root,
 	}
 	if (!ret)
 		ret = unlink(fixture->selected.unmanaged) ? -errno : 0;
+	if (!ret)
+		ret = unlink(fixture->direct.unmanaged) ? -errno : 0;
 	const char *logical_names[] = { "a", "b", "x" };
 	for (size_t i = 0; !ret && i < ARRAY_SIZE(logical_names); i++) {
 		ret = join_path(path, sizeof(path), fixture->logical,

@@ -29,9 +29,11 @@ reason and independent findings are recorded in the adjacent plan review.
   change semantics for create, permission, links, rename, timestamps,
   enumeration, deletion, or cross-filesystem errors.
 - Independent evidence added beyond existing runs and published results: every
-  checked operation crosses the selection boundary. Two-path calls cross it
-  independently for both operands. Existing workload oracles and the rejected
-  selected-cwd suite do not provide that coverage.
+  checked operation with a pathname operand crosses the selection boundary.
+  Descriptor-only operations are explicitly recorded as requiring no new
+  policy decision. Two-path calls cross the boundary independently for both
+  operands. Existing workload oracles and the rejected selected-cwd suite do
+  not provide that coverage.
 - Why the result is not tautological, already settled, or dominated: the
   checked syscall and `SELECT_TARGET` occur in the same path walk. The kernel
   must preserve the selected mount/dentry, permission context, create parent,
@@ -131,12 +133,13 @@ reason and independent findings are recorded in the adjacent plan review.
 - Cgroup placement: only the selected child is moved into the experiment
   cgroup. The controller and direct child remain in the root cgroup, so
   controller instrumentation cannot satisfy target-hit attribution.
-- Snapshot ordering: for each selected case, the controller reads target-hit
-  counters, releases the selected child to execute exactly that case, waits for
-  the raw result, then reads counters again. Each logical path operand must
-  increase its target's hit counter by at least one. More than one hit is
-  accepted because a complete VFS `-ECHILD` restart has at-least-once policy
-  semantics.
+- Snapshot ordering: the controller supplies a counter snapshot to each
+  selected child. After every operation, the child records the delta since the
+  preceding operation and checks the operation's frozen target mask, PASS
+  expectation, or no-policy expectation. The controller also brackets the
+  complete case. Each logical path operand must increase its target's hit
+  counter by at least one. More than one hit is accepted because a complete VFS
+  `-ECHILD` restart has at-least-once policy semantics.
 - Mount identity: ext4 and tmpfs are checked by `statfs`; selected directory
   device/inode is checked against the registered lower target; same-ext4
   link/rename cases must succeed, while ext4-to-tmpfs link/rename must return
@@ -252,3 +255,24 @@ already-open directory fd after teardown.
   not a claim that unmodified `pjdfstest` ran through every logical path. It
   does not establish complete POSIX conformance, crash consistency, arbitrary
   lower filesystems, or source-workload expressiveness by itself.
+
+## Formal V1 Audit And Protocol V2
+
+Formal v1 completed all guest oracles in three boots, but an independent
+claim-to-raw audit rejected the full intended claim. Case-level counters could
+not attribute every pathname operation; S16 stored only an identity predicate
+rather than the compared device/inode values; the return comparator discarded
+all successful numeric values; and S15 reused one physical unmanaged file in
+both arms.
+
+Protocol v2 fixes those evidence defects without changing S01--S16:
+
+- every selected operation records its own target/PASS/no-policy counter delta;
+- S16 records actual and expected device/inode values in both arms;
+- descriptor returns are normalized as descriptors, while all other return
+  values are compared exactly;
+- S15 uses independent direct and selected physical files with the same payload.
+
+Formal v1 remains an immutable completed run whose broad claim review was
+rejected. Only a fresh protocol-v2 formal run can satisfy the original
+completion rule.

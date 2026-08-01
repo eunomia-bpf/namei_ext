@@ -2,6 +2,8 @@ SEMANTIC_CONTINUATION_POLICY ?= \
 	$(BUILD_ROOT)/bpf/semantic_continuation.bpf.o
 SEMANTIC_CONTINUATION_RUNNER ?= \
 	$(BUILD_ROOT)/semantic-continuation/namei_ext_semantic_continuation
+SEMANTIC_CONTINUATION_OPERATION_ORACLE ?= \
+	$(ROOT_DIR)/configs/benchmarks/semantic_continuation_operations.tsv
 SEMANTIC_CONTINUATION_GUEST_SCRATCH ?= \
 	/tmp/namei-ext-semantic-continuation
 SEMANTIC_CONTINUATION_GUEST_EXT4_ROOT ?= \
@@ -20,6 +22,8 @@ install -m 0555 "$(SEMANTIC_CONTINUATION_RUNNER)" \
 	"$(1)/artifacts/runtime/namei_ext_semantic_continuation"
 install -m 0444 "$(SEMANTIC_CONTINUATION_POLICY)" \
 	"$(1)/artifacts/runtime/semantic_continuation.bpf.o"
+install -m 0444 "$(SEMANTIC_CONTINUATION_OPERATION_ORACLE)" \
+	"$(1)/artifacts/runtime/semantic_continuation_operations.tsv"
 endef
 
 define SEMANTIC_CONTINUATION_START
@@ -30,7 +34,7 @@ $(call SEMANTIC_CONTINUATION_CAPTURE_ARTIFACTS,$(1))
 jq \
 	--arg profile "$(2)" \
 	--argjson repetitions "$(3)" \
-	'.protocol_schema = "namei_ext.semantic_continuation.v1" | .layout = "fresh-boot-paired-direct-selected" | .operation_inventory = {source:"pjd/pjdfstest",commit:"ededbeb2b44929972898afb87474b0937f78a877",reuse:"operation-families-not-unmodified-suite"} | .matrix = {profile:$$profile,repetitions:$$repetitions,arms:["direct","selected"],order:["direct-selected","selected-direct"],filesystems:["ext4","tmpfs"],all_boots_must_pass:true}' \
+	'.protocol_schema = "namei_ext.semantic_continuation.v2" | .layout = "fresh-boot-paired-direct-selected" | .operation_inventory = {source:"pjd/pjdfstest",commit:"ededbeb2b44929972898afb87474b0937f78a877",reuse:"operation-families-not-unmodified-suite"} | .matrix = {profile:$$profile,repetitions:$$repetitions,arms:["direct","selected"],order:["direct-selected","selected-direct"],filesystems:["ext4","tmpfs"],all_boots_must_pass:true}' \
 	"$(1)/run.json" >"$(1)/run.json.tmp"
 mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 printf '%s\n' "$(4)" >"$(1)/command.txt"
@@ -128,11 +132,13 @@ semantic-continuation-finalize:
 		fi; \
 		if test "$(SEMANTIC_CONTINUATION_ACTIVE_PROFILE)" = preflight; then \
 			expected_cases=2; \
+			expected_operations=13; \
 			case_specs='S02:8 S11:5'; \
 			engagement_specs='S02:2 S11:6'; \
 			teardown_step=teardown-policy; \
 		else \
 			expected_cases=16; \
+			expected_operations=80; \
 			case_specs='S01:1 S02:8 S03:5 S04:6 S05:6 S06:5 S07:3 S08:8 S09:6 S10:5 S11:5 S12:5 S13:5 S14:5 S15:1 S16:6'; \
 			engagement_specs='S01:2 S02:2 S03:2 S04:2 S05:2 S06:2 S07:2 S08:2 S09:2 S10:2 S11:6 S12:6 S13:10 S14:10 S15:0 S16:2'; \
 			teardown_step=teardown-policy-before-dirfd; \
@@ -154,6 +160,9 @@ semantic-continuation-finalize:
 				test "$$(jq -s --arg arm "$$arm" --arg case_id "$$case_id" --argjson operation_count "$$operation_count" \
 					'[.[] | select(.event == "semantic-continuation-case" and .arm == $$arm and .case == $$case_id and .operations == $$operation_count and .failures == 0 and .pass == true)] | length' \
 					"$$boot/observations.jsonl")" = 1; \
+				if test "$$arm" = selected; then \
+					test "$$(jq -s --arg case_id "$$case_id" '[.[] | select(.event == "semantic-continuation-operation-engagement" and .arm == "selected" and .case == $$case_id and .pass == true)] | length' "$$boot/observations.jsonl")" = "$$operation_count"; \
+				fi; \
 			done; \
 			test "$$(jq -s --arg arm "$$arm" \
 				'[.[] | select(.event == "semantic-continuation-residual" and .arm == $$arm and .pass == true)] | length' \
@@ -165,9 +174,23 @@ semantic-continuation-finalize:
 				'[.[] | select(.event == "semantic-continuation-engagement" and .arm == "selected" and .case == $$case_id and .expected_target_mask == $$target_mask and .pass == true)] | length' \
 				"$$boot/observations.jsonl")" = 1; \
 		done; \
-		jq -s -e '([.[] | select(.event == "semantic-continuation-operation" and .arm == "direct") | {case,operation,errno,detail,pass,outcome:(if .return < 0 then "error" else "success" end)}] | sort_by(.case,.operation)) == ([.[] | select(.event == "semantic-continuation-operation" and .arm == "selected") | {case,operation,errno,detail,pass,outcome:(if .return < 0 then "error" else "success" end)}] | sort_by(.case,.operation))' \
+		test "$$(jq -s '[.[] | select(.event == "semantic-continuation-operation-engagement" and .arm == "selected" and .pass == true)] | length' "$$boot/observations.jsonl")" = "$$expected_operations"; \
+		jq -s -e '([.[] | select(.event == "semantic-continuation-operation" and .arm == "selected") | {case,operation}] | sort_by(.case,.operation)) == ([.[] | select(.event == "semantic-continuation-operation-engagement" and .arm == "selected") | {case,operation}] | sort_by(.case,.operation))' \
+			"$$boot/observations.jsonl" >/dev/null; \
+		jq -s -e 'def semantic_return: if .return_kind == "fd" and .return >= 0 then "fd-success" else (.return | tostring) end; ([.[] | select(.event == "semantic-continuation-operation" and .arm == "direct") | {case,operation,return_kind,return_value:semantic_return,errno,detail,pass}] | sort_by(.case,.operation)) == ([.[] | select(.event == "semantic-continuation-operation" and .arm == "selected") | {case,operation,return_kind,return_value:semantic_return,errno,detail,pass}] | sort_by(.case,.operation))' \
 			"$$boot/observations.jsonl" >/dev/null; \
 		if test "$(SEMANTIC_CONTINUATION_ACTIVE_PROFILE)" = formal; then \
+			oracle_rows=0; \
+			while IFS=$$'\t' read -r case_id operation expectation target_mask return_kind; do \
+				case "$$case_id" in \#*|'') continue;; esac; \
+				oracle_rows=$$((oracle_rows + 1)); \
+				for arm in direct selected; do \
+					test "$$(jq -s --arg arm "$$arm" --arg case_id "$$case_id" --arg operation "$$operation" --arg return_kind "$$return_kind" '[.[] | select(.event == "semantic-continuation-operation" and .arm == $$arm and .case == $$case_id and .operation == $$operation and .return_kind == $$return_kind and .pass == true)] | length' "$$boot/observations.jsonl")" = 1; \
+				done; \
+				test "$$(jq -s --arg case_id "$$case_id" --arg operation "$$operation" --arg expectation "$$expectation" --argjson target_mask "$$target_mask" '[.[] | select(.event == "semantic-continuation-operation-engagement" and .arm == "selected" and .case == $$case_id and .operation == $$operation and .expectation == $$expectation and .expected_target_mask == $$target_mask and .pass == true)] | length' "$$boot/observations.jsonl")" = 1; \
+			done <"$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/artifacts/runtime/semantic_continuation_operations.tsv"; \
+			test "$$oracle_rows" = 80; \
+			test "$$(jq -s '[.[] | select(.event == "semantic-continuation-identity" and .case == "S16" and .operation == "open-directory" and .actual_dev == .expected_dev and .actual_ino == .expected_ino and .pass == true)] | length' "$$boot/observations.jsonl")" = 2; \
 			jq -s -e '([to_entries[] | select(.value.event == "semantic-continuation-operation" and .value.arm == "selected" and .value.case == "S16" and .value.operation == "open-directory") | .key]) as $$open | ([to_entries[] | select(.value.event == "semantic-continuation-setup" and .value.step == "teardown-policy-before-dirfd") | .key]) as $$teardown | ([to_entries[] | select(.value.event == "semantic-continuation-operation" and .value.arm == "selected" and .value.case == "S16" and .value.operation == "openat-create") | .key]) as $$openat | ($$open | length) == 1 and ($$teardown | length) == 1 and ($$openat | length) == 1 and $$open[0] < $$teardown[0] and $$teardown[0] < $$openat[0]' "$$boot/observations.jsonl" >/dev/null; \
 		fi; \
 		jq -e '.status == "completed" and .inner_status == 0 and .cleanup_status == 0 and .dmesg_status == 0' \
@@ -197,11 +220,12 @@ semantic-continuation-analyze:
 	install -d "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis"
 	jq -s \
 		--arg profile "$(SEMANTIC_CONTINUATION_ACTIVE_PROFILE)" \
-		'{schema:"namei_ext.semantic_continuation.summary.v1",profile:$$profile,boots:([.[] | select(.event == "semantic-continuation-summary" and .pass == true)] | length),direct_cases:([.[] | select(.event == "semantic-continuation-case" and .arm == "direct" and .pass == true)] | length),selected_cases:([.[] | select(.event == "semantic-continuation-case" and .arm == "selected" and .pass == true)] | length),selected_engagements:([.[] | select(.event == "semantic-continuation-engagement" and .pass == true)] | length),residual_checks:([.[] | select(.event == "semantic-continuation-residual" and .pass == true)] | length),failed_observations:([.[] | select(has("pass") and .pass != true)] | length),verdict:"supported-for-frozen-matrix"}' \
+		'{schema:"namei_ext.semantic_continuation.summary.v2",profile:$$profile,boots:([.[] | select(.event == "semantic-continuation-summary" and .pass == true)] | length),direct_cases:([.[] | select(.event == "semantic-continuation-case" and .arm == "direct" and .pass == true)] | length),selected_cases:([.[] | select(.event == "semantic-continuation-case" and .arm == "selected" and .pass == true)] | length),selected_case_engagements:([.[] | select(.event == "semantic-continuation-engagement" and .pass == true)] | length),selected_operation_engagements:([.[] | select(.event == "semantic-continuation-operation-engagement" and .pass == true)] | length),identity_checks:([.[] | select(.event == "semantic-continuation-identity" and .pass == true)] | length),residual_checks:([.[] | select(.event == "semantic-continuation-residual" and .pass == true)] | length),failed_observations:([.[] | select(has("pass") and .pass != true)] | length),verdict:"supported-for-frozen-matrix"}' \
 		"$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/observations.jsonl" \
 		>"$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json"
 	jq -e --argjson boots "$(SEMANTIC_CONTINUATION_ACTIVE_REPETITIONS)" \
-		'.boots == $$boots and .direct_cases == .selected_cases and .selected_engagements == .selected_cases and .residual_checks == (2 * .selected_cases) and .failed_observations == 0 and .verdict == "supported-for-frozen-matrix"' \
+		--arg profile "$(SEMANTIC_CONTINUATION_ACTIVE_PROFILE)" \
+		'.boots == $$boots and .direct_cases == .selected_cases and .selected_case_engagements == .selected_cases and .selected_operation_engagements == (if $$profile == "formal" then 80 * $$boots else 13 * $$boots end) and .identity_checks == (if $$profile == "formal" then 2 * $$boots else 0 end) and .residual_checks == (2 * .selected_cases) and .failed_observations == 0 and .verdict == "supported-for-frozen-matrix"' \
 		"$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json" >/dev/null
 	printf '%s\n' \
 		'# Semantic Continuation Result' \
@@ -210,7 +234,9 @@ semantic-continuation-analyze:
 		"Fresh KVM boots: $$(jq -r .boots "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
 		"Passing direct cases: $$(jq -r .direct_cases "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
 		"Passing selected cases: $$(jq -r .selected_cases "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
-		"Passing selected-path engagement checks: $$(jq -r .selected_engagements "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
+		"Passing selected-case engagement checks: $$(jq -r .selected_case_engagements "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
+		"Passing selected-operation engagement checks: $$(jq -r .selected_operation_engagements "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
+		"Passing raw identity checks: $$(jq -r .identity_checks "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
 		"Passing lower-object residual checks: $$(jq -r .residual_checks "$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/summary.json")" \
 		'Verdict: direct and selected paths agree for the frozen operation matrix.' \
 		>"$(SEMANTIC_CONTINUATION_ACTIVE_DIR)/analysis/report.md"
