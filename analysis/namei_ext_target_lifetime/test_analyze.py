@@ -1,0 +1,703 @@
+#!/usr/bin/env python3
+
+import importlib.util
+import itertools
+import tempfile
+import unittest
+from pathlib import Path
+
+
+MODULE_PATH = Path(__file__).with_name("analyze.py")
+SPEC = importlib.util.spec_from_file_location("target_lifetime_analyze", MODULE_PATH)
+ANALYZE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(ANALYZE)
+
+
+def operation(op_id, operation, invoke, response, state, result=0, writer_seq=0):
+    return {
+        "op_id": op_id,
+        "operation": operation,
+        "subtype": "",
+        "actor": "writer" if operation in {"SET", "CLEAR"} else "reader",
+        "actor_id": 0,
+        "writer_seq": writer_seq,
+        "invoke": (invoke, op_id * 2),
+        "response": (response, op_id * 2 + 1),
+        "state": state,
+        "result": result,
+        "device": 1 if result == 0 and operation == "OPEN" else 0,
+        "inode": op_id if result == 0 and operation == "OPEN" else 0,
+    }
+
+
+def target_definition(state, device, inode, directory=False, child=(0, 0)):
+    return {
+        "event": "target-lifetime-target",
+        "cell": "cell",
+        "state": state,
+        "directory": directory,
+        "device": device,
+        "inode": inode,
+        "mode": 33188,
+        "uid": 0,
+        "gid": 0,
+        "size": 2,
+        "child_device": child[0],
+        "child_inode": child[1],
+        "child_mode": 0,
+        "child_uid": 0,
+        "child_gid": 0,
+        "child_size": 0,
+    }
+
+
+def brute_linearizable(history):
+    edges = {
+        (left, right)
+        for left, first in enumerate(history)
+        for right, second in enumerate(history)
+        if left != right and first["response"] < second["invoke"]
+    }
+    updates = sorted(
+        (
+            index
+            for index, item in enumerate(history)
+            if item["operation"] in {"SET", "CLEAR"}
+        ),
+        key=lambda index: history[index]["writer_seq"],
+    )
+    edges.update(zip(updates, updates[1:]))
+    for order in itertools.permutations(range(len(history))):
+        position = {item: index for index, item in enumerate(order)}
+        if any(position[left] >= position[right] for left, right in edges):
+            continue
+        state = "absent"
+        valid = True
+        for index in order:
+            item = history[index]
+            if item["operation"] == "SET":
+                state = item["state"]
+            elif item["operation"] == "CLEAR":
+                state = "absent"
+            elif item["state"] != state:
+                valid = False
+                break
+        if valid:
+            return True
+    return False
+
+
+class LinearizabilityTests(unittest.TestCase):
+    def test_valid_overlapping_history(self):
+        history = [
+            operation(1, "SET", 1, 4, "A", writer_seq=1),
+            operation(2, "OPEN", 2, 3, "A"),
+            operation(3, "CLEAR", 5, 8, "absent", writer_seq=2),
+            operation(4, "OPEN", 6, 7, "absent", result=-2),
+        ]
+        result = ANALYZE.check_linearizable(history)
+        self.assertEqual(result["updates"], 2)
+        self.assertEqual(result["opens"], 2)
+        self.assertEqual(result["successful_opens"], 1)
+        self.assertEqual(result["absent_opens"], 1)
+        self.assertEqual(result["overlap_opens"], 2)
+
+    def test_rejects_history_without_update_reader_overlap(self):
+        history = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "OPEN", 3, 4, "A"),
+            operation(3, "CLEAR", 5, 6, "absent", writer_seq=2),
+            operation(4, "OPEN", 7, 8, "absent", result=-2),
+        ]
+        result = ANALYZE.check_linearizable(history)
+        self.assertEqual(result["overlap_opens"], 0)
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "overlap"):
+            ANALYZE.validate_overlap(result, {"readers": 1}, "final-file")
+
+    def test_event_sequence_orders_equal_timestamp_boundaries(self):
+        def event(phase, operation_name, op_id, event_seq, writer_seq=0):
+            return {
+                "event": "target-lifetime-history",
+                "cell": "final-file",
+                "phase": phase,
+                "operation": operation_name,
+                "subtype": "",
+                "actor": "writer" if operation_name == "SET" else "reader",
+                "actor_id": 0,
+                "op_id": op_id,
+                "writer_seq": writer_seq,
+                "event_seq": event_seq,
+                "time_ns": 100,
+                "state": "A",
+                "device": 1,
+                "inode": 1,
+                "result": 0,
+            }
+
+        records = [
+            event("invoke", "SET", 1, 1, 1),
+            event("response", "SET", 1, 2, 1),
+            event("invoke", "OPEN", 2, 3),
+            {
+                "event": "target-lifetime-open-return",
+                "cell": "final-file",
+                "actor": "reader",
+                "actor_id": 0,
+                "op_id": 2,
+                "event_seq": 4,
+                "time_ns": 100,
+                "result": 0,
+            },
+            event("response", "OPEN", 2, 5),
+        ]
+        operations = ANALYZE.pair_history(records, "final-file")
+        update = next(item for item in operations if item["operation"] == "SET")
+        read = next(item for item in operations if item["operation"] == "OPEN")
+        self.assertLess(update["response"], read["invoke"])
+        self.assertEqual(read["response"], 4)
+
+    def test_rejects_open_history_without_syscall_return_boundary(self):
+        def event(phase, event_seq):
+            return {
+                "event": "target-lifetime-history",
+                "cell": "final-file",
+                "phase": phase,
+                "operation": "OPEN",
+                "subtype": "file",
+                "actor": "reader",
+                "actor_id": 0,
+                "op_id": 1,
+                "writer_seq": 0,
+                "event_seq": event_seq,
+                "time_ns": 100,
+                "state": "A",
+                "device": 1,
+                "inode": 2,
+                "result": 0,
+            }
+
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "lacks syscall return"):
+            ANALYZE.pair_history(
+                [event("invoke", 1), event("response", 2)], "final-file"
+            )
+
+    def test_rejects_stale_after_clear_response(self):
+        history = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "CLEAR", 3, 4, "absent", writer_seq=2),
+            operation(3, "OPEN", 5, 6, "A"),
+        ]
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "no global"):
+            ANALYZE.check_linearizable(history)
+
+    def test_rejects_old_object_after_set_b_response(self):
+        history = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "SET", 3, 4, "B", writer_seq=2),
+            operation(3, "OPEN", 5, 6, "A"),
+        ]
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "no global"):
+            ANALYZE.check_linearizable(history)
+
+    def test_rejects_locally_valid_but_globally_impossible(self):
+        history = [
+            operation(1, "SET", 0, 1, "A", writer_seq=1),
+            operation(2, "SET", 2, 10, "B", writer_seq=2),
+            operation(3, "OPEN", 3, 4, "B"),
+            operation(4, "OPEN", 5, 6, "A"),
+        ]
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "no global"):
+            ANALYZE.check_linearizable(history)
+
+    def test_rejects_unexpected_open_errno(self):
+        history = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "OPEN", 3, 4, "error", result=-5),
+        ]
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "unexpected"):
+            ANALYZE.check_linearizable(history)
+
+    def test_rejects_state_identity_mismatch(self):
+        records = [target_definition("A", 7, 11)]
+        records[0]["cell"] = "final-file"
+        history = [operation(1, "OPEN", 1, 2, "A")]
+        history[0]["device"] = 7
+        history[0]["inode"] = 12
+        history[0]["subtype"] = "file"
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "does not match"):
+            ANALYZE.validate_open_identities(records, "final-file", history)
+
+    def test_rejects_lower_object_metadata_mismatch(self):
+        records = [target_definition("A", 7, 11)]
+        definitions = ANALYZE.load_target_definitions(records, "cell")
+        records.append(
+            {
+                "event": "target-lifetime-lower-object",
+                "cell": "cell",
+                "state": "A",
+                "object": "target",
+                "expected_device": 7,
+                "observed_device": 7,
+                "expected_inode": 11,
+                "observed_inode": 11,
+                "expected_mode": 33152,
+                "observed_mode": 33152,
+                "expected_uid": 0,
+                "observed_uid": 0,
+                "expected_gid": 0,
+                "observed_gid": 0,
+                "expected_size": 2,
+                "observed_size": 2,
+                "bytes_match": True,
+                "result": 0,
+                "pass": True,
+            }
+        )
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "lower-object"):
+            ANALYZE.validate_lower_objects(records, "cell", definitions)
+
+    def test_rejects_kcsan_race_counter_delta(self):
+        with tempfile.TemporaryDirectory() as directory:
+            before = Path(directory) / "before"
+            after = Path(directory) / "after"
+            before.write_text(
+                "enabled: 1\nused_watchpoints: 10\n"
+                "setup_watchpoints: 20\ndata_races: 0\n"
+            )
+            after.write_text(
+                "enabled: 1\nused_watchpoints: 11\n"
+                "setup_watchpoints: 22\ndata_races: 1\n"
+            )
+            with self.assertRaisesRegex(ANALYZE.AnalysisError, "data races"):
+                ANALYZE.validate_kcsan_engagement(before, after)
+
+    def test_accepts_kcsan_engagement_with_quiescent_used_gauge(self):
+        with tempfile.TemporaryDirectory() as directory:
+            before = Path(directory) / "before"
+            after = Path(directory) / "after"
+            before.write_text(
+                "enabled: 1\nused_watchpoints: 0\n"
+                "setup_watchpoints: 20\ndata_races: 0\n"
+            )
+            after.write_text(
+                "enabled: 1\nused_watchpoints: 0\n"
+                "setup_watchpoints: 22\ndata_races: 0\n"
+            )
+            deltas = ANALYZE.validate_kcsan_engagement(before, after)
+            self.assertEqual(deltas["used_watchpoints"], 0)
+            self.assertEqual(deltas["setup_watchpoints"], 2)
+
+    def test_ignores_informational_rcu_lockdep_boot_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dmesg = Path(directory) / "dmesg"
+            dmesg.write_text("RCU lockdep checking is enabled.\n")
+            self.assertEqual(ANALYZE.classify_dmesg(dmesg)["status"], "clean")
+
+    def test_ignores_informational_kcsan_boot_lines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dmesg = Path(directory) / "dmesg"
+            dmesg.write_text(
+                "kcsan: enabled early\n"
+                "kcsan: strict mode configured\n"
+            )
+            self.assertEqual(ANALYZE.classify_dmesg(dmesg)["status"], "clean")
+
+    def test_classifies_kcsan_data_race(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dmesg = Path(directory) / "dmesg"
+            dmesg.write_text(
+                "BUG: KCSAN: data-race in namei_ext_resolve_target / "
+                "namei_ext_clear_targets\n"
+            )
+            self.assertEqual(ANALYZE.classify_dmesg(dmesg)["status"], "negative")
+
+    def test_rejects_summary_pass_below_reader_minimum(self):
+        records = [
+            {
+                "event": "target-lifetime-reader-summary",
+                "cell": "final-file",
+                "reader": 0,
+                "opens": 7,
+                "successful_opens": 3,
+                "absent_opens": 4,
+                "pass": True,
+            }
+        ]
+        config = {"readers": 1, "minimum_opens_per_reader": 8}
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "engagement"):
+            ANALYZE.validate_reader_summaries(
+                records, "final-file", config, []
+            )
+
+    def test_rejects_reader_summary_not_backed_by_history(self):
+        records = [
+            {
+                "event": "target-lifetime-reader-summary",
+                "cell": "final-file",
+                "reader": 0,
+                "opens": 3,
+                "successful_opens": 2,
+                "absent_opens": 1,
+                "pass": True,
+            }
+        ]
+        history = [
+            operation(1, "OPEN", 1, 2, "A"),
+            operation(2, "OPEN", 3, 4, "absent", result=-2),
+        ]
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "summary"):
+            ANALYZE.validate_reader_summaries(
+                records,
+                "final-file",
+                {"readers": 1, "minimum_opens_per_reader": 1},
+                history,
+            )
+
+    def test_rejects_missing_descriptor_for_successful_open(self):
+        history = [operation(1, "OPEN", 1, 2, "A")]
+        history[0]["subtype"] = "file"
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "descriptor"):
+            ANALYZE.validate_descriptors([], "final-file", history)
+
+    def test_rejects_rcu_summary_without_raw_branch_event(self):
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+        }
+        records = [
+            {
+                "event": "target-lifetime-rcu-proof",
+                "cell": "final-file",
+                "state": "A",
+                "raw_trace": "final-file-controlled-rcu-trace.txt",
+                "expected_device": 7,
+                "observed_device": 7,
+                "expected_inode": 11,
+                "observed_inode": 11,
+                "resolve_cached_result": 0,
+                "rcu_walk_hits": 1,
+                "ref_walk_hits": 0,
+                "resolve_failures": 0,
+                "pass": True,
+            }
+        ]
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "RCU-walk"):
+            ANALYZE.validate_rcu_proof(records, "final-file", definitions)
+
+    def test_accepts_raw_backed_rcu_branch_during_update(self):
+        definitions = {"A": {"device": 7, "inode": 11}}
+        records = [
+            {
+                "event": "target-lifetime-rcu-proof",
+                "cell": "final-file",
+                "state": "A",
+                "raw_trace": "final-file-controlled-rcu-trace.txt",
+                "expected_device": 7,
+                "observed_device": 7,
+                "expected_inode": 11,
+                "observed_inode": 11,
+                "resolve_cached_result": 0,
+                "rcu_walk_hits": 1,
+                "ref_walk_hits": 0,
+                "resolve_failures": 0,
+                "pass": True,
+            },
+            {
+                "event": "target-lifetime-rcu-branch",
+                "cell": "final-file",
+                "source": "kretprobe:namei_ext_resolve_target:arg2+retval",
+                "phase": "controlled",
+                "rcu_walk": True,
+                "result": 0,
+                "under_update": False,
+                "writer_seq": 0,
+            },
+            {
+                "event": "target-lifetime-rcu-marker",
+                "cell": "final-file",
+                "phase": "begin",
+                "writer_seq": 1,
+            },
+            {
+                "event": "target-lifetime-rcu-update",
+                "cell": "final-file",
+                "phase": "enter",
+                "writer_seq": 1,
+            },
+            {
+                "event": "target-lifetime-rcu-update",
+                "cell": "final-file",
+                "phase": "return",
+                "writer_seq": 1,
+                "result": 5,
+            },
+            {
+                "event": "target-lifetime-rcu-marker",
+                "cell": "final-file",
+                "phase": "end",
+                "writer_seq": 1,
+            },
+            {
+                "event": "target-lifetime-rcu-marker",
+                "cell": "final-file",
+                "phase": "begin",
+                "writer_seq": 2,
+            },
+            {
+                "event": "target-lifetime-rcu-update",
+                "cell": "final-file",
+                "phase": "enter",
+                "writer_seq": 2,
+            },
+            {
+                "event": "target-lifetime-rcu-branch",
+                "cell": "final-file",
+                "source": "kretprobe:namei_ext_resolve_target:arg2+retval",
+                "phase": "concurrent",
+                "rcu_walk": True,
+                "result": 0,
+                "under_update": True,
+                "writer_seq": 2,
+            },
+            {
+                "event": "target-lifetime-rcu-update",
+                "cell": "final-file",
+                "phase": "return",
+                "writer_seq": 2,
+                "result": 5,
+            },
+            {
+                "event": "target-lifetime-rcu-marker",
+                "cell": "final-file",
+                "phase": "end",
+                "writer_seq": 2,
+            },
+            {
+                "event": "target-lifetime-rcu-marker",
+                "cell": "final-file",
+                "phase": "begin",
+                "writer_seq": 3,
+            },
+            {
+                "event": "target-lifetime-rcu-update",
+                "cell": "final-file",
+                "phase": "enter",
+                "writer_seq": 3,
+            },
+            {
+                "event": "target-lifetime-rcu-branch",
+                "cell": "final-file",
+                "source": "kretprobe:namei_ext_resolve_target:arg2+retval",
+                "phase": "concurrent",
+                "rcu_walk": True,
+                "result": 0,
+                "under_update": True,
+                "writer_seq": 3,
+            },
+            {
+                "event": "target-lifetime-rcu-update",
+                "cell": "final-file",
+                "phase": "return",
+                "writer_seq": 3,
+                "result": 6,
+            },
+            {
+                "event": "target-lifetime-rcu-marker",
+                "cell": "final-file",
+                "phase": "end",
+                "writer_seq": 3,
+            },
+            {
+                "event": "target-lifetime-rcu-stress",
+                "cell": "final-file",
+                "raw_trace": "final-file-concurrent-rcu-trace.txt",
+                "trace_clock": "counter",
+                "trace_entries": 14,
+                "trace_entries_written": 14,
+                "begin_markers": 3,
+                "end_markers": 3,
+                "update_windows": 3,
+                "kernel_update_enters": 3,
+                "kernel_update_returns": 3,
+                "rcu_walk_hits": 2,
+                "rcu_resolve_failures": 0,
+                "rcu_under_update": 2,
+                "result": 0,
+                "pass": True,
+            },
+        ]
+        updates = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "SET", 3, 4, "B", writer_seq=2),
+            operation(3, "CLEAR", 5, 6, "absent", writer_seq=3),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "final-file-controlled-rcu-trace.txt").write_text(
+                "# entries-in-buffer/entries-written: 1/1   #P:4\n"
+                "reader-2 [001] .... 0.999: resolve_target_return: "
+                "rcu_walk=1 result=0\n"
+            )
+            Path(directory, "final-file-concurrent-rcu-trace.txt").write_text(
+                "# entries-in-buffer/entries-written: 14/14   #P:4\n"
+                "writer-1 [000] .... 1.000: tracing_mark_write: "
+                "namei_ext-update-begin-1\n"
+                "writer-1 [000] .... 1.001: update_enter: (0)\n"
+                "writer-1 [000] .... 1.002: update_return: result=5\n"
+                "writer-1 [000] .... 1.003: tracing_mark_write: "
+                "namei_ext-update-end-1\n"
+                "writer-1 [000] .... 1.004: tracing_mark_write: "
+                "namei_ext-update-begin-2\n"
+                "writer-1 [000] .... 1.005: update_enter: (0)\n"
+                "reader-2 [001] .... 1.006: resolve_return: "
+                "rcu_walk=1 result=0\n"
+                "writer-1 [000] .... 1.007: update_return: result=5\n"
+                "writer-1 [000] .... 1.008: tracing_mark_write: "
+                "namei_ext-update-end-2\n"
+                "writer-1 [000] .... 1.009: tracing_mark_write: "
+                "namei_ext-update-begin-3\n"
+                "writer-1 [000] .... 1.010: update_enter: (0)\n"
+                "reader-2 [001] .... 1.011: resolve_return: "
+                "rcu_walk=1 result=0\n"
+                "writer-1 [000] .... 1.012: update_return: result=6\n"
+                "writer-1 [000] .... 1.013: tracing_mark_write: "
+                "namei_ext-update-end-3\n"
+            )
+            result = ANALYZE.validate_rcu_proof(
+                records, "final-file", definitions, updates, Path(directory)
+            )
+        self.assertEqual(result["concurrent"]["rcu_under_replacement"], 1)
+        self.assertEqual(result["concurrent"]["rcu_under_retirement"], 1)
+
+    def test_rejects_concurrent_rcu_branch_outside_update_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory, "trace.txt")
+            trace.write_text(
+                "# entries-in-buffer/entries-written: 5/5   #P:4\n"
+                "writer-1: namei_ext-update-begin-1\n"
+                "writer-1: update_enter: (0)\n"
+                "writer-1: update_return: result=5\n"
+                "writer-1: namei_ext-update-end-1\n"
+                "reader-2: resolve_return: rcu_walk=1 result=0\n"
+            )
+            with self.assertRaisesRegex(
+                ANALYZE.AnalysisError,
+                "no successful RCU target resolution during kernel update",
+            ):
+                ANALYZE.parse_concurrent_rcu_trace(trace)
+
+    def test_rejects_rcu_return_between_marker_and_kernel_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory, "trace.txt")
+            trace.write_text(
+                "# entries-in-buffer/entries-written: 5/5   #P:4\n"
+                "writer-1: namei_ext-update-begin-1\n"
+                "reader-2: resolve_return: rcu_walk=1 result=0\n"
+                "writer-1: update_enter: (0)\n"
+                "writer-1: update_return: result=5\n"
+                "writer-1: namei_ext-update-end-1\n"
+            )
+            with self.assertRaisesRegex(
+                ANALYZE.AnalysisError,
+                "no successful RCU target resolution during kernel update",
+            ):
+                ANALYZE.parse_concurrent_rcu_trace(trace)
+
+    def test_rejects_failed_rcu_return_during_kernel_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory, "trace.txt")
+            trace.write_text(
+                "# entries-in-buffer/entries-written: 5/5   #P:4\n"
+                "writer-1: namei_ext-update-begin-1\n"
+                "writer-1: update_enter: (0)\n"
+                "reader-2: resolve_return: rcu_walk=1 result=-2\n"
+                "writer-1: update_return: result=5\n"
+                "writer-1: namei_ext-update-end-1\n"
+            )
+            with self.assertRaisesRegex(
+                ANALYZE.AnalysisError,
+                "no successful RCU target resolution during kernel update",
+            ):
+                ANALYZE.parse_concurrent_rcu_trace(trace)
+
+    def test_rejects_rcu_trace_without_replacement_overlap(self):
+        updates = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "SET", 3, 4, "B", writer_seq=2),
+            operation(3, "CLEAR", 5, 6, "absent", writer_seq=3),
+        ]
+        raw = {
+            "branches": [
+                {"under_update": True, "writer_seq": 3, "result": 0},
+            ]
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "replacement"):
+            ANALYZE.validate_rcu_update_classes(raw, updates, "final-file")
+
+    def test_rejects_rcu_trace_without_retirement_overlap(self):
+        updates = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "SET", 3, 4, "B", writer_seq=2),
+            operation(3, "CLEAR", 5, 6, "absent", writer_seq=3),
+        ]
+        raw = {
+            "branches": [
+                {"under_update": True, "writer_seq": 2, "result": 0},
+            ]
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "retirement"):
+            ANALYZE.validate_rcu_update_classes(raw, updates, "final-file")
+
+    def test_rejects_lifecycle_aggregate_without_step_evidence(self):
+        records = [
+            {
+                "event": "target-lifetime-lifecycle",
+                "case": case,
+                "cycle": 0,
+                "result": 0,
+                "pass": True,
+            }
+            for case in ("file-rename-unlink-clear", "directory-rename-clear")
+        ]
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "step cycles"):
+            ANALYZE.validate_lifecycle(records, 1)
+
+    def test_greedy_matches_exhaustive_small_histories(self):
+        intervals = list(itertools.combinations(range(11), 2))
+        for first_interval in intervals:
+            for second_interval in intervals:
+                for first_state in ("absent", "A"):
+                    for second_state in ("absent", "A"):
+                        history = [
+                            operation(1, "SET", 2, 4, "A", writer_seq=1),
+                            operation(
+                                2, "CLEAR", 6, 8, "absent", writer_seq=2
+                            ),
+                            operation(
+                                3,
+                                "OPEN",
+                                first_interval[0],
+                                first_interval[1],
+                                first_state,
+                                result=-2 if first_state == "absent" else 0,
+                            ),
+                            operation(
+                                4,
+                                "OPEN",
+                                second_interval[0],
+                                second_interval[1],
+                                second_state,
+                                result=-2 if second_state == "absent" else 0,
+                            ),
+                        ]
+                        expected = brute_linearizable(history)
+                        try:
+                            ANALYZE.check_linearizable(
+                                [dict(item) for item in history]
+                            )
+                            observed = True
+                        except ANALYZE.AnalysisError:
+                            observed = False
+                        self.assertEqual(expected, observed, history)
+
+
+if __name__ == "__main__":
+    unittest.main()

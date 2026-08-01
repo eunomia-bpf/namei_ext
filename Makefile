@@ -20,6 +20,7 @@ include $(ROOT_DIR)/configs/benchmarks/fxmark.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_fast_path.mk
 include $(ROOT_DIR)/configs/benchmarks/fxmark_readdir.mk
 include $(ROOT_DIR)/configs/benchmarks/mdtest_cold_metadata.mk
+include $(ROOT_DIR)/configs/benchmarks/namei_ext_target_lifetime.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace.mk
 include $(ROOT_DIR)/configs/benchmarks/agent_workspace_source_task.mk
 include $(ROOT_DIR)/configs/benchmarks/application_file_sharing.mk
@@ -53,6 +54,7 @@ include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
 include $(ROOT_DIR)/mk/experiments/mdtest_cold_metadata.mk
+include $(ROOT_DIR)/mk/experiments/namei_ext_target_lifetime.mk
 
 .DEFAULT_GOAL := phase1
 
@@ -108,6 +110,12 @@ include $(ROOT_DIR)/mk/experiments/mdtest_cold_metadata.mk
 		mdtest-cold-metadata-analyze \
 		mdtest-cold-metadata-analysis-test \
 		experiment-mdtest-cold-metadata-rq2 \
+		namei-ext-target-lifetime namei-ext-target-lifetime-control \
+		namei-ext-target-lifetime-analysis-test \
+		namei-ext-target-lifetime-debug-kernels \
+		kvm-namei-ext-target-lifetime-preflight \
+		kvm-namei-ext-target-lifetime \
+		experiment-namei-ext-target-lifetime \
 	kvm-service-config-rotation-preflight kvm-service-config-rotation \
 	service-config-rotation-report experiment-service-config-rotation \
 	experiments current-experiment-gates formal-case-studies formal-performance \

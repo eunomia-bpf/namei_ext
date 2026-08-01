@@ -130,6 +130,16 @@ The first four rows are recorded in
 the corresponding Phase 1 result roots. The restart row is an ABI semantic,
 not an exactly-once claim.
 
+The next admitted RQ3 mechanism experiment deepens the second row instead of
+adding another workload or baseline. It records concurrent target
+replace/clear/register histories, rename/unlink behavior, and old file/directory
+descriptor continuation under normal, KASAN, and KCSAN kernels with lockdep and
+PROVE_RCU. Its raw trace admits overlap only when a successful RCU target resolve
+returns between the in-kernel target-control write entry and return; writer
+markers alone do not establish overlap. The plan is
+`docs/tmp/2026-07-30-rq3-concurrent-target-lifetime-experiment-plan.md`;
+no result is claimed until real KVM preflight and formal result review complete.
+
 ## Experiment Matrix Status
 
 ### Case-study implementation status
@@ -304,7 +314,7 @@ Cache-cold and broader mutating-metadata cost therefore remain unresolved.
 | Matched semantic contract | Passed in three independent KVM boots: `namei_ext` and a Linux 7.1 port of official Wrapfs commit `464802c8fd1a25413b295161c9bb9a4ce7bfa33b` each passed all 37/37 pairwise AgentFS-derived oracles over the same ext4 lower tree | `results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/` |
 | Lower-file operation boundary | Passed 3/3: after selection, policy detach, and child-cgroup removal, read/write/fsync/fstat/fchmod used the already-open lower file and did not increment the BPF counter | Same raw root |
 | Stackable method attribution | Passed 3/3: 13 probed Wrapfs method classes executed, covering superblock setup/teardown, lookup, readdir, open, read, write, fsync, getattr, setattr, create, rename, and unlink | Same raw root |
-| Fail-closed matrix | Passed 3/3: two verifier-rejected programs plus 19 independently loaded malformed or unsupported runtime decisions; every runtime cell preserved statx/SHA-256 evidence for eight lower objects and exact manifests for two directories | Same raw root |
+| Fail-closed matrix | Passed 3/3: two verifier-rejected programs plus 19 independently loaded malformed or unsupported runtime decisions; every runtime cell returned the declared errno and preserved statx metadata for eight lower objects plus exact manifests for two directories | Same raw root |
 | Deployed-source accounting | Nine `namei_ext` kernel integration files; six compiled Wrapfs sources with 34 unique VFS slots; 12 userspace FUSE callbacks and 15 compiled kernel FUSE client sources | Same raw root and `report.md` |
 | Result review | Valid for a scoped ownership and containment claim; not evidence that custom filesystems are unsafe or unnecessary | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 

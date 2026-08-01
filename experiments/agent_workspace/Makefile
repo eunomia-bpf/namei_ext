@@ -16,9 +16,11 @@ CC ?= cc
 FUSE_CFLAGS ?= -D_FILE_OFFSET_BITS=64 -I$(LIBFUSE_CONFIG_BUILD) -I$(LIBFUSE_SOURCE)/include
 FUSE_LIBS ?= -l:libfuse3.so.3 -pthread
 
-.PHONY: all clean
+.PHONY: all namei-only clean
 
 all: $(OUTPUT)/namei_ext_agent_workspace $(OUTPUT)/namei_ext_agent_workspace_fuse
+
+namei-only: $(OUTPUT)/namei_ext_agent_workspace
 
 $(OUTPUT):
 	install -d "$@"
