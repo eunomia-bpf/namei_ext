@@ -34,14 +34,14 @@ $(HARNESS_LIBRARY): $(HARNESS_SOURCES)
 $(OUTPUT)/namei_ext_target_lifetime: \
 		namei_ext_target_lifetime.c retirement_litmus.h $(HARNESS_LIBRARY) \
 		$(LIBBPF_A) | $(OUTPUT)
-	$(CC) -g -O2 -Wall -Wextra -Werror -pthread \
+	$(CC) -static -g -O2 -Wall -Wextra -Werror -pthread \
 		-I"$(ROOT_DIR)/runner/include" \
 		-I"$(KERNEL_DIR)/tools/lib" \
 		-I"$(KERNEL_DIR)/tools/include" \
 		-I"$(KERNEL_DIR)/tools/include/uapi" \
 		-I"$(LIBBPF_OUTPUT)" \
 		-o "$@" "$<" "$(HARNESS_LIBRARY)" "$(LIBBPF_A)" \
-		-lelf -lz
+		-lelf -lz -lzstd
 
 $(OUTPUT)/retirement_litmus.bpf.o: \
 		retirement_litmus.bpf.c retirement_litmus.h | $(OUTPUT)

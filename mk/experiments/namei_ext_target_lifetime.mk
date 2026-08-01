@@ -20,6 +20,9 @@ TARGET_LIFETIME_KCSAN_CONFIG ?= \
 TARGET_LIFETIME_KCSAN_BUILD_DIR ?= $(BUILD_ROOT)/kernel-kcsan
 TARGET_LIFETIME_KCSAN_IMAGE ?= \
 	$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/arch/x86/boot/bzImage
+TARGET_LIFETIME_GUEST_SCRATCH ?= /mnt/namei-ext-target-lifetime
+TARGET_LIFETIME_GUEST_LOWER := $(TARGET_LIFETIME_GUEST_SCRATCH)/lower
+TARGET_LIFETIME_GUEST_EXEC := $(TARGET_LIFETIME_GUEST_LOWER)/execution
 
 define TARGET_LIFETIME_MARK_FAILURE_IF_RUNNING
 if test -f "$(1)/run.json"; then \
@@ -104,7 +107,8 @@ endef
 	kvm-namei-ext-target-lifetime-preflight \
 	kvm-namei-ext-target-lifetime \
 	experiment-namei-ext-target-lifetime \
-	__namei_ext_target_lifetime_guest
+	__namei_ext_target_lifetime_guest \
+	__namei_ext_target_lifetime_guest_body
 
 namei-ext-target-lifetime:
 	$(MAKE) -C "$(ROOT_DIR)/experiments/namei_ext_target_lifetime" \
@@ -151,6 +155,8 @@ namei-ext-target-lifetime-debug-kernels:
 		KERNEL_CONFIG_FRAGMENT="$(TARGET_LIFETIME_KCSAN_CONFIG)" \
 		KERNEL_COMMIT_FILE="$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/kernel-commit.txt"
 	grep '^CONFIG_KCSAN=y' \
+		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
+	grep '^# CONFIG_KCSAN_EARLY_ENABLE is not set' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
 	grep '^CONFIG_KCSAN_STRICT=y' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
@@ -230,6 +236,35 @@ kvm-namei-ext-target-lifetime: experiment-source-clean \
 experiment-namei-ext-target-lifetime: kvm-namei-ext-target-lifetime
 
 __namei_ext_target_lifetime_guest: __namei_ext_guest_prepare
+	set +e; \
+	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" \
+		__namei_ext_target_lifetime_guest_body \
+		TARGET_LIFETIME_BOOT_DIR="$(TARGET_LIFETIME_BOOT_DIR)" \
+		TARGET_LIFETIME_RUN_ROLE="$(TARGET_LIFETIME_RUN_ROLE)" \
+		TARGET_LIFETIME_KERNEL_KIND="$(TARGET_LIFETIME_KERNEL_KIND)" \
+		TARGET_LIFETIME_DURATION="$(TARGET_LIFETIME_DURATION)" \
+		TARGET_LIFETIME_READERS="$(TARGET_LIFETIME_READERS)" \
+		TARGET_LIFETIME_MIN_UPDATES="$(TARGET_LIFETIME_MIN_UPDATES)" \
+		TARGET_LIFETIME_MIN_OPENS="$(TARGET_LIFETIME_MIN_OPENS)" \
+		TARGET_LIFETIME_LIFECYCLE_CYCLES="$(TARGET_LIFETIME_LIFECYCLE_CYCLES)" \
+		KERNEL_BUILD_DIR="$(KERNEL_BUILD_DIR)" \
+		KERNEL_IMAGE="$(KERNEL_IMAGE)" \
+		KERNEL_CONFIG_FRAGMENT="$(KERNEL_CONFIG_FRAGMENT)" || status=$$?; \
+	cleanup_status=0; \
+	if mountpoint -q "$(TARGET_LIFETIME_GUEST_LOWER)"; then \
+		umount "$(TARGET_LIFETIME_GUEST_LOWER)" || cleanup_status=$$?; \
+	fi; \
+	if mountpoint -q "$(TARGET_LIFETIME_GUEST_SCRATCH)"; then \
+		umount "$(TARGET_LIFETIME_GUEST_SCRATCH)" || cleanup_status=$$?; \
+	fi; \
+	if test -d "$(TARGET_LIFETIME_GUEST_SCRATCH)"; then \
+		rmdir "$(TARGET_LIFETIME_GUEST_SCRATCH)" || cleanup_status=$$?; \
+	fi; \
+	if test "$${status:-0}" != 0 || test "$$cleanup_status" != 0; then \
+		exit 1; \
+	fi
+
+__namei_ext_target_lifetime_guest_body:
 	test -n "$(TARGET_LIFETIME_BOOT_DIR)"
 	test -n "$(TARGET_LIFETIME_RUN_ROLE)"
 	test -n "$(TARGET_LIFETIME_KERNEL_KIND)"
@@ -240,69 +275,147 @@ __namei_ext_target_lifetime_guest: __namei_ext_guest_prepare
 		"$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan
 	command -v mkfs.ext4 >/dev/null
 	install -d "$(TARGET_LIFETIME_BOOT_DIR)" \
-		"$(TARGET_LIFETIME_BOOT_DIR)/lower"
+		"$(TARGET_LIFETIME_GUEST_SCRATCH)"
 	$(call NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE,\
 		$(TARGET_LIFETIME_BOOT_DIR),\
 		$(KERNEL_BUILD_DIR)/.config,\
 		$(shell cat $(KERNEL_BUILD_DIR)/.built-commit),\
 		$(shell sed -n 's/^\#define UTS_RELEASE "\(.*\)"/\1/p' \
 			$(KERNEL_BUILD_DIR)/include/generated/utsrelease.h))
-	rm -f "$(TARGET_LIFETIME_BOOT_DIR)/lower.img"
-	truncate -s 512M "$(TARGET_LIFETIME_BOOT_DIR)/lower.img"
-	mkfs.ext4 -q -F "$(TARGET_LIFETIME_BOOT_DIR)/lower.img" \
+	mount -t tmpfs -o size=768M namei-ext-target-lifetime \
+		"$(TARGET_LIFETIME_GUEST_SCRATCH)"
+	install -d "$(TARGET_LIFETIME_GUEST_LOWER)"
+	truncate -s 512M "$(TARGET_LIFETIME_GUEST_SCRATCH)/lower.img"
+	mkfs.ext4 -q -F "$(TARGET_LIFETIME_GUEST_SCRATCH)/lower.img" \
 		>"$(TARGET_LIFETIME_BOOT_DIR)/mkfs.stdout.log" \
 		2>"$(TARGET_LIFETIME_BOOT_DIR)/mkfs.stderr.log"
-	mount -t ext4 -o loop "$(TARGET_LIFETIME_BOOT_DIR)/lower.img" \
-		"$(TARGET_LIFETIME_BOOT_DIR)/lower"
+	mount -t ext4 -o loop "$(TARGET_LIFETIME_GUEST_SCRATCH)/lower.img" \
+		"$(TARGET_LIFETIME_GUEST_LOWER)"
 	test "$$(findmnt -n -o FSTYPE \
-		"$(TARGET_LIFETIME_BOOT_DIR)/lower")" = ext4
-	findmnt "$(TARGET_LIFETIME_BOOT_DIR)/lower" \
+		"$(TARGET_LIFETIME_GUEST_LOWER)")" = ext4
+	findmnt "$(TARGET_LIFETIME_GUEST_LOWER)" \
 		>"$(TARGET_LIFETIME_BOOT_DIR)/lower-filesystem.txt"
+	install -d "$(TARGET_LIFETIME_GUEST_EXEC)"
+	install -m 0555 "$(TARGET_LIFETIME_RUNNER)" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/namei_ext_target_lifetime"
+	install -m 0444 "$(TARGET_LIFETIME_POLICY)" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/fxmark_select.bpf.o"
+	install -m 0444 "$(TARGET_LIFETIME_LITMUS)" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/retirement_litmus.bpf.o"
+	install -m 0555 "$(AGENT_WORKSPACE_RUNNER)" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/namei_ext_agent_workspace"
+	install -m 0444 "$(AGENT_WORKSPACE_POLICY)" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/agent_workspace_view.bpf.o"
+	install -m 0444 "$(AGENT_WORKSPACE_SOURCE_TRACE)" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/agentfs_lifecycle_trace.txt"
 	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
+		dmesg -c >"$(TARGET_LIFETIME_BOOT_DIR)/boot-dmesg.log"; \
 		cat /sys/kernel/debug/kcsan \
 			>"$(TARGET_LIFETIME_BOOT_DIR)/kcsan-before.txt"; \
 	fi
-	status=0; \
-	"$(TARGET_LIFETIME_RUNNER)" "$(TARGET_LIFETIME_POLICY)" \
-		"$(TARGET_LIFETIME_LITMUS)" \
-		"$(TARGET_LIFETIME_BOOT_DIR)/observations.jsonl" \
-		/sys/fs/cgroup "$(TARGET_LIFETIME_BOOT_DIR)/lower" \
+	status=0; artifact_status=0; control_cleanup_status=0; \
+	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
+		kcsan_control=/sys/kernel/debug/kcsan; \
+	else \
+		kcsan_control=-; \
+	fi; \
+	"$(TARGET_LIFETIME_GUEST_EXEC)/namei_ext_target_lifetime" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/fxmark_select.bpf.o" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/retirement_litmus.bpf.o" \
+		"$(TARGET_LIFETIME_GUEST_EXEC)/observations.jsonl" \
+		/sys/fs/cgroup "$(TARGET_LIFETIME_GUEST_LOWER)" \
 		"$(TARGET_LIFETIME_DURATION)" "$(TARGET_LIFETIME_READERS)" \
 		"$(TARGET_LIFETIME_MIN_UPDATES)" \
 		"$(TARGET_LIFETIME_MIN_OPENS)" \
-		"$(TARGET_LIFETIME_LIFECYCLE_CYCLES)" \
-		>"$(TARGET_LIFETIME_BOOT_DIR)/runner.stdout.log" \
-		2>"$(TARGET_LIFETIME_BOOT_DIR)/runner.stderr.log" || status=$$?; \
+		"$(TARGET_LIFETIME_LIFECYCLE_CYCLES)" "$$kcsan_control" \
+		>"$(TARGET_LIFETIME_GUEST_EXEC)/runner.stdout.log" \
+		2>"$(TARGET_LIFETIME_GUEST_EXEC)/runner.stderr.log" || status=$$?; \
 	printf '%s\n' "$$status" \
-		>"$(TARGET_LIFETIME_BOOT_DIR)/runner.status"; \
+		>"$(TARGET_LIFETIME_BOOT_DIR)/runner.status" || artifact_status=$$?; \
 	if test "$(TARGET_LIFETIME_RUN_ROLE)" = formal; then \
 		control_cgroup=/sys/fs/cgroup/namei-ext-life-control; \
-		test ! -e "$$control_cgroup"; \
-		mkdir "$$control_cgroup"; \
 		control_status=0; \
-		NAMEI_EXT_AGENT_WORKSPACE_WORK_ROOT="$(TARGET_LIFETIME_BOOT_DIR)/lower" \
-			"$(AGENT_WORKSPACE_RUNNER)" --rq3 \
-			"$(AGENT_WORKSPACE_POLICY)" \
-			"$(TARGET_LIFETIME_BOOT_DIR)/current-namei-control.jsonl" \
-			"$$control_cgroup" "$(AGENT_WORKSPACE_SOURCE_TRACE)" \
-			>"$(TARGET_LIFETIME_BOOT_DIR)/control.stdout.log" \
-			2>"$(TARGET_LIFETIME_BOOT_DIR)/control.stderr.log" || \
-			control_status=$$?; \
+		if test -e "$$control_cgroup"; then \
+			control_status=1; \
+		else \
+			mkdir "$$control_cgroup" || control_status=$$?; \
+			if test "$$control_status" = 0; then \
+				NAMEI_EXT_AGENT_WORKSPACE_WORK_ROOT="$(TARGET_LIFETIME_GUEST_LOWER)" \
+					"$(TARGET_LIFETIME_GUEST_EXEC)/namei_ext_agent_workspace" --rq3 \
+					"$(TARGET_LIFETIME_GUEST_EXEC)/agent_workspace_view.bpf.o" \
+					"$(TARGET_LIFETIME_GUEST_EXEC)/current-namei-control.jsonl" \
+					"$$control_cgroup" \
+					"$(TARGET_LIFETIME_GUEST_EXEC)/agentfs_lifecycle_trace.txt" \
+					>"$(TARGET_LIFETIME_GUEST_EXEC)/control.stdout.log" \
+					2>"$(TARGET_LIFETIME_GUEST_EXEC)/control.stderr.log" || \
+					control_status=$$?; \
+			fi; \
+		fi; \
 		printf '%s\n' "$$control_status" \
-			>"$(TARGET_LIFETIME_BOOT_DIR)/control.status"; \
-		test ! -e "$$control_cgroup"; \
+			>"$(TARGET_LIFETIME_BOOT_DIR)/control.status" || \
+			artifact_status=$$?; \
+		test ! -e "$$control_cgroup" || control_cleanup_status=$$?; \
 	else \
 		control_status=0; \
 	fi; \
 	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
 		cat /sys/kernel/debug/kcsan \
-			>"$(TARGET_LIFETIME_BOOT_DIR)/kcsan-after.txt"; \
+			>"$(TARGET_LIFETIME_BOOT_DIR)/kcsan-after.txt" || \
+			artifact_status=$$?; \
 	fi; \
-	dmesg >"$(TARGET_LIFETIME_BOOT_DIR)/dmesg.log"; \
-	test "$$status" = 0; \
-	test "$$control_status" = 0
+	dmesg >"$(TARGET_LIFETIME_BOOT_DIR)/dmesg.log" || artifact_status=$$?; \
+	install -m 0444 "$(TARGET_LIFETIME_GUEST_EXEC)/runner.stdout.log" \
+		"$(TARGET_LIFETIME_BOOT_DIR)/runner.stdout.log" || artifact_status=$$?; \
+	install -m 0444 "$(TARGET_LIFETIME_GUEST_EXEC)/runner.stderr.log" \
+		"$(TARGET_LIFETIME_BOOT_DIR)/runner.stderr.log" || artifact_status=$$?; \
+	if test -f "$(TARGET_LIFETIME_GUEST_EXEC)/observations.jsonl"; then \
+		install -m 0444 "$(TARGET_LIFETIME_GUEST_EXEC)/observations.jsonl" \
+			"$(TARGET_LIFETIME_BOOT_DIR)/observations.jsonl" || \
+			artifact_status=$$?; \
+	else \
+		artifact_status=1; \
+	fi; \
+	for trace in final-file directory; do \
+		if test -f "$(TARGET_LIFETIME_GUEST_EXEC)/$$trace-concurrent-rcu-trace.txt"; then \
+			install -m 0444 \
+				"$(TARGET_LIFETIME_GUEST_EXEC)/$$trace-concurrent-rcu-trace.txt" \
+				"$(TARGET_LIFETIME_BOOT_DIR)/$$trace-concurrent-rcu-trace.txt" || \
+				artifact_status=$$?; \
+		else \
+			artifact_status=1; \
+		fi; \
+	done; \
 	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
-		kcsan_args="--kcsan-before $(TARGET_LIFETIME_BOOT_DIR)/kcsan-before.txt --kcsan-after $(TARGET_LIFETIME_BOOT_DIR)/kcsan-after.txt"; \
+		for cell in final-file directory pinned-object; do \
+			for phase in before after; do \
+				if test -f "$(TARGET_LIFETIME_GUEST_EXEC)/$$cell-kcsan-$$phase.txt"; then \
+					install -m 0444 \
+						"$(TARGET_LIFETIME_GUEST_EXEC)/$$cell-kcsan-$$phase.txt" \
+						"$(TARGET_LIFETIME_BOOT_DIR)/$$cell-kcsan-$$phase.txt" || \
+						artifact_status=$$?; \
+				else \
+					artifact_status=1; \
+				fi; \
+			done; \
+		done; \
+	fi; \
+	if test "$(TARGET_LIFETIME_RUN_ROLE)" = formal; then \
+		install -m 0444 "$(TARGET_LIFETIME_GUEST_EXEC)/current-namei-control.jsonl" \
+			"$(TARGET_LIFETIME_BOOT_DIR)/current-namei-control.jsonl" || \
+			artifact_status=$$?; \
+		install -m 0444 "$(TARGET_LIFETIME_GUEST_EXEC)/control.stdout.log" \
+			"$(TARGET_LIFETIME_BOOT_DIR)/control.stdout.log" || \
+			artifact_status=$$?; \
+		install -m 0444 "$(TARGET_LIFETIME_GUEST_EXEC)/control.stderr.log" \
+			"$(TARGET_LIFETIME_BOOT_DIR)/control.stderr.log" || \
+			artifact_status=$$?; \
+	fi; \
+	test "$$status" = 0; \
+	test "$$control_status" = 0; \
+	test "$$control_cleanup_status" = 0; \
+	test "$$artifact_status" = 0
+	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
+		kcsan_args="--boot-dmesg $(TARGET_LIFETIME_BOOT_DIR)/boot-dmesg.log --kcsan-before $(TARGET_LIFETIME_BOOT_DIR)/kcsan-before.txt --kcsan-after $(TARGET_LIFETIME_BOOT_DIR)/kcsan-after.txt"; \
 	else \
 		kcsan_args=; \
 	fi; \
@@ -318,6 +431,3 @@ __namei_ext_target_lifetime_guest: __namei_ext_guest_prepare
 		--kernel-kind "$(TARGET_LIFETIME_KERNEL_KIND)" \
 		$$kcsan_args $$control_args \
 		--output "$(TARGET_LIFETIME_BOOT_DIR)/analysis.json"
-	umount "$(TARGET_LIFETIME_BOOT_DIR)/lower"
-	rm -rf "$(TARGET_LIFETIME_BOOT_DIR)/lower"
-	rm -f "$(TARGET_LIFETIME_BOOT_DIR)/lower.img"

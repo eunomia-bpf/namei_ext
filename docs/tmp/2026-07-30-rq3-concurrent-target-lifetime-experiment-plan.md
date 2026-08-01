@@ -1,5 +1,41 @@
 # Experiment Plan: RQ3 Concurrent Target Lifetime
 
+## KCSAN Measurement-Window Correction (2026-07-31)
+
+Preflight04 showed that enabling strict KCSAN during virtme boot does not
+measure the selected mechanism cleanly. The complete dmesg contained 160 KCSAN
+blocks, including 9p root-filesystem, scheduler, GUP, kernfs, and virtqueue
+races; none of the report headlines named a `namei_ext` function. The KCSAN
+runner itself completed successfully and all four deterministic retirement
+litmus cases passed, but the boot is inconclusive under the diagnostic rule
+below and is not a positive result.
+
+The corrected protocol disables `CONFIG_KCSAN_EARLY_ENABLE`. Before the
+workload, the guest preserves and clears boot/setup dmesg while KCSAN is off.
+The target-lifetime runner then enables KCSAN only after each cell has created
+its cgroup, attached the real policy, registered its scope, and moved the child
+into that cgroup; it disables KCSAN immediately after that child completes the
+cell. Thus the measured windows contain the publication, lookup, retirement,
+descriptor, and lifecycle operations that test this experiment, rather than
+virtme boot and experiment setup.
+
+The guest places the loop-backed ext4 image, statically linked target-lifetime
+runner, BPF objects, and live raw outputs on a tmpfs rather than executing or
+writing them through the virtme 9p root. It copies raw observations back to the
+result root only after KCSAN is off. This removes experiment-owned runtime
+dependencies on 9p during the KCSAN windows; it does not claim that an idle
+virtme kernel can never perform unrelated background 9p work. No KCSAN report
+whitelist or blacklist is installed. The boot/setup dmesg and workload-window
+dmesg are both preserved and checked.
+
+Every cell records its own before/after debugfs snapshots, and the boot records
+the outer before/after pair. All snapshots must report KCSAN disabled and no
+report filters. Each cell must have a positive setup-watchpoint delta; race and
+assertion deltas must remain zero; and the sum of the three cell deltas must
+equal the outer delta so no sampled interval is hidden between cells. A
+workload-window diagnostic still makes the boot negative or inconclusive
+according to the unchanged attribution rule below.
+
 ## Superseded RCU Oracle (2026-07-31)
 
 The first normal-kernel preflight invalidated the probabilistic RCU oracle in

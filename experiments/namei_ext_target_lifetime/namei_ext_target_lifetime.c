@@ -49,6 +49,10 @@ struct run_log {
 	char output_dir[PATH_MAX];
 };
 
+struct kcsan_control {
+	const char *path;
+};
+
 struct target_object {
 	char state[48];
 	char path[PATH_MAX];
@@ -657,6 +661,97 @@ static int write_control_file(const char *path, const char *text)
 		return -errno;
 	ret = write_all(fd, text, length);
 	if (close(fd) && !ret)
+		ret = -errno;
+	return ret;
+}
+
+static int read_kcsan_enabled(const struct kcsan_control *control,
+			      bool *enabled)
+{
+	char buffer[4096] = {};
+	unsigned int value;
+	ssize_t count;
+	int fd;
+
+	if (!control->path) {
+		*enabled = false;
+		return 0;
+	}
+	fd = open(control->path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return -errno;
+	count = read(fd, buffer, sizeof(buffer) - 1);
+	if (count < 0) {
+		int ret = -errno;
+
+		close(fd);
+		return ret;
+	}
+	if (close(fd))
+		return -errno;
+	if (sscanf(buffer, "enabled: %u", &value) != 1 || value > 1)
+		return -EINVAL;
+	*enabled = value;
+	return 0;
+}
+
+static int set_kcsan_enabled(const struct kcsan_control *control, bool enabled)
+{
+	bool observed;
+	int ret;
+
+	if (!control->path)
+		return 0;
+	ret = write_control_file(control->path, enabled ? "on\n" : "off\n");
+	if (ret)
+		return ret;
+	ret = read_kcsan_enabled(control, &observed);
+	if (ret)
+		return ret;
+	return observed == enabled ? 0 : -EIO;
+}
+
+static int preserve_kcsan_snapshot(const struct run_log *log, const char *cell,
+				   const char *phase,
+				   const struct kcsan_control *control)
+{
+	char output_path[PATH_MAX];
+	char buffer[4096];
+	ssize_t count;
+	int input_fd = -1;
+	int output_fd = -1;
+	int ret = 0;
+
+	if (!control->path)
+		return 0;
+	if (snprintf(output_path, sizeof(output_path), "%s/%s-kcsan-%s.txt",
+		     log->output_dir, cell, phase) < 0 ||
+	    strlen(output_path) >= sizeof(output_path) - 1)
+		return -ENAMETOOLONG;
+	input_fd = open(control->path, O_RDONLY | O_CLOEXEC);
+	if (input_fd < 0)
+		return -errno;
+	output_fd = open(output_path,
+			 O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+	if (output_fd < 0) {
+		ret = -errno;
+		goto out;
+	}
+	while ((count = read(input_fd, buffer, sizeof(buffer))) != 0) {
+		if (count < 0) {
+			if (errno == EINTR)
+				continue;
+			ret = -errno;
+			break;
+		}
+		ret = write_all(output_fd, buffer, (size_t)count);
+		if (ret)
+			break;
+	}
+out:
+	if (output_fd >= 0 && close(output_fd) && !ret)
+		ret = -errno;
+	if (close(input_fd) && !ret)
 		ret = -errno;
 	return ret;
 }
@@ -2563,6 +2658,7 @@ static int run_attached_cell(struct run_log *log, const char *policy_path,
 			     const char *work_root,
 			     const char *cell_name, bool directory,
 			     cell_fn run_cell,
+			     const struct kcsan_control *kcsan,
 			     unsigned int duration_seconds,
 			     unsigned int reader_count,
 			     unsigned int min_updates,
@@ -2581,6 +2677,7 @@ static int run_attached_cell(struct run_log *log, const char *policy_path,
 	char logical_path[PATH_MAX];
 	char logical_child[PATH_MAX];
 	pid_t child;
+	pid_t waited;
 	int cgroup_remove_ret = 0;
 	int detach_ret = 0;
 	int scope_clear_ret = 0;
@@ -2619,6 +2716,9 @@ static int run_attached_cell(struct run_log *log, const char *policy_path,
 	ret = namei_ext_policy_parent_exact(cgroup_path, managed_dir);
 	if (ret)
 		goto out;
+	ret = preserve_kcsan_snapshot(log, cell_name, "before", kcsan);
+	if (ret)
+		goto out;
 	child = fork();
 	if (child < 0) {
 		ret = -errno;
@@ -2629,18 +2729,31 @@ static int run_attached_cell(struct run_log *log, const char *policy_path,
 
 		if (namei_ext_move_self_to_cgroup(cgroup_path))
 			_exit(2);
+		if (set_kcsan_enabled(kcsan, true))
+			_exit(3);
 		child_ret = run_cell(
 			log, litmus_path, cell_name, cgroup_path, managed_dir, physical_dir,
 			logical_path, directory ? logical_child : NULL, targets,
 			run_cell == run_publication_cell ? TARGET_POOL_SIZE : 0,
 			duration_seconds, reader_count, min_updates, min_opens,
 			lifecycle_cycles);
+		if (set_kcsan_enabled(kcsan, false))
+			_exit(4);
 		_exit(child_ret ? 1 : 0);
 	}
-	if (waitpid(child, &status, 0) != child)
+	do {
+		waited = waitpid(child, &status, 0);
+	} while (waited < 0 && errno == EINTR);
+	if (waited != child)
 		ret = -errno;
 	else if (!WIFEXITED(status) || WEXITSTATUS(status))
 		ret = -EIO;
+	if (kcsan->path) {
+		if (set_kcsan_enabled(kcsan, false))
+			ret = -EIO;
+		if (preserve_kcsan_snapshot(log, cell_name, "after", kcsan))
+			ret = -EIO;
+	}
 	if (run_cell == run_publication_cell &&
 	    verify_publication_targets(log, cell_name, targets, TARGET_POOL_SIZE) &&
 	    !ret)
@@ -2688,6 +2801,7 @@ int main(int argc, char **argv)
 		.fd = -1,
 		.lock = PTHREAD_MUTEX_INITIALIZER,
 	};
+	struct kcsan_control kcsan = {};
 	char root_template[PATH_MAX];
 	char *work_root;
 	unsigned int duration_seconds;
@@ -2699,9 +2813,9 @@ int main(int argc, char **argv)
 	char *slash;
 	int ret;
 
-	if (argc != 11) {
+	if (argc != 12) {
 		fprintf(stderr,
-			"usage: %s POLICY LITMUS OUTPUT CGROUP_ROOT WORK_ROOT DURATION READERS MIN_UPDATES MIN_OPENS LIFECYCLE_CYCLES\n",
+			"usage: %s POLICY LITMUS OUTPUT CGROUP_ROOT WORK_ROOT DURATION READERS MIN_UPDATES MIN_OPENS LIFECYCLE_CYCLES KCSAN_CONTROL\n",
 			argv[0]);
 		return 2;
 	}
@@ -2711,6 +2825,13 @@ int main(int argc, char **argv)
 	    parse_uint(argv[9], &min_opens) ||
 	    parse_uint(argv[10], &lifecycle_cycles))
 		return 2;
+	if (strcmp(argv[11], "-")) {
+		bool enabled;
+
+		kcsan.path = argv[11];
+		if (read_kcsan_enabled(&kcsan, &enabled) || enabled)
+			return 2;
+	}
 	if (copy_text(log.output_dir, sizeof(log.output_dir), argv[3]))
 		return 2;
 	slash = strrchr(log.output_dir, '/');
@@ -2755,23 +2876,32 @@ int main(int argc, char **argv)
 
 	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"final-file", false, run_publication_cell,
+				&kcsan,
 				duration_seconds, reader_count, min_updates,
 				min_opens, lifecycle_cycles);
-	if (ret)
+	if (ret) {
 		failures++;
+		if (kcsan.path)
+			goto summarize;
+	}
 	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"directory", true, run_publication_cell,
+				&kcsan,
 				duration_seconds, reader_count, min_updates,
 				min_opens, lifecycle_cycles);
-	if (ret)
+	if (ret) {
 		failures++;
+		if (kcsan.path)
+			goto summarize;
+	}
 	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"pinned-object", true,
-				run_pinned_lifecycle_cell, duration_seconds,
+				run_pinned_lifecycle_cell, &kcsan, duration_seconds,
 				reader_count, min_updates, min_opens,
 				lifecycle_cycles);
 	if (ret)
 		failures++;
+summarize:
 	failures += atomic_load_explicit(&log.shared->failures,
 					 memory_order_relaxed);
 	if (emit_line(&log,

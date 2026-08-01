@@ -336,12 +336,14 @@ class LinearizabilityTests(unittest.TestCase):
             before = Path(directory) / "before"
             after = Path(directory) / "after"
             before.write_text(
-                "enabled: 1\nused_watchpoints: 10\n"
-                "setup_watchpoints: 20\ndata_races: 0\n"
+                "enabled: 0\nused_watchpoints: 0\n"
+                "setup_watchpoints: 20\ndata_races: 0\nassert_failures: 0\n"
+                "\nblacklisted functions: none\n"
             )
             after.write_text(
-                "enabled: 1\nused_watchpoints: 11\n"
-                "setup_watchpoints: 22\ndata_races: 1\n"
+                "enabled: 0\nused_watchpoints: 0\n"
+                "setup_watchpoints: 22\ndata_races: 1\nassert_failures: 0\n"
+                "\nblacklisted functions: none\n"
             )
             with self.assertRaisesRegex(ANALYZE.AnalysisError, "data races"):
                 ANALYZE.validate_kcsan_engagement(before, after)
@@ -351,16 +353,128 @@ class LinearizabilityTests(unittest.TestCase):
             before = Path(directory) / "before"
             after = Path(directory) / "after"
             before.write_text(
-                "enabled: 1\nused_watchpoints: 0\n"
-                "setup_watchpoints: 20\ndata_races: 0\n"
+                "enabled: 0\nused_watchpoints: 0\n"
+                "setup_watchpoints: 20\ndata_races: 0\nassert_failures: 0\n"
+                "\nblacklisted functions: none\n"
             )
             after.write_text(
-                "enabled: 1\nused_watchpoints: 0\n"
-                "setup_watchpoints: 22\ndata_races: 0\n"
+                "enabled: 0\nused_watchpoints: 0\n"
+                "setup_watchpoints: 22\ndata_races: 0\nassert_failures: 0\n"
+                "\nblacklisted functions: none\n"
             )
             deltas = ANALYZE.validate_kcsan_engagement(before, after)
             self.assertEqual(deltas["used_watchpoints"], 0)
             self.assertEqual(deltas["setup_watchpoints"], 2)
+
+    def test_rejects_kcsan_left_enabled_outside_workload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            before = Path(directory) / "before"
+            after = Path(directory) / "after"
+            before.write_text(
+                "enabled: 1\nused_watchpoints: 0\n"
+                "setup_watchpoints: 20\ndata_races: 0\nassert_failures: 0\n"
+                "\nblacklisted functions: none\n"
+            )
+            after.write_text(
+                "enabled: 0\nused_watchpoints: 0\n"
+                "setup_watchpoints: 22\ndata_races: 0\nassert_failures: 0\n"
+                "\nblacklisted functions: none\n"
+            )
+            with self.assertRaisesRegex(ANALYZE.AnalysisError, "workload windows"):
+                ANALYZE.validate_kcsan_engagement(before, after)
+
+    def test_rejects_kcsan_without_watchpoint_engagement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            before = Path(directory) / "before"
+            after = Path(directory) / "after"
+            contents = (
+                "enabled: 0\nused_watchpoints: 0\n"
+                "setup_watchpoints: 20\ndata_races: 0\nassert_failures: 0\n"
+                "\nblacklisted functions: none\n"
+            )
+            before.write_text(contents)
+            after.write_text(contents)
+            with self.assertRaisesRegex(ANALYZE.AnalysisError, "did not engage"):
+                ANALYZE.validate_kcsan_engagement(before, after)
+
+    def test_rejects_kcsan_report_filtering(self):
+        with tempfile.TemporaryDirectory() as directory:
+            counters = Path(directory) / "counters"
+            counters.write_text(
+                "enabled: 0\nused_watchpoints: 0\nsetup_watchpoints: 20\n"
+                "data_races: 0\nassert_failures: 0\n"
+                "\nwhitelisted functions:\n namei_ext_resolve_target\n"
+            )
+            with self.assertRaisesRegex(ANALYZE.AnalysisError, "filtering"):
+                ANALYZE.parse_kcsan_counters(counters)
+
+    def test_requires_kcsan_engagement_for_every_cell(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for index, cell in enumerate(ANALYZE.KCSAN_CELLS):
+                before = (
+                    "enabled: 0\nused_watchpoints: 0\n"
+                    f"setup_watchpoints: {20 + index * 2}\n"
+                    "data_races: 0\nassert_failures: 0\n"
+                    "\nblacklisted functions: none\n"
+                )
+                after = (
+                    "enabled: 0\nused_watchpoints: 0\n"
+                    f"setup_watchpoints: {21 + index * 2}\n"
+                    "data_races: 0\nassert_failures: 0\n"
+                    "\nblacklisted functions: none\n"
+                )
+                (root / f"{cell}-kcsan-before.txt").write_text(before)
+                (root / f"{cell}-kcsan-after.txt").write_text(after)
+            results = ANALYZE.validate_kcsan_cells(root)
+            self.assertEqual(set(results), set(ANALYZE.KCSAN_CELLS))
+
+            total = {
+                "used_watchpoints": 0,
+                "setup_watchpoints": 3,
+                "data_races": 0,
+                "assert_failures": 0,
+            }
+            ANALYZE.validate_kcsan_partition(total, results)
+
+            (root / "directory-kcsan-after.txt").write_text(
+                (root / "directory-kcsan-before.txt").read_text()
+            )
+            with self.assertRaisesRegex(ANALYZE.AnalysisError, "did not engage"):
+                ANALYZE.validate_kcsan_cells(root)
+
+            (root / "directory-kcsan-after.txt").unlink()
+            with self.assertRaisesRegex(ANALYZE.AnalysisError, "directory"):
+                ANALYZE.validate_kcsan_cells(root)
+
+    def test_rejects_kcsan_activity_outside_cell_windows(self):
+        cells = {
+            cell: {"setup_watchpoints": 2} for cell in ANALYZE.KCSAN_CELLS
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "outside"):
+            ANALYZE.validate_kcsan_partition(
+                {"setup_watchpoints": 7}, cells
+            )
+
+    def test_kcsan_config_disables_early_instrumentation(self):
+        config = Path("configs/kernel/x86_64_phase1_kcsan.config")
+        checked = ANALYZE.validate_kernel_config(config, "kcsan")
+        self.assertEqual(checked["CONFIG_KCSAN_EARLY_ENABLE"], "n")
+
+    def test_rejects_kcsan_config_with_early_instrumentation(self):
+        source = Path("configs/kernel/x86_64_phase1_kcsan.config").read_text()
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "kernel.config"
+            config.write_text(
+                source.replace(
+                    "# CONFIG_KCSAN_EARLY_ENABLE is not set",
+                    "CONFIG_KCSAN_EARLY_ENABLE=y",
+                )
+            )
+            with self.assertRaisesRegex(
+                ANALYZE.AnalysisError, "CONFIG_KCSAN_EARLY_ENABLE"
+            ):
+                ANALYZE.validate_kernel_config(config, "kcsan")
 
     def test_ignores_informational_rcu_lockdep_boot_line(self):
         with tempfile.TemporaryDirectory() as directory:

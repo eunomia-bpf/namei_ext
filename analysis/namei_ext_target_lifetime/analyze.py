@@ -27,6 +27,7 @@ RELATED_DIAGNOSTIC = re.compile(
     re.IGNORECASE,
 )
 PUBLICATION_TARGETS = 16
+KCSAN_CELLS = ("final-file", "directory", "pinned-object")
 FORMAL_CONFIG = {
     "duration_seconds": 60,
     "readers": 4,
@@ -1268,6 +1269,7 @@ def validate_kernel_config(path, kernel_kind):
             **common,
             "CONFIG_KASAN": "n",
             "CONFIG_KCSAN": "y",
+            "CONFIG_KCSAN_EARLY_ENABLE": "n",
             "CONFIG_KCSAN_STRICT": "y",
             "CONFIG_KCSAN_WEAK_MEMORY": "y",
             "CONFIG_KCSAN_NUM_WATCHPOINTS": "64",
@@ -1295,7 +1297,8 @@ def validate_kernel_config(path, kernel_kind):
 
 def parse_kcsan_counters(path):
     counters = {}
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
+    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    for line in lines:
         match = re.fullmatch(r"([a-z_]+):\s+(-?\d+)", line.strip())
         if match:
             counters[match.group(1)] = int(match.group(2))
@@ -1304,20 +1307,30 @@ def parse_kcsan_counters(path):
         "used_watchpoints",
         "setup_watchpoints",
         "data_races",
+        "assert_failures",
     ):
         if required not in counters:
             raise AnalysisError(f"{path}: missing KCSAN counter {required}")
+    if "blacklisted functions: none" not in {line.strip() for line in lines}:
+        raise AnalysisError(f"{path}: KCSAN report filtering is active or unknown")
     return counters
 
 
 def validate_kcsan_engagement(before_path, after_path):
     before = parse_kcsan_counters(before_path)
     after = parse_kcsan_counters(after_path)
-    if before["enabled"] != 1 or after["enabled"] != 1:
-        raise AnalysisError("KCSAN was not enabled throughout the stress")
+    if before["enabled"] != 0 or after["enabled"] != 0:
+        raise AnalysisError("KCSAN was not confined to the workload windows")
+    if before["data_races"] != 0 or before["assert_failures"] != 0:
+        raise AnalysisError("KCSAN counters were not clean before the workload")
     deltas = {
         key: after[key] - before.get(key, 0)
-        for key in ("used_watchpoints", "setup_watchpoints", "data_races")
+        for key in (
+            "used_watchpoints",
+            "setup_watchpoints",
+            "data_races",
+            "assert_failures",
+        )
         if key in after
     }
     if before["used_watchpoints"] < 0 or after["used_watchpoints"] < 0:
@@ -1326,7 +1339,30 @@ def validate_kcsan_engagement(before_path, after_path):
         raise AnalysisError(f"KCSAN watchpoints did not engage: {deltas}")
     if deltas["data_races"] != 0:
         raise AnalysisError(f"KCSAN observed data races during stress: {deltas}")
+    if deltas["assert_failures"] != 0:
+        raise AnalysisError(f"KCSAN observed assertion failures: {deltas}")
     return deltas
+
+
+def validate_kcsan_cells(directory):
+    root = Path(directory)
+    results = {}
+    for cell in KCSAN_CELLS:
+        before = root / f"{cell}-kcsan-before.txt"
+        after = root / f"{cell}-kcsan-after.txt"
+        if not before.is_file() or not after.is_file():
+            raise AnalysisError(f"{cell}: missing per-cell KCSAN snapshots")
+        results[cell] = validate_kcsan_engagement(before, after)
+    return results
+
+
+def validate_kcsan_partition(total, cells):
+    cell_setups = sum(cell["setup_watchpoints"] for cell in cells.values())
+    if total["setup_watchpoints"] != cell_setups:
+        raise AnalysisError(
+            "KCSAN setup-watchpoint delta extends outside the per-cell windows: "
+            f"total={total['setup_watchpoints']} cells={cell_setups}"
+        )
 
 
 def classify_dmesg(path):
@@ -1482,11 +1518,27 @@ def analyze_boot(args):
             f"{dmesg['diagnostics']} block(s)"
         )
 
+    boot_dmesg = None
+    if args.kernel_kind == "kcsan":
+        if not args.boot_dmesg:
+            raise AnalysisError("KCSAN boot lacks pre-workload dmesg")
+        boot_dmesg = classify_dmesg(args.boot_dmesg)
+        if boot_dmesg["status"] != "clean":
+            raise AnalysisError(
+                f"pre-workload kernel diagnostics make boot "
+                f"{boot_dmesg['status']}: {boot_dmesg['diagnostics']} block(s)"
+            )
+    elif args.boot_dmesg:
+        raise AnalysisError("non-KCSAN boot unexpectedly supplied pre-workload dmesg")
+
     kcsan = None
+    kcsan_cells = None
     if args.kernel_kind == "kcsan":
         if not args.kcsan_before or not args.kcsan_after:
             raise AnalysisError("KCSAN boot lacks before/after counters")
         kcsan = validate_kcsan_engagement(args.kcsan_before, args.kcsan_after)
+        kcsan_cells = validate_kcsan_cells(Path(args.history).parent)
+        validate_kcsan_partition(kcsan, kcsan_cells)
     elif args.kcsan_before or args.kcsan_after:
         raise AnalysisError("non-KCSAN boot unexpectedly supplied counters")
 
@@ -1506,7 +1558,9 @@ def analyze_boot(args):
         "rcu_litmus_cells": 4,
         "kernel_config_checked": sorted(config),
         "kcsan_deltas": kcsan,
+        "kcsan_cell_deltas": kcsan_cells,
         "dmesg": dmesg,
+        "pre_workload_dmesg": boot_dmesg,
         "current_namei_control_rows": control_rows,
     }
     output = Path(args.output)
@@ -1602,6 +1656,7 @@ def build_parser():
     boot = subparsers.add_parser("boot")
     boot.add_argument("--history", required=True)
     boot.add_argument("--dmesg", required=True)
+    boot.add_argument("--boot-dmesg")
     boot.add_argument("--kernel-config", required=True)
     boot.add_argument("--kernel-kind", choices=("normal", "kasan", "kcsan"), required=True)
     boot.add_argument("--kcsan-before")
