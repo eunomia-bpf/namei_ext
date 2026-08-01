@@ -42,10 +42,10 @@ roots. The selected arm uses a logical tmpfs parent whose `a`, `b`, and `x`
 components select physical lower roots. `a` and `b` reside on the same ext4
 mount; `x` resides on tmpfs.
 
-The BPF program attaches at the cgroup-v2 root so a child cgroup inherits it.
-The component-map keys contain that child cgroup's ID. Only selected case
-children enter the child cgroup. The controller and direct children cannot
-satisfy selected target-hit attribution.
+The BPF program, registered targets, and exact-parent scope belong to one
+experiment child cgroup. The component-map keys contain that cgroup's ID. Only
+selected case children enter it; the controller and direct children remain
+outside the attachment and cannot satisfy selected target-hit attribution.
 
 The kernel exact-parent filter is configured only for the logical parent.
 Physical lower-object checks therefore do not recursively invoke policy. A
@@ -103,11 +103,15 @@ Before KVM execution:
 - `git diff --check` reported no whitespace errors.
 - The revised scientific plan received an independent GO before implementation.
 
-No KVM result exists yet. The implementation must receive a separate
-claim-to-code preflight review before the first real boot. A passing preflight
-is a dependency result only; the scoped semantic-continuation claim requires
-the unchanged 16-case matrix in three fresh formal boots and independent raw
-result review.
+The implementation received a claim-to-code preflight review before KVM. The
+first launch did not start a guest because the PTY stopped the QEMU process
+group. The second launch entered the modified-kernel guest but exposed a
+control-plane ordering error before any semantic case ran: the controller tried
+to set an exact parent for a child cgroup before that cgroup owned an attached
+policy. The forward fix attaches the policy to the child cgroup first, then
+registers the exact parent. Each configuration operation now emits its own raw
+setup event, and the host finalizer freezes the complete successful setup
+sequence. Neither failed root is mechanism evidence.
 
 ## Remaining Risks
 

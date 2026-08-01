@@ -130,11 +130,18 @@ semantic-continuation-finalize:
 			expected_cases=2; \
 			case_specs='S02:8 S11:5'; \
 			engagement_specs='S02:2 S11:6'; \
+			teardown_step=teardown-policy; \
 		else \
 			expected_cases=16; \
 			case_specs='S01:1 S02:8 S03:5 S04:6 S05:6 S06:5 S07:3 S08:8 S09:6 S10:5 S11:5 S12:5 S13:5 S14:5 S15:1 S16:6'; \
 			engagement_specs='S01:2 S02:2 S03:2 S04:2 S05:2 S06:2 S07:2 S08:2 S09:2 S10:2 S11:6 S12:6 S13:10 S14:10 S15:0 S16:2'; \
+			teardown_step=teardown-policy-before-dirfd; \
 		fi; \
+		setup_steps='prepare-fixture create-cgroup read-cgroup-id register-target-a register-target-b register-target-x attach-policy register-policy-parent map-target-a map-target-b map-target-x selected-lower-paths cleanup-fixture'; \
+		for setup_step in $$setup_steps $$teardown_step; do \
+			test "$$(jq -s --arg step "$$setup_step" '[.[] | select(.event == "semantic-continuation-setup" and .step == $$step and .errno == 0 and .pass == true)] | length' "$$boot/observations.jsonl")" = 1; \
+		done; \
+		test "$$(jq -s '[.[] | select(.event == "semantic-continuation-setup")] | length' "$$boot/observations.jsonl")" = 14; \
 		test "$$(jq -s --arg profile "$(SEMANTIC_CONTINUATION_ACTIVE_PROFILE)" \
 			--arg order "$$order" --argjson cases "$$expected_cases" \
 			'[.[] | select(.event == "semantic-continuation-summary" and .profile == $$profile and .order == $$order and .expected_cases_per_arm == $$cases and .failures == 0 and .pass == true)] | length' \
@@ -160,6 +167,9 @@ semantic-continuation-finalize:
 		done; \
 		jq -s -e '([.[] | select(.event == "semantic-continuation-operation" and .arm == "direct") | {case,operation,errno,detail,pass,outcome:(if .return < 0 then "error" else "success" end)}] | sort_by(.case,.operation)) == ([.[] | select(.event == "semantic-continuation-operation" and .arm == "selected") | {case,operation,errno,detail,pass,outcome:(if .return < 0 then "error" else "success" end)}] | sort_by(.case,.operation))' \
 			"$$boot/observations.jsonl" >/dev/null; \
+		if test "$(SEMANTIC_CONTINUATION_ACTIVE_PROFILE)" = formal; then \
+			jq -s -e '([to_entries[] | select(.value.event == "semantic-continuation-operation" and .value.arm == "selected" and .value.case == "S16" and .value.operation == "open-directory") | .key]) as $$open | ([to_entries[] | select(.value.event == "semantic-continuation-setup" and .value.step == "teardown-policy-before-dirfd") | .key]) as $$teardown | ([to_entries[] | select(.value.event == "semantic-continuation-operation" and .value.arm == "selected" and .value.case == "S16" and .value.operation == "openat-create") | .key]) as $$openat | ($$open | length) == 1 and ($$teardown | length) == 1 and ($$openat | length) == 1 and $$open[0] < $$teardown[0] and $$teardown[0] < $$openat[0]' "$$boot/observations.jsonl" >/dev/null; \
+		fi; \
 		jq -e '.status == "completed" and .inner_status == 0 and .cleanup_status == 0 and .dmesg_status == 0' \
 			"$$boot/boot.json" >/dev/null; \
 		test "$$(cat "$$boot/runner.status")" = 0; \

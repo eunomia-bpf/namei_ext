@@ -985,15 +985,28 @@ out:
 static int case_s16_direct(struct case_context *ctx,
 			   const struct arm_paths *paths)
 {
+	struct stat actual = {};
+	struct stat expected = {};
 	char path[PATH_MAX];
+	bool identity;
 	int dirfd;
+	int error = 0;
 
 	if (case_path(path, sizeof(path), paths->a, ctx->id, NULL))
 		return -ENAMETOOLONG;
 	dirfd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-	if (emit_operation(ctx, "open-directory", dirfd,
-			   dirfd < 0 ? errno : 0, "opened", dirfd >= 0))
+	if (dirfd < 0)
+		error = errno;
+	else if (fstat(dirfd, &actual) || stat(path, &expected))
+		error = errno;
+	identity = dirfd >= 0 && !error && actual.st_dev == expected.st_dev &&
+		actual.st_ino == expected.st_ino;
+	if (emit_operation(ctx, "open-directory", dirfd, error,
+			   "opened-object-identity", identity)) {
+		if (dirfd >= 0)
+			close(dirfd);
 		return -EINVAL;
+	}
 	int ret = dirfd_operations(ctx, dirfd);
 	close(dirfd);
 	return ret;
@@ -1177,44 +1190,68 @@ static int prepare_fixture(struct fixture *fixture, const char *ext4_root,
 }
 
 static int configure_policy(FILE *out, const char *policy_object,
-			    const char *cgroup_root, struct fixture *fixture,
-			    struct policy_state *state)
+			    struct fixture *fixture, struct policy_state *state)
 {
-	int ret = create_dir(fixture->cgroup, 0755);
-
-	if (!ret)
-		state->cgroup_created = true;
-	if (!ret)
-		ret = namei_ext_cgroup_id(fixture->cgroup, &state->cgroup_id);
-	if (!ret)
-		ret = namei_ext_register_target(fixture->cgroup,
-					       fixture->selected_a_lower, TARGET_A);
-	if (!ret)
-		state->targets_registered = true;
-	if (!ret)
-		ret = namei_ext_register_target(fixture->cgroup,
-					       fixture->selected_b_lower, TARGET_B);
-	if (!ret)
-		ret = namei_ext_register_target(fixture->cgroup,
-					       fixture->selected_x_lower, TARGET_X);
-	if (!ret)
-		ret = namei_ext_policy_parent_exact(fixture->cgroup,
-						 fixture->logical);
-	if (!ret)
-		state->parent_registered = true;
-	if (!ret && namei_ext_policy_load_attach(policy_object, cgroup_root,
-						  &state->policy))
-		ret = -errno;
-	if (!ret)
-		state->attached = true;
+	const char *steps[] = { "map-target-a", "map-target-b", "map-target-x" };
 	const char *names[] = { "a", "b", "x" };
 	const uint32_t targets[] = { TARGET_A, TARGET_B, TARGET_X };
-	for (size_t i = 0; !ret && i < ARRAY_SIZE(names); i++)
+	int ret = create_dir(fixture->cgroup, 0755);
+
+	emit_setup(out, "create-cgroup", ret ? -ret : 0, !ret);
+	if (ret)
+		return ret;
+	state->cgroup_created = true;
+
+	ret = namei_ext_cgroup_id(fixture->cgroup, &state->cgroup_id);
+	emit_setup(out, "read-cgroup-id", ret ? -ret : 0, !ret);
+	if (ret)
+		return ret;
+
+	ret = namei_ext_register_target(fixture->cgroup,
+					 fixture->selected_a_lower, TARGET_A);
+	emit_setup(out, "register-target-a", ret ? -ret : 0, !ret);
+	if (ret)
+		return ret;
+	state->targets_registered = true;
+
+	ret = namei_ext_register_target(fixture->cgroup,
+					 fixture->selected_b_lower, TARGET_B);
+	emit_setup(out, "register-target-b", ret ? -ret : 0, !ret);
+	if (ret)
+		return ret;
+
+	ret = namei_ext_register_target(fixture->cgroup,
+					 fixture->selected_x_lower, TARGET_X);
+	emit_setup(out, "register-target-x", ret ? -ret : 0, !ret);
+	if (ret)
+		return ret;
+
+	errno = 0;
+	if (namei_ext_policy_load_attach(policy_object, fixture->cgroup,
+					  &state->policy))
+		ret = errno ? -errno : -EIO;
+	else
+		ret = 0;
+	emit_setup(out, "attach-policy", ret ? -ret : 0, !ret);
+	if (ret)
+		return ret;
+	state->attached = true;
+
+	ret = namei_ext_policy_parent_exact(fixture->cgroup, fixture->logical);
+	emit_setup(out, "register-policy-parent", ret ? -ret : 0, !ret);
+	if (ret)
+		return ret;
+	state->parent_registered = true;
+
+	for (size_t i = 0; i < ARRAY_SIZE(names); i++) {
 		ret = namei_ext_component_map_update(
 			&state->policy, "semantic_continuation_views",
 			state->cgroup_id, fixture->logical, names[i], targets[i]);
-	emit_setup(out, "configure-policy", ret ? -ret : 0, !ret);
-	return ret;
+		emit_setup(out, steps[i], ret ? -ret : 0, !ret);
+		if (ret)
+			return ret;
+	}
+	return 0;
 }
 
 static int read_counters(struct policy_state *state,
@@ -1475,7 +1512,7 @@ static int run_selected_s16(FILE *out, const struct arm_paths *logical_paths,
 			actual.st_ino == expected.st_ino;
 		emit_operation(&ctx, "open-directory", dirfd,
 			       child_ret ? -child_ret : 0,
-			       "selected-lower-identity", identity);
+			       "opened-object-identity", identity);
 		if (write(ready[1], &signal, 1) != 1)
 			child_ret = -EIO;
 		close(ready[1]);
@@ -1697,7 +1734,7 @@ int main(int argc, char **argv)
 		fclose(out);
 		return 1;
 	}
-	ret = configure_policy(out, argv[1], argv[3], &fixture, &state);
+	ret = configure_policy(out, argv[1], &fixture, &state);
 	if (ret) {
 		teardown_policy(out, argv[3], &fixture, &state, 0);
 		cleanup_fixture(&fixture, argv[4], argv[5]);

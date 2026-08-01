@@ -43,3 +43,39 @@ No blocker remained in any of the five reviewed classes.
 This verdict means the implementation is ready for one real modified-kernel
 preflight. It is not evidence that the semantic matrix passes. The preflight
 result must still be reviewed from raw observations before any formal run.
+
+## Post-Review Correction
+
+The second launch showed that this review missed a real cgroup ownership and
+ordering error. The reviewed controller registered the exact parent in the
+experiment child cgroup before any namei_ext policy was attached, and then
+planned to attach the program at the cgroup-v2 root. Kernel
+`namei_ext_policy_parent_write()` accepts `exact` only when the current cgroup
+owns the attached policy. The child therefore failed before any matrix case
+ran. The earlier PRE-KVM GO is preserved above as review history, but it was not
+a valid approval of that implementation.
+
+The forward fix attaches the program directly to the experiment child cgroup
+before registering the exact parent. A new independent review is required
+before another KVM attempt. The failed roots and corrected dependency analysis
+are recorded in
+`2026-08-01-semantic-continuation-preflight-v1-v2.md`.
+
+## Forward-Fix Review
+
+The independent reviewer checked the corrected ownership/order, S16 teardown,
+setup-event finalization, and source cleanliness. The first pass found two
+additional evidence blockers:
+
+1. direct and selected S16 used different `detail` strings, so the formal arm
+   comparison would reject a correct result;
+2. the finalizer counted the S16 teardown event but did not prove it occurred
+   after `open-directory` and before the first descriptor-relative operation.
+
+The controller now applies the same object-identity oracle and detail to both
+S16 arms. The per-boot finalizer compares raw event positions and requires
+`open-directory < teardown-policy-before-dirfd < openat-create`. Analyzer
+outputs are directed outside the source tree. The reviewer rechecked these
+fixes, found no remaining issue in the reviewed scope, and returned:
+
+**PRE-KVM V3 GO**
