@@ -98,6 +98,22 @@ next workload window still makes the boot negative or inconclusive. If the
 same reports remain without weak-memory modeling, this correction is refuted
 and the experiment must not proceed to the formal matrix.
 
+### Preflight10 outcome
+
+Preflight10 used the corrected configuration and refuted this correction. Its
+normal and KASAN boots produced positive analyses, and the KCSAN runner passed
+all mechanism oracles, but the KCSAN windows recorded 99 data races. The
+retained reports comprise 97 `init_file / init_file` blocks, one
+`folio_mark_accessed / workingset_activation` block, and one
+`link_path_walk / v9fs_stat2inode_dotl` block. Strict KCSAN was engaged with
+247,452 setup watchpoints, no report filter, and zero assertion failures.
+
+The complete preflight is therefore negative under the frozen diagnostic
+rule. The formal nine-boot matrix will not run, and the KCSAN configuration
+will not be weakened or reinterpreted again. The immutable result is recorded
+in
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight10-kcsan-negative.md`.
+
 ## KCSAN Measurement-Window Correction (2026-07-31)
 
 Preflight04 showed that enabling strict KCSAN during virtme boot does not
