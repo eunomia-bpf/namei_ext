@@ -121,3 +121,32 @@ the measured filesystem: the loop image is mounted on that directory before
 fixture creation, and the existing `findmnt`, `statfs`, and runner gates still
 require the resulting fixture root to be ext4. A second preflight will use a
 fresh result root.
+
+## Real Preflight Attempt 2
+
+Run `20260801T111530Z-d8c1654` reached both mechanisms. The unmodified official
+portal arm completed its source-derived lifecycle and measured transaction on
+the dedicated ext4 fixture. The `namei_ext` arm booted, attached its real
+`cgroup/namei_ext` policy, registered the existing target, and dispatched 200
+lookup plus 12 readdir events, but recorded zero `SELECT`, lookup `HIDE`,
+readdir `HIDE`, and managed visible-readdir actions. Its placeholder document
+therefore remained visible before grant and after revoke, while the selected
+payload remained absent after grant. The outer lifecycle preserved the raw
+failure, completed cleanup and inventory checks, and marked the fresh root
+failed.
+
+The dedicated block filesystem exposed an ABI representation mismatch.
+Userspace map keys use `stat(parent).st_dev`, which Linux exports using
+`new_encode_dev()`/`huge_encode_dev()`. The BPF context copied the
+kernel-internal `super_block::s_dev` value. For loop device 7:0 those values are
+1792 and 7340032 respectively, so the policy's exact parent key could not match
+the successfully inserted scope or grant keys. The compiled policy contained
+the complete fixed document-ID comparison, and nonzero dispatch counters rule
+out the name literal, verifier, attachment, and parent prefilter.
+
+The kernel now exports `ctx.parent_dev` with `huge_encode_dev(s_dev)`, matching
+the userspace `st_dev` representation without changing the UAPI layout. The
+full diagnosis and validation obligations are recorded in
+`docs/tmp/2026-08-01-parent-device-encoding-fix.md`. The failed root is
+immutable and will not be repaired or reused. The third preflight will use a
+fresh result root after host builds and tests pass.
