@@ -17,6 +17,7 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-spindle-staging-preflight \
 	kvm-toolchain-environment-preflight \
 	kvm-kubernetes-configmap-publication-rq1-preflight \
+	kvm-semantic-continuation-preflight \
 	kvm-fxmark-rq2-preflight \
 	kvm-fxmark-fast-path-preflight \
 	kvm-fxmark-readdir-preflight
@@ -62,6 +63,10 @@ NAMEI_EXT_FORMAL_PERFORMANCE_ENTRYPOINTS := \
 	experiment-fxmark-readdir \
 	kvm-fxmark-readdir
 
+NAMEI_EXT_FORMAL_MECHANISM_TARGETS := \
+	experiment-semantic-continuation \
+	kvm-semantic-continuation
+
 NAMEI_EXT_HISTORICAL_TARGETS := legacy-build-cache
 
 # Compatibility name consumed by the shared KVM infrastructure.
@@ -74,4 +79,5 @@ CLEAN_SOURCE_EXPERIMENT_TARGETS := \
 		$(NAMEI_EXT_BLOCKED_DEPENDENCY_PREFLIGHT_ENTRYPOINTS) \
 		$(NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS) \
 		$(NAMEI_EXT_BLOCKED_FORMAL_CASE_STUDY_ENTRYPOINTS) \
+		$(NAMEI_EXT_FORMAL_MECHANISM_TARGETS) \
 		$(NAMEI_EXT_FORMAL_PERFORMANCE_ENTRYPOINTS))

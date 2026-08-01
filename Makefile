@@ -31,6 +31,7 @@ include $(ROOT_DIR)/configs/benchmarks/checkpoint_restore.mk
 include $(ROOT_DIR)/configs/benchmarks/spindle_staging.mk
 include $(ROOT_DIR)/configs/benchmarks/toolchain_environment.mk
 include $(ROOT_DIR)/configs/benchmarks/kubernetes_configmap_publication.mk
+include $(ROOT_DIR)/configs/benchmarks/semantic_continuation.mk
 include $(ROOT_DIR)/mk/kernel.mk
 include $(ROOT_DIR)/mk/docker.mk
 include $(ROOT_DIR)/mk/results.mk
@@ -50,6 +51,7 @@ include $(ROOT_DIR)/mk/experiments/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/experiments/spindle_staging.mk
 include $(ROOT_DIR)/mk/experiments/toolchain_environment.mk
 include $(ROOT_DIR)/mk/experiments/kubernetes_configmap_publication.mk
+include $(ROOT_DIR)/mk/experiments/semantic_continuation.mk
 include $(ROOT_DIR)/mk/benchmarks/fxmark.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_fast_path.mk
 include $(ROOT_DIR)/mk/experiments/fxmark_readdir.mk
@@ -82,6 +84,10 @@ include $(ROOT_DIR)/mk/experiments/namei_ext_target_lifetime.mk
 	kubernetes-configmap-publication-finalize \
 	kubernetes-configmap-publication-analyze \
 	experiment-kubernetes-configmap-publication-rq1 \
+	semantic-continuation kvm-semantic-continuation-preflight \
+	kvm-semantic-continuation semantic-continuation-run \
+	semantic-continuation-finalize semantic-continuation-analyze \
+	experiment-semantic-continuation \
 	kvm-agent-workspace-source-task-rq1-preflight \
 	kvm-agent-workspace-source-task-rq1 \
 	agent-workspace-source-task-run \
@@ -281,6 +287,10 @@ help:
 	@printf '%s\n' '                       run one Kubernetes AtomicWriter publication workload boot in KVM'
 	@printf '%s\n' '  make experiment-kubernetes-configmap-publication-rq1'
 	@printf '%s\n' '                       run three fresh ConfigMap publication boots and generate the RQ1 report'
+	@printf '%s\n' '  make kvm-semantic-continuation-preflight'
+	@printf '%s\n' '                       check selected-path create and two-target rename in one modified-kernel boot'
+	@printf '%s\n' '  make experiment-semantic-continuation'
+	@printf '%s\n' '                       compare direct and selected VFS semantics across the frozen 16-case matrix'
 	@printf '%s\n' '  make kvm-fxmark-rq2-preflight'
 	@printf '%s\n' '                       run one real MRPL cell in six isolated stock/patched/FUSE KVM boots'
 	@printf '%s\n' '  make kvm-fxmark-rq2'
