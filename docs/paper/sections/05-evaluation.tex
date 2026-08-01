@@ -134,11 +134,14 @@ Parent prefilter & Attach a policy to one exact parent; probe lookup and
 readdir under that parent and a second, unrelated parent. & The managed parent
 was filtered and the unrelated parent retained the lower view; a separate
 zero-invocation control confirmed policy dispatch was bypassed. \\
-Ordinary VFS completion & Select an existing directory and file, then execute
-stat, open/read, and directory enumeration through the logical path. & The
-functional suite observed expected success, errors, bytes, and directory
-entries; source-workload oracles separately checked identity and lower-object
-preservation. \\
+Selected-object semantic preservation & Pair direct lower paths with selected
+paths for a frozen 16-case, 80-operation matrix on ext4/tmpfs. Attribute every
+selected operation to target selection, PASS, or no policy; retain an opened
+selected directory across policy teardown. & Three fresh KVM boots passed
+48/48 direct and 48/48 selected cases, 240/240 per-operation engagements, six
+raw identity checks, and 96/96 residual checks. Descriptor-relative
+create/write/read/rename/unlink completed after teardown with zero subsequent
+policy engagement. \\
 \hline
 \end{tabular}
 \caption{Mechanism checks underlying RQ1. These checks validate construction

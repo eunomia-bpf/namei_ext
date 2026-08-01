@@ -39,9 +39,26 @@ semantics.
 The central principle is:
 
 ```text
-state-dependent pathname policy belongs at VFS name resolution;
-filesystem objects and data semantics remain with the kernel and lower FS.
+existing systems couple dynamic pathname binding to filesystem ownership;
+namei_ext separates binding policy so runtime policy can select existing VFS
+objects while preserving native filesystem semantics.
 ```
+
+Dynamic filesystem views are therefore a pathname late-binding problem, not
+necessarily a new-filesystem problem. Cross-path binding coherence,
+registered-target lifetime under RCU/ref-walk, and preservation of ordinary
+VFS processing are implementation obligations derived from that separation.
+The disabled and unmanaged fast paths are a deployment requirement, not a
+fourth independent idea.
+
+The core technical challenge is the VFS acceptance contract for a
+policy-selected object. An in-progress namei walk contains operation intent,
+root and mount constraints, RCU/ref-walk state, and sequence validation, not
+just an inode pointer. The implementation must establish authority through
+pre-registration, validate type/operation/scope compatibility, stabilize target
+lifetime under concurrent replacement, and resume normal namei processing.
+Unsupported substitutions must fail before the object is used. This is the
+mechanism contribution; invoking BPF at three call sites is not.
 
 The intended contribution is the design and implementation of this narrow
 extension point plus a source-grounded evaluation showing where it is expressive
@@ -72,21 +89,23 @@ adding another BPF interface is not the contribution.
 
 ### Why the mechanism is nontrivial
 
-1. Linux name resolution is split across intermediate-component walking,
-   final-component open/create handling, and lower-filesystem directory
-   iteration. Independent callbacks can make lookup and readdir disagree.
-2. Cache-hot name resolution uses RCU-walk. Policy cannot take sleeping locks
-   or ordinary object references there. Successful in-place conversion must not
-   reinvoke policy merely to apply its action, while a complete VFS restart may
-   execute policy again; the ABI is at-least-once rather than exactly-once
-   across that restart.
-3. BPF cannot safely return arbitrary pointers or path strings. Registered
-   `struct path` objects require opaque IDs, RCU-safe replacement, borrowed
-   lifetime during RCU-walk, and existing namei sequence validation before
-   stable use.
-4. The decision point is on every pathname component. A static key and
-   conservative RCU exact-parent filter preserve the ordinary VFS path when the
-   extension is unused or the current parent is unmanaged.
+1. **One binding contract.** Linux observes names through intermediate-component
+   walking, final-component open/create handling, and lower-filesystem directory
+   iteration. The same bounded binding contract must have consistent meaning at
+   all three paths. Each invocation is one decision point; the prototype does
+   not claim a transaction across independent syscalls or directory entries.
+2. **A VFS acceptance contract.** BPF cannot return arbitrary pointers or path strings, and
+   RCU-walk cannot transfer an ordinary reference. Opaque IDs, kernel-held
+   `struct path` objects, RCU-safe replacement, borrowed lifetime, and ordinary
+   namei sequence validation turn a policy result into stable VFS state.
+3. **Preserve ordinary semantics.** A selected object must rejoin the existing
+   namei state machine. Reimplementing permission, open, mount, dentry, inode,
+   or file-operation handling would violate the ownership boundary.
+4. **Avoid unrelated-path cost.** Because the decision point lies on every
+   pathname component, a static key and conservative RCU exact-parent filter
+   must preserve the ordinary path when the extension is disabled or the
+   current parent is unmanaged. This is an adoption requirement derived from
+   placement, not a separate abstraction.
 
 Evidence program:
 
@@ -102,6 +121,15 @@ Evidence program:
 
 ## Current Evidence Highlights
 
+- VFS semantic preservation:
+  `results/experiments/semantic-continuation/20260801T190000Z-semantic-formal-v2/`
+  completed three fresh KVM boots over a frozen 16-case, 80-operation
+  direct-versus-selected matrix on ext4/tmpfs. All 48 direct and 48 selected
+  cases, 240 per-operation target/PASS/no-engagement checks, six raw identity
+  checks, and 96 residual checks passed. An opened selected directory completed
+  tested descriptor-relative create/write/read/rename/unlink after policy
+  teardown with zero subsequent policy engagement. An independent row-by-row
+  audit returned GO.
 - RQ2 cache-hot path resolution: the clean repeated FxMark matrix
   (`results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/`)
   completed 50 KVM boots and 450/450 passing cells. Same-filesystem

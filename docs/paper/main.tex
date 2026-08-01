@@ -26,20 +26,22 @@ Modern agent, build, and service systems increasingly construct task-specific
 filesystem views around ordinary tools. Binding a pathname to the wrong lower
 object can corrupt an agent workspace, reuse stale build state, or expose an
 unintended service configuration. The root cause is a boundary mismatch:
-workload state changes pathname-to-object selection during name resolution,
-while permissions, data operations, writes, persistence, and consistency
-should remain lower-filesystem responsibilities. Existing mechanisms either
-construct a namespace before lookup, mediate access without selecting another
-object, or cross into broader FUSE, stackable, or custom filesystem ownership.
-We argue that the missing narrow boundary is programmable object selection at
-VFS name resolution. Realizing this boundary is not a matter of inserting a
-callback: Linux name resolution spans intermediate and final components plus
-directory iteration, cache-hot walks run under RCU, selected objects can be
-replaced concurrently, and unrelated lookups cannot pay policy-dispatch cost.
-\namei places one bounded eBPF decision at component lookup, final lookup, and
-directory iteration. The kernel validates actions over registered paths,
-preserves target lifetime across RCU/ref-walk, and resumes ordinary VFS
-completion; an early scope filter bypasses unrelated lookups. Five
+existing systems couple runtime pathname binding either to namespace
+materialization before lookup or to FUSE, stackable, or custom filesystem
+ownership, even when ordinary file semantics should remain with the lower
+filesystem. We argue that dynamic filesystem views are a late-binding problem,
+not necessarily a new-filesystem problem: runtime policy should select an
+existing VFS object, while the VFS and lower filesystem retain object ownership
+and native filesystem semantics. The challenge is that an
+in-progress path walk is not an object pointer: it carries operation intent,
+root and mount constraints, RCU/ref-walk state, and sequence validation. The
+kernel therefore needs a narrow contract for accepting a policy-selected object
+without bypassing those constraints or transferring filesystem ownership.
+\namei
+places one bounded eBPF decision function at name resolution, represents
+selectable objects by opaque IDs for kernel-held paths, resumes existing VFS
+processing after validation, and bypasses unrelated paths with an early scope
+filter. Five
 source-controlled or source-derived workflows, including official
 \code{xdg-document-portal} 1.18.4, pass reviewed KVM oracles. In
 the headline Agent case,

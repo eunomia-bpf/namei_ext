@@ -25,6 +25,8 @@ The intended position is:
 bind/Overlay/materialization < eBPF LSM < namei_ext < FUSE/custom FS
 ```
 
+现有系统把动态 pathname binding 与 filesystem ownership 捆绑在一起。namei\_ext 将 binding policy 分离出来，使运行时策略能够选择已有 VFS 对象，同时保留原生文件系统语义。
+
 ### Guardrails
 
 - The contribution is the design plus Linux implementation of this systems

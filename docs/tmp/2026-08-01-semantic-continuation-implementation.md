@@ -132,8 +132,9 @@ sequence. Neither failed root is mechanism evidence.
 
 ## Remaining Risks
 
-- The experiment has not yet established that final-component creation and
-  two-path operations work through the current modified kernel.
+- The formal result establishes creation below a selected directory and the
+  frozen same-/cross-filesystem two-path operations. Final-component
+  create-through-selection remains outside the mechanism and fails closed.
 - The controller is custom glue derived from standard `pjdfstest` operation
   families; it does not run the unmodified upstream suite.
 - Three deterministic boots detect semantic disagreement, not rare concurrent
@@ -141,3 +142,12 @@ sequence. Neither failed root is mechanism evidence.
 - A positive result is scoped to the frozen operations and tested ext4/tmpfs
   configuration. It cannot establish complete POSIX or arbitrary-filesystem
   conformance.
+
+## Formal V2 Outcome
+
+`results/experiments/semantic-continuation/20260801T190000Z-semantic-formal-v2`
+completed three fresh modified-kernel KVM boots. Every frozen operation,
+per-operation engagement, raw identity, residual, cleanup, and dmesg gate
+passed. An independent row-by-row audit returned GO. The result and admitted
+claim are recorded in
+`2026-08-01-semantic-continuation-formal-v2-result.md`.

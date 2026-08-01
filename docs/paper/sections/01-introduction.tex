@@ -17,13 +17,14 @@ a new file format, storage service, or custom file operation. The needed
 behavior chooses which existing object a name denotes, or whether that object is
 visible.
 
-The root cause is a boundary mismatch in today's filesystem extension points.
-Workload state changes the right pathname-to-object relation at lookup or
-directory-enumeration time, but ordinary file data, writes, permissions,
-page-cache behavior, persistence, and consistency should remain with the lower
-filesystem. A mechanism that acts before lookup must materialize or update a
-view, while a mechanism that owns lookup as a filesystem service usually owns
-more filesystem behavior than this subproblem needs.
+The root cause is that existing mechanisms couple pathname binding to a broader
+owner. Namespace construction binds names before use by materializing or
+updating mounts, layers, links, or files. FUSE, stackable, and custom
+filesystems can instead choose a binding during lookup, but that choice lives
+inside a filesystem implementation that also owns a wider operation and
+lifetime boundary. Workload state may need to change only which existing object
+a name denotes, while data, writes, permissions, page-cache behavior,
+persistence, and consistency should remain with the lower filesystem.
 
 Existing mechanisms bracket this lookup-time selection problem. Namespace
 mechanisms such as bind mounts, OverlayFS, projected volumes, and copied trees
@@ -38,39 +39,44 @@ They may be the right mechanism when the oracle needs synthetic contents,
 custom metadata, data-path mediation, or runtime orchestration, but they are
 broader than lookup-time name-resolution policy.
 
-We argue that the missing narrow systems boundary is policy at VFS name
-resolution, between access-control hooks and filesystem-service ownership. We
-call the recurring subproblem a state-dependent path view, a workload-state
-change that chooses which existing lower object a pathname denotes or whether
-that object is visible. VFS name resolution is the point where
-pathname-to-object selection and directory visibility are decided. The insight
-is to separate that policy from filesystem ownership by letting a bounded
-policy choose path-view actions at lookup and readdir time, then returning to
-ordinary VFS and lower-filesystem semantics.
+We argue that dynamic filesystem views are a pathname late-binding problem,
+not necessarily a new-filesystem problem. The recurring subproblem is a
+state-dependent path view: workload state changes which existing lower object
+a pathname denotes or whether that object is visible. VFS name resolution is
+where this binding is chosen. The key separation is therefore to make binding
+policy programmable while the VFS and lower filesystem retain object ownership
+and ordinary filesystem semantics.
 
-Realizing this separation is not a matter of inserting one callback. Linux
-resolves intermediate components, final open/create components, and directory
-entries through different paths, yet lookup and readdir must expose one
-coherent view. Cache-hot lookup uses lockless RCU-walk, where policy cannot take
-sleeping locks or ordinary object references, and an RCU fallback cannot
-casually replay a BPF decision that may update maps or emit events. Selecting an
-object outside the visible parent must remain valid across concurrent
-replacement and then resume ordinary VFS permission and open completion.
-Finally, every pathname component is a system-wide hot path, so unattached and
-unmanaged lookups must avoid context construction and policy dispatch.
+The central challenge is defining when the VFS can accept a policy-selected
+object as a normal name-resolution result. An in-progress path walk is not an
+inode pointer: \code{nameidata} carries operation intent, the current root and
+mount, traversal restrictions, RCU/ref-walk state, and sequence numbers used to
+validate concurrent rename and mount activity. Replacing only its path can
+bypass those constraints or leave the walk with inconsistent ownership. The
+extension must therefore admit only pre-authorized, type- and
+operation-compatible objects; obtain stable lifetime without exposing kernel
+pointers to BPF; reject selections whose path constraints cannot be preserved;
+and then resume the original VFS state machine rather than emulate it.
 
-We present \namei, which makes object selection programmable without making the
-policy a filesystem. One eBPF decision function serves component-lookup,
-final-lookup, and directory-entry call sites through two event types and
-returns bounded pass, redirect, hide, or \code{SELECT_TARGET} actions. Existing
-targets are registered as kernel-held \code{struct path} objects and selected
-by opaque ID; RCU-walk may borrow a target until ordinary namei validation
-obtains stable references, and normal VFS permission and open processing then
-continues on the selected object. A static key and an RCU parent-scope filter
-bypass the extension before context construction when no relevant policy
-exists. The resulting ownership split is analogous to \code{sched_ext}: policy
-is programmable, while the kernel retains the subsystem machinery that owns
-objects and executes semantics~\cite{linux_sched_ext}.
+Two additional requirements follow from where this object-selection boundary
+sits. Intermediate components, final open/create components, and directory
+entries traverse different VFS paths, but must implement the same binding
+contract. Cache-hot lookup performs that work during lockless RCU-walk, while
+target registration and replacement occur concurrently. Finally, the decision
+point lies on a system-wide hot path, so disabled and unrelated lookups must
+bypass policy work before context construction.
+
+We present \namei, which separates pathname-binding policy from filesystem
+ownership. One eBPF function returns bounded pass, redirect, hide, or
+\code{SELECT_TARGET} actions at the VFS paths that observe names. Opaque target
+IDs refer to kernel-held \code{struct path} objects; the kernel validates each
+result, converts an RCU-borrowed target into stable namei state, and resumes
+ordinary permission, open, exec, and lower-filesystem operations on the
+selected object. A static key and an RCU parent-scope filter bypass policy work
+before context construction when no relevant policy exists. The resulting
+ownership split is analogous to \code{sched_ext}: policy is programmable,
+while the kernel retains the subsystem machinery that owns objects and
+executes semantics~\cite{linux_sched_ext}.
 
 We evaluate whether this ownership split is sufficient for source-derived
 path-view policies, cheaper than feature-equivalent FUSE placement, and more
@@ -96,15 +102,16 @@ Wrapfs-derived implementation; both mechanisms pass 37/37 workspace oracles
 and all 21 fault cells in each of three boots, while runtime tracing exposes
 the broader stackable filesystem-method boundary.
 
-The paper's primary contribution is the design and Linux implementation of
-\namei as one systems boundary: programmable selection of existing objects
-during VFS name resolution while preserving VFS and lower-filesystem ownership.
+The paper's primary contribution is the design and Linux implementation of a
+late-binding boundary: programmable selection of existing objects during VFS
+name resolution while preserving VFS and lower-filesystem ownership.
 The paper makes two concrete contributions:
 \begin{itemize}
-\item the design and modified-Linux implementation of one bounded decision
-contract across component lookup, final lookup, and readdir, including
-registered-target lifetime across RCU/ref-walk, normal VFS completion, and a
-scope-aware fast path (Sections~\ref{sec:design}
+\item the design and modified-Linux implementation of a pathname-binding
+extension, including one contract across component lookup, final lookup, and
+readdir, registered-target lifetime across RCU/ref-walk, preservation of normal
+VFS processing after selection, and a scope-aware fast path
+(Sections~\ref{sec:design}
 and~\ref{sec:implementation}); and
 \item an evaluation that holds workload correctness fixed while comparing
 \namei with feature-equivalent FUSE and recording which responsibilities would

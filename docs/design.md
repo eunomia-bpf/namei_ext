@@ -9,19 +9,21 @@ user, completed full writing, citation, meaning-preservation, and build checks,
 passed independent outer audit, and froze the same strong design for
 BUILD_AND_EVALUATE.
 
-`namei_ext` is a `sched_ext`-style VFS extension point. The programmable part
-is policy: an eBPF program chooses bounded lookup and directory-enumeration
-actions. The non-programmable ownership stays with the kernel and lower
-filesystem: path walking, dentries, inodes, permissions, file operations, page
-cache, writes, persistence, and consistency.
+`namei_ext` treats dynamic filesystem views as pathname late binding rather
+than necessarily as new filesystems. It separates that binding from filesystem
+ownership: eBPF chooses a bounded binding, while the VFS validates the result,
+owns the selected object, and executes ordinary lower-filesystem semantics.
 
 The central design problem is not exposing another BPF attachment type. It is
-letting policy select an existing VFS object without taking over the path walk
-or filesystem semantics. That requires one decision contract across
-intermediate components, final lookup/open, and directory iteration;
-action-specific handling for RCU/ref-walk; registered-target lifetime across
-concurrent replacement; normal VFS permission/open completion after selection;
-and an early fast path for unattached or unmanaged parents.
+defining when a policy-selected object can replace the current namei result.
+The current walk carries operation intent, root and mount constraints,
+RCU/ref-walk state, and sequence validation, not just an inode pointer. The
+acceptance contract therefore requires a pre-registered object, compatible
+type and operation, preserved traversal constraints, stable lifetime across
+concurrent replacement, and normal VFS continuation. One binding contract must
+also cover intermediate components, final lookup/open, and directory
+iteration. An early fast path for unattached or unmanaged parents is a
+deployment requirement for placing the extension on a system-wide hot path.
 
 ## Position
 

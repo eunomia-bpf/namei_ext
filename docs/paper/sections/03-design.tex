@@ -3,13 +3,32 @@
 
 \subsection{System Overview}
 
-\namei places a programmable decision at the point where the VFS chooses the
-visible object for a pathname or directory entry. Four invariants organize the
-design: (1) policy runs only at lookup and directory enumeration, (2) policy
-returns bounded path-view actions over existing lower objects, (3) the kernel
-validates every action before ordinary VFS execution resumes, and (4) the lower
-filesystem retains permissions, file operations, data, writes, page cache,
-persistence, and consistency.
+\namei treats a dynamic filesystem view as late binding of a pathname or
+directory entry to an existing VFS object. Existing systems commonly couple
+that binding either to namespace materialization before lookup or to a
+filesystem implementation that owns lookup and subsequent operations. \namei
+separates the binding policy from filesystem ownership: policy chooses a
+bounded binding, while the VFS validates the result, owns the selected object,
+and executes ordinary lower-filesystem semantics.
+
+Three invariants organize the design. First, every VFS path that observes a
+name implements the same bounded binding contract. Second, policy returns only
+names or opaque handles; the kernel alone validates object type, scope, and
+lifetime before installing a result. Third, a selected binding changes the
+object on which ordinary VFS processing operates, not the semantics of those
+operations. Permissions, file operations, data, writes, page cache,
+persistence, and consistency remain with the VFS and lower filesystem. A
+separate deployment requirement keeps this optional boundary off disabled and
+unmanaged paths before policy-context construction.
+
+The central design question is the acceptance contract for a policy-selected
+object. Native name resolution does not return a bare inode: the surrounding
+\code{nameidata} records how the object was reached, which operation is being
+performed, which root and mount restrictions apply, whether the walk is under
+RCU, and which sequence values protect it from concurrent namespace changes.
+\namei may replace the visible object only when it can preserve the relevant
+state or fail the operation before the result is used. This contract, rather
+than the BPF invocation itself, determines the mechanism boundary.
 
 Figure~\ref{fig:overview} shows the resulting flow. An application in a
 workload scope performs an ordinary lookup, open, stat, exec, or readdir. The
@@ -37,7 +56,7 @@ one eBPF decision contract supplies policy for \code{LOOKUP} or
 \code{PASS}, \code{HIDE}, bounded component \code{REDIRECT}, or registered
 target ID
 }}\\[3pt]
-$\downarrow$ kernel action handling\\[-2pt]
+$\downarrow$ kernel validation and object handoff\\[-2pt]
 \begin{tabular}{@{}c|c|c@{}}
 \begin{tabular}{c}\code{PASS}/\code{REDIRECT}\\stay in or convert\\the current walk\end{tabular} &
 \begin{tabular}{c}\code{SELECT_TARGET}\\borrow registered path\\under RCU, then validate\end{tabular} &
@@ -49,14 +68,14 @@ $\downarrow$\\[-2pt]
 lower filesystem retains dentries, inodes, data, writes, page cache,
 persistence, and consistency
 }}
-\caption{\namei changes policy inside existing VFS name resolution rather than
-introducing a filesystem service. The decision supplier is common, but the
-kernel handles each action according to the component, final-open, readdir, and
-RCU/ref-walk requirements of the surrounding VFS path.}
+\caption{\namei separates late-binding policy from filesystem ownership. BPF
+chooses a bounded binding; the kernel validates and installs it according to
+the surrounding component, final-open, readdir, and RCU/ref-walk path; ordinary
+VFS semantics then operate on the selected object.}
 \label{fig:overview}
 \end{figure}
 
-\subsection{One Decision Across Resolution Paths}
+\subsection{One Binding Contract Across Resolution Paths}
 
 Linux does not resolve every name through one function. Intermediate
 components pass through the component walk, the trailing component of
@@ -84,15 +103,72 @@ VFS processing operates. Create semantics remain outside selection:
 \code{REDIRECT} and \code{SELECT_TARGET} reject \code{LOOKUP_CREATE}, and the
 policy does not decide target creation or copy-up behavior.
 
+The contract linearizes each decision at one program invocation. It does not
+provide a transaction across independent system calls or across all entries of
+a directory stream. A controller can publish immutable target generations and
+switch one policy-state selector atomically, as the evaluated workloads do,
+but policies that require cross-name transactional updates need a broader
+mechanism. Stating this update model separates binding coherence for a fixed
+policy state from filesystem transaction semantics that \namei does not own.
+
+\subsection{Accepting A Policy-Selected Object}
+
+A decision is not yet a usable VFS object. BPF cannot return a kernel pointer
+or an arbitrary path string, and cache-hot RCU-walk does not hold ordinary
+references that a policy can transfer. \namei therefore separates policy
+output from object ownership. A control plane registers an existing object,
+the kernel retains its \code{struct path}, and policy selects it by an opaque
+ID. The kernel validates the action, target type, scope, and operation before
+installing the result in the current namei state.
+
+Object handoff differs between ref-walk and RCU-walk without changing policy meaning.
+Ref-walk acquires an independent path reference directly. RCU-walk borrows the
+registry's kernel-held path, then uses ordinary namei sequence validation to
+obtain stable references or restart if concurrent replacement invalidates the
+walk. Policy chooses only the binding; object lifetime and the transition from
+a speculative walk to stable VFS state remain kernel responsibilities.
+
+The accepted subset is defined by five checks. First, registration from an
+open descriptor establishes both controller authority and kernel-held target
+lifetime; policy may name only the resulting cgroup-scoped ID. Second, a target
+must be type-compatible with its position: an intermediate target is a
+directory, while a final target is an existing regular file or directory.
+Third, selection cannot own creation, so \code{LOOKUP_CREATE} is rejected.
+Fourth, selection fails when an \code{openat2()} scoped walk could lose its
+root constraint, or when \code{RESOLVE_NO_XDEV} would cross a mount. Fifth,
+RCU-walk may borrow a registered path only until ordinary namei validation can
+stabilize it; otherwise the walk restarts or fails. Unsupported cases do not
+fall back to the unmodified lower name.
+
+Registration is therefore an authorization boundary, not merely a lookup
+cache. The controller authorizes an already opened object for selection by one
+policy scope. Subsequent VFS processing checks the logical walk and selected
+object, but does not replay traversal through the target's physical parents.
+Policies that require unprivileged arbitrary-path selection or scoped traversal
+through a replacement path need a broader mechanism.
+
+\subsection{Preserving Filesystem Semantics}
+
+After installing a selected object, \namei resumes the surrounding VFS state machine rather than
+starting a second path walk or forwarding filesystem methods. Intermediate
+directory selection continues component walking from the selected directory;
+final selection continues permission, stat, access, open, or exec completion
+on the selected object; opening a selected directory uses its lower iterator.
+An already opened file or directory subsequently executes lower-filesystem
+operations without reinvoking policy.
+
+This preservation invariant is what keeps \namei from becoming a filesystem.
+The extension does not emulate permission checks, mount handling, dentries,
+inodes, reads, writes, page cache, persistence, or filesystem-specific
+behavior. For any operation after a successful binding, the required result is
+the result of ordinary VFS execution on the selected lower object.
+
 \subsection{Name-Resolution Boundary Goals}
 
-Four goals follow from keeping policy at name resolution while leaving
-filesystem ownership below the hook: expressiveness, lower-filesystem ownership,
-placement cost, and fail-closed safety. Like \code{sched_ext}, \namei lets BPF
-choose policy while the kernel keeps the VFS mechanisms that own objects and
-execute filesystem semantics. The VFS and lower filesystem retain path walking,
-dentries, inodes, permissions, file operations, page cache, writes, persistence,
-and consistency.
+Four evaluation goals follow from this ownership split: expressiveness,
+semantic preservation, placement cost, and fail-closed validation. Like
+\code{sched_ext}, \namei lets BPF choose policy while the kernel keeps the VFS
+mechanisms that own objects and execute filesystem semantics.
 
 The design defines a narrow kernel extension for name-resolution policy while
 leaving full filesystem expressiveness to FUSE, stackable, or custom
@@ -106,9 +182,9 @@ filesystems. Table~\ref{tab:req-design} maps the four design goals to the RQs.
 Goal & Design choice & RQ \\
 \hline
 G1 Expressiveness & invoke one workload-scoped decision contract at lookup and directory-enumeration time & RQ1 \\
-G2 Lower-filesystem ownership & return only bounded actions over existing lower objects while keeping data, writes, permissions, page cache, and persistence below the hook & RQ1, RQ3 \\
+G2 Semantic preservation & select only existing lower objects and resume ordinary VFS processing for data, writes, permissions, page cache, and persistence & RQ1, RQ3 \\
 G3 Placement cost & run bounded policy at lookup/readdir instead of routing the same decision through a filesystem service & RQ2 \\
-G4 Fail-closed safety & use verified eBPF outputs plus kernel validation so malformed or unsupported decisions fail visibly & RQ3 \\
+G4 Fail-closed validation & use verified eBPF outputs plus kernel validation so malformed or unsupported bindings fail visibly & RQ3 \\
 \hline
 \end{tabular}
 \caption{Design-goal mapping. If an oracle needs synthetic contents, custom

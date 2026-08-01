@@ -121,14 +121,17 @@ breadth and performance:
 | RCU/ref-walk selection | Force final-directory and intermediate-component selection with `openat2(RESOLVE_CACHED)` | Passed in modified-kernel KVM; both entered selected-target handling from RCU-walk and completed after in-place legitimization without a full path-walk restart |
 | Registered-target replacement | Replace one target ID 128 times while another process continuously reads through the selected pathname | Passed; every read observed one complete old or new payload |
 | Exact-parent prefilter | Attach policy to one parent, probe a second parent, and run an attached exact-empty counter control | Functional lookup/readdir kept the unrelated lower view; the control recorded zero BPF invocations |
-| Normal VFS completion | Select existing directories/files, then execute stat, open/read, and readdir through the logical path | The functional suite passed expected success, error, byte, and directory-entry checks; source-workload oracles separately checked identity and unchanged lower objects |
+| Selected-object semantic preservation | Pair direct lower paths with selected paths for a frozen 16-case, 80-operation matrix on ext4/tmpfs; attribute every selected operation to target, PASS, or no policy; retain an opened selected directory across policy teardown | Three fresh KVM boots passed 48/48 direct and 48/48 selected cases, 240/240 per-operation engagements, six raw identity checks, and 96/96 residual checks. Post-teardown descriptor-relative create/write/read/rename/unlink completed with zero policy engagement |
 | Policy execution semantics | Convert in place where possible and permit a full VFS `-ECHILD` restart | The wrapper does not reinvoke policy merely to apply a saved action, but a full restart is at-least-once; policy side effects must be idempotent |
 
-The first four rows are recorded in
+The first three construction rows are recorded in
 `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-implementation.md`,
 `docs/tmp/2026-07-27-namei-ext-global-parent-fast-path-implementation.md`, and
-the corresponding Phase 1 result roots. The restart row is an ABI semantic,
-not an exactly-once claim.
+the corresponding Phase 1 result roots. The semantic-preservation row is
+recorded in
+`docs/tmp/2026-08-01-semantic-continuation-formal-v2-result.md` and its immutable
+formal-v2 result root. The restart row is an ABI semantic, not an exactly-once
+claim.
 
 The attempted RQ3 target-lifetime sanitizer matrix is closed without a formal
 result. Its final preflight passed the normal and KASAN mechanism analyses and
