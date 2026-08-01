@@ -1,5 +1,47 @@
 # Experiment Plan: RQ3 Concurrent Target Lifetime
 
+## Bounded-History Correction (2026-07-31)
+
+Preflight07 invalidated the plan's combination of fixed-duration execution and
+per-operation history. On local ext4, the first five-second publication cell
+produced 2,241,443 JSONL records (457 MiB). The ftrace ring retained 94,519 of
+137,000 entries, one JSON record was truncated, and the runner reported 426
+evidence-emission failures. The deterministic final-file litmus passed, but the
+run stopped before the directory cell and before KASAN or KCSAN. The immutable
+root is
+`results/experiments/namei-ext-target-lifetime-preflight/20260801T061550Z-target-lifetime-preflight07/`;
+it is an infrastructure-invalid preflight, not mechanism evidence.
+
+The corrected protocol separates two evidence roles within each attached
+publication cell:
+
+1. The authoritative linearizability history is a finite operation matrix.
+   The writer completes exactly the configured target update count, and each
+   reader completes at least the configured target open count while observing
+   both a selected object and absence. A fixed upper bound of target opens plus
+   target updates plus 16 operations prevents an unbounded wait for both state
+   classes. The configured time is a hard success deadline for this matrix,
+   never a success condition: completion at or after the deadline fails even
+   when the quotas are eventually met. Every update and open keeps its
+   invocation, syscall return, response, identity, and descriptor records.
+2. A supplemental sanitizer stress phase runs the same object checks for the
+   configured duration but records aggregate successful, absent, and unexpected
+   result counts. Every open still validates inode identity, payload, and
+   descriptor stability; every unexpected result gets its own raw failure
+   record. This phase supports sanitizer exposure only. It does not replace or
+   enlarge the bounded history's linearizability claim.
+
+The raw ftrace stream covers only the finite history matrix. The offline
+analyzer derives marker, update, and RCU-branch counts directly from that raw
+stream; the collector no longer duplicates every ftrace row into JSONL. Any
+JSON write, ftrace loss, malformed trace, timeout, operation error, descriptor
+error, or summary-write failure makes the cell fail. This section supersedes
+the later statements that every operation in a fixed-duration stress run is
+written to the history and that fixed duration is itself the publication-cell
+completion rule. A failed cell stops later cells, and a failed runner prevents
+the formal Agent-workspace regression control from starting; only failure
+artifacts and cleanup continue.
+
 ## KCSAN Measurement-Window Correction (2026-07-31)
 
 Preflight04 showed that enabling strict KCSAN during virtme boot does not
@@ -210,10 +252,10 @@ cleanup requirements in this plan still apply.
   captures both `rcu_walk` and its result. Only a zero-returning RCU resolve
   inside the kernel update interval counts; a resolve in the marker-to-kernel
   gap or a failed resolve during clear does not.
-- Writer control operations and trace shutdown share a mutex. Shutdown waits
-  for an active marked write, stops tracing and removes update probes while
-  holding that mutex, then allows the writer to continue untraced. An unmarked
-  update cannot enter the bounded raw trace during shutdown.
+- Writer control operations and trace shutdown share a mutex. Every bounded
+  history update, including the final clear, carries begin/end markers. Trace
+  shutdown runs only after the writer has joined, so no unmarked update can
+  enter the bounded raw trace.
 - Global correctness model: the checker must find one global sequential history
   for all completed `SET`, `CLEAR`, and `openat()` operations that preserves
   the serial writer order, preserves real-time order whenever one operation

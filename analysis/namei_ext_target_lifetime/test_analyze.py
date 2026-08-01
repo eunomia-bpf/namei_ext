@@ -5,6 +5,7 @@ import itertools
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).with_name("analyze.py")
@@ -163,6 +164,38 @@ def brute_linearizable(history):
 
 
 class LinearizabilityTests(unittest.TestCase):
+    def test_accepts_explicit_history_and_stress_run_configuration(self):
+        record = {
+            "event": "target-lifetime-run-start",
+            "duration_seconds": 5,
+            "history_timeout_seconds": 5,
+            "stress_duration_seconds": 5,
+            "readers": 2,
+            "minimum_updates": 8,
+            "target_updates": 8,
+            "minimum_opens_per_reader": 64,
+            "target_opens_per_reader": 64,
+            "lifecycle_cycles": 4,
+        }
+        observed = ANALYZE.validate_run_start([record])
+        self.assertEqual(observed["minimum_updates"], 8)
+
+    def test_rejects_inconsistent_history_timeout_alias(self):
+        record = {
+            "event": "target-lifetime-run-start",
+            "duration_seconds": 5,
+            "history_timeout_seconds": 4,
+            "stress_duration_seconds": 5,
+            "readers": 2,
+            "minimum_updates": 8,
+            "target_updates": 8,
+            "minimum_opens_per_reader": 64,
+            "target_opens_per_reader": 64,
+            "lifecycle_cycles": 4,
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "history_timeout"):
+            ANALYZE.validate_run_start([record])
+
     def test_valid_overlapping_history(self):
         history = [
             operation(1, "SET", 1, 4, "A", writer_seq=1),
@@ -547,6 +580,9 @@ class LinearizabilityTests(unittest.TestCase):
                 "opens": 3,
                 "successful_opens": 2,
                 "absent_opens": 1,
+                "unexpected_errors": 0,
+                "target_opens": 1,
+                "maximum_opens": 18,
                 "pass": True,
             }
         ]
@@ -558,8 +594,227 @@ class LinearizabilityTests(unittest.TestCase):
             ANALYZE.validate_reader_summaries(
                 records,
                 "final-file",
-                {"readers": 1, "minimum_opens_per_reader": 1},
+                {
+                    "readers": 1,
+                    "minimum_updates": 1,
+                    "minimum_opens_per_reader": 1,
+                },
                 history,
+            )
+
+    def test_accepts_bounded_history_and_duration_stress_phases(self):
+        config = {
+            "duration_seconds": 5,
+            "readers": 1,
+            "minimum_updates": 1,
+            "minimum_opens_per_reader": 1,
+        }
+        records = [
+            {
+                "event": "target-lifetime-phase-summary",
+                "cell": "final-file",
+                "phase": "history",
+                "duration_seconds": 5,
+                "elapsed_ns": 1000,
+                "readers": 1,
+                "updates": 1,
+                "target_updates": 1,
+                "target_opens_per_reader": 1,
+                "maximum_history_opens_per_reader": 18,
+                "timed_out": False,
+                "failures": 0,
+                "pass": True,
+            },
+            {
+                "event": "target-lifetime-phase-summary",
+                "cell": "final-file",
+                "phase": "stress",
+                "duration_seconds": 5,
+                "elapsed_ns": 5_000_000_001,
+                "readers": 1,
+                "updates": 9,
+                "target_updates": 1,
+                "target_opens_per_reader": 1,
+                "maximum_history_opens_per_reader": 0,
+                "timed_out": False,
+                "failures": 0,
+                "pass": True,
+            },
+            {
+                "event": "target-lifetime-stress-reader-summary",
+                "cell": "final-file",
+                "reader": 0,
+                "opens": 20,
+                "successful_opens": 12,
+                "absent_opens": 8,
+                "unexpected_errors": 0,
+                "target_opens": 1,
+                "maximum_opens": 0,
+                "pass": True,
+            },
+        ]
+        history = [operation(1, "SET", 1, 2, "A", writer_seq=1)]
+        observed = ANALYZE.validate_publication_phases(
+            records, "final-file", config, history
+        )
+        self.assertEqual(observed["stress_updates"], 9)
+        self.assertEqual(observed["stress_opens"], 20)
+
+    def test_rejects_history_completion_after_deadline(self):
+        config = {
+            "duration_seconds": 1,
+            "readers": 1,
+            "minimum_updates": 1,
+            "minimum_opens_per_reader": 1,
+        }
+        records = [
+            {
+                "event": "target-lifetime-phase-summary",
+                "cell": "final-file",
+                "phase": phase,
+                "duration_seconds": 1,
+                "elapsed_ns": 1_000_000_001,
+                "readers": 1,
+                "updates": 1,
+                "target_updates": 1,
+                "target_opens_per_reader": 1,
+                "maximum_history_opens_per_reader": 18
+                if phase == "history"
+                else 0,
+                "timed_out": False,
+                "failures": 0,
+                "pass": True,
+            }
+            for phase in ("history", "stress")
+        ]
+        records.append(
+            {
+                "event": "target-lifetime-stress-reader-summary",
+                "cell": "final-file",
+                "reader": 0,
+                "opens": 2,
+                "successful_opens": 1,
+                "absent_opens": 1,
+                "unexpected_errors": 0,
+                "target_opens": 1,
+                "maximum_opens": 0,
+                "pass": True,
+            }
+        )
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "exceeded"):
+            ANALYZE.validate_publication_phases(
+                records,
+                "final-file",
+                config,
+                [operation(1, "SET", 1, 2, "A", writer_seq=1)],
+            )
+
+    def test_rejects_short_stress_phase(self):
+        config = {
+            "duration_seconds": 5,
+            "readers": 1,
+            "minimum_updates": 1,
+            "minimum_opens_per_reader": 1,
+        }
+        records = [
+            {
+                "event": "target-lifetime-phase-summary",
+                "cell": "final-file",
+                "phase": phase,
+                "duration_seconds": 5,
+                "elapsed_ns": 1000,
+                "readers": 1,
+                "updates": 1,
+                "target_updates": 1,
+                "target_opens_per_reader": 1,
+                "maximum_history_opens_per_reader": 18
+                if phase == "history"
+                else 0,
+                "timed_out": False,
+                "failures": 0,
+                "pass": True,
+            }
+            for phase in ("history", "stress")
+        ]
+        records.append(
+            {
+                "event": "target-lifetime-stress-reader-summary",
+                "cell": "final-file",
+                "reader": 0,
+                "opens": 2,
+                "successful_opens": 1,
+                "absent_opens": 1,
+                "unexpected_errors": 0,
+                "target_opens": 1,
+                "maximum_opens": 0,
+                "pass": True,
+            }
+        )
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "deadline"):
+            ANALYZE.validate_publication_phases(
+                records,
+                "final-file",
+                config,
+                [operation(1, "SET", 1, 2, "A", writer_seq=1)],
+            )
+
+    def test_rejects_stress_operation_failure_record(self):
+        config = {
+            "duration_seconds": 1,
+            "readers": 1,
+            "minimum_updates": 1,
+            "minimum_opens_per_reader": 1,
+        }
+        records = [
+            {
+                "event": "target-lifetime-phase-summary",
+                "cell": "final-file",
+                "phase": phase,
+                "duration_seconds": 1,
+                "elapsed_ns": 1000
+                if phase == "history"
+                else 1_000_000_001,
+                "readers": 1,
+                "updates": 1,
+                "target_updates": 1,
+                "target_opens_per_reader": 1,
+                "maximum_history_opens_per_reader": 18
+                if phase == "history"
+                else 0,
+                "timed_out": False,
+                "failures": 0,
+                "pass": True,
+            }
+            for phase in ("history", "stress")
+        ]
+        records.extend(
+            [
+                {
+                    "event": "target-lifetime-stress-reader-summary",
+                    "cell": "final-file",
+                    "reader": 0,
+                    "opens": 2,
+                    "successful_opens": 1,
+                    "absent_opens": 1,
+                    "unexpected_errors": 0,
+                    "target_opens": 1,
+                    "maximum_opens": 0,
+                    "pass": True,
+                },
+                {
+                    "event": "target-lifetime-operation-failure",
+                    "cell": "final-file",
+                    "phase": "stress",
+                    "pass": False,
+                },
+            ]
+        )
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "operation"):
+            ANALYZE.validate_publication_phases(
+                records,
+                "final-file",
+                config,
+                [operation(1, "SET", 1, 2, "A", writer_seq=1)],
             )
 
     def test_rejects_missing_descriptor_for_successful_open(self):
@@ -735,6 +990,36 @@ class LinearizabilityTests(unittest.TestCase):
             result["concurrent"]["rcu_success_under_replacement"], 1
         )
         self.assertEqual(result["concurrent"]["rcu_miss_under_clear"], 1)
+
+    def test_rejects_trace_missing_bounded_history_update(self):
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        records = [
+            litmus_record("replace", 1),
+            litmus_record("clear", 2),
+            {
+                "event": "target-lifetime-rcu-stress",
+                "cell": "final-file",
+                "raw_trace": "final-file-concurrent-rcu-trace.txt",
+            },
+        ]
+        updates = [
+            operation(1, "SET", 1, 2, "A", writer_seq=1),
+            operation(2, "CLEAR", 3, 4, "absent", writer_seq=2),
+        ]
+        raw = {
+            "markers": [("begin", 1), ("end", 1)],
+            "branches": [],
+        }
+        with mock.patch.object(
+            ANALYZE, "parse_concurrent_rcu_trace", return_value=raw
+        ):
+            with self.assertRaisesRegex(ANALYZE.AnalysisError, "complete bounded"):
+                ANALYZE.validate_target_retirement(
+                    records, "final-file", definitions, updates, Path(".")
+                )
 
     def test_rejects_litmus_cookie_mismatch(self):
         records = [litmus_record("replace", 1), litmus_record("clear", 2)]

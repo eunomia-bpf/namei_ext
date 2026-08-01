@@ -50,7 +50,7 @@ set +e; ( set -eu; \
 	--argjson minimum_updates "$(6)" \
 	--argjson minimum_opens_per_reader "$(7)" \
 	--argjson lifecycle_cycles "$(8)" \
-	'.role = $$role | .matrix = {kernel_kinds:["normal","kasan","kcsan"],repetitions_per_kernel:$$repetitions,duration_seconds_per_publication_cell:$$duration_seconds,readers:$$readers,minimum_updates:$$minimum_updates,minimum_opens_per_reader:$$minimum_opens_per_reader,lifecycle_cycles:$$lifecycle_cycles}' \
+	'.role = $$role | .matrix = {kernel_kinds:["normal","kasan","kcsan"],repetitions_per_kernel:$$repetitions,history_timeout_seconds:$$duration_seconds,stress_duration_seconds:$$duration_seconds,readers:$$readers,target_updates:$$minimum_updates,target_opens_per_reader:$$minimum_opens_per_reader,lifecycle_cycles:$$lifecycle_cycles}' \
 	"$(1)/run.json" >"$(1)/run.json.tmp"; \
 	mv -f "$(1)/run.json.tmp" "$(1)/run.json"; \
 	printf '%s\n' "$(9)" >"$(1)/command.txt"; \
@@ -313,7 +313,8 @@ __namei_ext_target_lifetime_guest_body:
 		cat /sys/kernel/debug/kcsan \
 			>"$(TARGET_LIFETIME_BOOT_DIR)/kcsan-before.txt"; \
 	fi
-	status=0; artifact_status=0; control_cleanup_status=0; \
+	status=0; artifact_status=0; control_status=0; \
+	control_cleanup_status=0; control_ran=0; \
 	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
 		kcsan_control=/sys/kernel/debug/kcsan; \
 	else \
@@ -332,9 +333,10 @@ __namei_ext_target_lifetime_guest_body:
 		2>"$(TARGET_LIFETIME_GUEST_EXEC)/runner.stderr.log" || status=$$?; \
 	printf '%s\n' "$$status" \
 		>"$(TARGET_LIFETIME_BOOT_DIR)/runner.status" || artifact_status=$$?; \
-	if test "$(TARGET_LIFETIME_RUN_ROLE)" = formal; then \
+	if test "$(TARGET_LIFETIME_RUN_ROLE)" = formal && \
+	   test "$$status" = 0 && test "$$artifact_status" = 0; then \
+		control_ran=1; \
 		control_cgroup=/sys/fs/cgroup/namei-ext-life-control; \
-		control_status=0; \
 		if test -e "$$control_cgroup"; then \
 			control_status=1; \
 		else \
@@ -355,8 +357,6 @@ __namei_ext_target_lifetime_guest_body:
 			>"$(TARGET_LIFETIME_BOOT_DIR)/control.status" || \
 			artifact_status=$$?; \
 		test ! -e "$$control_cgroup" || control_cleanup_status=$$?; \
-	else \
-		control_status=0; \
 	fi; \
 	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
 		cat /sys/kernel/debug/kcsan \
@@ -399,7 +399,7 @@ __namei_ext_target_lifetime_guest_body:
 			done; \
 		done; \
 	fi; \
-	if test "$(TARGET_LIFETIME_RUN_ROLE)" = formal; then \
+	if test "$$control_ran" = 1; then \
 		install -m 0444 "$(TARGET_LIFETIME_GUEST_EXEC)/current-namei-control.jsonl" \
 			"$(TARGET_LIFETIME_BOOT_DIR)/current-namei-control.jsonl" || \
 			artifact_status=$$?; \
@@ -411,8 +411,11 @@ __namei_ext_target_lifetime_guest_body:
 			artifact_status=$$?; \
 	fi; \
 	test "$$status" = 0; \
-	test "$$control_status" = 0; \
-	test "$$control_cleanup_status" = 0; \
+	if test "$(TARGET_LIFETIME_RUN_ROLE)" = formal; then \
+		test "$$control_ran" = 1; \
+		test "$$control_status" = 0; \
+		test "$$control_cleanup_status" = 0; \
+	fi; \
 	test "$$artifact_status" = 0
 	if test "$(TARGET_LIFETIME_KERNEL_KIND)" = kcsan; then \
 		kcsan_args="--boot-dmesg $(TARGET_LIFETIME_BOOT_DIR)/boot-dmesg.log --kcsan-before $(TARGET_LIFETIME_BOOT_DIR)/kcsan-before.txt --kcsan-after $(TARGET_LIFETIME_BOOT_DIR)/kcsan-after.txt"; \

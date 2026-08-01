@@ -27,6 +27,7 @@ RELATED_DIAGNOSTIC = re.compile(
     re.IGNORECASE,
 )
 PUBLICATION_TARGETS = 16
+HISTORY_OPEN_SLACK = 16
 KCSAN_CELLS = ("final-file", "directory", "pinned-object")
 FORMAL_CONFIG = {
     "duration_seconds": 60,
@@ -820,60 +821,6 @@ def validate_target_retirement(
         raise AnalysisError(f"{cell}: unexpected raw trace path")
     raw = parse_concurrent_rcu_trace(Path(history_dir) / expected_trace)
 
-    markers = [
-        (record.get("phase"), int(record.get("writer_seq", 0)))
-        for record in records
-        if record.get("event") == "target-lifetime-rcu-marker"
-        and record.get("cell") == cell
-    ]
-    if markers != raw["markers"]:
-        raise AnalysisError(f"{cell}: emitted markers do not match raw trace")
-    concurrent = [
-        record
-        for record in records
-        if record.get("event") == "target-lifetime-rcu-branch"
-        and record.get("cell") == cell
-        and record.get("phase") == "concurrent"
-    ]
-    if any(
-        record.get("source")
-        != "kretprobe:namei_ext_resolve_target:arg2+retval"
-        or record.get("rcu_walk") is not True
-        or not isinstance(record.get("result"), int)
-        or not isinstance(record.get("under_update"), bool)
-        or (record.get("under_update") is True)
-        != (int(record.get("writer_seq", 0)) > 0)
-        for record in concurrent
-    ):
-        raise AnalysisError(f"{cell}: malformed concurrent RCU branch evidence")
-    observed_branches = [
-        {
-            "under_update": record["under_update"],
-            "writer_seq": int(record["writer_seq"]),
-            "result": int(record["result"]),
-        }
-        for record in concurrent
-    ]
-    if observed_branches != raw["branches"]:
-        raise AnalysisError(f"{cell}: emitted branches do not match raw trace")
-
-    emitted_updates = [
-        {
-            "phase": record.get("phase"),
-            "writer_seq": int(record.get("writer_seq", 0)),
-            **(
-                {"result": int(record.get("result", 0))}
-                if record.get("phase") == "return"
-                else {}
-            ),
-        }
-        for record in records
-        if record.get("event") == "target-lifetime-rcu-update"
-        and record.get("cell") == cell
-    ]
-    if emitted_updates != raw["updates"]:
-        raise AnalysisError(f"{cell}: emitted kernel update events do not match raw trace")
-
     updates = sorted(
         (
             operation
@@ -886,8 +833,10 @@ def validate_target_retirement(
     marked_sequences = {
         writer_seq for phase, writer_seq in raw["markers"] if phase == "begin"
     }
-    if not marked_sequences.issubset(update_sequences):
-        raise AnalysisError(f"{cell}: trace marker lacks paired update history")
+    if marked_sequences != update_sequences:
+        raise AnalysisError(
+            f"{cell}: raw trace does not cover the complete bounded update history"
+        )
     if any(
         branch["writer_seq"] not in marked_sequences
         for branch in raw["branches"]
@@ -945,6 +894,15 @@ def validate_run_start(records):
     for field in fields:
         if int(start.get(field, 0)) <= 0:
             raise AnalysisError(f"run-start has invalid {field}")
+    aliases = {
+        "history_timeout_seconds": start["duration_seconds"],
+        "stress_duration_seconds": start["duration_seconds"],
+        "target_updates": start["minimum_updates"],
+        "target_opens_per_reader": start["minimum_opens_per_reader"],
+    }
+    for field, value in aliases.items():
+        if int(start.get(field, 0)) != int(value):
+            raise AnalysisError(f"run-start has inconsistent {field}")
     return {field: int(start[field]) for field in fields}
 
 
@@ -976,6 +934,22 @@ def validate_cell_summary(records, cell, run_config):
                 )
         if int(summary.get("updates", 0)) < run_config["minimum_updates"]:
             raise AnalysisError(f"{cell}: update minimum was not met")
+        if int(summary.get("history_elapsed_ns", 0)) <= 0:
+            raise AnalysisError(f"{cell}: history phase did not execute")
+        if int(summary.get("history_elapsed_ns", 0)) >= (
+            run_config["duration_seconds"] * 1_000_000_000
+        ):
+            raise AnalysisError(f"{cell}: history phase exceeded its deadline")
+        if int(summary.get("stress_updates", 0)) < run_config["minimum_updates"]:
+            raise AnalysisError(f"{cell}: stress update minimum was not met")
+        if int(summary.get("stress_elapsed_ns", 0)) < (
+            run_config["duration_seconds"] * 1_000_000_000
+        ):
+            raise AnalysisError(f"{cell}: stress duration was not met")
+        if int(summary.get("history_failures", -1)) or int(
+            summary.get("stress_failures", -1)
+        ):
+            raise AnalysisError(f"{cell}: publication phase reported failures")
     elif int(summary.get("lifecycle_cycles", -1)) != run_config[
         "lifecycle_cycles"
     ]:
@@ -1005,6 +979,14 @@ def validate_reader_summaries(records, cell, run_config, operations):
         < run_config["minimum_opens_per_reader"]
         or int(record.get("successful_opens", 0)) <= 0
         or int(record.get("absent_opens", 0)) <= 0
+        or int(record.get("unexpected_errors", -1)) != 0
+        or int(record.get("target_opens", -1))
+        != run_config["minimum_opens_per_reader"]
+        or int(record.get("maximum_opens", -1))
+        != run_config["minimum_opens_per_reader"]
+        + run_config["minimum_updates"]
+        + HISTORY_OPEN_SLACK
+        or int(record.get("opens", 0)) > int(record.get("maximum_opens", -1))
     ]
     if failed:
         raise AnalysisError(f"{cell}: {len(failed)} reader engagement failures")
@@ -1031,6 +1013,117 @@ def validate_reader_summaries(records, cell, run_config, operations):
                     "match paired history"
                 )
     return len(readers)
+
+
+def validate_publication_phases(records, cell, run_config, operations):
+    summaries = [
+        record
+        for record in records
+        if record.get("event") == "target-lifetime-phase-summary"
+        and record.get("cell") == cell
+    ]
+    if len(summaries) != 2 or {record.get("phase") for record in summaries} != {
+        "history",
+        "stress",
+    }:
+        raise AnalysisError(f"{cell}: publication phase summaries are incomplete")
+    by_phase = {record["phase"]: record for record in summaries}
+    for phase, summary in by_phase.items():
+        if summary.get("pass") is not True or int(summary.get("failures", -1)):
+            raise AnalysisError(f"{cell}: {phase} phase failed")
+        expected = {
+            "duration_seconds": run_config["duration_seconds"],
+            "readers": run_config["readers"],
+            "target_updates": run_config["minimum_updates"],
+            "target_opens_per_reader": run_config["minimum_opens_per_reader"],
+            "maximum_history_opens_per_reader": (
+                run_config["minimum_opens_per_reader"]
+                + run_config["minimum_updates"]
+                + HISTORY_OPEN_SLACK
+                if phase == "history"
+                else 0
+            ),
+        }
+        for field, value in expected.items():
+            if int(summary.get(field, -1)) != value:
+                raise AnalysisError(
+                    f"{cell}: {phase} phase {field} does not match run-start"
+                )
+        updates = int(summary.get("updates", 0))
+        if (phase == "history" and updates != run_config["minimum_updates"]) or (
+            phase == "stress" and updates < run_config["minimum_updates"]
+        ):
+            raise AnalysisError(f"{cell}: {phase} phase update minimum was not met")
+        if int(summary.get("elapsed_ns", 0)) <= 0:
+            raise AnalysisError(f"{cell}: {phase} phase did not execute")
+        if phase == "history" and int(summary.get("elapsed_ns", 0)) >= (
+            run_config["duration_seconds"] * 1_000_000_000
+        ):
+            raise AnalysisError(f"{cell}: history phase exceeded its deadline")
+        if summary.get("timed_out") is not False:
+            raise AnalysisError(f"{cell}: {phase} phase timed out")
+
+    history_updates = sum(
+        operation["operation"] in {"SET", "CLEAR"} for operation in operations
+    )
+    if int(by_phase["history"].get("updates", -1)) != history_updates:
+        raise AnalysisError(f"{cell}: history phase summary does not match history")
+    if int(by_phase["stress"].get("elapsed_ns", 0)) < (
+        run_config["duration_seconds"] * 1_000_000_000
+    ):
+        raise AnalysisError(f"{cell}: stress phase ended before its deadline")
+
+    stress_readers = [
+        record
+        for record in records
+        if record.get("event") == "target-lifetime-stress-reader-summary"
+        and record.get("cell") == cell
+    ]
+    if len(stress_readers) != run_config["readers"]:
+        raise AnalysisError(
+            f"{cell}: expected {run_config['readers']} stress reader summaries"
+        )
+    reader_ids = {int(record.get("reader", -1)) for record in stress_readers}
+    if reader_ids != set(range(run_config["readers"])):
+        raise AnalysisError(f"{cell}: stress reader coverage is incomplete")
+    failed = [
+        record
+        for record in stress_readers
+        if record.get("pass") is not True
+        or int(record.get("opens", 0))
+        < run_config["minimum_opens_per_reader"]
+        or int(record.get("successful_opens", 0)) <= 0
+        or int(record.get("absent_opens", 0)) <= 0
+        or int(record.get("unexpected_errors", -1)) != 0
+        or int(record.get("target_opens", -1))
+        != run_config["minimum_opens_per_reader"]
+        or int(record.get("maximum_opens", -1)) != 0
+    ]
+    if failed:
+        raise AnalysisError(f"{cell}: {len(failed)} stress reader failures")
+    operation_failures = [
+        record
+        for record in records
+        if record.get("event") == "target-lifetime-operation-failure"
+        and record.get("cell") == cell
+        and record.get("phase") == "stress"
+    ]
+    if operation_failures:
+        raise AnalysisError(
+            f"{cell}: {len(operation_failures)} stress operation failures"
+        )
+    return {
+        "history_elapsed_ns": int(by_phase["history"]["elapsed_ns"]),
+        "stress_elapsed_ns": int(by_phase["stress"]["elapsed_ns"]),
+        "stress_updates": int(by_phase["stress"]["updates"]),
+        "stress_opens": sum(int(record["opens"]) for record in stress_readers),
+        "stress_successful_opens": sum(
+            int(record["successful_opens"]) for record in stress_readers
+        ),
+        "stress_absent_opens": sum(
+            int(record["absent_opens"]) for record in stress_readers
+        ),
+    }
 
 
 def validate_lifecycle(records, expected_cycles):
@@ -1467,6 +1560,11 @@ def analyze_boot(args):
             if cell in {"final-file", "directory"}
             else None
         )
+        publication_phases = (
+            validate_publication_phases(records, cell, run_config, operations)
+            if cell in {"final-file", "directory"}
+            else None
+        )
         target_retirement = (
             validate_target_retirement(
                 records,
@@ -1498,6 +1596,7 @@ def analyze_boot(args):
             "lower_object_checks": lower_objects,
             "cleanup": cleanup,
             "readers": readers,
+            "publication_phases": publication_phases,
             "runner_summary": summary,
         }
     lifecycle_cycles = validate_lifecycle(
@@ -1577,12 +1676,13 @@ def analyze_formal(args):
     expected_matrix = {
         "kernel_kinds": ["normal", "kasan", "kcsan"],
         "repetitions_per_kernel": 3,
-        "duration_seconds_per_publication_cell": FORMAL_CONFIG[
+        "history_timeout_seconds": FORMAL_CONFIG[
             "duration_seconds"
         ],
+        "stress_duration_seconds": FORMAL_CONFIG["duration_seconds"],
         "readers": FORMAL_CONFIG["readers"],
-        "minimum_updates": FORMAL_CONFIG["minimum_updates"],
-        "minimum_opens_per_reader": FORMAL_CONFIG[
+        "target_updates": FORMAL_CONFIG["minimum_updates"],
+        "target_opens_per_reader": FORMAL_CONFIG[
             "minimum_opens_per_reader"
         ],
         "lifecycle_cycles": FORMAL_CONFIG["lifecycle_cycles"],
@@ -1637,6 +1737,20 @@ def analyze_formal(args):
                 "overlap_opens",
                 "descriptor_checks",
                 "lower_object_checks",
+            )
+        },
+        "stress_totals": {
+            key: sum(
+                int(cell.get("publication_phases", {}).get(key, 0))
+                for summary in summaries
+                for cell in summary["cells"].values()
+                if cell.get("publication_phases")
+            )
+            for key in (
+                "stress_updates",
+                "stress_opens",
+                "stress_successful_opens",
+                "stress_absent_opens",
             )
         },
         "lifecycle_cycles": sum(

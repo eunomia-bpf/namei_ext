@@ -35,6 +35,7 @@
 #define LITMUS_LINK_COUNT 7
 #define LITMUS_HOLD_TIMEOUT_NS (2ULL * 1000000000ULL)
 #define LITMUS_USER_TIMEOUT_NS (3ULL * 1000000000ULL)
+#define HISTORY_OPEN_SLACK 16
 
 struct shared_run_state {
 	atomic_uint_fast64_t event_seq;
@@ -94,6 +95,7 @@ struct publication_cell {
 	pthread_mutex_t trace_lock;
 	atomic_bool start;
 	atomic_bool abort;
+	bool detailed_history;
 	bool trace_markers_enabled;
 	atomic_uint_fast64_t deadline_ns;
 	atomic_uint_fast64_t updates;
@@ -127,6 +129,7 @@ struct reader_arg {
 	uint64_t opens;
 	uint64_t successful_opens;
 	uint64_t absent_opens;
+	uint64_t unexpected_errors;
 };
 
 struct writer_arg {
@@ -180,6 +183,20 @@ static uint64_t monotonic_raw_ns(void)
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &now))
 		return 0;
 	return (uint64_t)now.tv_sec * 1000000000ULL + now.tv_nsec;
+}
+
+static int sleep_ns(long nanoseconds)
+{
+	struct timespec remaining = {
+		.tv_sec = 0,
+		.tv_nsec = nanoseconds,
+	};
+
+	while (nanosleep(&remaining, &remaining)) {
+		if (errno != EINTR)
+			return -errno;
+	}
+	return 0;
 }
 
 static int write_all(int fd, const char *buffer, size_t length)
@@ -292,6 +309,26 @@ static void record_failure(struct run_log *log)
 {
 	atomic_fetch_add_explicit(&log->shared->failures, 1,
 				  memory_order_relaxed);
+}
+
+static int emit_operation_failure(struct run_log *log, const char *cell,
+				  const char *phase, const char *operation,
+				  const char *subtype, const char *actor,
+				  uint64_t actor_id, int result,
+				  const char *state, dev_t dev, ino_t ino)
+{
+	return emit_line(
+		log,
+		"{\"event\":\"target-lifetime-operation-failure\","
+		"\"cell\":\"%s\",\"phase\":\"%s\","
+		"\"operation\":\"%s\",\"subtype\":\"%s\","
+		"\"actor\":\"%s\",\"actor_id\":%" PRIu64 ","
+		"\"result\":%d,\"state\":\"%s\","
+		"\"device\":%" PRIu64 ",\"inode\":%" PRIu64 ","
+		"\"pass\":false}\n",
+		cell, phase, operation, subtype ? subtype : "",
+		actor ? actor : "", actor_id, result, state ? state : "",
+		(uint64_t)dev, (uint64_t)ino);
 }
 
 static int make_dir(const char *path, mode_t mode)
@@ -1348,8 +1385,11 @@ out_thread:
 		    &snapshot, cookie, reader_tid, writer_tid, affinity->writer_cpu,
 		    affinity->reader_cpu, update_result, &reader, fresh_result,
 		    &fresh, old_target,
-		    mode == NAMEI_EXT_LITMUS_REPLACE ? new_target : NULL, pass))
+		    mode == NAMEI_EXT_LITMUS_REPLACE ? new_target : NULL, pass)) {
 		record_failure(log);
+		if (!ret)
+			ret = -EIO;
+	}
 	if (!pass && !ret)
 		ret = -EIO;
 
@@ -1593,13 +1633,6 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 			armed_writer_seq = writer_seq;
 			update_returned = false;
 			begin_markers++;
-			if (emit_line(
-				    cell->log,
-				    "{\"event\":\"target-lifetime-rcu-marker\","
-				    "\"cell\":\"%s\",\"phase\":\"begin\","
-				    "\"writer_seq\":%" PRIu64 "}\n",
-				    cell->name, writer_seq))
-				record_failure(cell->log);
 			continue;
 		}
 		if (strstr(line, "update_enter:")) {
@@ -1610,13 +1643,6 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 			}
 			active_writer_seq = armed_writer_seq;
 			update_enters++;
-			if (emit_line(
-				    cell->log,
-				    "{\"event\":\"target-lifetime-rcu-update\","
-				    "\"cell\":\"%s\",\"phase\":\"enter\","
-				    "\"writer_seq\":%" PRIu64 "}\n",
-				    cell->name, active_writer_seq))
-				record_failure(cell->log);
 			continue;
 		}
 		if (strstr(line, "resolve_return:")) {
@@ -1637,17 +1663,6 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 				if (active_writer_seq)
 					rcu_under_update++;
 			}
-			if (emit_line(
-				    cell->log,
-				    "{\"event\":\"target-lifetime-rcu-branch\","
-				    "\"cell\":\"%s\",\"source\":\"kretprobe:namei_ext_resolve_target:arg2+retval\","
-				    "\"phase\":\"concurrent\",\"rcu_walk\":true,"
-				    "\"result\":%d,\"under_update\":%s,"
-				    "\"writer_seq\":%" PRIu64 "}\n",
-				    cell->name, result,
-				    active_writer_seq ? "true" : "false",
-				    active_writer_seq))
-				record_failure(cell->log);
 			continue;
 		}
 		if (strstr(line, "update_return:")) {
@@ -1664,13 +1679,6 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 			update_returns++;
 			if (result < 0)
 				ret = -EIO;
-			if (emit_line(
-				    cell->log,
-				    "{\"event\":\"target-lifetime-rcu-update\","
-				    "\"cell\":\"%s\",\"phase\":\"return\","
-				    "\"writer_seq\":%" PRIu64 ",\"result\":%lld}\n",
-				    cell->name, active_writer_seq, result))
-				record_failure(cell->log);
 			active_writer_seq = 0;
 			update_returned = true;
 			continue;
@@ -1686,13 +1694,6 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 			}
 			end_markers++;
 			update_windows++;
-			if (emit_line(
-				    cell->log,
-				    "{\"event\":\"target-lifetime-rcu-marker\","
-				    "\"cell\":\"%s\",\"phase\":\"end\","
-				    "\"writer_seq\":%" PRIu64 "}\n",
-				    cell->name, writer_seq))
-				record_failure(cell->log);
 			armed_writer_seq = 0;
 			update_returned = false;
 			continue;
@@ -1703,23 +1704,30 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 	    update_windows != update_enters || update_windows != update_returns ||
 	    !update_windows || !rcu_under_update)
 		ret = ret ? ret : -ENODATA;
-	if (emit_line(
-		    cell->log,
-		    "{\"event\":\"target-lifetime-rcu-stress\","
-		    "\"cell\":\"%s\",\"trace_entries\":%lu,"
-		    "\"raw_trace\":\"%s-concurrent-rcu-trace.txt\","
-		    "\"trace_clock\":\"counter\","
-		    "\"trace_entries_written\":%lu,\"begin_markers\":%u,"
-		    "\"end_markers\":%u,\"update_windows\":%u,"
-		    "\"kernel_update_enters\":%u,\"kernel_update_returns\":%u,"
-		    "\"rcu_walk_hits\":%u,\"rcu_resolve_failures\":%u,"
-		    "\"rcu_under_update\":%u,"
-		    "\"result\":%d,\"pass\":%s}\n",
-		    cell->name, entries_buffered, cell->name, entries_written,
-		    begin_markers, end_markers, update_windows, update_enters,
-		    update_returns, rcu_successes, rcu_failures, rcu_under_update, ret,
-		    ret ? "false" : "true"))
-		record_failure(cell->log);
+	{
+		int emit_ret = emit_line(
+			cell->log,
+			"{\"event\":\"target-lifetime-rcu-stress\","
+			"\"cell\":\"%s\",\"trace_entries\":%lu,"
+			"\"raw_trace\":\"%s-concurrent-rcu-trace.txt\","
+			"\"trace_clock\":\"counter\","
+			"\"trace_entries_written\":%lu,\"begin_markers\":%u,"
+			"\"end_markers\":%u,\"update_windows\":%u,"
+			"\"kernel_update_enters\":%u,\"kernel_update_returns\":%u,"
+			"\"rcu_walk_hits\":%u,\"rcu_resolve_failures\":%u,"
+			"\"rcu_under_update\":%u,"
+			"\"result\":%d,\"pass\":%s}\n",
+			cell->name, entries_buffered, cell->name, entries_written,
+			begin_markers, end_markers, update_windows, update_enters,
+			update_returns, rcu_successes, rcu_failures,
+			rcu_under_update, ret, ret ? "false" : "true");
+
+		if (emit_ret) {
+			record_failure(cell->log);
+			if (!ret)
+				ret = emit_ret;
+		}
+	}
 	return ret;
 }
 
@@ -1797,29 +1805,42 @@ static int stop_concurrent_rcu_trace(struct publication_cell *cell,
 static int history_update(struct run_log *log, const char *cell,
 			  int control_fd, const char *operation,
 			  const struct target_object *target,
-			  uint64_t writer_seq, int trace_marker_fd)
+			  uint64_t writer_seq, int trace_marker_fd,
+			  bool detailed_history)
 {
 	const char *state = target ? target->state : "absent";
 	dev_t dev = target ? target->dev : 0;
 	ino_t ino = target ? target->ino : 0;
-	uint64_t op_id =
-		atomic_fetch_add_explicit(&log->shared->op_seq, 1,
-					  memory_order_relaxed) +
-		1;
+	uint64_t op_id = 0;
 	int ret;
 
-	if (emit_history(log, cell, "invoke", operation, "", "writer", 0, op_id,
-			 writer_seq, state, dev, ino, 0))
-		record_failure(log);
+	if (detailed_history) {
+		op_id = atomic_fetch_add_explicit(&log->shared->op_seq, 1,
+						  memory_order_relaxed) +
+			1;
+		if (emit_history(log, cell, "invoke", operation, "", "writer", 0,
+				 op_id, writer_seq, state, dev, ino, 0)) {
+			record_failure(log);
+			return -EIO;
+		}
+	}
 	ret = target ? direct_register_write_traced(control_fd, target,
 						     trace_marker_fd, writer_seq) :
 		       direct_clear_write_traced(control_fd, trace_marker_fd,
 					 writer_seq);
-	if (emit_history(log, cell, "response", operation, "", "writer", 0, op_id,
-			 writer_seq, state, dev, ino, ret))
+	if (detailed_history &&
+	    emit_history(log, cell, "response", operation, "", "writer", 0,
+			 op_id, writer_seq, state, dev, ino, ret)) {
 		record_failure(log);
-	if (ret)
+		return ret ? ret : -EIO;
+	}
+	if (ret) {
+		if (!detailed_history &&
+		    emit_operation_failure(log, cell, "stress", operation, "",
+					   "writer", 0, ret, state, dev, ino))
+			record_failure(log);
 		record_failure(log);
+	}
 	return ret;
 }
 
@@ -1839,7 +1860,8 @@ static const char *open_kind_name(enum open_kind kind)
 static int history_open(struct run_log *log, const char *cell,
 			const char *path, enum open_kind kind,
 			const struct target_object *targets, size_t target_count,
-			const char *actor, uint64_t actor_id, int *held_fd)
+			const char *actor, uint64_t actor_id, int *held_fd,
+			bool detailed_history)
 {
 	const struct target_object *target = NULL;
 	const char *subtype = open_kind_name(kind);
@@ -1847,38 +1869,56 @@ static int history_open(struct run_log *log, const char *cell,
 	char expected[96];
 	struct stat first;
 	struct stat second;
-	uint64_t op_id =
-		atomic_fetch_add_explicit(&log->shared->op_seq, 1,
-					  memory_order_relaxed) +
-		1;
+	uint64_t op_id = 0;
 	int flags = O_CLOEXEC;
 	int descriptor_ret = 0;
 	int result = 0;
 	int fd;
 
 	flags |= kind == OPEN_DIRECTORY ? O_RDONLY | O_DIRECTORY : O_RDONLY;
-	if (emit_history(log, cell, "invoke", "OPEN", subtype, actor, actor_id,
-			 op_id, 0, "",
-			 0, 0, 0))
-		record_failure(log);
+	if (detailed_history) {
+		op_id = atomic_fetch_add_explicit(&log->shared->op_seq, 1,
+						  memory_order_relaxed) +
+			1;
+		if (emit_history(log, cell, "invoke", "OPEN", subtype, actor,
+				 actor_id, op_id, 0, "", 0, 0, 0)) {
+			record_failure(log);
+			return -EIO;
+		}
+	}
 	fd = openat(AT_FDCWD, path, flags);
 	if (fd < 0) {
 		result = -errno;
-		if (emit_open_return(log, cell, actor, actor_id, op_id, result))
+		if (detailed_history &&
+		    emit_open_return(log, cell, actor, actor_id, op_id, result)) {
 			record_failure(log);
+			return -EIO;
+		}
 		state = result == -ENOENT ? "absent" : "error";
-		if (emit_history(log, cell, "response", "OPEN", subtype, actor,
-				 actor_id, op_id,
-				 0, state, 0, 0, result))
+		if (detailed_history &&
+		    emit_history(log, cell, "response", "OPEN", subtype, actor,
+				 actor_id, op_id, 0, state, 0, 0, result)) {
 			record_failure(log);
-		if (result != -ENOENT)
+			return -EIO;
+		}
+		if (result != -ENOENT) {
+			if (!detailed_history &&
+			    emit_operation_failure(log, cell, "stress", "OPEN",
+						   subtype, actor, actor_id, result,
+						   state, 0, 0))
+				record_failure(log);
 			record_failure(log);
+		}
 		if (held_fd)
 			*held_fd = -1;
 		return result;
 	}
-	if (emit_open_return(log, cell, actor, actor_id, op_id, 0))
+	if (detailed_history &&
+	    emit_open_return(log, cell, actor, actor_id, op_id, 0)) {
 		record_failure(log);
+		close(fd);
+		return -EIO;
+	}
 	if (fstat(fd, &first)) {
 		result = -errno;
 	} else {
@@ -1889,8 +1929,16 @@ static int history_open(struct run_log *log, const char *cell,
 			state = target->state;
 	}
 	if (result) {
-		if (emit_history(log, cell, "response", "OPEN", subtype, actor,
-				 actor_id, op_id, 0, state, 0, 0, result))
+		if (detailed_history &&
+		    emit_history(log, cell, "response", "OPEN", subtype, actor,
+				 actor_id, op_id, 0, state, 0, 0, result)) {
+			record_failure(log);
+			close(fd);
+			return -EIO;
+		}
+		if (!detailed_history &&
+		    emit_operation_failure(log, cell, "stress", "OPEN", subtype,
+					   actor, actor_id, result, state, 0, 0))
 			record_failure(log);
 		record_failure(log);
 		close(fd);
@@ -1898,9 +1946,13 @@ static int history_open(struct run_log *log, const char *cell,
 			*held_fd = -1;
 		return result;
 	}
-	if (emit_history(log, cell, "response", "OPEN", subtype, actor, actor_id,
-			 op_id, 0, state, first.st_dev, first.st_ino, 0))
+	if (detailed_history &&
+	    emit_history(log, cell, "response", "OPEN", subtype, actor, actor_id,
+			 op_id, 0, state, first.st_dev, first.st_ino, 0)) {
 		record_failure(log);
+		close(fd);
+		return -EIO;
+	}
 
 	sched_yield();
 	if (kind == OPEN_DIRECTORY) {
@@ -1917,16 +1969,33 @@ static int history_open(struct run_log *log, const char *cell,
 	if (!descriptor_ret &&
 	    (first.st_dev != second.st_dev || first.st_ino != second.st_ino))
 		descriptor_ret = -ESTALE;
-	if (emit_descriptor_check(log, cell, subtype, op_id, state,
-				  descriptor_ret))
+	if (detailed_history &&
+	    emit_descriptor_check(log, cell, subtype, op_id, state,
+				  descriptor_ret)) {
 		record_failure(log);
-	if (descriptor_ret)
+		close(fd);
+		return -EIO;
+	}
+	if (descriptor_ret) {
+		if (!detailed_history &&
+		    emit_operation_failure(log, cell, "stress", "OPEN", subtype,
+					   actor, actor_id, descriptor_ret, state,
+					   first.st_dev, first.st_ino))
+			record_failure(log);
 		record_failure(log);
+	}
 	if (held_fd) {
 		*held_fd = fd;
 	} else if (close(fd)) {
+		int close_ret = -errno;
+
+		if (!detailed_history &&
+		    emit_operation_failure(log, cell, "stress", "CLOSE", subtype,
+					   actor, actor_id, close_ret, state,
+					   first.st_dev, first.st_ino))
+			record_failure(log);
 		record_failure(log);
-		return -errno;
+		return close_ret;
 	}
 	return descriptor_ret;
 }
@@ -1937,20 +2006,23 @@ static void *publication_writer(void *opaque)
 	struct publication_cell *cell = arg->cell;
 	size_t target_index = 0;
 	unsigned int phase = 0;
+	bool trace_update;
+	int lock_ret;
+	int update_ret;
 
 	while (!atomic_load_explicit(&cell->start, memory_order_acquire))
 		sched_yield();
 	if (atomic_load_explicit(&cell->abort, memory_order_relaxed))
 		return NULL;
 	while (monotonic_raw_ns() <
-	       atomic_load_explicit(&cell->deadline_ns,
-				    memory_order_acquire)) {
+	       atomic_load_explicit(&cell->deadline_ns, memory_order_acquire) &&
+	       !atomic_load_explicit(&cell->abort, memory_order_acquire) &&
+	       (!cell->detailed_history ||
+		atomic_load_explicit(&cell->updates, memory_order_relaxed) + 1 <
+			cell->min_updates)) {
 		const struct target_object *target =
 			phase < 2 ? &cell->targets[target_index] : NULL;
 		const char *operation = phase < 2 ? "SET" : "CLEAR";
-		int update_ret;
-		int lock_ret;
-		bool trace_update;
 
 		lock_ret = pthread_mutex_lock(&cell->trace_lock);
 		if (lock_ret) {
@@ -1967,11 +2039,14 @@ static void *publication_writer(void *opaque)
 		update_ret = history_update(cell->log, cell->name, cell->control_fd,
 					    operation, target, arg->writer_seq,
 					    trace_update ?
-						    cell->trace_marker_fd : -1);
+						    cell->trace_marker_fd : -1,
+					    cell->detailed_history);
 		lock_ret = pthread_mutex_unlock(&cell->trace_lock);
 		if (update_ret || lock_ret) {
 			atomic_fetch_add_explicit(&cell->failures, 1,
 						  memory_order_relaxed);
+			atomic_store_explicit(&cell->abort, true,
+					      memory_order_release);
 			break;
 		}
 		atomic_fetch_add_explicit(&cell->updates, 1,
@@ -1986,14 +2061,42 @@ static void *publication_writer(void *opaque)
 			phase = 0;
 		}
 	}
-	arg->writer_seq++;
-	if (history_update(cell->log, cell->name, cell->control_fd, "CLEAR",
-			   NULL, arg->writer_seq, -1))
+	if (atomic_load_explicit(&cell->abort, memory_order_acquire))
+		return NULL;
+	if (cell->detailed_history &&
+	    monotonic_raw_ns() >=
+		    atomic_load_explicit(&cell->deadline_ns, memory_order_acquire)) {
 		atomic_fetch_add_explicit(&cell->failures, 1,
 					  memory_order_relaxed);
-	else
+		atomic_store_explicit(&cell->abort, true, memory_order_release);
+		return NULL;
+	}
+	lock_ret = pthread_mutex_lock(&cell->trace_lock);
+	if (lock_ret) {
+		atomic_fetch_add_explicit(&cell->failures, 1,
+					  memory_order_relaxed);
+		atomic_store_explicit(&cell->abort, true, memory_order_release);
+		return NULL;
+	}
+	if (atomic_load_explicit(&cell->abort, memory_order_acquire)) {
+		pthread_mutex_unlock(&cell->trace_lock);
+		return NULL;
+	}
+	arg->writer_seq++;
+	trace_update = cell->trace_markers_enabled;
+	update_ret = history_update(
+		cell->log, cell->name, cell->control_fd, "CLEAR", NULL,
+		arg->writer_seq, trace_update ? cell->trace_marker_fd : -1,
+		cell->detailed_history);
+	lock_ret = pthread_mutex_unlock(&cell->trace_lock);
+	if (update_ret || lock_ret) {
+		atomic_fetch_add_explicit(&cell->failures, 1,
+					  memory_order_relaxed);
+		atomic_store_explicit(&cell->abort, true, memory_order_release);
+	} else {
 		atomic_fetch_add_explicit(&cell->updates, 1,
 					  memory_order_relaxed);
+	}
 	return NULL;
 }
 
@@ -2008,8 +2111,13 @@ static void *publication_reader(void *opaque)
 	if (atomic_load_explicit(&cell->abort, memory_order_relaxed))
 		return NULL;
 	while (monotonic_raw_ns() <
-	       atomic_load_explicit(&cell->deadline_ns,
-				    memory_order_acquire)) {
+	       atomic_load_explicit(&cell->deadline_ns, memory_order_acquire) &&
+	       !atomic_load_explicit(&cell->abort, memory_order_acquire) &&
+	       (!cell->detailed_history || arg->opens < cell->min_opens ||
+		!arg->successful_opens || !arg->absent_opens) &&
+	       (!cell->detailed_history ||
+		arg->opens < (uint64_t)cell->min_opens + cell->min_updates +
+				 HISTORY_OPEN_SLACK)) {
 		const char *path;
 		enum open_kind kind;
 		int ret;
@@ -2026,17 +2134,207 @@ static void *publication_reader(void *opaque)
 		}
 		ret = history_open(cell->log, cell->name, path, kind,
 				   cell->targets, cell->target_count, "reader",
-				   arg->reader_id, NULL);
+				   arg->reader_id, NULL, cell->detailed_history);
 		if (!ret)
 			arg->successful_opens++;
 		else if (ret == -ENOENT)
 			arg->absent_opens++;
-		else
+		else {
+			arg->unexpected_errors++;
 			atomic_fetch_add_explicit(&cell->failures, 1,
 						  memory_order_relaxed);
+			atomic_store_explicit(&cell->abort, true,
+					      memory_order_release);
+		}
 		arg->opens++;
+		if (cell->detailed_history && arg->opens >= cell->min_opens &&
+		    (!arg->successful_opens || !arg->absent_opens) &&
+		    sleep_ns(1000000L)) {
+			atomic_fetch_add_explicit(&cell->failures, 1,
+						  memory_order_relaxed);
+			atomic_store_explicit(&cell->abort, true,
+					      memory_order_release);
+			break;
+		}
 	}
 	return NULL;
+}
+
+static int run_publication_phase(struct publication_cell *cell,
+				 bool detailed_history, uint64_t *updates_out,
+				 uint64_t *elapsed_ns_out,
+				 unsigned int *failures_out)
+{
+	struct rcu_trace_session trace_session = {};
+	struct writer_arg writer_arg = { .cell = cell };
+	struct reader_arg *reader_args = NULL;
+	pthread_t *reader_threads = NULL;
+	pthread_t writer_thread;
+	unsigned int created_readers = 0;
+	bool writer_created = false;
+	bool trace_started = false;
+	bool timed_out = false;
+	unsigned int failures = 0;
+	unsigned int i;
+	uint64_t elapsed_ns = 0;
+	uint64_t start_ns = 0;
+	uint64_t updates = 0;
+	int ret = 0;
+	int trace_ret;
+
+	cell->detailed_history = detailed_history;
+	cell->trace_markers_enabled = false;
+	cell->trace_marker_fd = -1;
+	atomic_store_explicit(&cell->start, false, memory_order_relaxed);
+	atomic_store_explicit(&cell->abort, false, memory_order_relaxed);
+	atomic_store_explicit(&cell->deadline_ns, 0, memory_order_relaxed);
+	atomic_store_explicit(&cell->updates, 0, memory_order_relaxed);
+	atomic_store_explicit(&cell->failures, 0, memory_order_relaxed);
+	reader_args = calloc(cell->reader_count, sizeof(*reader_args));
+	reader_threads = calloc(cell->reader_count, sizeof(*reader_threads));
+	if (!reader_args || !reader_threads) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	ret = pthread_create(&writer_thread, NULL, publication_writer,
+				     &writer_arg);
+	if (ret) {
+		ret = -ret;
+		goto out;
+	}
+	writer_created = true;
+	for (i = 0; i < cell->reader_count; i++) {
+		reader_args[i].cell = cell;
+		reader_args[i].reader_id = i;
+		ret = pthread_create(&reader_threads[i], NULL,
+				     publication_reader, &reader_args[i]);
+		if (ret) {
+			ret = -ret;
+			break;
+		}
+		created_readers++;
+	}
+	if (ret) {
+		atomic_store_explicit(&cell->abort, true, memory_order_relaxed);
+		atomic_store_explicit(&cell->start, true, memory_order_release);
+		for (i = 0; i < created_readers; i++)
+			pthread_join(reader_threads[i], NULL);
+		if (writer_created)
+			pthread_join(writer_thread, NULL);
+		goto out;
+	}
+	if (detailed_history)
+		ret = start_concurrent_rcu_trace(cell, &trace_session);
+	if (ret) {
+		atomic_store_explicit(&cell->abort, true, memory_order_relaxed);
+		atomic_store_explicit(&cell->start, true, memory_order_release);
+		for (i = 0; i < created_readers; i++)
+			pthread_join(reader_threads[i], NULL);
+		if (writer_created)
+			pthread_join(writer_thread, NULL);
+		goto out;
+	}
+	trace_started = detailed_history;
+	start_ns = monotonic_raw_ns();
+	atomic_store_explicit(
+		&cell->deadline_ns,
+		start_ns + (uint64_t)cell->duration_seconds * 1000000000ULL,
+		memory_order_release);
+	atomic_store_explicit(&cell->start, true, memory_order_release);
+	pthread_join(writer_thread, NULL);
+	for (i = 0; i < cell->reader_count; i++)
+		pthread_join(reader_threads[i], NULL);
+	elapsed_ns = monotonic_raw_ns() - start_ns;
+	if (detailed_history &&
+	    elapsed_ns >= (uint64_t)cell->duration_seconds * 1000000000ULL) {
+		failures++;
+		timed_out = true;
+	}
+	if (trace_started) {
+		trace_ret = stop_concurrent_rcu_trace(cell, &trace_session);
+		trace_started = false;
+		if (trace_ret)
+			atomic_fetch_add_explicit(&cell->failures, 1,
+						  memory_order_relaxed);
+	}
+	updates = atomic_load_explicit(&cell->updates, memory_order_relaxed);
+	if ((detailed_history && updates != cell->min_updates) ||
+	    (!detailed_history && updates < cell->min_updates)) {
+		failures++;
+	}
+	if (!detailed_history &&
+	    elapsed_ns < (uint64_t)cell->duration_seconds * 1000000000ULL)
+		failures++;
+	for (i = 0; i < cell->reader_count; i++) {
+		const char *event = detailed_history ?
+			"target-lifetime-reader-summary" :
+			"target-lifetime-stress-reader-summary";
+		int reader_pass = reader_args[i].opens >= cell->min_opens &&
+				  reader_args[i].successful_opens > 0 &&
+				  reader_args[i].absent_opens > 0 &&
+				  !reader_args[i].unexpected_errors;
+
+		if (!reader_pass) {
+			failures++;
+		}
+		if (emit_line(
+			    cell->log,
+			    "{\"event\":\"%s\","
+			    "\"cell\":\"%s\",\"reader\":%u,"
+			    "\"opens\":%" PRIu64 ","
+			    "\"successful_opens\":%" PRIu64 ","
+			    "\"absent_opens\":%" PRIu64 ","
+			    "\"unexpected_errors\":%" PRIu64 ","
+			    "\"target_opens\":%u,\"maximum_opens\":%u,"
+			    "\"pass\":%s}\n",
+			    event, cell->name, i, reader_args[i].opens,
+			    reader_args[i].successful_opens,
+			    reader_args[i].absent_opens,
+			    reader_args[i].unexpected_errors, cell->min_opens,
+			    detailed_history ?
+				    cell->min_opens + cell->min_updates +
+					    HISTORY_OPEN_SLACK : 0,
+			    reader_pass ? "true" : "false")) {
+			record_failure(cell->log);
+			failures++;
+		}
+	}
+	failures +=
+		atomic_load_explicit(&cell->failures, memory_order_relaxed);
+	ret = emit_line(
+		cell->log,
+		"{\"event\":\"target-lifetime-phase-summary\","
+		"\"cell\":\"%s\",\"phase\":\"%s\","
+		"\"duration_seconds\":%u,\"elapsed_ns\":%" PRIu64 ","
+		"\"readers\":%u,\"updates\":%" PRIu64 ","
+		"\"target_updates\":%u,\"target_opens_per_reader\":%u,"
+		"\"maximum_history_opens_per_reader\":%u,"
+		"\"timed_out\":%s,"
+		"\"failures\":%u,\"pass\":%s}\n",
+		cell->name, detailed_history ? "history" : "stress",
+		cell->duration_seconds, elapsed_ns, cell->reader_count, updates,
+		cell->min_updates, cell->min_opens,
+		detailed_history ?
+			cell->min_opens + cell->min_updates + HISTORY_OPEN_SLACK : 0,
+		timed_out ? "true" : "false", failures,
+		failures ? "false" : "true");
+	if (ret)
+		record_failure(cell->log);
+	if (failures)
+		ret = -EIO;
+out:
+	if (trace_started && stop_concurrent_rcu_trace(cell, &trace_session) &&
+	    !ret)
+		ret = -EIO;
+	free(reader_threads);
+	free(reader_args);
+	if (updates_out)
+		*updates_out = updates;
+	if (elapsed_ns_out)
+		*elapsed_ns_out = elapsed_ns;
+	if (failures_out)
+		*failures_out = failures;
+	return ret;
 }
 
 static int run_publication_cell(struct run_log *log, const char *litmus_path,
@@ -2068,15 +2366,12 @@ static int run_publication_cell(struct run_log *log, const char *litmus_path,
 		.control_fd = -1,
 		.trace_marker_fd = -1,
 	};
-	struct rcu_trace_session trace_session = {};
-	struct writer_arg writer_arg = { .cell = &cell };
-	struct reader_arg *reader_args = NULL;
-	pthread_t *reader_threads = NULL;
-	pthread_t writer_thread;
-	unsigned int created_readers = 0;
-	bool writer_created = false;
-	bool trace_started = false;
-	unsigned int failures = 0;
+	uint64_t history_elapsed_ns = 0;
+	uint64_t history_updates = 0;
+	uint64_t stress_elapsed_ns = 0;
+	uint64_t stress_updates = 0;
+	unsigned int history_failures = 0;
+	unsigned int stress_failures = 0;
 	unsigned int i;
 	int ret = 0;
 	int trace_ret;
@@ -2085,11 +2380,13 @@ static int run_publication_cell(struct run_log *log, const char *litmus_path,
 	(void)physical_dir;
 	(void)lifecycle_cycles;
 	for (i = 0; i < target_count; i++) {
-		if (emit_target_definition(log, cell_name, &targets[i]))
+		if (emit_target_definition(log, cell_name, &targets[i])) {
 			record_failure(log);
+			return -EIO;
+		}
 	}
 	cell.control_fd = open("/sys/kernel/debug/namei_ext/register_target",
-			       O_WRONLY | O_CLOEXEC);
+				       O_WRONLY | O_CLOEXEC);
 	if (cell.control_fd < 0)
 		return -errno;
 	ret = pthread_mutex_init(&cell.trace_lock, NULL);
@@ -2102,143 +2399,31 @@ static int run_publication_cell(struct run_log *log, const char *litmus_path,
 		cell.control_fd, targets, logical_child != NULL);
 	if (ret)
 		goto out;
-	reader_args = calloc(reader_count, sizeof(*reader_args));
-	reader_threads = calloc(reader_count, sizeof(*reader_threads));
-	if (!reader_args || !reader_threads) {
-		ret = -ENOMEM;
+	ret = run_publication_phase(&cell, true, &history_updates,
+				    &history_elapsed_ns, &history_failures);
+	if (ret)
 		goto out;
-	}
-	ret = pthread_create(&writer_thread, NULL, publication_writer,
-			     &writer_arg);
-	if (ret) {
-		ret = -ret;
+	ret = run_publication_phase(&cell, false, &stress_updates,
+				    &stress_elapsed_ns, &stress_failures);
+	if (ret)
 		goto out;
-	}
-	writer_created = true;
-	for (i = 0; i < reader_count; i++) {
-		reader_args[i].cell = &cell;
-		reader_args[i].reader_id = i;
-		ret = pthread_create(&reader_threads[i], NULL,
-				     publication_reader, &reader_args[i]);
-		if (ret) {
-			ret = -ret;
-			break;
-		}
-		created_readers++;
-	}
-	if (ret) {
-		atomic_store_explicit(&cell.abort, true, memory_order_relaxed);
-		atomic_store_explicit(&cell.start, true, memory_order_release);
-		for (i = 0; i < created_readers; i++)
-			pthread_join(reader_threads[i], NULL);
-		if (writer_created)
-			pthread_join(writer_thread, NULL);
-		goto out;
-	}
-	ret = start_concurrent_rcu_trace(&cell, &trace_session);
-	if (ret) {
-		atomic_store_explicit(&cell.abort, true, memory_order_relaxed);
-		atomic_store_explicit(&cell.start, true, memory_order_release);
-		for (i = 0; i < created_readers; i++)
-			pthread_join(reader_threads[i], NULL);
-		if (writer_created)
-			pthread_join(writer_thread, NULL);
-		goto out;
-	}
-	trace_started = true;
-	atomic_store_explicit(
-		&cell.deadline_ns,
-		monotonic_raw_ns() +
-			(uint64_t)duration_seconds * 1000000000ULL,
-		memory_order_release);
-	atomic_store_explicit(&cell.start, true, memory_order_release);
-	{
-		const uint64_t trace_start = monotonic_raw_ns();
-		const uint64_t trace_minimum = trace_start + 250000000ULL;
-		const uint64_t trace_limit = trace_start + 2000000000ULL;
-		struct timespec interval = {
-			.tv_sec = 0,
-			.tv_nsec = 1000000,
-		};
-		bool sleep_failed = false;
-		uint64_t now;
-
-		do {
-			struct timespec remaining = interval;
-
-			while (nanosleep(&remaining, &remaining)) {
-				if (errno == EINTR)
-					continue;
-				atomic_fetch_add_explicit(&cell.failures, 1,
-							  memory_order_relaxed);
-				sleep_failed = true;
-				break;
-			}
-			now = monotonic_raw_ns();
-		} while (!sleep_failed && now < trace_limit &&
-			 (now < trace_minimum ||
-			  atomic_load_explicit(&cell.updates,
-					       memory_order_relaxed) < 3));
-		if (atomic_load_explicit(&cell.updates, memory_order_relaxed) < 3)
-			atomic_fetch_add_explicit(&cell.failures, 1,
-						  memory_order_relaxed);
-	}
-	trace_ret = stop_concurrent_rcu_trace(&cell, &trace_session);
-	trace_started = false;
-	if (trace_ret)
-		atomic_fetch_add_explicit(&cell.failures, 1,
-					  memory_order_relaxed);
-	pthread_join(writer_thread, NULL);
-	for (i = 0; i < reader_count; i++)
-		pthread_join(reader_threads[i], NULL);
-	if (atomic_load_explicit(&cell.updates, memory_order_relaxed) <
-	    min_updates)
-		failures++;
-	for (i = 0; i < reader_count; i++) {
-		int reader_pass = reader_args[i].opens >= min_opens &&
-				  reader_args[i].successful_opens > 0 &&
-				  reader_args[i].absent_opens > 0;
-
-		if (!reader_pass)
-			failures++;
-		if (emit_line(
-			    log,
-			    "{\"event\":\"target-lifetime-reader-summary\","
-			    "\"cell\":\"%s\",\"reader\":%u,"
-			    "\"opens\":%" PRIu64 ","
-			    "\"successful_opens\":%" PRIu64 ","
-			    "\"absent_opens\":%" PRIu64 ","
-			    "\"pass\":%s}\n",
-			    cell_name, i, reader_args[i].opens,
-			    reader_args[i].successful_opens,
-			    reader_args[i].absent_opens,
-			    reader_pass ? "true" : "false"))
-			record_failure(log);
-	}
-	failures +=
-		atomic_load_explicit(&cell.failures, memory_order_relaxed);
 	ret = emit_line(
 		log,
 		"{\"event\":\"target-lifetime-cell-summary\","
 		"\"cell\":\"%s\",\"duration_seconds\":%u,"
 		"\"readers\":%u,\"updates\":%" PRIu64 ","
 		"\"minimum_updates\":%u,\"minimum_opens_per_reader\":%u,"
-		"\"failures\":%u,\"pass\":%s}\n",
-		cell_name, duration_seconds, reader_count,
-		(uint64_t)atomic_load_explicit(&cell.updates,
-					      memory_order_relaxed),
-		min_updates, min_opens, failures,
-		failures ? "false" : "true");
+		"\"history_elapsed_ns\":%" PRIu64 ","
+		"\"stress_updates\":%" PRIu64 ","
+		"\"stress_elapsed_ns\":%" PRIu64 ","
+		"\"history_failures\":%u,\"stress_failures\":%u,"
+		"\"failures\":0,\"pass\":true}\n",
+		cell_name, duration_seconds, reader_count, history_updates,
+		min_updates, min_opens, history_elapsed_ns, stress_updates,
+		stress_elapsed_ns, history_failures, stress_failures);
 	if (ret)
 		record_failure(log);
-	if (failures)
-		ret = -EIO;
 out:
-	if (trace_started && stop_concurrent_rcu_trace(&cell, &trace_session) &&
-	    !ret)
-		ret = -EIO;
-	free(reader_threads);
-	free(reader_args);
 	if (cell.control_fd >= 0 && close(cell.control_fd) && !ret)
 		ret = -errno;
 	trace_ret = pthread_mutex_destroy(&cell.trace_lock);
@@ -2392,16 +2577,23 @@ static int run_pinned_lifecycle_cell(
 		if (copy_text(file_target.path, sizeof(file_target.path),
 			      original))
 			case_ret = -ENAMETOOLONG;
-		if (namei_ext_write_text(original, file_target.payload) ||
-		    stat_target(&file_target) ||
-		    emit_target_definition(log, cell_name, &file_target))
+		if (!case_ret &&
+		    (namei_ext_write_text(original, file_target.payload) ||
+		     stat_target(&file_target)))
 			case_ret = -EIO;
-		held_physical = open(original, O_RDONLY | O_CLOEXEC);
-		if (held_physical < 0)
-			case_ret = -errno;
+		if (!case_ret &&
+		    emit_target_definition(log, cell_name, &file_target)) {
+			record_failure(log);
+			case_ret = -EIO;
+		}
+		if (!case_ret) {
+			held_physical = open(original, O_RDONLY | O_CLOEXEC);
+			if (held_physical < 0)
+				case_ret = -errno;
+		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "SET",
-						  &file_target, ++writer_seq, -1);
+						  &file_target, ++writer_seq, -1, true);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "register", 0, step_ret,
 						NULL, NULL))
@@ -2410,7 +2602,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, &held_logical);
+						"lifecycle", cycle, &held_logical, true);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-held-logical", 0,
 						step_ret, NULL, NULL))
@@ -2426,7 +2618,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, NULL);
+						"lifecycle", cycle, NULL, true);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-after-rename", 0,
 						step_ret, NULL, NULL))
@@ -2442,7 +2634,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, NULL);
+						"lifecycle", cycle, NULL, true);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-after-unlink", 0,
 						step_ret, NULL, NULL))
@@ -2450,7 +2642,7 @@ static int run_pinned_lifecycle_cell(
 		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "CLEAR",
-						  NULL, ++writer_seq, -1);
+						  NULL, ++writer_seq, -1, true);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "clear-registration", 0,
 						step_ret, NULL, NULL))
@@ -2459,7 +2651,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, NULL);
+						"lifecycle", cycle, NULL, true);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-after-clear", -ENOENT,
 						step_ret, NULL, NULL))
@@ -2490,10 +2682,14 @@ static int run_pinned_lifecycle_cell(
 		if (held_physical >= 0)
 			close(held_physical);
 		if (emit_lifecycle_case(log, "file-rename-unlink-clear", cycle,
-				       case_ret))
+				       case_ret)) {
 			record_failure(log);
-		if (case_ret)
+			case_ret = -EIO;
+		}
+		if (case_ret) {
 			failures++;
+			break;
+		}
 
 		case_ret = 0;
 		snprintf(dir_target.state, sizeof(dir_target.state),
@@ -2515,12 +2711,14 @@ static int run_pinned_lifecycle_cell(
 			case_ret = namei_ext_write_text(child, expected);
 		if (!case_ret)
 			case_ret = stat_target(&dir_target);
-		if (!case_ret)
-			case_ret =
-				emit_target_definition(log, cell_name, &dir_target);
+		if (!case_ret &&
+		    emit_target_definition(log, cell_name, &dir_target)) {
+			record_failure(log);
+			case_ret = -EIO;
+		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "SET",
-						  &dir_target, ++writer_seq, -1);
+						  &dir_target, ++writer_seq, -1, true);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"register", 0, step_ret, NULL, NULL))
 				case_ret = -EIO;
@@ -2528,7 +2726,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_DIRECTORY, &dir_target, 1,
-						"lifecycle", cycle, &held_dir);
+						"lifecycle", cycle, &held_dir, true);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"open-held-logical", 0, step_ret,
 						NULL, NULL))
@@ -2544,7 +2742,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_child,
 						OPEN_DIRECTORY_CHILD, &dir_target, 1,
-						"lifecycle", cycle, NULL);
+						"lifecycle", cycle, NULL, true);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"open-child-after-rename", 0,
 						step_ret, NULL, NULL))
@@ -2552,7 +2750,7 @@ static int run_pinned_lifecycle_cell(
 		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "CLEAR",
-						  NULL, ++writer_seq, -1);
+						  NULL, ++writer_seq, -1, true);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"clear-registration", 0, step_ret,
 						NULL, NULL))
@@ -2561,7 +2759,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_DIRECTORY, &dir_target, 1,
-						"lifecycle", cycle, NULL);
+						"lifecycle", cycle, NULL, true);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"open-after-clear", -ENOENT,
 						step_ret, NULL, NULL))
@@ -2579,10 +2777,14 @@ static int run_pinned_lifecycle_cell(
 			close(held_dir);
 		namei_ext_remove_tree(renamed);
 		if (emit_lifecycle_case(log, "directory-rename-clear", cycle,
-				       case_ret))
+				       case_ret)) {
 			record_failure(log);
-		if (case_ret)
+			case_ret = -EIO;
+		}
+		if (case_ret) {
 			failures++;
+			break;
+		}
 	}
 	ret = emit_line(
 		log,
@@ -2754,9 +2956,8 @@ static int run_attached_cell(struct run_log *log, const char *policy_path,
 		if (preserve_kcsan_snapshot(log, cell_name, "after", kcsan))
 			ret = -EIO;
 	}
-	if (run_cell == run_publication_cell &&
-	    verify_publication_targets(log, cell_name, targets, TARGET_POOL_SIZE) &&
-	    !ret)
+	if (!ret && run_cell == run_publication_cell &&
+	    verify_publication_targets(log, cell_name, targets, TARGET_POOL_SIZE))
 		ret = -EIO;
 out:
 	if (policy.attached) {
@@ -2772,8 +2973,11 @@ out:
 	else if (errno != ENOENT)
 		tree_remove_ret = -errno;
 	if (emit_cleanup(log, cell_name, target_clear_ret, scope_clear_ret,
-			 detach_ret, cgroup_remove_ret, tree_remove_ret))
+			 detach_ret, cgroup_remove_ret, tree_remove_ret)) {
 		record_failure(log);
+		if (!ret)
+			ret = -EIO;
+	}
 	if (!ret && (target_clear_ret || scope_clear_ret || detach_ret ||
 		     cgroup_remove_ret || tree_remove_ret))
 		ret = -EIO;
@@ -2869,10 +3073,17 @@ int main(int argc, char **argv)
 		  "{\"event\":\"target-lifetime-run-start\","
 		  "\"duration_seconds\":%u,\"readers\":%u,"
 		  "\"minimum_updates\":%u,\"minimum_opens_per_reader\":%u,"
+		  "\"history_timeout_seconds\":%u,"
+		  "\"stress_duration_seconds\":%u,"
+		  "\"target_updates\":%u,"
+		  "\"target_opens_per_reader\":%u,"
 		  "\"lifecycle_cycles\":%u}\n",
 		  duration_seconds, reader_count, min_updates, min_opens,
-		  lifecycle_cycles))
+		  duration_seconds, duration_seconds, min_updates, min_opens,
+		  lifecycle_cycles)) {
 		failures++;
+		goto summarize;
+	}
 
 	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"final-file", false, run_publication_cell,
@@ -2881,8 +3092,7 @@ int main(int argc, char **argv)
 				min_opens, lifecycle_cycles);
 	if (ret) {
 		failures++;
-		if (kcsan.path)
-			goto summarize;
+		goto summarize;
 	}
 	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"directory", true, run_publication_cell,
@@ -2891,8 +3101,7 @@ int main(int argc, char **argv)
 				min_opens, lifecycle_cycles);
 	if (ret) {
 		failures++;
-		if (kcsan.path)
-			goto summarize;
+		goto summarize;
 	}
 	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"pinned-object", true,
