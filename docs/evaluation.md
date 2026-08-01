@@ -130,26 +130,26 @@ The first four rows are recorded in
 the corresponding Phase 1 result roots. The restart row is an ABI semantic,
 not an exactly-once claim.
 
-The next admitted RQ3 mechanism experiment deepens the second row instead of
-adding another workload or baseline. It records concurrent target
-replace/clear/register histories, rename/unlink behavior, and old file/directory
-descriptor continuation under normal, KASAN, and KCSAN kernels with lockdep and
-PROVE_RCU. The first normal-kernel preflight failed an invalid probabilistic
-oracle that demanded a newly entering reader successfully resolve an already
-cleared registry entry. Its immutable failed root is not positive evidence.
+The attempted RQ3 target-lifetime sanitizer matrix is closed without a formal
+result. Its final preflight passed the normal and KASAN mechanism analyses and
+all KCSAN runner oracles, but strict KCSAN recorded 99 report blocks during the
+workload windows. The frozen diagnostic rule therefore made the complete
+preflight negative, and the planned nine-boot matrix did not run. This result
+does not replace the bounded 128-replacement construction check above and is
+not paper evidence. The immutable outcome and stopping decision are recorded
+in `docs/tmp/2026-07-31-rq3-target-lifetime-preflight10-kcsan-negative.md`.
 
-The repaired experiment deterministically holds an exact RCU reader after it
-borrows the old target, starts an exact replacement or clear writer, releases
-the reader at that writer's `synchronize_rcu()` entry, and requires the old read
-plus a distinct replacement or post-clear `ENOENT`. One atomic event sequence,
-independently observed TIDs/CPUs, a per-case cookie, cgroup/target identity, and
-borrowed mount/dentry define the raw oracle. The original concurrent ftrace now
-establishes only replacement-success and clear-`ENOENT` engagement. The plan and
-failure/repair records are
-`docs/tmp/2026-07-30-rq3-concurrent-target-lifetime-experiment-plan.md` and
-`docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md`.
-Host validation and independent review admit a fresh preflight; no repaired KVM
-or formal result is claimed yet.
+The next admitted experiment addresses RQ2 baseline credibility rather than
+adding another workload. It compares the already-correct W1 existing-object
+grant/view slice with unmodified `xdg-document-portal` 1.22.1 and `namei_ext`
+in separate paired KVM boots. Only the same frozen application-visible
+stat/open/read/readdir transaction is timed; portal startup, D-Bus
+construction, permission-store lifetime, and synthetic hierarchy are excluded
+from the primary metric. The official portal is an official-source
+external-validity baseline, not a claim that the two complete systems are
+feature-equivalent and not an independent placement-causality experiment. The
+frozen plan is
+`docs/tmp/2026-08-01-rq2-official-xdg-portal-performance-plan.md`.
 
 ## Experiment Matrix Status
 
@@ -343,18 +343,21 @@ metadata, or arbitrary filesystem behavior.
 
 ## Open Questions
 
-1. What are the setup and steady-state costs of the W3 action view relative to
+1. Does the direction of the RQ2 feature-equivalent result generalize to the
+   admitted official-source W1 comparison under a frozen application-visible
+   transaction?
+2. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?
-2. Can the Phase 1-validated cross-filesystem final-file action replay
+3. Can the Phase 1-validated cross-filesystem final-file action replay
    Spindle's source-produced shared-to-local mappings under the unmodified
    upstream loader oracle, without implementing cache population or
    distribution?
-3. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
+4. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
    application oracle while staying within existing-object selection?
-4. Does the existing ccache macro ratio survive independent-run
+5. Does the existing ccache macro ratio survive independent-run
    median/dispersion reporting and a hardened FUSE configuration with caching
    and passthrough explicitly accounted for?
-5. Does the Agent workspace RQ3 boundary result generalize to a second
+6. Does the Agent workspace RQ3 boundary result generalize to a second
    source-derived traditional workflow without requiring broader filesystem
    semantics?

@@ -10,7 +10,8 @@ enum application_file_sharing_counter {
 	AFS_COUNTER_HIDE_LOOKUP = 4,
 	AFS_COUNTER_HIDE_READDIR = 5,
 	AFS_COUNTER_PASS = 6,
-	AFS_COUNTER_MAX = 7,
+	AFS_COUNTER_VISIBLE_READDIR = 7,
+	AFS_COUNTER_MAX = 8,
 };
 
 struct {
@@ -57,7 +58,8 @@ int namei_ext_policy(struct bpf_namei_ext_ctx *ctx)
 	else if (ctx->event == BPF_NAMEI_EXT_READDIR)
 		count_event(AFS_COUNTER_READDIR);
 
-	if (!namei_ext_is(ctx, "document")) {
+	if (!namei_ext_is(ctx, "document") &&
+	    !namei_ext_is(ctx, "namei-fixed-doc-id-001")) {
 		count_event(AFS_COUNTER_PASS);
 		return BPF_NAMEI_EXT_PASS;
 	}
@@ -87,6 +89,7 @@ int namei_ext_policy(struct bpf_namei_ext_ctx *ctx)
 		return BPF_NAMEI_EXT_SELECT_TARGET;
 	}
 
+	count_event(AFS_COUNTER_VISIBLE_READDIR);
 	count_event(AFS_COUNTER_PASS);
 	return BPF_NAMEI_EXT_PASS;
 }

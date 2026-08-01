@@ -1,19 +1,31 @@
-FROM debian:bookworm-slim
+FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    bubblewrap \
+    ca-certificates \
     dbus \
     fuse3 \
+    git \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-tools \
     libcap2-bin \
     libfuse3-dev \
     libgdk-pixbuf-2.0-dev \
     libglib2.0-dev \
+    libgstreamer-plugins-base1.0-dev \
     libjson-glib-dev \
     libpipewire-0.3-dev \
     libsystemd-dev \
+    libumockdev-dev \
     meson \
     ninja-build \
     pkg-config \
+    python3-dbus \
+    python3-dbusmock \
+    python3-gi \
+    python3-pytest \
     && rm -rf /var/lib/apt/lists/*

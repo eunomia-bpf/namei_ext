@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <namei_ext_harness.h>
+#include "rq2_measurement.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -31,6 +32,7 @@ enum application_file_sharing_counter {
 	AFS_COUNTER_HIDE_LOOKUP = 4,
 	AFS_COUNTER_HIDE_READDIR = 5,
 	AFS_COUNTER_PASS = 6,
+	AFS_COUNTER_VISIBLE_READDIR = 7,
 };
 
 struct probe_paths {
@@ -40,6 +42,7 @@ struct probe_paths {
 	const char *host_document;
 	const char *host_payload;
 	const char *unrelated_payload;
+	const char *listed_name;
 };
 
 struct state_observation {
@@ -225,7 +228,7 @@ static int observe_state(const char *cgroup_path,
 				&child.payload_bytes_expected);
 			if (stat(paths->host_payload, &child.lower_payload))
 				child.lower_payload_errno = errno;
-			observe_directory(paths->view, "document", &child);
+			observe_directory(paths->view, paths->listed_name, &child);
 			child.unrelated_errno = observe_text(
 				paths->unrelated_payload, UNRELATED_PAYLOAD,
 				&child.unrelated_bytes_expected);
@@ -454,14 +457,190 @@ static int record_state(FILE *out, const char *state, bool expected_visible,
 	       0 : -EINVAL;
 }
 
+static int emit_rq2_policy_snapshot(
+	FILE *out, struct namei_ext_harness_policy *policy, const char *phase)
+{
+	static const char * const names[] = {
+		"total", "lookup", "readdir", "select", "hide_lookup",
+		"hide_readdir", "pass", "visible_readdir",
+	};
+
+	for (uint32_t key = 0; key < sizeof(names) / sizeof(names[0]); key++) {
+		uint64_t value = 0;
+		int ret = namei_ext_policy_counter(
+			policy, "application_file_sharing_counters", key,
+			&value);
+
+		if (ret)
+			return ret;
+		fprintf(out,
+			"{\"event\":\"application-file-sharing-rq2-bpf-counter\","
+			"\"mechanism\":\"namei_ext\",\"phase\":\"%s\","
+			"\"counter\":\"%s\",\"key\":%" PRIu32 ","
+			"\"value\":%" PRIu64 "}\n",
+			phase, names[key], key, value);
+	}
+	fflush(out);
+	return 0;
+}
+
+static int run_rq2_direct_control(FILE *out, const char *root,
+				  uint32_t warmup_count,
+				  uint32_t sample_count)
+{
+	char parent[PATH_MAX];
+	char document[PATH_MAX];
+	char payload[PATH_MAX];
+	int parent_fd = -1;
+	int ret;
+
+	ret = afs_rq2_join_path(parent, sizeof(parent), root, "direct-ext4");
+	if (!ret)
+		ret = afs_rq2_join_path(document, sizeof(document), parent,
+					AFS_RQ2_DOCUMENT_ID);
+	if (!ret)
+		ret = afs_rq2_join_path(payload, sizeof(payload), document,
+					AFS_RQ2_DOCUMENT_BASENAME);
+	if (!ret && mkdir(parent, 0755))
+		ret = -errno;
+	if (!ret && mkdir(document, 0755))
+		ret = -errno;
+	if (!ret)
+		ret = afs_rq2_write_payload(payload);
+	if (!ret) {
+		parent_fd = open(parent, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+		if (parent_fd < 0)
+			ret = -errno;
+	}
+	if (!ret)
+		ret = afs_rq2_emit_single_oracle(
+			out, "namei_ext", "direct-before-warmup", parent_fd,
+			AFS_RQ2_DOCUMENT_ID);
+	if (!ret)
+		ret = afs_rq2_run_warmup(parent_fd, AFS_RQ2_DOCUMENT_ID,
+					 warmup_count);
+	if (!ret)
+		ret = afs_rq2_run_measured(out, "namei_ext", "direct-ext4",
+					    parent_fd, AFS_RQ2_DOCUMENT_ID,
+					    sample_count);
+	if (parent_fd >= 0 && close(parent_fd) && !ret)
+		ret = -errno;
+	return ret;
+}
+
+static int run_rq2_namei_measurement(
+	FILE *out, struct namei_ext_harness_policy *policy,
+	const char *cgroup_path, const char *cgroup_root, const char *view,
+	const char *document_id, uint32_t warmup_count, uint32_t sample_count)
+{
+	struct afs_rq2_batch batch = {};
+	struct afs_rq2_process_snapshot client_before = {};
+	struct afs_rq2_process_snapshot client_after = {};
+	int parent_fd = -1;
+	bool moved = false;
+	int ret;
+	int cleanup_ret;
+
+	ret = namei_ext_move_self_to_cgroup(cgroup_path);
+	if (ret)
+		return ret;
+	moved = true;
+	parent_fd = open(view, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	if (parent_fd < 0) {
+		ret = -errno;
+		goto out;
+	}
+	ret = afs_rq2_emit_single_oracle(
+		out, "namei_ext", "first-after-grant", parent_fd, document_id);
+	if (!ret)
+		ret = afs_rq2_run_warmup(parent_fd, document_id, warmup_count);
+	if (!ret)
+		ret = emit_rq2_policy_snapshot(out, policy, "before");
+	if (!ret)
+		ret = afs_rq2_capture_process_snapshot(&client_before,
+					       getpid());
+	if (!ret)
+		ret = afs_rq2_collect_measured(
+			&batch, parent_fd, document_id, sample_count);
+	if (!ret)
+		ret = afs_rq2_capture_process_snapshot(&client_after,
+					       getpid());
+	if (!ret)
+		ret = emit_rq2_policy_snapshot(out, policy, "after");
+	if (client_before.thread_count) {
+		int emit_ret = afs_rq2_emit_captured_process_snapshot(
+			out, "namei_ext", "client", "before", &client_before);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+	if (client_after.thread_count) {
+		int emit_ret = afs_rq2_emit_captured_process_snapshot(
+			out, "namei_ext", "client", "after", &client_after);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+	if (batch.count) {
+		int emit_ret = afs_rq2_emit_batch(
+			out, "namei_ext", "policy-view", &batch);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+out:
+	afs_rq2_free_batch(&batch);
+	afs_rq2_free_process_snapshot(&client_before);
+	afs_rq2_free_process_snapshot(&client_after);
+	if (parent_fd >= 0 && close(parent_fd) && !ret)
+		ret = -errno;
+	if (moved) {
+		cleanup_ret = namei_ext_move_self_to_cgroup(cgroup_root);
+		if (cleanup_ret && !ret)
+			ret = cleanup_ret;
+	}
+	return ret;
+}
+
+static int run_rq2_namei_hidden(FILE *out, const char *cgroup_path,
+				const char *cgroup_root, const char *view,
+				const char *document_id)
+{
+	int parent_fd = -1;
+	bool moved = false;
+	int ret;
+	int cleanup_ret;
+
+	ret = namei_ext_move_self_to_cgroup(cgroup_path);
+	if (ret)
+		return ret;
+	moved = true;
+	parent_fd = open(view, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	if (parent_fd < 0)
+		ret = -errno;
+	else
+		ret = afs_rq2_emit_hidden_oracle(
+			out, "namei_ext", "first-after-revoke", parent_fd,
+			document_id);
+	if (parent_fd >= 0 && close(parent_fd) && !ret)
+		ret = -errno;
+	if (moved) {
+		cleanup_ret = namei_ext_move_self_to_cgroup(cgroup_root);
+		if (cleanup_ret && !ret)
+			ret = cleanup_ret;
+	}
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	const char *cgroup_root = "/sys/fs/cgroup";
+	const char *document_name = "document";
 	struct namei_ext_harness_policy policy = {
 		.cgroup_fd = -1,
 		.prog_fd = -1,
 	};
-	char root[] = "/tmp/namei-ext-app-file-sharing-XXXXXX";
+	char root[PATH_MAX] = {};
 	char cgroup_a[PATH_MAX] = {};
 	char cgroup_b[PATH_MAX] = {};
 	char view[PATH_MAX] = {};
@@ -478,7 +657,11 @@ int main(int argc, char **argv)
 	struct stat host_before = {};
 	struct stat host_after = {};
 	uint64_t app_a_cgroup_id = 0;
+	uint32_t rq2_warmup_count = 0;
+	uint32_t rq2_sample_count = 0;
+	const char *rq2_fixture_root = NULL;
 	FILE *out;
+	bool rq2_mode = false;
 	bool cgroup_a_created = false;
 	bool cgroup_b_created = false;
 	bool target_registered = false;
@@ -486,14 +669,33 @@ int main(int argc, char **argv)
 	int fails = 0;
 	int ret;
 
-	if (argc < 4 || argc > 5) {
+	if (argc != 4 && argc != 5 && argc != 8) {
 		fprintf(stderr,
-			"usage: %s POLICY_BPF_O RESULT_JSONL RESULT_DIR [CGROUP_ROOT]\n",
+			"usage: %s POLICY_BPF_O RESULT_JSONL RESULT_DIR "
+			"[CGROUP_ROOT [RQ2_WARMUP RQ2_SAMPLES "
+			"RQ2_EXT4_ROOT]]\n",
 			argv[0]);
 		return 2;
 	}
-	if (argc == 5)
+	if (argc >= 5)
 		cgroup_root = argv[4];
+	if (argc == 8) {
+		rq2_mode = true;
+		document_name = AFS_RQ2_DOCUMENT_ID;
+		rq2_fixture_root = argv[7];
+		if (afs_rq2_parse_count(argv[5], &rq2_warmup_count) ||
+		    afs_rq2_parse_count(argv[6], &rq2_sample_count)) {
+			fprintf(stderr, "invalid RQ2 warmup or sample count\n");
+			return 2;
+		}
+	}
+	if (snprintf(root, sizeof(root), "%s/%s",
+		     rq2_mode ? rq2_fixture_root : "/tmp",
+		     "namei-ext-app-file-sharing-XXXXXX") >=
+	    (int)sizeof(root)) {
+		fprintf(stderr, "fixture root path is too long\n");
+		return 2;
+	}
 	out = fopen(argv[2], "a");
 	if (!out) {
 		perror("fopen result");
@@ -505,6 +707,14 @@ int main(int argc, char **argv)
 		fclose(out);
 		return 1;
 	}
+	if (rq2_mode) {
+		ret = afs_rq2_emit_filesystem(out, "namei_ext", root);
+		if (ret) {
+			namei_ext_remove_tree(root);
+			fclose(out);
+			return 1;
+		}
+	}
 	if (snprintf(cgroup_a, sizeof(cgroup_a),
 		     "%s/namei-ext-app-share-a-%ld", cgroup_root,
 		     (long)getpid()) >= (int)sizeof(cgroup_a) ||
@@ -512,7 +722,8 @@ int main(int argc, char **argv)
 		     "%s/namei-ext-app-share-b-%ld", cgroup_root,
 		     (long)getpid()) >= (int)sizeof(cgroup_b) ||
 	    namei_ext_path_join(view, sizeof(view), root, "view") ||
-	    namei_ext_path_join(document, sizeof(document), view, "document") ||
+	    namei_ext_path_join(document, sizeof(document), view,
+				document_name) ||
 	    namei_ext_path_join(host_document, sizeof(host_document), root,
 				"host-document") ||
 	    namei_ext_path_join(payload, sizeof(payload), document,
@@ -549,6 +760,16 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "fixture_paths", true, 0,
 		  "logical portal path, host document, and unrelated path created");
+	if (rq2_mode) {
+		ret = run_rq2_direct_control(out, root, rq2_warmup_count,
+					     rq2_sample_count);
+		emit_case(out, "rq2_direct_ext4", !ret, ret ? -ret : 0,
+			  ret ? "direct ext4 transaction failed" :
+			  "direct ext4 transaction completed");
+		fails += !!ret;
+		if (ret)
+			goto cleanup;
+	}
 
 	if (mkdir(cgroup_a, 0755)) {
 		emit_case(out, "application_identities", false, errno,
@@ -598,7 +819,7 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "attach_policy", true, 0,
 		  "policy attached to the cgroup/namei_ext path");
-	ret = register_scope(&policy, view, "document");
+	ret = register_scope(&policy, view, document_name);
 	emit_case(out, "register_portal_scope", !ret, ret ? -ret : 0,
 		  "policy scoped to the portal parent and logical name");
 	fails += !!ret;
@@ -611,6 +832,7 @@ int main(int argc, char **argv)
 	paths.host_document = host_document;
 	paths.host_payload = host_payload;
 	paths.unrelated_payload = unrelated_payload;
+	paths.listed_name = document_name;
 
 	ret = record_state(out, "application-a-before-grant", false,
 			   cgroup_a, &paths);
@@ -619,27 +841,72 @@ int main(int argc, char **argv)
 			   cgroup_b, &paths);
 	fails += !!ret;
 
-	ret = update_grant(&policy, app_a_cgroup_id, view, "document", true);
+	if (rq2_mode) {
+		uint64_t started = afs_rq2_monotonic_raw_ns();
+
+		ret = update_grant(&policy, app_a_cgroup_id, view,
+				   document_name, true);
+		afs_rq2_emit_ack(out, "namei_ext", "grant",
+				 afs_rq2_monotonic_raw_ns() - started, ret);
+	} else {
+		ret = update_grant(&policy, app_a_cgroup_id, view,
+				   document_name, true);
+	}
 	emit_case(out, "grant_application_a", !ret, ret ? -ret : 0,
 		  "grant installed for application A");
 	fails += !!ret;
 	if (!ret) {
-		ret = record_state(out, "application-a-after-grant", true,
-				   cgroup_a, &paths);
-		fails += !!ret;
+		if (rq2_mode) {
+			ret = run_rq2_namei_measurement(
+				out, &policy, cgroup_a, cgroup_root, view,
+				document_name, rq2_warmup_count,
+				rq2_sample_count);
+			emit_case(out, "rq2_namei_measurement", !ret,
+				  ret ? -ret : 0,
+				  ret ? "namei_ext measured transaction failed" :
+					  "namei_ext measured transaction completed");
+			fails += !!ret;
+		}
+		if (!ret) {
+			ret = record_state(out, "application-a-after-grant", true,
+					   cgroup_a, &paths);
+			fails += !!ret;
+		}
 	}
 	ret = record_state(out, "application-b-during-a-grant", false,
 			   cgroup_b, &paths);
 	fails += !!ret;
 
-	ret = update_grant(&policy, app_a_cgroup_id, view, "document", false);
+	if (rq2_mode) {
+		uint64_t started = afs_rq2_monotonic_raw_ns();
+
+		ret = update_grant(&policy, app_a_cgroup_id, view,
+				   document_name, false);
+		afs_rq2_emit_ack(out, "namei_ext", "revoke",
+				 afs_rq2_monotonic_raw_ns() - started, ret);
+	} else {
+		ret = update_grant(&policy, app_a_cgroup_id, view,
+				   document_name, false);
+	}
 	emit_case(out, "revoke_application_a", !ret, ret ? -ret : 0,
 		  "grant removed for application A");
 	fails += !!ret;
 	if (!ret) {
-		ret = record_state(out, "application-a-after-revoke", false,
-				   cgroup_a, &paths);
-		fails += !!ret;
+		if (rq2_mode) {
+			ret = run_rq2_namei_hidden(
+				out, cgroup_a, cgroup_root, view,
+				document_name);
+			emit_case(out, "rq2_namei_post_revoke", !ret,
+				  ret ? -ret : 0,
+				  ret ? "post-revoke RQ2 oracle failed" :
+					  "post-revoke RQ2 oracle passed");
+			fails += !!ret;
+		}
+		if (!ret) {
+			ret = record_state(out, "application-a-after-revoke", false,
+					   cgroup_a, &paths);
+			fails += !!ret;
+		}
 	}
 
 	if (stat(host_payload, &host_after))
@@ -714,6 +981,18 @@ cleanup:
 		fails++;
 	}
 	namei_ext_remove_tree(root);
+	if (rq2_mode) {
+		fprintf(out,
+			"{\"event\":\"application-file-sharing-rq2-summary\","
+			"\"mechanism\":\"namei_ext\","
+			"\"document_id_bytes\":22,\"payload_bytes\":27,"
+			"\"warmup_transactions\":%" PRIu32 ","
+			"\"measured_transactions\":%" PRIu32 ","
+			"\"direct_transactions\":%" PRIu32 ","
+			"\"failures\":%d,\"pass\":%s}\n",
+			rq2_warmup_count, rq2_sample_count, rq2_sample_count,
+			fails, fails ? "false" : "true");
+	}
 	fprintf(out,
 		"{\"event\":\"application-file-sharing-summary\","
 		"\"result_level\":\"" RESULT_LEVEL "\","

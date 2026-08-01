@@ -14,7 +14,8 @@ GIO_LIBS ?= $(shell pkg-config --libs gio-2.0 gio-unix-2.0 glib-2.0)
 
 all: \
 	$(OUTPUT)/namei_ext_application_file_sharing \
-	$(OUTPUT)/xdg_document_portal_oracle
+	$(OUTPUT)/xdg_document_portal_oracle \
+	$(OUTPUT)/rq2_transaction_smoke
 
 $(OUTPUT):
 	install -d "$@"
@@ -28,19 +29,50 @@ $(LIBBPF_A): $(LIBBPF_SOURCES) | $(LIBBPF_OUTPUT)
 $(HARNESS_LIBRARY):
 	$(MAKE) -C "$(ROOT_DIR)/runner" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
-$(OUTPUT)/namei_ext_application_file_sharing: namei_ext_application_file_sharing.c $(HARNESS_LIBRARY) $(LIBBPF_A) | $(OUTPUT)
+$(OUTPUT)/namei_ext_application_file_sharing: \
+		namei_ext_application_file_sharing.c rq2_measurement.c \
+		rq2_measurement.h $(HARNESS_LIBRARY) $(LIBBPF_A) | $(OUTPUT)
 	$(CC) -g -O2 -Wall -Wextra \
 		-I"$(ROOT_DIR)/runner/include" \
 		-I"$(KERNEL_DIR)/tools/lib" \
 		-I"$(KERNEL_DIR)/tools/include" \
 		-I"$(KERNEL_DIR)/tools/include/uapi" \
 		-I"$(LIBBPF_OUTPUT)" \
-		-o "$@" "$<" "$(HARNESS_LIBRARY)" "$(LIBBPF_A)" -lelf -lz
+		-o "$@" namei_ext_application_file_sharing.c rq2_measurement.c \
+		"$(HARNESS_LIBRARY)" "$(LIBBPF_A)" -lelf -lz
 
-$(OUTPUT)/xdg_document_portal_oracle: xdg_document_portal_oracle.c | $(OUTPUT)
+$(OUTPUT)/xdg_document_portal_oracle: \
+		xdg_document_portal_oracle.c rq2_measurement.c rq2_measurement.h \
+		rq2_fuse_counter.c rq2_fuse_counter.h $(LIBBPF_A) | $(OUTPUT)
 	pkg-config --exists gio-2.0 gio-unix-2.0 glib-2.0
 	$(CC) -g -O2 -Wall -Wextra $(GIO_CFLAGS) \
-		-o "$@" "$<" $(GIO_LIBS)
+		-I"$(KERNEL_DIR)/tools/lib" \
+		-I"$(KERNEL_DIR)/tools/include" \
+		-I"$(KERNEL_DIR)/tools/include/uapi" \
+		-I"$(LIBBPF_OUTPUT)" \
+		-o "$@" xdg_document_portal_oracle.c rq2_measurement.c \
+		rq2_fuse_counter.c $(GIO_LIBS) "$(LIBBPF_A)" -lelf -lz
+
+$(OUTPUT)/rq2_transaction_smoke: rq2_transaction_smoke.c \
+		rq2_measurement.c rq2_measurement.h | $(OUTPUT)
+	$(CC) -g -O2 -Wall -Wextra \
+		-o "$@" rq2_transaction_smoke.c rq2_measurement.c
+
+.PHONY: rq2-host-smoke
+
+rq2-host-smoke: $(OUTPUT)/rq2_transaction_smoke
+	"$(OUTPUT)/rq2_transaction_smoke" \
+		"$(OUTPUT)/rq2-transaction-smoke.jsonl"
+	! jq -e 'select(has("pass") and .pass != true)' \
+		"$(OUTPUT)/rq2-transaction-smoke.jsonl" >/dev/null
+	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-sample" and .pass == true)] | length' \
+		"$(OUTPUT)/rq2-transaction-smoke.jsonl")" = 3
+	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-process-snapshot" and .role == "client" and .pass == true)] | length' \
+		"$(OUTPUT)/rq2-transaction-smoke.jsonl")" = 2
+	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-hidden-oracle" and .document_stat_errno == 2 and .directory_entries == 2 and .pass == true)] | length' \
+		"$(OUTPUT)/rq2-transaction-smoke.jsonl")" = 1
+	test "$$(jq -s '[.[] | select(.event == "application-file-sharing-rq2-smoke" and .pass == true)] | length' \
+		"$(OUTPUT)/rq2-transaction-smoke.jsonl")" = 1
 
 clean:
 	rm -rf "$(OUTPUT)"

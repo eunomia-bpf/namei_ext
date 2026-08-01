@@ -2,6 +2,9 @@
 
 #define _GNU_SOURCE
 
+#include "rq2_fuse_counter.h"
+#include "rq2_measurement.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -17,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -660,9 +664,189 @@ static int portal_mount_status(const char *mountpoint, bool *mounted)
 	return ret;
 }
 
+static int run_rq2_direct_control(FILE *out, const char *root,
+				  uint32_t warmup_count,
+				  uint32_t sample_count)
+{
+	char parent[PATH_MAX];
+	char document[PATH_MAX];
+	char payload[PATH_MAX];
+	int parent_fd = -1;
+	int ret;
+
+	ret = afs_rq2_join_path(parent, sizeof(parent), root, "direct-ext4");
+	if (!ret)
+		ret = afs_rq2_join_path(document, sizeof(document), parent,
+					AFS_RQ2_DOCUMENT_ID);
+	if (!ret)
+		ret = afs_rq2_join_path(payload, sizeof(payload), document,
+					AFS_RQ2_DOCUMENT_BASENAME);
+	if (!ret && mkdir(parent, 0700))
+		ret = -errno;
+	if (!ret && mkdir(document, 0700))
+		ret = -errno;
+	if (!ret)
+		ret = afs_rq2_write_payload(payload);
+	if (!ret) {
+		parent_fd = open(parent, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+		if (parent_fd < 0)
+			ret = -errno;
+	}
+	if (!ret)
+		ret = afs_rq2_emit_single_oracle(
+			out, "xdg-document-portal", "direct-before-warmup",
+			parent_fd, AFS_RQ2_DOCUMENT_ID);
+	if (!ret)
+		ret = afs_rq2_run_warmup(parent_fd, AFS_RQ2_DOCUMENT_ID,
+					 warmup_count);
+	if (!ret)
+		ret = afs_rq2_run_measured(
+			out, "xdg-document-portal", "direct-ext4", parent_fd,
+			AFS_RQ2_DOCUMENT_ID, sample_count);
+	if (parent_fd >= 0 && close(parent_fd) && !ret)
+		ret = -errno;
+	return ret;
+}
+
+static int run_rq2_portal_measurement(
+	FILE *out, const char *fuse_counter_object,
+	const struct stat *mount_status, const char *app_parent,
+	const char *document_id, pid_t portal_pid, uint32_t warmup_count,
+	uint32_t sample_count, int *preserved_parent_fd)
+{
+	struct afs_rq2_batch batch = {};
+	struct afs_rq2_process_snapshot portal_before = {};
+	struct afs_rq2_process_snapshot portal_after = {};
+	struct afs_rq2_process_snapshot client_before = {};
+	struct afs_rq2_process_snapshot client_after = {};
+	struct afs_rq2_fuse_counter counter;
+	uint64_t fuse_before = 0;
+	uint64_t fuse_after = 0;
+	bool counter_open = false;
+	int parent_fd = -1;
+	int ret;
+	int cleanup_ret;
+
+	*preserved_parent_fd = -1;
+	if (strlen(document_id) != 22 ||
+	    (uint64_t)mount_status->st_dev > UINT32_MAX)
+		return -EINVAL;
+	parent_fd = open(app_parent, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	if (parent_fd < 0)
+		return -errno;
+	ret = afs_rq2_fuse_counter_open(
+		&counter, fuse_counter_object, (uint32_t)mount_status->st_dev);
+	if (ret)
+		goto out;
+	counter_open = true;
+	fprintf(out,
+		"{\"event\":\"application-file-sharing-rq2-fuse-connection\","
+		"\"mechanism\":\"xdg-document-portal\","
+		"\"connection\":%u,\"major\":%u,\"minor\":%u}\n",
+		(uint32_t)mount_status->st_dev,
+		major(mount_status->st_dev), minor(mount_status->st_dev));
+	ret = afs_rq2_emit_single_oracle(
+		out, "xdg-document-portal", "first-after-grant", parent_fd,
+		document_id);
+	if (!ret)
+		ret = afs_rq2_run_warmup(parent_fd, document_id, warmup_count);
+	if (!ret)
+		ret = afs_rq2_fuse_counter_emit(out, &counter, "before");
+	if (!ret)
+		ret = afs_rq2_fuse_counter_total(&counter, &fuse_before);
+	if (!ret)
+		ret = afs_rq2_capture_process_snapshot(&portal_before,
+						       portal_pid);
+	if (!ret)
+		ret = afs_rq2_capture_process_snapshot(&client_before,
+						       getpid());
+	if (!ret)
+		ret = afs_rq2_collect_measured(
+			&batch, parent_fd, document_id, sample_count);
+	if (!ret)
+		ret = afs_rq2_capture_process_snapshot(&client_after,
+						       getpid());
+	if (!ret)
+		ret = afs_rq2_capture_process_snapshot(&portal_after,
+						       portal_pid);
+	if (!ret)
+		ret = afs_rq2_fuse_counter_emit(out, &counter, "after");
+	if (!ret)
+		ret = afs_rq2_fuse_counter_total(&counter, &fuse_after);
+	if (!ret && fuse_after <= fuse_before)
+		ret = -ENODATA;
+	if (portal_before.thread_count) {
+		int emit_ret = afs_rq2_emit_captured_process_snapshot(
+			out, "xdg-document-portal", "portal-daemon", "before",
+			&portal_before);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+	if (client_before.thread_count) {
+		int emit_ret = afs_rq2_emit_captured_process_snapshot(
+			out, "xdg-document-portal", "client", "before",
+			&client_before);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+	if (client_after.thread_count) {
+		int emit_ret = afs_rq2_emit_captured_process_snapshot(
+			out, "xdg-document-portal", "client", "after",
+			&client_after);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+	if (portal_after.thread_count) {
+		int emit_ret = afs_rq2_emit_captured_process_snapshot(
+			out, "xdg-document-portal", "portal-daemon", "after",
+			&portal_after);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+	if (batch.count) {
+		int emit_ret = afs_rq2_emit_batch(
+			out, "xdg-document-portal", "policy-view", &batch);
+
+		if (emit_ret && !ret)
+			ret = emit_ret;
+	}
+	fprintf(out,
+		"{\"event\":\"application-file-sharing-rq2-fuse-engagement\","
+		"\"mechanism\":\"xdg-document-portal\","
+		"\"before\":%" PRIu64 ",\"after\":%" PRIu64 ","
+		"\"delta\":%" PRIu64 ",\"pass\":%s}\n",
+		fuse_before, fuse_after,
+		fuse_after >= fuse_before ? fuse_after - fuse_before : 0,
+		!ret && fuse_after > fuse_before ? "true" : "false");
+	fflush(out);
+
+out:
+	afs_rq2_free_batch(&batch);
+	afs_rq2_free_process_snapshot(&portal_before);
+	afs_rq2_free_process_snapshot(&portal_after);
+	afs_rq2_free_process_snapshot(&client_before);
+	afs_rq2_free_process_snapshot(&client_after);
+	if (counter_open) {
+		cleanup_ret = afs_rq2_fuse_counter_close(&counter);
+		if (cleanup_ret && !ret)
+			ret = cleanup_ret;
+	}
+	if (ret) {
+		if (close(parent_fd) && !ret)
+			ret = -errno;
+	} else {
+		*preserved_parent_fd = parent_fd;
+	}
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
-	char root[] = "/tmp/namei-ext-xdg-source-XXXXXX";
+	char root[PATH_MAX] = {};
 	char home[PATH_MAX] = {};
 	char data[PATH_MAX] = {};
 	char runtime[PATH_MAX] = {};
@@ -692,7 +876,13 @@ int main(int argc, char **argv)
 	char *document_id = NULL;
 	pid_t permission_pid = -1;
 	pid_t portal_pid = -1;
+	int rq2_parent_fd = -1;
 	FILE *out = NULL;
+	const char *rq2_fuse_counter_object = NULL;
+	const char *rq2_fixture_root = NULL;
+	uint32_t rq2_warmup_count = 0;
+	uint32_t rq2_sample_count = 0;
+	bool rq2_mode = false;
 	bool source_mounted = false;
 	bool mount_present = false;
 	bool bytes_expected = false;
@@ -706,10 +896,29 @@ int main(int argc, char **argv)
 	int fails = 0;
 	int ret;
 
-	if (argc != 5) {
+	if (argc != 5 && argc != 9) {
 		fprintf(stderr,
-			"usage: %s XDG_DOCUMENT_PORTAL XDG_PERMISSION_STORE RESULT_JSONL RESULT_DIR\n",
+			"usage: %s XDG_DOCUMENT_PORTAL XDG_PERMISSION_STORE "
+			"RESULT_JSONL RESULT_DIR "
+			"[FUSE_COUNTER_BPF_O RQ2_WARMUP RQ2_SAMPLES "
+			"RQ2_EXT4_ROOT]\n",
 			argv[0]);
+		return 2;
+	}
+	if (argc == 9) {
+		rq2_mode = true;
+		rq2_fuse_counter_object = argv[5];
+		rq2_fixture_root = argv[8];
+		if (afs_rq2_parse_count(argv[6], &rq2_warmup_count) ||
+		    afs_rq2_parse_count(argv[7], &rq2_sample_count)) {
+			fprintf(stderr, "invalid RQ2 warmup or sample count\n");
+			return 2;
+		}
+	}
+	if (snprintf(root, sizeof(root), "%s/%s",
+		     rq2_mode ? rq2_fixture_root : "/tmp",
+		     "namei-ext-xdg-source-XXXXXX") >= (int)sizeof(root)) {
+		fprintf(stderr, "fixture root path is too long\n");
 		return 2;
 	}
 	out = fopen(argv[3], "a");
@@ -724,6 +933,14 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 	root_created = true;
+	if (rq2_mode) {
+		ret = afs_rq2_emit_filesystem(
+			out, "xdg-document-portal", root);
+		if (ret) {
+			fails++;
+			goto cleanup;
+		}
+	}
 	ret = join_path(home, sizeof(home), root, "home");
 	if (!ret)
 		ret = join_path(data, sizeof(data), root, "data");
@@ -770,6 +987,16 @@ int main(int argc, char **argv)
 	}
 	emit_case(out, "source_fixture", true, 0,
 		  "fixed host payload and isolated runtime created");
+	if (rq2_mode) {
+		ret = run_rq2_direct_control(out, root, rq2_warmup_count,
+					     rq2_sample_count);
+		emit_case(out, "rq2_direct_ext4", !ret, ret ? -ret : 0,
+			  ret ? "direct ext4 transaction failed" :
+			  "direct ext4 transaction completed");
+		fails += !!ret;
+		if (ret)
+			goto cleanup;
+	}
 
 	if (setenv("HOME", home, 1) ||
 	    setenv("XDG_DATA_HOME", data, 1) ||
@@ -874,6 +1101,12 @@ int main(int argc, char **argv)
 		fails++;
 		goto cleanup;
 	}
+	if (rq2_mode && strlen(document_id) != 22) {
+		emit_case(out, "rq2_document_id_length", false, EINVAL,
+			  "official Add did not return a 22-byte identifier");
+		fails++;
+		goto cleanup;
+	}
 	emit_case(out, "source_add", true, 0,
 		  "Add(fd,false,false) exported the existing host payload");
 
@@ -915,36 +1148,83 @@ int main(int argc, char **argv)
 			    &app_b_paths);
 	states++;
 
-	ret = call_permissions(connection, "GrantPermissions",
-			       document_id, APP_A);
+	if (rq2_mode) {
+		uint64_t started = afs_rq2_monotonic_raw_ns();
+
+		ret = call_permissions(connection, "GrantPermissions",
+				       document_id, APP_A);
+		afs_rq2_emit_ack(out, "xdg-document-portal", "grant",
+				 afs_rq2_monotonic_raw_ns() - started, ret);
+	} else {
+		ret = call_permissions(connection, "GrantPermissions",
+				       document_id, APP_A);
+	}
 	if (ret) {
 		emit_case(out, "source_grant", false, -ret,
 			  "GrantPermissions returned an error");
 		fails++;
 		goto cleanup;
 	}
+	if (rq2_mode) {
+		ret = run_rq2_portal_measurement(
+			out, rq2_fuse_counter_object, &mount_stat, app_a_parent,
+			document_id, portal_pid, rq2_warmup_count,
+			rq2_sample_count, &rq2_parent_fd);
+		emit_case(out, "rq2_portal_measurement", !ret,
+			  ret ? -ret : 0,
+			  ret ? "official portal measured transaction failed" :
+			  "official portal measured transaction completed");
+		fails += !!ret;
+		if (ret)
+			goto cleanup;
+	}
 	fails += !emit_state(out, "application-a-after-grant", true,
 			    &app_a_paths);
 	states++;
 	emit_case(out, "source_grant", true, 0,
-		  "GrantPermissions returned before the single post-grant probe");
+		  "GrantPermissions and application-state validation completed");
 	fails += !emit_state(out, "application-b-during-a-grant", false,
 			    &app_b_paths);
 	states++;
 
-	ret = call_permissions(connection, "RevokePermissions",
-			       document_id, APP_A);
+	if (rq2_mode) {
+		uint64_t started = afs_rq2_monotonic_raw_ns();
+
+		ret = call_permissions(connection, "RevokePermissions",
+				       document_id, APP_A);
+		afs_rq2_emit_ack(out, "xdg-document-portal", "revoke",
+				 afs_rq2_monotonic_raw_ns() - started, ret);
+	} else {
+		ret = call_permissions(connection, "RevokePermissions",
+				       document_id, APP_A);
+	}
 	if (ret) {
 		emit_case(out, "source_revoke", false, -ret,
 			  "RevokePermissions returned an error");
 		fails++;
 		goto cleanup;
 	}
+	if (rq2_mode) {
+		ret = afs_rq2_emit_hidden_oracle(
+			out, "xdg-document-portal", "first-after-revoke",
+			rq2_parent_fd, document_id);
+		emit_case(out, "rq2_portal_post_revoke", !ret,
+			  ret ? -ret : 0,
+			  ret ? "post-revoke RQ2 oracle failed" :
+			  "post-revoke RQ2 oracle passed");
+		fails += !!ret;
+		if (close(rq2_parent_fd)) {
+			emit_case(out, "rq2_parent_close", false, errno,
+				  "pre-opened portal parent close failed");
+			fails++;
+		}
+		rq2_parent_fd = -1;
+	}
 	fails += !emit_state(out, "application-a-after-revoke", false,
 			    &app_a_paths);
 	states++;
 	emit_case(out, "source_revoke", true, 0,
-		  "RevokePermissions returned before the single post-revoke probe");
+		  "RevokePermissions and application-state validation completed");
 
 	if (stat(host_payload, &host_after))
 		host_after_errno = errno;
@@ -959,6 +1239,14 @@ int main(int argc, char **argv)
 	fails += !!ret;
 
 cleanup:
+	if (rq2_parent_fd >= 0) {
+		ret = close(rq2_parent_fd) ? -errno : 0;
+		emit_case(out, "rq2_parent_cleanup", !ret, ret ? -ret : 0,
+			  ret ? "pre-opened portal parent cleanup failed" :
+			  "pre-opened portal parent closed");
+		fails += !!ret;
+		rq2_parent_fd = -1;
+	}
 	if (connection) {
 		g_dbus_connection_close_sync(connection, NULL, NULL);
 		g_object_unref(connection);
@@ -994,6 +1282,18 @@ cleanup:
 		  ret ? "source fixture cleanup failed" :
 		  "source fixture removed");
 	fails += !!ret;
+	if (rq2_mode) {
+		fprintf(out,
+			"{\"event\":\"application-file-sharing-rq2-summary\","
+			"\"mechanism\":\"xdg-document-portal\","
+			"\"document_id_bytes\":22,\"payload_bytes\":27,"
+			"\"warmup_transactions\":%" PRIu32 ","
+			"\"measured_transactions\":%" PRIu32 ","
+			"\"direct_transactions\":%" PRIu32 ","
+			"\"failures\":%d,\"pass\":%s}\n",
+			rq2_warmup_count, rq2_sample_count, rq2_sample_count,
+			fails, fails ? "false" : "true");
+	}
 	fprintf(out,
 		"{\"event\":\"application-file-sharing-source-summary\","
 		"\"mechanism\":\"xdg-document-portal\","

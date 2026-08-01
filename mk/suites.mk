@@ -8,6 +8,7 @@ NAMEI_EXT_CURRENT_GATE_TARGETS := \
 
 NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-application-file-sharing-source-oracle-preflight \
+	kvm-application-file-sharing-rq2-official-preflight \
 	kvm-build-action-sandboxing-preflight \
 	kvm-build-action-rq2-preflight \
 	kvm-agent-workspace-rq2-preflight \
@@ -54,6 +55,8 @@ NAMEI_EXT_FORMAL_PERFORMANCE_TARGETS := \
 # target list until their independent KVM preflight passes.
 NAMEI_EXT_FORMAL_PERFORMANCE_ENTRYPOINTS := \
 	$(NAMEI_EXT_FORMAL_PERFORMANCE_TARGETS) \
+	experiment-application-file-sharing-rq2-official \
+	kvm-application-file-sharing-rq2-official \
 	kvm-fxmark-rq2 \
 	kvm-fxmark-fast-path \
 	experiment-fxmark-readdir \

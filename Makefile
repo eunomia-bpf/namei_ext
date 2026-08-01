@@ -98,6 +98,14 @@ include $(ROOT_DIR)/mk/experiments/namei_ext_target_lifetime.mk
 	application-file-sharing-source-oracle-finalize \
 	application-file-sharing-source-oracle-analyze \
 	experiment-application-file-sharing-source-oracle-rq1 \
+	application-file-sharing-rq2-analysis-test \
+	application-file-sharing-rq2-official-host-gate \
+	kvm-application-file-sharing-rq2-official-preflight \
+	kvm-application-file-sharing-rq2-official \
+	application-file-sharing-rq2-official-run \
+	application-file-sharing-rq2-official-finalize \
+	application-file-sharing-rq2-official-analyze \
+	experiment-application-file-sharing-rq2-official \
 	fxmark-rq2-build fxmark-kernel-pair kvm-fxmark-rq2-preflight \
 	kvm-fxmark-rq2 fxmark-rq2-report experiment-fxmark-rq2 \
 	kvm-fxmark-fast-path-preflight kvm-fxmark-fast-path \
@@ -242,6 +250,10 @@ help:
 	@printf '%s\n' '                       run official xdg-document-portal and namei_ext through the same five-state oracle in one KVM boot'
 	@printf '%s\n' '  make experiment-application-file-sharing-source-oracle-rq1'
 	@printf '%s\n' '                       run three fresh source-faithful application-file-sharing boots and summarize RQ1 evidence'
+	@printf '%s\n' '  make kvm-application-file-sharing-rq2-official-preflight'
+	@printf '%s\n' '                       run one paired official portal/namei_ext performance preflight'
+	@printf '%s\n' '  make experiment-application-file-sharing-rq2-official'
+	@printf '%s\n' '                       run ten paired official portal/namei_ext boots and generate the RQ2 report'
 	@printf '%s\n' '  make kvm-build-action-sandboxing-preflight'
 	@printf '%s\n' '                       run one real Bazel action-view boot with the current allowlist policy'
 	@printf '%s\n' '  make experiment-build-action-sandboxing-rq1'
