@@ -417,53 +417,6 @@ def validate_descriptors(records, cell, operations):
     return len(checks)
 
 
-def parse_controlled_rcu_trace(path):
-    entries_buffered = None
-    entries_written = None
-    returns = []
-    for line_number, line in enumerate(
-        Path(path).read_text(encoding="utf-8", errors="replace").splitlines(), 1
-    ):
-        header = re.search(
-            r"entries-in-buffer/entries-written:\s*(\d+)\s*/\s*(\d+)",
-            line,
-        )
-        if header:
-            if entries_buffered is not None:
-                raise AnalysisError(f"{path}: duplicate trace entry header")
-            entries_buffered = int(header.group(1))
-            entries_written = int(header.group(2))
-            continue
-        if "resolve_target_return:" not in line:
-            continue
-        fields = re.search(r"rcu_walk=(\d+)\s+result=(-?\d+)\b", line)
-        if not fields or int(fields.group(1)) not in {0, 1}:
-            raise AnalysisError(f"{path}:{line_number}: malformed target probe")
-        returns.append(
-            {
-                "rcu_walk": bool(int(fields.group(1))),
-                "result": int(fields.group(2)),
-            }
-        )
-    if entries_buffered is None or entries_written is None:
-        raise AnalysisError(f"{path}: missing trace entry header")
-    if entries_written <= 0 or entries_buffered != entries_written:
-        raise AnalysisError(
-            f"{path}: trace buffer lost entries "
-            f"({entries_buffered}/{entries_written})"
-        )
-    if not returns or not any(
-        returned["rcu_walk"] and returned["result"] == 0
-        for returned in returns
-    ):
-        raise AnalysisError(f"{path}: no successful controlled RCU target resolution")
-    return {
-        "entries_buffered": entries_buffered,
-        "entries_written": entries_written,
-        "returns": returns,
-    }
-
-
 def parse_concurrent_rcu_trace(path):
     entries_buffered = None
     entries_written = None
@@ -604,7 +557,7 @@ def parse_concurrent_rcu_trace(path):
     }
 
 
-def validate_rcu_update_classes(raw, updates, cell):
+def validate_rcu_stress_classes(raw, updates, cell):
     replacement_sequences = {
         int(current["writer_seq"])
         for previous, current in zip(updates, updates[1:])
@@ -615,115 +568,237 @@ def validate_rcu_update_classes(raw, updates, cell):
         for operation in updates
         if operation["operation"] == "CLEAR"
     }
-    overlapped_sequences = {
+    successful_sequences = {
         branch["writer_seq"]
         for branch in raw["branches"]
         if branch["under_update"] and branch["result"] == 0
     }
+    absent_sequences = {
+        branch["writer_seq"]
+        for branch in raw["branches"]
+        if branch["under_update"] and branch["result"] == -2
+    }
     if not replacement_sequences or not (
-        replacement_sequences & overlapped_sequences
+        replacement_sequences & successful_sequences
     ):
         raise AnalysisError(
-            f"{cell}: no RCU target resolution during target replacement"
+            f"{cell}: no successful RCU resolution engaged a replacement window"
         )
-    if not clear_sequences or not (clear_sequences & overlapped_sequences):
+    if not clear_sequences or not (clear_sequences & absent_sequences):
         raise AnalysisError(
-            f"{cell}: no RCU target resolution during target retirement"
+            f"{cell}: no RCU ENOENT engaged a clear window"
         )
     return {
-        "rcu_under_replacement": sum(
+        "rcu_success_under_replacement": sum(
             branch["under_update"]
             and branch["result"] == 0
             and branch["writer_seq"] in replacement_sequences
             for branch in raw["branches"]
         ),
-        "rcu_under_retirement": sum(
+        "rcu_miss_under_clear": sum(
             branch["under_update"]
-            and branch["result"] == 0
+            and branch["result"] == -2
             and branch["writer_seq"] in clear_sequences
             for branch in raw["branches"]
         ),
     }
 
 
-def validate_rcu_proof(
+def validate_retirement_litmus(records, cell, definitions):
+    rows = [
+        record
+        for record in records
+        if record.get("event") == "target-lifetime-rcu-litmus"
+        and record.get("cell") == cell
+    ]
+    if len(rows) != 2:
+        raise AnalysisError(f"{cell}: expected replace and clear RCU litmus rows")
+    by_operation = {record.get("operation"): record for record in rows}
+    if set(by_operation) != {"replace", "clear"} or len(by_operation) != 2:
+        raise AnalysisError(f"{cell}: RCU litmus operation coverage is incomplete")
+
+    identities = set()
+    cookies = set()
+    result = {}
+    for operation, mode in (("replace", 1), ("clear", 2)):
+        row = by_operation[operation]
+        cookie = int(row.get("cookie", 0))
+        reader_tid = int(row.get("reader_tid", 0))
+        writer_tid = int(row.get("writer_tid", 0))
+        writer_cpu = int(row.get("writer_cpu", -1))
+        reader_cpu = int(row.get("reader_cpu", -1))
+        old_state = row.get("old_state")
+        fresh_state = row.get("fresh_state")
+        if old_state not in definitions:
+            raise AnalysisError(f"{cell}: RCU litmus old state is undefined")
+        old = definitions[old_state]
+        if (
+            row.get("pass") is not True
+            or row.get("source") != "tracing-bpf-fexit-kprobe"
+            or int(row.get("version", 0)) != 1
+            or not cookie
+            or int(row.get("mode", 0)) != mode
+            or int(row.get("state", -1)) != 4
+            or int(row.get("event_seq", 0)) != (5 if operation == "replace" else 7)
+            or reader_tid <= 0
+            or writer_tid <= 0
+            or reader_tid == writer_tid
+            or int(row.get("observed_reader_tid", 0)) != reader_tid
+            or int(row.get("observed_writer_tid", 0)) != writer_tid
+            or writer_cpu < 0
+            or reader_cpu < 0
+            or writer_cpu == reader_cpu
+            or int(row.get("observed_writer_cpu", -1)) != writer_cpu
+            or int(row.get("observed_reader_cpu", -1)) != reader_cpu
+            or int(row.get("expected_cgroup_id", 0)) <= 0
+            or int(row.get("observed_cgroup_id", 0))
+            != int(row.get("expected_cgroup_id", -1))
+            or int(row.get("expected_target_id", 0)) != 1
+            or int(row.get("observed_target_id", 0)) != 1
+            or int(row.get("observed_mount", 0)) <= 0
+            or int(row.get("observed_dentry", 0)) <= 0
+            or int(row.get("resolve_attempts", 0)) != 1
+            or int(row.get("resolve_matches", 0)) != 1
+            or int(row.get("update_entries", 0)) != 1
+            or int(row.get("grace_entries", 0)) != 1
+            or int(row.get("update_exits", 0)) != 1
+            or int(row.get("error_flags", -1)) != 0
+            or int(row.get("timeout_reason", -1)) != 0
+            or int(row.get("update_result", -1)) != 0
+            or int(row.get("reader_open_result", -1)) != 0
+            or int(row.get("reader_validation_result", -1)) != 0
+            or int(row.get("expected_old_device", 0)) != old["device"]
+            or int(row.get("observed_old_device", 0)) != old["device"]
+            or int(row.get("expected_old_inode", 0)) != old["inode"]
+            or int(row.get("observed_old_inode", 0)) != old["inode"]
+        ):
+            raise AnalysisError(f"{cell}: {operation} RCU litmus fields are invalid")
+
+        for field in (
+            "hold_cookie",
+            "update_cookie",
+            "grace_cookie",
+            "release_cookie",
+            "exit_cookie",
+        ):
+            if int(row.get(field, 0)) != cookie:
+                raise AnalysisError(
+                    f"{cell}: {operation} RCU litmus cookie mismatch at {field}"
+                )
+        common_order = [
+            int(row.get(field, 0))
+            for field in (
+                "hold_seq",
+                "update_entry_seq",
+                "grace_entry_seq",
+                "reader_release_seq",
+                "update_exit_seq",
+            )
+        ]
+        if any(value <= 0 for value in common_order) or any(
+            left >= right for left, right in zip(common_order, common_order[1:])
+        ):
+            raise AnalysisError(
+                f"{cell}: {operation} RCU litmus event order is invalid"
+            )
+        for field in (
+            "hold_ns",
+            "update_entry_ns",
+            "grace_entry_ns",
+            "reader_release_ns",
+            "update_exit_ns",
+        ):
+            if int(row.get(field, 0)) <= 0:
+                raise AnalysisError(
+                    f"{cell}: {operation} RCU litmus lacks {field}"
+                )
+
+        if operation == "replace":
+            if fresh_state not in definitions:
+                raise AnalysisError(f"{cell}: replacement state is undefined")
+            fresh = definitions[fresh_state]
+            if (
+                int(row.get("clear_entries", -1)) != 0
+                or int(row.get("clear_exits", -1)) != 0
+                or int(row.get("clear_entry_seq", -1)) != 0
+                or int(row.get("clear_exit_seq", -1)) != 0
+                or int(row.get("fresh_result", -1)) != 0
+                or int(row.get("expected_fresh_device", 0)) != fresh["device"]
+                or int(row.get("observed_fresh_device", 0)) != fresh["device"]
+                or int(row.get("expected_fresh_inode", 0)) != fresh["inode"]
+                or int(row.get("observed_fresh_inode", 0)) != fresh["inode"]
+                or (
+                    fresh["device"] == old["device"]
+                    and fresh["inode"] == old["inode"]
+                )
+                or common_order != [1, 2, 3, 4, 5]
+            ):
+                raise AnalysisError(f"{cell}: replacement postcondition failed")
+        else:
+            clear_order = [
+                int(row.get(field, 0))
+                for field in (
+                    "update_entry_seq",
+                    "clear_entry_seq",
+                    "grace_entry_seq",
+                    "reader_release_seq",
+                    "clear_exit_seq",
+                    "update_exit_seq",
+                )
+            ]
+            if (
+                fresh_state != "absent"
+                or int(row.get("clear_entries", 0)) != 1
+                or int(row.get("clear_exits", 0)) != 1
+                or any(value <= 0 for value in clear_order)
+                or any(
+                    left >= right
+                    for left, right in zip(clear_order, clear_order[1:])
+                )
+                or int(row.get("clear_entry_ns", 0)) <= 0
+                or int(row.get("clear_exit_ns", 0)) <= 0
+                or int(row.get("fresh_result", 0)) != -2
+                or int(row.get("expected_fresh_device", -1)) != 0
+                or int(row.get("observed_fresh_device", -1)) != 0
+                or int(row.get("expected_fresh_inode", -1)) != 0
+                or int(row.get("observed_fresh_inode", -1)) != 0
+                or clear_order != [2, 3, 4, 5, 6, 7]
+            ):
+                raise AnalysisError(f"{cell}: clear postcondition failed")
+
+        identity = (
+            int(row["observed_mount"]),
+            int(row["observed_dentry"]),
+            int(row["observed_old_device"]),
+            int(row["observed_old_inode"]),
+        )
+        identities.add(identity)
+        cookies.add(cookie)
+        result[operation] = {
+            "cookie": cookie,
+            "reader_tid": reader_tid,
+            "writer_tid": writer_tid,
+            "writer_cpu": writer_cpu,
+            "reader_cpu": reader_cpu,
+            "borrowed_mount": identity[0],
+            "borrowed_dentry": identity[1],
+            "old_state": old_state,
+            "fresh_state": fresh_state,
+            "event_order": common_order,
+        }
+    if len(cookies) != 2:
+        raise AnalysisError(f"{cell}: RCU litmus cookies were reused")
+    if len(identities) != 1:
+        raise AnalysisError(
+            f"{cell}: replace and clear did not borrow the same old target"
+        )
+    return result
+
+
+def validate_target_retirement(
     records, cell, definitions, operations=None, history_dir=None
 ):
-    proofs = [
-        record
-        for record in records
-        if record.get("event") == "target-lifetime-rcu-proof"
-        and record.get("cell") == cell
-    ]
-    if len(proofs) != 1:
-        raise AnalysisError(f"{cell}: expected one RCU target proof")
-    branches = [
-        record
-        for record in records
-        if record.get("event") == "target-lifetime-rcu-branch"
-        and record.get("cell") == cell
-        and record.get("phase") == "controlled"
-    ]
-    if not branches or not any(
-        record.get("rcu_walk") is True and int(record.get("result", 1)) == 0
-        for record in branches
-    ):
-        raise AnalysisError(f"{cell}: no observed RCU-walk target resolution")
-    if any(
-        record.get("source")
-        != "kretprobe:namei_ext_resolve_target:arg2+retval"
-        or not isinstance(record.get("rcu_walk"), bool)
-        or not isinstance(record.get("result"), int)
-        or record.get("under_update") is not False
-        or int(record.get("writer_seq", -1)) != 0
-        for record in branches
-    ):
-        raise AnalysisError(f"{cell}: malformed RCU branch evidence")
-    proof = proofs[0]
-    state = proof.get("state")
-    if state not in definitions:
-        raise AnalysisError(f"{cell}: RCU proof names undefined state {state!r}")
-    definition = definitions[state]
-    if history_dir is None:
-        raise AnalysisError(f"{cell}: controlled RCU evidence lacks raw trace")
-    expected_controlled_trace = f"{cell}-controlled-rcu-trace.txt"
-    if proof.get("raw_trace") != expected_controlled_trace:
-        raise AnalysisError(f"{cell}: unexpected controlled raw trace path")
-    controlled_raw = parse_controlled_rcu_trace(
-        Path(history_dir) / expected_controlled_trace
-    )
-    observed_controlled = [
-        {"rcu_walk": record["rcu_walk"], "result": int(record["result"])}
-        for record in branches
-    ]
-    if observed_controlled != controlled_raw["returns"]:
-        raise AnalysisError(
-            f"{cell}: controlled returns do not match raw trace"
-        )
-    rcu_hits = sum(
-        returned["rcu_walk"] and returned["result"] == 0
-        for returned in controlled_raw["returns"]
-    )
-    ref_hits = sum(
-        not returned["rcu_walk"] and returned["result"] == 0
-        for returned in controlled_raw["returns"]
-    )
-    resolve_failures = sum(
-        returned["result"] != 0 for returned in controlled_raw["returns"]
-    )
-    if (
-        proof.get("pass") is not True
-        or int(proof.get("resolve_cached_result", -1)) != 0
-        or int(proof.get("rcu_walk_hits", -1)) != rcu_hits
-        or int(proof.get("ref_walk_hits", -1)) != ref_hits
-        or int(proof.get("resolve_failures", -1)) != resolve_failures
-        or resolve_failures
-        or int(proof.get("expected_device", 0)) != definition["device"]
-        or int(proof.get("observed_device", 0)) != definition["device"]
-        or int(proof.get("expected_inode", 0)) != definition["inode"]
-        or int(proof.get("observed_inode", 0)) != definition["inode"]
-    ):
-        raise AnalysisError(f"{cell}: RCU proof does not match raw branch events")
+    litmus = validate_retirement_litmus(records, cell, definitions)
     summaries = [
         record
         for record in records
@@ -734,6 +809,8 @@ def validate_rcu_proof(
         raise AnalysisError(f"{cell}: expected one concurrent RCU summary")
     if operations is None:
         raise AnalysisError(f"{cell}: concurrent RCU evidence lacks history context")
+    if history_dir is None:
+        raise AnalysisError(f"{cell}: concurrent RCU evidence lacks raw trace")
     summary = summaries[0]
     expected_trace = f"{cell}-concurrent-rcu-trace.txt"
     if summary.get("raw_trace") != expected_trace:
@@ -814,7 +891,7 @@ def validate_rcu_proof(
         if branch["under_update"]
     ):
         raise AnalysisError(f"{cell}: RCU branch names an unmarked update")
-    overlap_classes = validate_rcu_update_classes(raw, updates, cell)
+    overlap_classes = validate_rcu_stress_classes(raw, updates, cell)
 
     expected_summary = {
         "trace_entries": raw["entries_buffered"],
@@ -841,10 +918,7 @@ def validate_rcu_proof(
         **overlap_classes,
     }
     return {
-        "controlled": {
-            "rcu_walk_hits": rcu_hits,
-            "ref_walk_hits": ref_hits,
-        },
+        "litmus": litmus,
         "concurrent": concurrent_result,
     }
 
@@ -1159,6 +1233,10 @@ def validate_kernel_config(path, kernel_kind):
         "CONFIG_DEBUG_FS": "y",
         "CONFIG_TRACING": "y",
         "CONFIG_KPROBE_EVENTS": "y",
+        "CONFIG_KPROBES": "y",
+        "CONFIG_BPF_EVENTS": "y",
+        "CONFIG_BPF_JIT": "y",
+        "CONFIG_DEBUG_INFO_BTF": "y",
     }
     if kernel_kind == "normal":
         expected = {
@@ -1351,8 +1429,8 @@ def analyze_boot(args):
             if cell in {"final-file", "directory"}
             else None
         )
-        rcu_proof = (
-            validate_rcu_proof(
+        target_retirement = (
+            validate_target_retirement(
                 records,
                 cell,
                 definitions,
@@ -1376,7 +1454,7 @@ def analyze_boot(args):
             "overlap_opens": linear["overlap_opens"],
             "overlap_reader_ids": linear["overlap_reader_ids"],
             "observed_target_states": linear["observed_target_states"],
-            "rcu_proof": rcu_proof,
+            "target_retirement": target_retirement,
             "descriptor_checks": descriptors,
             "target_definitions": target_definitions,
             "lower_object_checks": lower_objects,
@@ -1387,6 +1465,13 @@ def analyze_boot(args):
     lifecycle_cycles = validate_lifecycle(
         records, run_config["lifecycle_cycles"]
     )
+    litmus_cookies = [
+        proof["cookie"]
+        for cell in ("final-file", "directory")
+        for proof in cells[cell]["target_retirement"]["litmus"].values()
+    ]
+    if len(litmus_cookies) != 4 or len(set(litmus_cookies)) != 4:
+        raise AnalysisError("RCU litmus cookies are not unique across the boot")
     config = validate_kernel_config(args.kernel_config, args.kernel_kind)
     dmesg = classify_dmesg(args.dmesg)
     if dmesg["status"] != "clean":
@@ -1410,12 +1495,13 @@ def analyze_boot(args):
         raise AnalysisError("formal boot lacks current 37-row namei control")
 
     result = {
-        "schema": "namei_ext.target_lifetime.boot.v1",
+        "schema": "namei_ext.target_lifetime.boot.v2",
         "kernel_kind": args.kernel_kind,
         "status": "positive",
         "run_config": run_config,
         "cells": cells,
         "lifecycle_cycles": lifecycle_cycles,
+        "rcu_litmus_cells": 4,
         "kernel_config_checked": sorted(config),
         "kcsan_deltas": kcsan,
         "dmesg": dmesg,
@@ -1468,7 +1554,7 @@ def analyze_formal(args):
                 raise AnalysisError(f"{path}: formal control coverage is incomplete")
             summaries.append(summary)
     result = {
-        "schema": "namei_ext.target_lifetime.formal.v1",
+        "schema": "namei_ext.target_lifetime.formal.v2",
         "status": "positive",
         "repetitions_per_kernel": args.repetitions,
         "boots": len(summaries),
@@ -1477,6 +1563,7 @@ def analyze_formal(args):
             for kind in ("normal", "kasan", "kcsan")
         },
         "history_violations": 0,
+        "rcu_litmus_cells": 4 * len(summaries),
         "descriptor_violations": 0,
         "kernel_diagnostics": 0,
         "current_namei_control_rows_per_boot": 37,

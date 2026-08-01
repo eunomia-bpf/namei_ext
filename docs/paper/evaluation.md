@@ -1,7 +1,7 @@
 # Paper Evaluation Notes
 
 Status: routing note for the paper draft.
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 The old process-heavy evaluation plan was archived to
 `docs/tmp/2026-07-25-archived-process-docs/evaluation.md` on 2026-07-25 and
@@ -25,6 +25,7 @@ skill, not by this repository.
 | Formal Agent workspace RQ3 review | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 | Formal corrected FxMark readdir review | `docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md` |
 | Formal Kubernetes ConfigMap publication RQ1 result and review | `docs/tmp/2026-07-29-kubernetes-configmap-publication-rq1-result.md` |
+| RQ3 target-lifetime failed preflight and deterministic repair | `docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md` |
 
 Current boundary:
 
@@ -40,6 +41,9 @@ Current boundary:
   boundary versus custom or stackable filesystems.
 - Bind/Overlay/projected/copy/symlink materialization mechanisms belong in
   related work and background comparisons, not as the central RQ3 opponent.
+- Do not add a target-lifetime result to the paper until the repaired
+  normal/KASAN/KCSAN preflight, nine-boot formal matrix, and independent raw
+  result review pass. The failed preflight01 root is diagnostic evidence only.
 
 Historical detailed text remains recoverable through Git history and dated
 records under `docs/tmp/`.

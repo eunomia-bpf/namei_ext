@@ -3,6 +3,7 @@
 #define _GNU_SOURCE
 
 #include "namei_ext_harness.h"
+#include "retirement_litmus.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -28,9 +29,12 @@
 #include <unistd.h>
 
 #define TARGET_POOL_SIZE 16
-#define EVENT_BUFFER_SIZE 2048
+#define EVENT_BUFFER_SIZE 4096
 #define TRACE_BUFFER_SIZE (16 * 1024 * 1024)
 #define TARGET_ID 1
+#define LITMUS_LINK_COUNT 6
+#define LITMUS_HOLD_TIMEOUT_NS (2ULL * 1000000000ULL)
+#define LITMUS_USER_TIMEOUT_NS (3ULL * 1000000000ULL)
 
 struct shared_run_state {
 	atomic_uint_fast64_t event_seq;
@@ -126,7 +130,36 @@ struct writer_arg {
 	uint64_t writer_seq;
 };
 
-typedef int (*cell_fn)(struct run_log *log, const char *cell_name,
+struct retirement_litmus_session {
+	struct bpf_object *object;
+	struct retirement_litmus_state *state;
+	struct bpf_link *links[LITMUS_LINK_COUNT];
+	size_t link_count;
+};
+
+struct retirement_reader_arg {
+	const char *logical_path;
+	const struct target_object *old_target;
+	int cpu;
+	bool directory;
+	atomic_bool ready;
+	atomic_bool go;
+	atomic_bool abort;
+	atomic_int tid;
+	int open_result;
+	int validation_result;
+	struct stat observed;
+};
+
+struct retirement_affinity {
+	cpu_set_t original;
+	int writer_cpu;
+	int reader_cpu;
+	bool writer_pinned;
+};
+
+typedef int (*cell_fn)(struct run_log *log, const char *litmus_path,
+		       const char *cell_name,
 		       const char *cgroup_path, const char *managed_dir,
 		       const char *physical_dir, const char *logical_path,
 		       const char *logical_child, struct target_object *targets,
@@ -693,188 +726,576 @@ static int preserve_raw_trace(const struct run_log *log, const char *cell,
 	return ret;
 }
 
-static int verify_rcu_target_path(struct run_log *log, const char *cell,
-				  int control_fd, const char *logical_path,
-				  const struct target_object *target,
-				  bool directory)
+static uint64_t monotonic_ns(void)
 {
-	static const char probe_definition[] =
-		"r:namei_ext_lifetime/resolve_target_return "
-		"namei_ext_resolve_target rcu_walk=$arg2:u8 result=$retval:s32\n";
-	static const char probe_removal[] =
-		"-:namei_ext_lifetime/resolve_target_return\n";
-	const char *trace_root = "/sys/kernel/debug/tracing";
-	char event_dir[PATH_MAX];
-	char enable_path[PATH_MAX];
-	char filter_path[PATH_MAX];
-	char kprobe_events[PATH_MAX];
-	char trace_path[PATH_MAX];
-	char tracing_on[PATH_MAX];
-	char filter[64];
-	char *trace = NULL;
-	char *line;
-	char *saveptr = NULL;
+	struct timespec now;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &now))
+		return 0;
+	return (uint64_t)now.tv_sec * 1000000000ULL + now.tv_nsec;
+}
+
+static int load_retirement_litmus(const char *path,
+				   struct retirement_litmus_session *session)
+{
+	struct bpf_program *program;
+	struct bpf_map *bss;
+	size_t state_size = 0;
+	int ret;
+
+	memset(session, 0, sizeof(*session));
+	session->object = bpf_object__open_file(path, NULL);
+	ret = libbpf_get_error(session->object);
+	if (ret) {
+		session->object = NULL;
+		return ret;
+	}
+	bss = bpf_object__find_map_by_name(session->object, ".bss");
+	if (!bss) {
+		ret = -ENOENT;
+		goto out_close;
+	}
+	session->state = bpf_map__initial_value(bss, &state_size);
+	if (!session->state || state_size < sizeof(*session->state)) {
+		ret = -EINVAL;
+		goto out_close;
+	}
+	memset(session->state, 0, sizeof(*session->state));
+	ret = bpf_object__load(session->object);
+	if (ret)
+		goto out_close;
+	bpf_object__for_each_program(program, session->object) {
+		struct bpf_link *link;
+
+		if (session->link_count >= LITMUS_LINK_COUNT) {
+			ret = -E2BIG;
+			goto out_links;
+		}
+		link = bpf_program__attach(program);
+		ret = libbpf_get_error(link);
+		if (ret)
+			goto out_links;
+		session->links[session->link_count++] = link;
+	}
+	if (session->link_count != LITMUS_LINK_COUNT) {
+		ret = -ENODATA;
+		goto out_links;
+	}
+	return 0;
+
+out_links:
+	while (session->link_count)
+		bpf_link__destroy(session->links[--session->link_count]);
+out_close:
+	bpf_object__close(session->object);
+	session->object = NULL;
+	session->state = NULL;
+	return ret;
+}
+
+static int close_retirement_litmus(struct retirement_litmus_session *session)
+{
+	int ret = 0;
+
+	while (session->link_count) {
+		int link_ret =
+			bpf_link__destroy(session->links[--session->link_count]);
+
+		if (link_ret && !ret)
+			ret = link_ret;
+	}
+	bpf_object__close(session->object);
+	session->object = NULL;
+	session->state = NULL;
+	return ret;
+}
+
+static int pin_retirement_cpus(struct retirement_affinity *affinity)
+{
+	cpu_set_t writer_set;
+	int cpu;
+
+	memset(affinity, 0, sizeof(*affinity));
+	affinity->writer_cpu = -1;
+	affinity->reader_cpu = -1;
+	if (sched_getaffinity(0, sizeof(affinity->original), &affinity->original))
+		return -errno;
+	for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+		if (!CPU_ISSET(cpu, &affinity->original))
+			continue;
+		if (affinity->writer_cpu < 0)
+			affinity->writer_cpu = cpu;
+		else {
+			affinity->reader_cpu = cpu;
+			break;
+		}
+	}
+	if (affinity->writer_cpu < 0 || affinity->reader_cpu < 0)
+		return -ENOSPC;
+	CPU_ZERO(&writer_set);
+	CPU_SET(affinity->writer_cpu, &writer_set);
+	if (sched_setaffinity(0, sizeof(writer_set), &writer_set))
+		return -errno;
+	affinity->writer_pinned = true;
+	return 0;
+}
+
+static int restore_retirement_affinity(struct retirement_affinity *affinity)
+{
+	if (!affinity->writer_pinned)
+		return 0;
+	affinity->writer_pinned = false;
+	return sched_setaffinity(0, sizeof(affinity->original),
+				 &affinity->original) ? -errno : 0;
+}
+
+static int validate_target_fd(int fd, const struct target_object *target,
+			      bool directory, struct stat *observed)
+{
+	int ret;
+
+	if (fstat(fd, observed))
+		return -errno;
+	if (observed->st_dev != target->dev || observed->st_ino != target->ino)
+		return -ESTALE;
+	ret = directory ? directory_fd_matches(fd, target) :
+			  read_fd_matches(fd, target->payload);
+	return ret;
+}
+
+static int open_expected_target(const char *path,
+				const struct target_object *target,
+				bool directory, bool resolve_cached,
+				struct stat *observed)
+{
 	struct open_how how = {
 		.flags = directory ? O_RDONLY | O_DIRECTORY | O_CLOEXEC :
 					O_RDONLY | O_CLOEXEC,
-		.resolve = RESOLVE_CACHED,
+		.resolve = resolve_cached ? RESOLVE_CACHED : 0,
 	};
-	struct stat st = {};
-	unsigned int rcu_hits = 0;
-	unsigned int ref_hits = 0;
-	unsigned int resolve_failures = 0;
-	bool event_created = false;
-	bool event_enabled = false;
-	bool tracing_enabled = false;
-	int clear_ret;
-	int fd = -1;
-	int ret = 0;
-	int trace_ret = 0;
+	int fd;
+	int ret;
 
-	if (access("/sys/kernel/tracing/kprobe_events", F_OK) == 0)
-		trace_root = "/sys/kernel/tracing";
-	if (namei_ext_path_join(kprobe_events, sizeof(kprobe_events), trace_root,
-				"kprobe_events") ||
-	    namei_ext_path_join(trace_path, sizeof(trace_path), trace_root,
-				"trace") ||
-	    namei_ext_path_join(tracing_on, sizeof(tracing_on), trace_root,
-				"tracing_on") ||
-	    namei_ext_path_join(event_dir, sizeof(event_dir), trace_root,
-				"events/namei_ext_lifetime/resolve_target_return") ||
-	    namei_ext_path_join(enable_path, sizeof(enable_path), event_dir,
-				"enable") ||
-	    namei_ext_path_join(filter_path, sizeof(filter_path), event_dir,
-				"filter"))
-		return -ENAMETOOLONG;
-	if (!access(event_dir, F_OK))
-		return -EEXIST;
-
-	ret = direct_register_write(control_fd, target);
-	if (ret)
-		goto out_clear_target;
-	fd = open(logical_path,
-		  directory ? O_RDONLY | O_DIRECTORY | O_CLOEXEC :
-			      O_RDONLY | O_CLOEXEC);
-	if (fd < 0) {
-		ret = -errno;
-		goto out_clear_target;
-	}
-	ret = directory ? directory_fd_matches(fd, target) :
-			  read_fd_matches(fd, target->payload);
+	if (resolve_cached)
+		fd = (int)syscall(SYS_openat2, AT_FDCWD, path, &how, sizeof(how));
+	else
+		fd = open(path, (int)how.flags);
+	if (fd < 0)
+		return -errno;
+	ret = validate_target_fd(fd, target, directory, observed);
 	if (close(fd) && !ret)
 		ret = -errno;
-	fd = -1;
-	if (ret)
-		goto out_clear_target;
+	return ret;
+}
 
-	ret = write_control_file(kprobe_events, probe_definition);
-	if (ret)
-		goto out_clear_target;
-	event_created = true;
-	if (snprintf(filter, sizeof(filter), "common_pid == %ld\n",
-		     (long)getpid()) < 0) {
-		ret = -EINVAL;
-		goto out_trace;
+static void *retirement_reader(void *opaque)
+{
+	struct retirement_reader_arg *arg = opaque;
+	cpu_set_t set;
+	struct open_how how = {
+		.flags = arg->directory ? O_RDONLY | O_DIRECTORY | O_CLOEXEC :
+					 O_RDONLY | O_CLOEXEC,
+		.resolve = RESOLVE_CACHED,
+	};
+	int affinity_ret;
+	int fd;
+
+	CPU_ZERO(&set);
+	CPU_SET(arg->cpu, &set);
+	affinity_ret = pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
+	if (affinity_ret) {
+		arg->validation_result = -affinity_ret;
+		atomic_store_explicit(&arg->abort, true, memory_order_release);
 	}
-	if ((ret = write_control_file(filter_path, filter)) ||
-	    (ret = write_control_file(trace_path, "\n")) ||
-	    (ret = write_control_file(enable_path, "1\n")))
-		goto out_trace;
-	event_enabled = true;
-	ret = write_control_file(tracing_on, "1\n");
-	if (ret)
-		goto out_trace;
-	tracing_enabled = true;
+	atomic_store_explicit(&arg->tid, (int)syscall(SYS_gettid),
+			      memory_order_release);
+	atomic_store_explicit(&arg->ready, true, memory_order_release);
+	while (!atomic_load_explicit(&arg->go, memory_order_acquire))
+		sched_yield();
+	if (atomic_load_explicit(&arg->abort, memory_order_acquire))
+		return NULL;
 
-	fd = (int)syscall(SYS_openat2, AT_FDCWD, logical_path, &how,
+	fd = (int)syscall(SYS_openat2, AT_FDCWD, arg->logical_path, &how,
 			  sizeof(how));
 	if (fd < 0) {
-		ret = -errno;
-	} else if (fstat(fd, &st)) {
-		ret = -errno;
-	} else if (st.st_dev != target->dev || st.st_ino != target->ino) {
-		ret = -ESTALE;
-	} else if (directory) {
-		ret = directory_fd_matches(fd, target);
-	} else {
-			ret = read_fd_matches(fd, target->payload);
+		arg->open_result = -errno;
+		arg->validation_result = arg->open_result;
+		return NULL;
 	}
-	if (fd >= 0 && close(fd) && !ret)
-		ret = -errno;
-	fd = -1;
+	arg->open_result = 0;
+	arg->validation_result = validate_target_fd(
+		fd, arg->old_target, arg->directory, &arg->observed);
+	if (close(fd) && !arg->validation_result)
+		arg->validation_result = -errno;
+	return NULL;
+}
 
-out_trace:
-	if (tracing_enabled && write_control_file(tracing_on, "0\n") && !trace_ret)
-		trace_ret = -EIO;
-	if (event_enabled && write_control_file(enable_path, "0\n") && !trace_ret)
-		trace_ret = -EIO;
-	if (event_created && read_trace_file(trace_path, &trace) && !trace_ret)
-		trace_ret = -EIO;
-	if (event_created && write_control_file(kprobe_events, probe_removal) &&
-	    !trace_ret)
-		trace_ret = -EIO;
-	if (trace && preserve_raw_trace(log, cell, "controlled", trace) &&
-	    !trace_ret)
-		trace_ret = -EIO;
-	if (trace) {
-		for (line = strtok_r(trace, "\n", &saveptr); line;
-		     line = strtok_r(NULL, "\n", &saveptr)) {
-			char *fields;
-			unsigned int rcu_walk;
-			int result;
+static int wait_for_reader_ready(struct retirement_reader_arg *arg,
+				 uint64_t deadline)
+{
+	while (monotonic_ns() < deadline) {
+		if (atomic_load_explicit(&arg->ready, memory_order_acquire))
+			return atomic_load_explicit(&arg->abort,
+						    memory_order_acquire) ?
+			       arg->validation_result : 0;
+		sched_yield();
+	}
+	return -ETIMEDOUT;
+}
 
-			if (!strstr(line, "resolve_target_return:"))
-				continue;
-			fields = strstr(line, "rcu_walk=");
-			if (!fields || sscanf(fields, "rcu_walk=%u result=%d",
-					      &rcu_walk, &result) != 2 ||
-			    rcu_walk > 1) {
-				trace_ret = trace_ret ? trace_ret : -EINVAL;
-				continue;
+static int wait_for_borrowed_target(struct retirement_litmus_state *state,
+				    uint64_t deadline)
+{
+	while (monotonic_ns() < deadline) {
+		uint64_t observed = __atomic_load_n(&state->state, __ATOMIC_ACQUIRE);
+
+		if (observed == NAMEI_EXT_LITMUS_HELD)
+			return 0;
+		if (observed == NAMEI_EXT_LITMUS_TIMEOUT)
+			return -ETIMEDOUT;
+		sched_yield();
+	}
+	return -ETIMEDOUT;
+}
+
+static bool retirement_snapshot_passes(
+	const struct retirement_litmus_state *state, uint64_t cookie,
+	uint64_t mode, uint64_t cgroup_id, int reader_tid, int writer_tid,
+	int update_result, const struct retirement_reader_arg *reader,
+	int fresh_result, const struct stat *fresh,
+	const struct target_object *old_target,
+	const struct target_object *new_target, int writer_cpu, int reader_cpu)
+{
+	bool common;
+
+	common = state->version == NAMEI_EXT_LITMUS_VERSION &&
+		 state->cookie == cookie &&
+		 state->state == NAMEI_EXT_LITMUS_DONE && state->mode == mode &&
+		 state->reader_tid == (uint32_t)reader_tid &&
+		 state->writer_tid == (uint32_t)writer_tid &&
+		 state->observed_reader_tid == (uint32_t)reader_tid &&
+		 state->observed_writer_tid == (uint32_t)writer_tid &&
+		 state->observed_reader_cpu == (uint32_t)reader_cpu &&
+		 state->observed_writer_cpu == (uint32_t)writer_cpu &&
+		 reader_tid != writer_tid &&
+		 state->expected_cgroup_id == cgroup_id &&
+		 state->observed_cgroup_id == cgroup_id &&
+		 state->expected_target_id == TARGET_ID &&
+		 state->observed_target_id == TARGET_ID &&
+		 state->observed_mount && state->observed_dentry &&
+		 state->resolve_attempts == 1 && state->resolve_matches == 1 &&
+		 state->update_entries == 1 && state->grace_entries == 1 &&
+		 state->update_exits == 1 && !state->error_flags &&
+		 !state->timeout_reason && state->hold_cookie == cookie &&
+		 state->update_cookie == cookie && state->grace_cookie == cookie &&
+		 state->release_cookie == cookie && state->exit_cookie == cookie &&
+		 state->hold_seq < state->update_entry_seq &&
+		 state->update_entry_seq < state->grace_entry_seq &&
+		 state->grace_entry_seq < state->reader_release_seq &&
+		 state->reader_release_seq < state->update_exit_seq &&
+		 state->hold_ns && state->update_entry_ns &&
+		 state->grace_entry_ns && state->reader_release_ns &&
+		 state->update_exit_ns && update_result == 0 &&
+		 reader->open_result == 0 && reader->validation_result == 0 &&
+		 reader->observed.st_dev == old_target->dev &&
+		 reader->observed.st_ino == old_target->ino &&
+		 writer_cpu != reader_cpu;
+	if (!common)
+		return false;
+	if (mode == NAMEI_EXT_LITMUS_REPLACE)
+		return !state->clear_entries && !state->clear_exits &&
+		       !state->clear_entry_seq && !state->clear_exit_seq &&
+		       fresh_result == 0 && new_target &&
+		       (new_target->dev != old_target->dev ||
+			new_target->ino != old_target->ino) &&
+		       fresh->st_dev == new_target->dev &&
+		       fresh->st_ino == new_target->ino;
+	return mode == NAMEI_EXT_LITMUS_CLEAR && state->clear_entries == 1 &&
+	       state->clear_exits == 1 &&
+	       state->update_entry_seq < state->clear_entry_seq &&
+	       state->clear_entry_seq < state->grace_entry_seq &&
+	       state->reader_release_seq < state->clear_exit_seq &&
+	       state->clear_exit_seq < state->update_exit_seq &&
+	       fresh_result == -ENOENT;
+}
+
+static int emit_retirement_litmus(
+	struct run_log *log, const char *cell, const char *operation,
+	const struct retirement_litmus_state *state, uint64_t cookie,
+	int reader_tid, int writer_tid, int writer_cpu, int reader_cpu,
+	int update_result, const struct retirement_reader_arg *reader,
+	int fresh_result, const struct stat *fresh,
+	const struct target_object *old_target,
+	const struct target_object *new_target, bool pass)
+{
+	return emit_line(
+		log,
+		"{\"event\":\"target-lifetime-rcu-litmus\","
+		"\"cell\":\"%s\",\"operation\":\"%s\","
+		"\"source\":\"tracing-bpf-fexit-kprobe\","
+		"\"version\":%u,\"cookie\":%" PRIu64 ","
+		"\"mode\":%" PRIu64 ",\"state\":%" PRIu64 ","
+		"\"event_seq\":%" PRIu64 ","
+		"\"reader_tid\":%d,\"observed_reader_tid\":%u,"
+		"\"writer_tid\":%d,\"observed_writer_tid\":%u,"
+		"\"writer_cpu\":%d,\"observed_writer_cpu\":%u,"
+		"\"reader_cpu\":%d,\"observed_reader_cpu\":%u,"
+		"\"expected_cgroup_id\":%" PRIu64 ","
+		"\"observed_cgroup_id\":%" PRIu64 ","
+		"\"expected_target_id\":%u,\"observed_target_id\":%u,"
+		"\"observed_mount\":%" PRIu64 ","
+		"\"observed_dentry\":%" PRIu64 ","
+		"\"hold_seq\":%" PRIu64 ",\"update_entry_seq\":%" PRIu64 ","
+		"\"clear_entry_seq\":%" PRIu64 ",\"grace_entry_seq\":%" PRIu64 ","
+		"\"reader_release_seq\":%" PRIu64 ","
+		"\"clear_exit_seq\":%" PRIu64 ",\"update_exit_seq\":%" PRIu64 ","
+		"\"hold_ns\":%" PRIu64 ",\"update_entry_ns\":%" PRIu64 ","
+		"\"clear_entry_ns\":%" PRIu64 ",\"grace_entry_ns\":%" PRIu64 ","
+		"\"reader_release_ns\":%" PRIu64 ","
+		"\"clear_exit_ns\":%" PRIu64 ",\"update_exit_ns\":%" PRIu64 ","
+		"\"hold_cookie\":%" PRIu64 ",\"update_cookie\":%" PRIu64 ","
+		"\"grace_cookie\":%" PRIu64 ",\"release_cookie\":%" PRIu64 ","
+		"\"exit_cookie\":%" PRIu64 ","
+		"\"resolve_attempts\":%" PRIu64 ","
+		"\"resolve_matches\":%" PRIu64 ","
+		"\"update_entries\":%" PRIu64 ",\"clear_entries\":%" PRIu64 ","
+		"\"grace_entries\":%" PRIu64 ",\"clear_exits\":%" PRIu64 ","
+		"\"update_exits\":%" PRIu64 ",\"error_flags\":%" PRIu64 ","
+		"\"timeout_reason\":%u,\"update_result\":%d,"
+		"\"reader_open_result\":%d,\"reader_validation_result\":%d,"
+		"\"old_state\":\"%s\",\"fresh_state\":\"%s\","
+		"\"expected_old_device\":%" PRIu64 ","
+		"\"observed_old_device\":%" PRIu64 ","
+		"\"expected_old_inode\":%" PRIu64 ","
+		"\"observed_old_inode\":%" PRIu64 ","
+		"\"fresh_result\":%d,\"expected_fresh_device\":%" PRIu64 ","
+		"\"observed_fresh_device\":%" PRIu64 ","
+		"\"expected_fresh_inode\":%" PRIu64 ","
+		"\"observed_fresh_inode\":%" PRIu64 ",\"pass\":%s}\n",
+		cell, operation, state->version, cookie, state->mode, state->state,
+		state->event_seq,
+		reader_tid, state->observed_reader_tid, writer_tid,
+		state->observed_writer_tid,
+		writer_cpu, state->observed_writer_cpu, reader_cpu,
+		state->observed_reader_cpu, state->expected_cgroup_id,
+		state->observed_cgroup_id, state->expected_target_id,
+		state->observed_target_id, state->observed_mount,
+		state->observed_dentry, state->hold_seq, state->update_entry_seq,
+		state->clear_entry_seq, state->grace_entry_seq,
+		state->reader_release_seq, state->clear_exit_seq,
+		state->update_exit_seq, state->hold_ns, state->update_entry_ns,
+		state->clear_entry_ns, state->grace_entry_ns,
+		state->reader_release_ns, state->clear_exit_ns,
+		state->update_exit_ns, state->hold_cookie, state->update_cookie,
+		state->grace_cookie, state->release_cookie, state->exit_cookie,
+		state->resolve_attempts, state->resolve_matches,
+		state->update_entries, state->clear_entries, state->grace_entries,
+		state->clear_exits, state->update_exits, state->error_flags,
+		state->timeout_reason, update_result, reader->open_result,
+		reader->validation_result, old_target->state,
+		new_target ? new_target->state : "absent",
+		(uint64_t)old_target->dev,
+		(uint64_t)reader->observed.st_dev, (uint64_t)old_target->ino,
+		(uint64_t)reader->observed.st_ino, fresh_result,
+		new_target ? (uint64_t)new_target->dev : 0,
+		(uint64_t)fresh->st_dev,
+		new_target ? (uint64_t)new_target->ino : 0,
+		(uint64_t)fresh->st_ino, pass ? "true" : "false");
+}
+
+static int run_retirement_litmus_case(
+	struct run_log *log, const char *cell, const char *cgroup_path,
+	const char *logical_path, int control_fd,
+	struct retirement_litmus_session *session,
+	const struct retirement_affinity *affinity,
+	const struct target_object *old_target,
+	const struct target_object *new_target, bool directory, uint64_t mode)
+{
+	struct retirement_reader_arg reader = {
+		.logical_path = logical_path,
+		.old_target = old_target,
+		.cpu = affinity->reader_cpu,
+		.directory = directory,
+	};
+	struct retirement_litmus_state snapshot = {};
+	struct stat warm = {};
+	struct stat fresh = {};
+	char command[64];
+	uint64_t cgroup_id = 0;
+	uint64_t cookie = 0;
+	uint64_t deadline;
+	pthread_t thread;
+	bool thread_created = false;
+	bool pass = false;
+	int command_fd = -1;
+	int command_length = 0;
+	int writer_tid = (int)syscall(SYS_gettid);
+	int reader_tid = 0;
+	int update_result = -ECANCELED;
+	int fresh_result = -ECANCELED;
+	int cleanup_result;
+	int ret = 0;
+
+	if (mode != NAMEI_EXT_LITMUS_REPLACE && mode != NAMEI_EXT_LITMUS_CLEAR)
+		return -EINVAL;
+	if ((ret = direct_clear_write(control_fd)) ||
+	    (ret = direct_register_write(control_fd, old_target)) ||
+	    (ret = open_expected_target(logical_path, old_target, directory,
+					false, &warm)) ||
+	    (ret = namei_ext_cgroup_id(cgroup_path, &cgroup_id)))
+		goto out;
+	if (mode == NAMEI_EXT_LITMUS_REPLACE) {
+		command_fd = open(new_target->path, O_PATH | O_CLOEXEC);
+		if (command_fd < 0) {
+			ret = -errno;
+			goto out;
+		}
+		command_length = snprintf(command, sizeof(command), "%u %d\n",
+					  TARGET_ID, command_fd);
+	} else {
+		command_length = snprintf(command, sizeof(command), "clear\n");
+	}
+	if (command_length < 0 || (size_t)command_length >= sizeof(command)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	atomic_init(&reader.ready, false);
+	atomic_init(&reader.go, false);
+	atomic_init(&reader.abort, false);
+	atomic_init(&reader.tid, 0);
+	ret = pthread_create(&thread, NULL, retirement_reader, &reader);
+	if (ret) {
+		ret = -ret;
+		goto out;
+	}
+	thread_created = true;
+	deadline = monotonic_ns() + LITMUS_USER_TIMEOUT_NS;
+	ret = wait_for_reader_ready(&reader, deadline);
+	if (ret)
+		goto out_thread;
+	reader_tid = atomic_load_explicit(&reader.tid, memory_order_acquire);
+	if (reader_tid <= 0) {
+		ret = -ESRCH;
+		goto out_thread;
+	}
+
+	cookie = atomic_fetch_add_explicit(&log->shared->op_seq, 1,
+					   memory_order_relaxed) + 1;
+	cookie ^= (uint64_t)(uint32_t)getpid() << 32;
+	cookie ^= mode << 56;
+	if (!cookie)
+		cookie = 1;
+	memset(session->state, 0, sizeof(*session->state));
+	session->state->cookie = cookie;
+	session->state->mode = mode;
+	session->state->expected_cgroup_id = cgroup_id;
+	session->state->deadline_ns = monotonic_ns() + LITMUS_HOLD_TIMEOUT_NS;
+	session->state->version = NAMEI_EXT_LITMUS_VERSION;
+	session->state->reader_tid = (uint32_t)reader_tid;
+	session->state->writer_tid = (uint32_t)writer_tid;
+	session->state->expected_target_id = TARGET_ID;
+	__atomic_store_n(&session->state->state, NAMEI_EXT_LITMUS_ARMED,
+			 __ATOMIC_RELEASE);
+	atomic_store_explicit(&reader.go, true, memory_order_release);
+	ret = wait_for_borrowed_target(session->state, deadline);
+	if (ret)
+		goto out_thread;
+	update_result = direct_control_write(control_fd, command,
+					(size_t)command_length, -1, 0);
+	if (update_result)
+		ret = update_result;
+
+out_thread:
+	if (ret && !atomic_load_explicit(&reader.go, memory_order_acquire)) {
+		atomic_store_explicit(&reader.abort, true, memory_order_release);
+		atomic_store_explicit(&reader.go, true, memory_order_release);
+	}
+	if (thread_created) {
+		int join_ret = pthread_join(thread, NULL);
+
+		thread_created = false;
+		if (join_ret && !ret)
+			ret = -join_ret;
+	}
+	__atomic_thread_fence(__ATOMIC_ACQUIRE);
+	memcpy(&snapshot, session->state, sizeof(snapshot));
+	if (!ret) {
+		if (mode == NAMEI_EXT_LITMUS_REPLACE)
+			fresh_result = open_expected_target(logical_path, new_target,
+						    directory, false, &fresh);
+		else {
+			int flags = directory ? O_RDONLY | O_DIRECTORY | O_CLOEXEC :
+						O_RDONLY | O_CLOEXEC;
+			int fd = open(logical_path, flags);
+
+			if (fd >= 0) {
+				fresh_result = -EEXIST;
+				if (close(fd) && !ret)
+					ret = -errno;
+			} else {
+				fresh_result = -errno;
 			}
-			if (result)
-				resolve_failures++;
-			else if (rcu_walk)
-				rcu_hits++;
-			else
-				ref_hits++;
-			if (emit_line(
-				    log,
-				    "{\"event\":\"target-lifetime-rcu-branch\","
-				    "\"cell\":\"%s\",\"source\":\"kretprobe:namei_ext_resolve_target:arg2+retval\","
-				    "\"phase\":\"controlled\",\"rcu_walk\":%s,\"result\":%d,"
-				    "\"under_update\":false,\"writer_seq\":0}\n",
-				    cell, rcu_walk ? "true" : "false", result))
-				record_failure(log);
 		}
 	}
-	free(trace);
-	if (!ret && trace_ret)
-		ret = trace_ret;
-	if (!ret && (!rcu_hits || resolve_failures))
-		ret = -ENODATA;
-
-out_clear_target:
-	clear_ret = direct_clear_write(control_fd);
-	if (!ret && clear_ret)
-		ret = clear_ret;
-	if (emit_line(
-		    log,
-			    "{\"event\":\"target-lifetime-rcu-proof\","
-			    "\"cell\":\"%s\",\"state\":\"%s\","
-			    "\"raw_trace\":\"%s-controlled-rcu-trace.txt\","
-		    "\"expected_device\":%" PRIu64 ","
-		    "\"observed_device\":%" PRIu64 ","
-		    "\"expected_inode\":%" PRIu64 ","
-		    "\"observed_inode\":%" PRIu64 ","
-		    "\"resolve_cached_result\":%d,\"rcu_walk_hits\":%u,"
-		    "\"ref_walk_hits\":%u,\"resolve_failures\":%u,"
-		    "\"pass\":%s}\n",
-			    cell, target->state, cell, (uint64_t)target->dev,
-		    (uint64_t)st.st_dev, (uint64_t)target->ino,
-		    (uint64_t)st.st_ino, ret, rcu_hits, ref_hits, resolve_failures,
-		    ret ? "false" : "true"))
+	pass = !ret && retirement_snapshot_passes(
+		&snapshot, cookie, mode, cgroup_id, reader_tid, writer_tid,
+		update_result, &reader, fresh_result, &fresh, old_target,
+		mode == NAMEI_EXT_LITMUS_REPLACE ? new_target : NULL,
+		affinity->writer_cpu, affinity->reader_cpu);
+	if (emit_retirement_litmus(
+		    log, cell,
+		    mode == NAMEI_EXT_LITMUS_REPLACE ? "replace" : "clear",
+		    &snapshot, cookie, reader_tid, writer_tid, affinity->writer_cpu,
+		    affinity->reader_cpu, update_result, &reader, fresh_result,
+		    &fresh, old_target,
+		    mode == NAMEI_EXT_LITMUS_REPLACE ? new_target : NULL, pass))
 		record_failure(log);
+	if (!pass && !ret)
+		ret = -EIO;
+
+out:
+	__atomic_store_n(&session->state->state, NAMEI_EXT_LITMUS_IDLE,
+			 __ATOMIC_RELEASE);
+	cleanup_result = direct_clear_write(control_fd);
+	if (command_fd >= 0 && close(command_fd) && !ret)
+		ret = -errno;
+	if (cleanup_result && !ret)
+		ret = cleanup_result;
+	return ret;
+}
+
+static int run_retirement_litmus_pair(
+	struct run_log *log, const char *litmus_path, const char *cell,
+	const char *cgroup_path, const char *logical_path, int control_fd,
+	struct target_object *targets, bool directory)
+{
+	struct retirement_litmus_session session;
+	struct retirement_affinity affinity;
+	int close_ret;
+	int affinity_ret;
+	int ret;
+
+	ret = load_retirement_litmus(litmus_path, &session);
+	if (ret)
+		return ret;
+	ret = pin_retirement_cpus(&affinity);
+	if (!ret)
+		ret = run_retirement_litmus_case(
+			log, cell, cgroup_path, logical_path, control_fd, &session,
+			&affinity, &targets[0], &targets[1], directory,
+			NAMEI_EXT_LITMUS_REPLACE);
+	if (!ret)
+		ret = run_retirement_litmus_case(
+			log, cell, cgroup_path, logical_path, control_fd, &session,
+			&affinity, &targets[0], &targets[1], directory,
+			NAMEI_EXT_LITMUS_CLEAR);
+	affinity_ret = restore_retirement_affinity(&affinity);
+	close_ret = close_retirement_litmus(&session);
+	if (!ret && affinity_ret)
+		ret = affinity_ret;
+	if (!ret && close_ret)
+		ret = close_ret;
 	return ret;
 }
 
@@ -1519,7 +1940,8 @@ static void *publication_reader(void *opaque)
 	return NULL;
 }
 
-static int run_publication_cell(struct run_log *log, const char *cell_name,
+static int run_publication_cell(struct run_log *log, const char *litmus_path,
+				const char *cell_name,
 				const char *cgroup_path,
 				const char *managed_dir,
 				const char *physical_dir,
@@ -1560,7 +1982,6 @@ static int run_publication_cell(struct run_log *log, const char *cell_name,
 	int ret = 0;
 	int trace_ret;
 
-	(void)cgroup_path;
 	(void)managed_dir;
 	(void)physical_dir;
 	(void)lifecycle_cycles;
@@ -1577,9 +1998,9 @@ static int run_publication_cell(struct run_log *log, const char *cell_name,
 		close(cell.control_fd);
 		return -ret;
 	}
-	ret = verify_rcu_target_path(log, cell_name, cell.control_fd,
-				     logical_path, &targets[0],
-				     logical_child != NULL);
+	ret = run_retirement_litmus_pair(
+		log, litmus_path, cell_name, cgroup_path, logical_path,
+		cell.control_fd, targets, logical_child != NULL);
 	if (ret)
 		goto out;
 	reader_args = calloc(reader_count, sizeof(*reader_args));
@@ -1816,7 +2237,8 @@ static int check_held_directory(int fd, const struct target_object *target,
 }
 
 static int run_pinned_lifecycle_cell(
-	struct run_log *log, const char *cell_name, const char *cgroup_path,
+	struct run_log *log, const char *litmus_path, const char *cell_name,
+	const char *cgroup_path,
 	const char *managed_dir, const char *physical_dir,
 	const char *logical_path, const char *logical_child,
 	struct target_object *targets, size_t target_count,
@@ -1834,6 +2256,7 @@ static int run_pinned_lifecycle_cell(
 	unsigned int cycle;
 	int ret = 0;
 
+	(void)litmus_path;
 	(void)cgroup_path;
 	(void)managed_dir;
 	(void)duration_seconds;
@@ -2132,7 +2555,8 @@ static int setup_publication_targets(const char *cell_name,
 }
 
 static int run_attached_cell(struct run_log *log, const char *policy_path,
-			     const char *cgroup_root, const char *work_root,
+			     const char *litmus_path, const char *cgroup_root,
+			     const char *work_root,
 			     const char *cell_name, bool directory,
 			     cell_fn run_cell,
 			     unsigned int duration_seconds,
@@ -2202,7 +2626,7 @@ static int run_attached_cell(struct run_log *log, const char *policy_path,
 		if (namei_ext_move_self_to_cgroup(cgroup_path))
 			_exit(2);
 		child_ret = run_cell(
-			log, cell_name, cgroup_path, managed_dir, physical_dir,
+			log, litmus_path, cell_name, cgroup_path, managed_dir, physical_dir,
 			logical_path, directory ? logical_child : NULL, targets,
 			run_cell == run_publication_cell ? TARGET_POOL_SIZE : 0,
 			duration_seconds, reader_count, min_updates, min_opens,
@@ -2271,19 +2695,19 @@ int main(int argc, char **argv)
 	char *slash;
 	int ret;
 
-	if (argc != 10) {
+	if (argc != 11) {
 		fprintf(stderr,
-			"usage: %s POLICY OUTPUT CGROUP_ROOT WORK_ROOT DURATION READERS MIN_UPDATES MIN_OPENS LIFECYCLE_CYCLES\n",
+			"usage: %s POLICY LITMUS OUTPUT CGROUP_ROOT WORK_ROOT DURATION READERS MIN_UPDATES MIN_OPENS LIFECYCLE_CYCLES\n",
 			argv[0]);
 		return 2;
 	}
-	if (parse_uint(argv[5], &duration_seconds) ||
-	    parse_uint(argv[6], &reader_count) ||
-	    parse_uint(argv[7], &min_updates) ||
-	    parse_uint(argv[8], &min_opens) ||
-	    parse_uint(argv[9], &lifecycle_cycles))
+	if (parse_uint(argv[6], &duration_seconds) ||
+	    parse_uint(argv[7], &reader_count) ||
+	    parse_uint(argv[8], &min_updates) ||
+	    parse_uint(argv[9], &min_opens) ||
+	    parse_uint(argv[10], &lifecycle_cycles))
 		return 2;
-	if (copy_text(log.output_dir, sizeof(log.output_dir), argv[2]))
+	if (copy_text(log.output_dir, sizeof(log.output_dir), argv[3]))
 		return 2;
 	slash = strrchr(log.output_dir, '/');
 	if (!slash) {
@@ -2295,7 +2719,7 @@ int main(int argc, char **argv)
 		*slash = '\0';
 	}
 	if (snprintf(root_template, sizeof(root_template),
-		     "%s/namei-ext-target-lifetime-XXXXXX", argv[4]) < 0 ||
+		     "%s/namei-ext-target-lifetime-XXXXXX", argv[5]) < 0 ||
 	    strlen(root_template) >= sizeof(root_template) - 1)
 		return 2;
 	log.shared = mmap(NULL, sizeof(*log.shared), PROT_READ | PROT_WRITE,
@@ -2310,7 +2734,7 @@ int main(int argc, char **argv)
 		munmap(log.shared, sizeof(*log.shared));
 		return 2;
 	}
-	log.fd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+	log.fd = open(argv[3], O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 	if (log.fd < 0) {
 		namei_ext_remove_tree(work_root);
 		munmap(log.shared, sizeof(*log.shared));
@@ -2325,19 +2749,19 @@ int main(int argc, char **argv)
 		  lifecycle_cycles))
 		failures++;
 
-	ret = run_attached_cell(&log, argv[1], argv[3], work_root,
+	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"final-file", false, run_publication_cell,
 				duration_seconds, reader_count, min_updates,
 				min_opens, lifecycle_cycles);
 	if (ret)
 		failures++;
-	ret = run_attached_cell(&log, argv[1], argv[3], work_root,
+	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"directory", true, run_publication_cell,
 				duration_seconds, reader_count, min_updates,
 				min_opens, lifecycle_cycles);
 	if (ret)
 		failures++;
-	ret = run_attached_cell(&log, argv[1], argv[3], work_root,
+	ret = run_attached_cell(&log, argv[1], argv[2], argv[4], work_root,
 				"pinned-object", true,
 				run_pinned_lifecycle_cell, duration_seconds,
 				reader_count, min_updates, min_opens,

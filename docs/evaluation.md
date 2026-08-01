@@ -134,11 +134,22 @@ The next admitted RQ3 mechanism experiment deepens the second row instead of
 adding another workload or baseline. It records concurrent target
 replace/clear/register histories, rename/unlink behavior, and old file/directory
 descriptor continuation under normal, KASAN, and KCSAN kernels with lockdep and
-PROVE_RCU. Its raw trace admits overlap only when a successful RCU target resolve
-returns between the in-kernel target-control write entry and return; writer
-markers alone do not establish overlap. The plan is
-`docs/tmp/2026-07-30-rq3-concurrent-target-lifetime-experiment-plan.md`;
-no result is claimed until real KVM preflight and formal result review complete.
+PROVE_RCU. The first normal-kernel preflight failed an invalid probabilistic
+oracle that demanded a newly entering reader successfully resolve an already
+cleared registry entry. Its immutable failed root is not positive evidence.
+
+The repaired experiment deterministically holds an exact RCU reader after it
+borrows the old target, starts an exact replacement or clear writer, releases
+the reader at that writer's `synchronize_rcu()` entry, and requires the old read
+plus a distinct replacement or post-clear `ENOENT`. One atomic event sequence,
+independently observed TIDs/CPUs, a per-case cookie, cgroup/target identity, and
+borrowed mount/dentry define the raw oracle. The original concurrent ftrace now
+establishes only replacement-success and clear-`ENOENT` engagement. The plan and
+failure/repair records are
+`docs/tmp/2026-07-30-rq3-concurrent-target-lifetime-experiment-plan.md` and
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md`.
+Host validation and independent review admit a fresh preflight; no repaired KVM
+or formal result is claimed yet.
 
 ## Experiment Matrix Status
 

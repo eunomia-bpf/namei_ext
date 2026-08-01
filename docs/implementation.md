@@ -100,6 +100,19 @@ another process continuously reads through it. The complete implementation,
 lifetime argument, validation, and independent review are recorded in
 `docs/tmp/2026-07-27-namei-ext-rcu-target-selection-implementation.md`.
 
+The 128-replacement check does not by itself identify an old target borrowed
+before concurrent retirement. The follow-up RQ3 experiment now uses a test-only
+tracing-BPF litmus to hold an exact final-file or directory reader after a
+successful RCU borrow, begin an exact replacement or clear writer, observe that
+writer enter `synchronize_rcu()`, and then require ordinary namei completion on
+the old object plus a distinct fresh replacement or absence. Its first
+normal-kernel preflight failed the obsolete probabilistic clear-window oracle;
+the failed root remains immutable and supplies no positive lifetime claim. The
+deterministic repair builds cleanly, passes 36 analyzer tests and GCC
+`-fanalyzer`, and has independent `GO` for a fresh normal/KASAN/KCSAN preflight.
+No repaired KVM result exists yet. The complete record is
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md`.
+
 The unchanged RQ2 matrix produced 50 KVM boots and 450/450 passing cells with
 numerically positive ranges, but independent review found that its patched
 binary was built from a pre-commit dirty tree. It is diagnostic rather than a

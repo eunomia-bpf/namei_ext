@@ -1,5 +1,23 @@
 # Experiment Plan: RQ3 Concurrent Target Lifetime
 
+## Superseded RCU Oracle (2026-07-31)
+
+The first normal-kernel preflight invalidated the probabilistic RCU oracle in
+this plan. In particular, lines below that require a zero-returning resolve
+during clear are historical and must not govern another run: after clear removes
+the registry entry, a newly entering reader should return `ENOENT`. The raw
+ftrace stream is retained only as replacement-success and clear-`ENOENT`
+engagement evidence.
+
+The authoritative lifetime oracle is now the deterministic tracing-BPF
+borrower/updater litmus recorded in
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md`.
+It holds a reader that already borrowed the old target, begins replacement or
+clear, releases that reader at the exact writer's `synchronize_rcu()` entry, and
+checks old-reader completion plus the fresh replacement or absence
+postcondition. The remaining workload, sanitizer, history, lower-object, and
+cleanup requirements in this plan still apply.
+
 ## Research Question
 
 - RQ exactly as written in the paper: Does `namei_ext` provide a narrower

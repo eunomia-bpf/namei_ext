@@ -10,10 +10,12 @@ HARNESS_LIBRARY ?= $(BUILD_ROOT)/runner/libnamei_ext_harness.a
 HARNESS_SOURCES := $(ROOT_DIR)/runner/src/namei_ext_harness.c \
 	$(ROOT_DIR)/runner/include/namei_ext_harness.h
 CC ?= cc
+CLANG ?= clang
 
 .PHONY: all clean
 
-all: $(OUTPUT)/namei_ext_target_lifetime
+all: $(OUTPUT)/namei_ext_target_lifetime \
+	$(OUTPUT)/retirement_litmus.bpf.o
 
 $(OUTPUT):
 	install -d "$@"
@@ -30,7 +32,7 @@ $(HARNESS_LIBRARY): $(HARNESS_SOURCES)
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 $(OUTPUT)/namei_ext_target_lifetime: \
-		namei_ext_target_lifetime.c $(HARNESS_LIBRARY) \
+		namei_ext_target_lifetime.c retirement_litmus.h $(HARNESS_LIBRARY) \
 		$(LIBBPF_A) | $(OUTPUT)
 	$(CC) -g -O2 -Wall -Wextra -Werror -pthread \
 		-I"$(ROOT_DIR)/runner/include" \
@@ -40,6 +42,11 @@ $(OUTPUT)/namei_ext_target_lifetime: \
 		-I"$(LIBBPF_OUTPUT)" \
 		-o "$@" "$<" "$(HARNESS_LIBRARY)" "$(LIBBPF_A)" \
 		-lelf -lz
+
+$(OUTPUT)/retirement_litmus.bpf.o: \
+		retirement_litmus.bpf.c retirement_litmus.h | $(OUTPUT)
+	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_x86 \
+		-Wall -Wextra -Werror -I"$(CURDIR)" -c -o "$@" "$<"
 
 clean:
 	rm -rf "$(OUTPUT)"

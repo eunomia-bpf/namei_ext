@@ -1,6 +1,8 @@
 TARGET_LIFETIME_RUNNER ?= \
 	$(BUILD_ROOT)/namei-ext-target-lifetime/namei_ext_target_lifetime
 TARGET_LIFETIME_POLICY ?= $(BUILD_ROOT)/bpf/fxmark_select.bpf.o
+TARGET_LIFETIME_LITMUS ?= \
+	$(BUILD_ROOT)/namei-ext-target-lifetime/retirement_litmus.bpf.o
 TARGET_LIFETIME_ANALYSIS ?= \
 	$(ROOT_DIR)/analysis/namei_ext_target_lifetime/analyze.py
 TARGET_LIFETIME_RESULT_DIR ?= \
@@ -256,6 +258,7 @@ __namei_ext_target_lifetime_guest: __namei_ext_guest_prepare
 	fi
 	status=0; \
 	"$(TARGET_LIFETIME_RUNNER)" "$(TARGET_LIFETIME_POLICY)" \
+		"$(TARGET_LIFETIME_LITMUS)" \
 		"$(TARGET_LIFETIME_BOOT_DIR)/observations.jsonl" \
 		/sys/fs/cgroup "$(TARGET_LIFETIME_BOOT_DIR)/lower" \
 		"$(TARGET_LIFETIME_DURATION)" "$(TARGET_LIFETIME_READERS)" \

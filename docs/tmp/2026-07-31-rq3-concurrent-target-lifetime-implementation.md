@@ -12,9 +12,9 @@ or debug-kernel race and lifetime evidence. This experiment implements the
 reviewed plan in
 `docs/tmp/2026-07-30-rq3-concurrent-target-lifetime-experiment-plan.md`.
 
-This document records implementation state only. No KVM result or paper claim
-is established until preflight, formal execution, and independent result review
-complete.
+This document records implementation state and the first failed preflight only.
+No positive KVM result or paper claim is established until the repaired
+preflight, formal execution, and independent result review complete.
 
 ## Code Paths Inspected
 
@@ -70,20 +70,20 @@ The runner writes JSONL observations before interpretation:
   immediately after each `openat()` syscall. The later history response carries
   the device/inode classification obtained by `fstat()` but does not widen the
   selection interval used for real-time ordering;
-- `target-lifetime-rcu-branch` records dynamic-kretprobe observations of both
-  the `rcu_walk` argument and return value of `namei_ext_resolve_target()`. A
-  controlled, PID-filtered `RESOLVE_CACHED` open must return successfully and
-  establish the selected object identity. In the concurrent trace, kprobe and
-  kretprobe events on `namei_ext_register_target_write()` define the exact
-  in-kernel update interval. Writer `trace_marker` records associate that
-  interval with the paired history `writer_seq`; they are not themselves
-  treated as the update interval;
-- per-cell `controlled-rcu-trace.txt` and `concurrent-rcu-trace.txt` files
-  preserve both raw ftrace streams before interpretation.
+- `target-lifetime-rcu-litmus` records four deterministic borrower/update cases:
+  replacement and clear for both a selected final file and a selected
+  directory. A test-only tracing-BPF program records the exact reader and writer
+  TIDs and CPUs, case cookie, cgroup and target IDs, borrowed mount and dentry,
+  and a single atomic event sequence. It holds the reader at the
+  `namei_ext_resolve_target()` return after a successful RCU borrow, admits the
+  writer, and releases the hold when that writer enters `synchronize_rcu()`;
+- per-cell `concurrent-rcu-trace.txt` files retain the original dynamic-kprobe
+  stress stream. `target-lifetime-rcu-branch`,
   `target-lifetime-rcu-marker`, `target-lifetime-rcu-update`, and
-  `target-lifetime-rcu-stress` expose the parsed marker order, kernel update
-  entry/return sequence, successful and failed RCU returns, and engagement
-  counts;
+  `target-lifetime-rcu-stress` reconcile that stream with the update history.
+  This stream now establishes only mechanism engagement: a successful RCU
+  resolution during replacement and an `ENOENT` RCU result during clear. It is
+  not the target-retirement proof;
 - `target-lifetime-descriptor` records read/readdir and repeated-fstat stability
   on the already opened descriptor;
 - `target-lifetime-lifecycle-step` records exact rename, unlink, clear,
@@ -130,18 +130,23 @@ or any bytes or metadata mismatch.
 
 Every publication reader must have at least one `OPEN` whose interval overlaps a
 `SET` or `CLEAR`. Reader summaries are independently recomputed from paired
-history. The analyzer separately requires (1) a successful controlled
-`RESOLVE_CACHED` open whose observed identity matches its registered target and
-(2) a zero-returning `rcu_walk=true` target resolution ordered after the
-in-kernel `namei_ext_register_target_write()` entry and before its return. Both
-a replacement `SET` and a retiring `CLEAR` must contain such a successful
-return. A resolve between the writer marker and kernel entry, or an in-window
-resolve returning `ENOENT`, does not count. The analyzer independently reparses
-the raw ftrace file, rejects overwritten trace buffers or incomplete
-marker/kernel windows, and reconciles every marker, update event, resolve
-return, writer sequence, and summary count with the JSONL history.
+history. For the deterministic cases, the analyzer requires exact replacement
+sequence `hold -> update entry -> grace-period entry -> reader release -> update
+exit`; clear additionally requires `clear entry` before the grace period and
+`clear exit` before the outer update exit. The old reader must complete on the
+old device/inode, a fresh replacement lookup must return a distinct new
+device/inode, and a fresh post-clear lookup must return `ENOENT`. Independently
+observed TIDs, CPUs, case cookies, cgroup/target IDs, and borrowed mount/dentry
+must all agree. Timestamps must exist but do not establish ordering.
 
-Twenty-seven focused checker tests cover a valid overlap, stale return after clear, old
+The analyzer separately reparses the concurrent raw ftrace file, rejects
+overwritten trace buffers or incomplete marker/kernel windows, and reconciles
+every marker, update event, resolve return, writer sequence, and summary count
+with the JSONL history. That stress check requires successful replacement
+engagement and clear-window `ENOENT`; it no longer treats a post-removal miss as
+a failed lifetime oracle.
+
+Thirty-six focused checker tests cover a valid overlap, stale return after clear, old
 object after replacement, a locally overlap-valid but globally impossible
 history, unexpected errno, state/object-identity mismatch, and lower-object
 metadata mismatch, a positive KCSAN data-race counter delta even when
@@ -158,7 +163,9 @@ update/read overlap and a reader summary not backed by paired history, and show
 that event sequence preserves boundary order when timestamps are equal. They
 also reject an RCU summary without a raw branch event and a lifecycle aggregate
 without step evidence. Another test rejects a successful open that lacks its corresponding
-descriptor-stability record. The exhaustive test enumerates 12,100 deterministic
+descriptor-stability record. Deterministic-litmus negative controls reject
+cookie, TID, CPU, event-order, timeout, old-object identity, replacement-object
+identity, and post-clear result mismatches. The exhaustive test enumerates 12,100 deterministic
 two-update/two-reader interval
 and state combinations and compares the greedy checker with exhaustive
 permutation search; the two decisions agree for the complete test family.
@@ -173,8 +180,8 @@ permutation search; the two decisions agree for the complete test family.
   delay parameters, lockdep, `PROVE_RCU`, and `PROVE_RCU_LIST` in a third build
   root.
 - Both debug kernels enable hung-task detection with a frozen 120-second
-  timeout. All three kernel kinds require tracing and dynamic kprobe events for
-  the bounded RCU-branch probe.
+  timeout. All three kernel kinds require BPF tracing programs, kprobes, BPF
+  events, BPF JIT, and the existing dynamic-kprobe stress stream.
 - Each KCSAN boot captures complete debugfs counters before and after the
   workload. The cumulative setup-watchpoint count must increase, the live
   used-watchpoint gauge must remain nonnegative, and the data-race counter must
@@ -225,7 +232,7 @@ an already failed or completed root is not rewritten.
 
 - the C runner builds with `-Wall -Wextra -Werror`;
 - the runner also builds under GCC `-fanalyzer` with no finding;
-- all twenty-seven analyzer tests pass, including the 12,100-history exhaustive
+- all thirty-six analyzer tests pass, including the 12,100-history exhaustive
   checker cross-check;
 - the analyzer accepts the effective normal, KASAN, and KCSAN build-tree
   configurations;
@@ -239,11 +246,18 @@ an already failed or completed root is not rewritten.
 
 ## Remaining Risks And Next Gate
 
-Host validation cannot execute the modified-kernel attach path. The next gate is
-one fresh normal, KASAN, and KCSAN KVM preflight using
+The first real preflight reached only the normal-kernel boot and failed the old
+probabilistic clear-window oracle. Its immutable root and the deterministic
+repair are recorded in
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md`.
+It supplies no positive lifetime result.
+
+Host validation cannot execute the repaired tracing-BPF and modified-kernel
+attach paths. The next gate is one fresh normal, KASAN, and KCSAN KVM preflight using
 `make kvm-namei-ext-target-lifetime-preflight RUN_ID=<fresh-id>`. The same
-independent reviewer re-checked the repaired plan-to-code mapping, checker
+independent reviewer re-checked the deterministic plan-to-code mapping, checker
 soundness, raw evidence fields, Make failure propagation, and debug-kernel
-engagement rules and returned `GO for commit/build and real KVM preflight` with
-no unresolved P0, P1, or P2 finding. A failed or incomplete preflight root
-remains immutable; any repair uses a new run ID.
+engagement rules. After two P2 checker/schema tightenings, the implementation
+has no unresolved P0, P1, or P2 finding and is admitted to fresh preflight. A
+failed or incomplete preflight root remains immutable; any repair uses a new run
+ID.

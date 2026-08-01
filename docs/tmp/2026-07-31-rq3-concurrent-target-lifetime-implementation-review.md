@@ -208,3 +208,41 @@ rechecks it after acquiring that mutex.
 This verdict admits the implementation to build and preflight only. The
 reviewer did not build the debug images or run KVM, and this document therefore
 makes no runtime, sanitizer, race-freedom, or formal-result claim.
+
+## Runtime Correction After The First Preflight
+
+The first real preflight ran the normal-kernel cell and then failed in the guest
+analyzer with `final-file: no RCU target resolution during target retirement`.
+The runner itself returned zero, all three workload cell summaries passed, and
+the raw trace contained successful RCU resolutions during replacement plus
+`ENOENT` resolutions during clear. Requiring a newly entering reader to resolve
+the already removed target during clear was not a valid retirement-lifetime
+oracle. The failed root remains immutable at
+`results/experiments/namei-ext-target-lifetime-preflight/20260801T033358Z-target-lifetime-preflight01/`.
+
+The replacement is a deterministic tracing-BPF litmus. It holds an exact reader
+after that reader has borrowed the old target in RCU-walk, starts an exact writer
+that replaces or clears the target, observes that writer enter
+`synchronize_rcu()`, releases the reader, and requires the old read plus the new
+replacement or absence postcondition. This constructs borrower/update overlap;
+it does not measure grace-period blocking duration. The complete failure and
+repair record is
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md`.
+
+## Deterministic Repair Review
+
+A fresh independent read-only review found no P0 or P1 issue. It identified two
+P2 checker/schema issues: the output key `rcu_proof` could overstate the role of
+the concurrent ftrace engagement stream, and malformed evidence could reuse one
+TID or one old/new object identity. The analyzer now emits
+`target_retirement`, explicitly requires distinct reader/writer TIDs and a
+distinct replacement object, and includes negative tests for both cases. The C
+runner independently enforces the same conditions. Shared BPF/userspace state
+has compile-time size and field-offset assertions, and cleanup cannot mutate a
+completed case through the exit probes.
+
+The repaired C and BPF objects build with warnings as errors, GCC `-fanalyzer`
+reports no finding, all 36 analyzer tests pass, the shared state is 336 bytes
+with matching userspace DWARF and BPF BTF offsets, and `git diff --check` passes.
+The reviewer returned `GO` for a fresh normal/KASAN/KCSAN preflight. No repaired
+KVM result exists yet.

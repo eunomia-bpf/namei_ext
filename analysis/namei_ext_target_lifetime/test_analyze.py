@@ -51,6 +51,79 @@ def target_definition(state, device, inode, directory=False, child=(0, 0)):
     }
 
 
+def litmus_record(operation, cookie, mount=100, dentry=200):
+    replace = operation == "replace"
+    record = {
+        "event": "target-lifetime-rcu-litmus",
+        "cell": "final-file",
+        "operation": operation,
+        "source": "tracing-bpf-fexit-kprobe",
+        "version": 1,
+        "cookie": cookie,
+        "mode": 1 if replace else 2,
+        "state": 4,
+        "event_seq": 5 if replace else 7,
+        "reader_tid": 101,
+        "observed_reader_tid": 101,
+        "writer_tid": 100,
+        "observed_writer_tid": 100,
+        "writer_cpu": 0,
+        "observed_writer_cpu": 0,
+        "reader_cpu": 1,
+        "observed_reader_cpu": 1,
+        "expected_cgroup_id": 55,
+        "observed_cgroup_id": 55,
+        "expected_target_id": 1,
+        "observed_target_id": 1,
+        "observed_mount": mount,
+        "observed_dentry": dentry,
+        "hold_seq": 1,
+        "update_entry_seq": 2,
+        "clear_entry_seq": 0 if replace else 3,
+        "grace_entry_seq": 3 if replace else 4,
+        "reader_release_seq": 4 if replace else 5,
+        "clear_exit_seq": 0 if replace else 6,
+        "update_exit_seq": 5 if replace else 7,
+        "hold_ns": 10,
+        "update_entry_ns": 20,
+        "clear_entry_ns": 0 if replace else 30,
+        "grace_entry_ns": 30 if replace else 40,
+        "reader_release_ns": 40 if replace else 50,
+        "clear_exit_ns": 0 if replace else 60,
+        "update_exit_ns": 50 if replace else 70,
+        "hold_cookie": cookie,
+        "update_cookie": cookie,
+        "grace_cookie": cookie,
+        "release_cookie": cookie,
+        "exit_cookie": cookie,
+        "resolve_attempts": 1,
+        "resolve_matches": 1,
+        "update_entries": 1,
+        "clear_entries": 0 if replace else 1,
+        "grace_entries": 1,
+        "clear_exits": 0 if replace else 1,
+        "update_exits": 1,
+        "error_flags": 0,
+        "timeout_reason": 0,
+        "update_result": 0,
+        "reader_open_result": 0,
+        "reader_validation_result": 0,
+        "old_state": "A",
+        "fresh_state": "B" if replace else "absent",
+        "expected_old_device": 7,
+        "observed_old_device": 7,
+        "expected_old_inode": 11,
+        "observed_old_inode": 11,
+        "fresh_result": 0 if replace else -2,
+        "expected_fresh_device": 8 if replace else 0,
+        "observed_fresh_device": 8 if replace else 0,
+        "expected_fresh_inode": 12 if replace else 0,
+        "observed_fresh_inode": 12 if replace else 0,
+        "pass": True,
+    }
+    return record
+
+
 def brute_linearizable(history):
     edges = {
         (left, right)
@@ -311,6 +384,26 @@ class LinearizabilityTests(unittest.TestCase):
             )
             self.assertEqual(ANALYZE.classify_dmesg(dmesg)["status"], "negative")
 
+    def test_rejects_tracing_config_without_kernel_btf(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "kernel.config"
+            config.write_text(
+                "CONFIG_NAMEI_EXT=y\n"
+                "CONFIG_DEBUG_FS=y\n"
+                "CONFIG_TRACING=y\n"
+                "CONFIG_KPROBE_EVENTS=y\n"
+                "CONFIG_KPROBES=y\n"
+                "CONFIG_BPF_EVENTS=y\n"
+                "CONFIG_BPF_JIT=y\n"
+                "# CONFIG_DEBUG_INFO_BTF is not set\n"
+                "# CONFIG_KASAN is not set\n"
+                "# CONFIG_KCSAN is not set\n"
+            )
+            with self.assertRaisesRegex(
+                ANALYZE.AnalysisError, "CONFIG_DEBUG_INFO_BTF"
+            ):
+                ANALYZE.validate_kernel_config(config, "normal")
+
     def test_rejects_summary_pass_below_reader_minimum(self):
         records = [
             {
@@ -359,58 +452,21 @@ class LinearizabilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ANALYZE.AnalysisError, "descriptor"):
             ANALYZE.validate_descriptors([], "final-file", history)
 
-    def test_rejects_rcu_summary_without_raw_branch_event(self):
+    def test_rejects_target_retirement_without_litmus_rows(self):
         definitions = {
             "A": {"device": 7, "inode": 11},
         }
-        records = [
-            {
-                "event": "target-lifetime-rcu-proof",
-                "cell": "final-file",
-                "state": "A",
-                "raw_trace": "final-file-controlled-rcu-trace.txt",
-                "expected_device": 7,
-                "observed_device": 7,
-                "expected_inode": 11,
-                "observed_inode": 11,
-                "resolve_cached_result": 0,
-                "rcu_walk_hits": 1,
-                "ref_walk_hits": 0,
-                "resolve_failures": 0,
-                "pass": True,
-            }
-        ]
-        with self.assertRaisesRegex(ANALYZE.AnalysisError, "RCU-walk"):
-            ANALYZE.validate_rcu_proof(records, "final-file", definitions)
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "litmus rows"):
+            ANALYZE.validate_target_retirement([], "final-file", definitions)
 
-    def test_accepts_raw_backed_rcu_branch_during_update(self):
-        definitions = {"A": {"device": 7, "inode": 11}}
+    def test_accepts_deterministic_litmus_and_stress_engagement(self):
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
         records = [
-            {
-                "event": "target-lifetime-rcu-proof",
-                "cell": "final-file",
-                "state": "A",
-                "raw_trace": "final-file-controlled-rcu-trace.txt",
-                "expected_device": 7,
-                "observed_device": 7,
-                "expected_inode": 11,
-                "observed_inode": 11,
-                "resolve_cached_result": 0,
-                "rcu_walk_hits": 1,
-                "ref_walk_hits": 0,
-                "resolve_failures": 0,
-                "pass": True,
-            },
-            {
-                "event": "target-lifetime-rcu-branch",
-                "cell": "final-file",
-                "source": "kretprobe:namei_ext_resolve_target:arg2+retval",
-                "phase": "controlled",
-                "rcu_walk": True,
-                "result": 0,
-                "under_update": False,
-                "writer_seq": 0,
-            },
+            litmus_record("replace", 1),
+            litmus_record("clear", 2),
             {
                 "event": "target-lifetime-rcu-marker",
                 "cell": "final-file",
@@ -489,7 +545,7 @@ class LinearizabilityTests(unittest.TestCase):
                 "source": "kretprobe:namei_ext_resolve_target:arg2+retval",
                 "phase": "concurrent",
                 "rcu_walk": True,
-                "result": 0,
+                "result": -2,
                 "under_update": True,
                 "writer_seq": 3,
             },
@@ -518,9 +574,9 @@ class LinearizabilityTests(unittest.TestCase):
                 "update_windows": 3,
                 "kernel_update_enters": 3,
                 "kernel_update_returns": 3,
-                "rcu_walk_hits": 2,
-                "rcu_resolve_failures": 0,
-                "rcu_under_update": 2,
+                "rcu_walk_hits": 1,
+                "rcu_resolve_failures": 1,
+                "rcu_under_update": 1,
                 "result": 0,
                 "pass": True,
             },
@@ -531,11 +587,6 @@ class LinearizabilityTests(unittest.TestCase):
             operation(3, "CLEAR", 5, 6, "absent", writer_seq=3),
         ]
         with tempfile.TemporaryDirectory() as directory:
-            Path(directory, "final-file-controlled-rcu-trace.txt").write_text(
-                "# entries-in-buffer/entries-written: 1/1   #P:4\n"
-                "reader-2 [001] .... 0.999: resolve_target_return: "
-                "rcu_walk=1 result=0\n"
-            )
             Path(directory, "final-file-concurrent-rcu-trace.txt").write_text(
                 "# entries-in-buffer/entries-written: 14/14   #P:4\n"
                 "writer-1 [000] .... 1.000: tracing_mark_write: "
@@ -556,16 +607,120 @@ class LinearizabilityTests(unittest.TestCase):
                 "namei_ext-update-begin-3\n"
                 "writer-1 [000] .... 1.010: update_enter: (0)\n"
                 "reader-2 [001] .... 1.011: resolve_return: "
-                "rcu_walk=1 result=0\n"
+                "rcu_walk=1 result=-2\n"
                 "writer-1 [000] .... 1.012: update_return: result=6\n"
                 "writer-1 [000] .... 1.013: tracing_mark_write: "
                 "namei_ext-update-end-3\n"
             )
-            result = ANALYZE.validate_rcu_proof(
+            result = ANALYZE.validate_target_retirement(
                 records, "final-file", definitions, updates, Path(directory)
             )
-        self.assertEqual(result["concurrent"]["rcu_under_replacement"], 1)
-        self.assertEqual(result["concurrent"]["rcu_under_retirement"], 1)
+        self.assertEqual(
+            result["concurrent"]["rcu_success_under_replacement"], 1
+        )
+        self.assertEqual(result["concurrent"]["rcu_miss_under_clear"], 1)
+
+    def test_rejects_litmus_cookie_mismatch(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[0]["grace_cookie"] = 9
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "cookie mismatch"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_reader_tid_mismatch(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[0]["observed_reader_tid"] = 999
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "fields are invalid"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_same_reader_and_writer_tid(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[0]["writer_tid"] = records[0]["reader_tid"]
+        records[0]["observed_writer_tid"] = records[0]["reader_tid"]
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "fields are invalid"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_replacement_with_old_object_identity(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[0]["expected_fresh_device"] = 7
+        records[0]["observed_fresh_device"] = 7
+        records[0]["expected_fresh_inode"] = 11
+        records[0]["observed_fresh_inode"] = 11
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 7, "inode": 11},
+        }
+        with self.assertRaisesRegex(
+            ANALYZE.AnalysisError, "replacement postcondition"
+        ):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_grace_before_update(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[0]["grace_entry_seq"] = 2
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "event order"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_timeout(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[1]["timeout_reason"] = 1
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "fields are invalid"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_borrowing_different_old_object(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[1]["observed_dentry"] = 201
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "same old target"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_wrong_post_clear_result(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[1]["fresh_result"] = 0
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "clear postcondition"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
 
     def test_rejects_concurrent_rcu_branch_outside_update_window(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -626,13 +781,13 @@ class LinearizabilityTests(unittest.TestCase):
         ]
         raw = {
             "branches": [
-                {"under_update": True, "writer_seq": 3, "result": 0},
+                {"under_update": True, "writer_seq": 3, "result": -2},
             ]
         }
         with self.assertRaisesRegex(ANALYZE.AnalysisError, "replacement"):
-            ANALYZE.validate_rcu_update_classes(raw, updates, "final-file")
+            ANALYZE.validate_rcu_stress_classes(raw, updates, "final-file")
 
-    def test_rejects_rcu_trace_without_retirement_overlap(self):
+    def test_rejects_rcu_trace_without_clear_miss(self):
         updates = [
             operation(1, "SET", 1, 2, "A", writer_seq=1),
             operation(2, "SET", 3, 4, "B", writer_seq=2),
@@ -643,8 +798,8 @@ class LinearizabilityTests(unittest.TestCase):
                 {"under_update": True, "writer_seq": 2, "result": 0},
             ]
         }
-        with self.assertRaisesRegex(ANALYZE.AnalysisError, "retirement"):
-            ANALYZE.validate_rcu_update_classes(raw, updates, "final-file")
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "ENOENT"):
+            ANALYZE.validate_rcu_stress_classes(raw, updates, "final-file")
 
     def test_rejects_lifecycle_aggregate_without_step_evidence(self):
         records = [
