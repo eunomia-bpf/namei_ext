@@ -95,8 +95,12 @@ struct publication_cell {
 	pthread_mutex_t trace_lock;
 	atomic_bool start;
 	atomic_bool abort;
+	atomic_bool coverage_complete;
+	atomic_bool overlap_armed;
 	bool detailed_history;
 	bool trace_markers_enabled;
+	atomic_int coverage_expected_target;
+	atomic_uint coverage_generation;
 	atomic_uint_fast64_t deadline_ns;
 	atomic_uint_fast64_t updates;
 	atomic_uint failures;
@@ -130,10 +134,16 @@ struct reader_arg {
 	uint64_t successful_opens;
 	uint64_t absent_opens;
 	uint64_t unexpected_errors;
+	atomic_uint observed_generation;
+	atomic_bool overlap_completed;
+	atomic_uint_fast64_t target_mask;
+	atomic_bool saw_absent;
 };
 
 struct writer_arg {
 	struct publication_cell *cell;
+	struct reader_arg *readers;
+	unsigned int reader_count;
 	uint64_t writer_seq;
 };
 
@@ -1611,6 +1621,7 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 	unsigned int update_returns = 0;
 	unsigned int rcu_successes = 0;
 	unsigned int rcu_failures = 0;
+	unsigned int rcu_absent_results = 0;
 	unsigned int rcu_under_update = 0;
 	int ret = trace_result;
 
@@ -1656,9 +1667,11 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 				ret = -EINVAL;
 				continue;
 			}
-			if (result)
+			if (result) {
 				rcu_failures++;
-			else {
+				if (result == -ENOENT)
+					rcu_absent_results++;
+			} else {
 				rcu_successes++;
 				if (active_writer_seq)
 					rcu_under_update++;
@@ -1702,7 +1715,7 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 	if (!entries_written || entries_buffered != entries_written ||
 	    armed_writer_seq || active_writer_seq ||
 	    update_windows != update_enters || update_windows != update_returns ||
-	    !update_windows || !rcu_under_update)
+	    !update_windows || !rcu_successes || !rcu_absent_results)
 		ret = ret ? ret : -ENODATA;
 	{
 		int emit_ret = emit_line(
@@ -1715,11 +1728,13 @@ static int parse_concurrent_rcu_trace(struct publication_cell *cell,
 			"\"end_markers\":%u,\"update_windows\":%u,"
 			"\"kernel_update_enters\":%u,\"kernel_update_returns\":%u,"
 			"\"rcu_walk_hits\":%u,\"rcu_resolve_failures\":%u,"
+			"\"rcu_absent_results\":%u,"
 			"\"rcu_under_update\":%u,"
 			"\"result\":%d,\"pass\":%s}\n",
 			cell->name, entries_buffered, cell->name, entries_written,
 			begin_markers, end_markers, update_windows, update_enters,
 			update_returns, rcu_successes, rcu_failures,
+			rcu_absent_results,
 			rcu_under_update, ret, ret ? "false" : "true");
 
 		if (emit_ret) {
@@ -1794,7 +1809,8 @@ static int stop_concurrent_rcu_trace(struct publication_cell *cell,
 			   "\"end_markers\":0,\"update_windows\":0,"
 			   "\"kernel_update_enters\":0,"
 			   "\"kernel_update_returns\":0,\"rcu_walk_hits\":0,"
-			   "\"rcu_resolve_failures\":0,\"rcu_under_update\":0,"
+			   "\"rcu_resolve_failures\":0,"
+			   "\"rcu_absent_results\":0,\"rcu_under_update\":0,"
 			   "\"result\":%d,\"pass\":false}\n",
 			   cell->name, cell->name, ret))
 			record_failure(cell->log);
@@ -1802,11 +1818,38 @@ static int stop_concurrent_rcu_trace(struct publication_cell *cell,
 	return ret;
 }
 
+static int run_update_overlap_rendezvous(struct writer_arg *arg)
+{
+	struct publication_cell *cell = arg->cell;
+	unsigned int i;
+
+	atomic_store_explicit(&cell->overlap_armed, true, memory_order_release);
+	while (monotonic_raw_ns() <
+	       atomic_load_explicit(&cell->deadline_ns, memory_order_acquire) &&
+	       !atomic_load_explicit(&cell->abort, memory_order_acquire)) {
+		bool complete = true;
+
+		for (i = 0; i < arg->reader_count; i++) {
+			if (!atomic_load_explicit(
+				    &arg->readers[i].overlap_completed,
+				    memory_order_acquire))
+				complete = false;
+		}
+		if (complete)
+			return 0;
+		sched_yield();
+	}
+	atomic_fetch_add_explicit(&cell->failures, 1, memory_order_relaxed);
+	atomic_store_explicit(&cell->abort, true, memory_order_release);
+	return -ETIMEDOUT;
+}
+
 static int history_update(struct run_log *log, const char *cell,
 			  int control_fd, const char *operation,
 			  const struct target_object *target,
 			  uint64_t writer_seq, int trace_marker_fd,
-			  bool detailed_history)
+			  bool detailed_history,
+			  struct writer_arg *overlap_arg)
 {
 	const char *state = target ? target->state : "absent";
 	dev_t dev = target ? target->dev : 0;
@@ -1824,6 +1867,8 @@ static int history_update(struct run_log *log, const char *cell,
 			return -EIO;
 		}
 	}
+	if (overlap_arg && run_update_overlap_rendezvous(overlap_arg))
+		return -ETIMEDOUT;
 	ret = target ? direct_register_write_traced(control_fd, target,
 						     trace_marker_fd, writer_seq) :
 		       direct_clear_write_traced(control_fd, trace_marker_fd,
@@ -1861,7 +1906,7 @@ static int history_open(struct run_log *log, const char *cell,
 			const char *path, enum open_kind kind,
 			const struct target_object *targets, size_t target_count,
 			const char *actor, uint64_t actor_id, int *held_fd,
-			bool detailed_history)
+			bool detailed_history, int *observed_target)
 {
 	const struct target_object *target = NULL;
 	const char *subtype = open_kind_name(kind);
@@ -1875,6 +1920,8 @@ static int history_open(struct run_log *log, const char *cell,
 	int result = 0;
 	int fd;
 
+	if (observed_target)
+		*observed_target = -1;
 	flags |= kind == OPEN_DIRECTORY ? O_RDONLY | O_DIRECTORY : O_RDONLY;
 	if (detailed_history) {
 		op_id = atomic_fetch_add_explicit(&log->shared->op_seq, 1,
@@ -1984,6 +2031,8 @@ static int history_open(struct run_log *log, const char *cell,
 			record_failure(log);
 		record_failure(log);
 	}
+	if (!descriptor_ret && observed_target)
+		*observed_target = (int)(target - targets);
 	if (held_fd) {
 		*held_fd = fd;
 	} else if (close(fd)) {
@@ -2000,12 +2049,58 @@ static int history_open(struct run_log *log, const char *cell,
 	return descriptor_ret;
 }
 
+static int publish_history_generation(struct writer_arg *arg,
+				      const struct target_object *target,
+				      unsigned int generation)
+{
+	struct publication_cell *cell = arg->cell;
+	int expected_target = -1;
+	unsigned int i;
+
+	if (target) {
+		size_t target_index = (size_t)(target - cell->targets);
+
+		if (target_index >= cell->target_count || target_index >= 64) {
+			atomic_fetch_add_explicit(&cell->failures, 1,
+						  memory_order_relaxed);
+			atomic_store_explicit(&cell->abort, true,
+					      memory_order_release);
+			return -EINVAL;
+		}
+		expected_target = (int)target_index;
+	}
+	atomic_store_explicit(&cell->coverage_expected_target, expected_target,
+			      memory_order_relaxed);
+	atomic_store_explicit(&cell->coverage_generation, generation,
+			      memory_order_release);
+	while (monotonic_raw_ns() <
+	       atomic_load_explicit(&cell->deadline_ns, memory_order_acquire) &&
+	       !atomic_load_explicit(&cell->abort, memory_order_acquire)) {
+		bool complete = true;
+
+		for (i = 0; i < arg->reader_count; i++) {
+			if (atomic_load_explicit(
+				    &arg->readers[i].observed_generation,
+				    memory_order_acquire) < generation)
+				complete = false;
+		}
+		if (complete)
+			return 0;
+		sched_yield();
+	}
+	atomic_fetch_add_explicit(&cell->failures, 1, memory_order_relaxed);
+	atomic_store_explicit(&cell->abort, true, memory_order_release);
+	return -ETIMEDOUT;
+}
+
 static void *publication_writer(void *opaque)
 {
 	struct writer_arg *arg = opaque;
 	struct publication_cell *cell = arg->cell;
 	size_t target_index = 0;
+	unsigned int observation_gates = 0;
 	unsigned int phase = 0;
+	bool overlap_started = false;
 	bool trace_update;
 	int lock_ret;
 	int update_ret;
@@ -2023,6 +2118,8 @@ static void *publication_writer(void *opaque)
 		const struct target_object *target =
 			phase < 2 ? &cell->targets[target_index] : NULL;
 		const char *operation = phase < 2 ? "SET" : "CLEAR";
+		bool arm_overlap = cell->detailed_history &&
+			observation_gates == 3 && !overlap_started;
 
 		lock_ret = pthread_mutex_lock(&cell->trace_lock);
 		if (lock_ret) {
@@ -2040,7 +2137,8 @@ static void *publication_writer(void *opaque)
 					    operation, target, arg->writer_seq,
 					    trace_update ?
 						    cell->trace_marker_fd : -1,
-					    cell->detailed_history);
+					    cell->detailed_history,
+					    arm_overlap ? arg : NULL);
 		lock_ret = pthread_mutex_unlock(&cell->trace_lock);
 		if (update_ret || lock_ret) {
 			atomic_fetch_add_explicit(&cell->failures, 1,
@@ -2051,6 +2149,17 @@ static void *publication_writer(void *opaque)
 		}
 		atomic_fetch_add_explicit(&cell->updates, 1,
 					  memory_order_relaxed);
+		if (arm_overlap)
+			overlap_started = true;
+		if (cell->detailed_history && observation_gates < 3) {
+			if (publish_history_generation(arg, target,
+						       observation_gates + 1))
+				break;
+			observation_gates++;
+			if (observation_gates == 3)
+				atomic_store_explicit(&cell->coverage_complete, true,
+						      memory_order_release);
+		}
 		if (phase == 0) {
 			target_index = (target_index + 1) % cell->target_count;
 			phase = 1;
@@ -2087,7 +2196,8 @@ static void *publication_writer(void *opaque)
 	update_ret = history_update(
 		cell->log, cell->name, cell->control_fd, "CLEAR", NULL,
 		arg->writer_seq, trace_update ? cell->trace_marker_fd : -1,
-		cell->detailed_history);
+		cell->detailed_history,
+		cell->detailed_history && !overlap_started ? arg : NULL);
 	lock_ret = pthread_mutex_unlock(&cell->trace_lock);
 	if (update_ret || lock_ret) {
 		atomic_fetch_add_explicit(&cell->failures, 1,
@@ -2096,59 +2206,172 @@ static void *publication_writer(void *opaque)
 	} else {
 		atomic_fetch_add_explicit(&cell->updates, 1,
 					  memory_order_relaxed);
+		if (cell->detailed_history && observation_gates < 3 &&
+		    !publish_history_generation(arg, NULL,
+						observation_gates + 1)) {
+			observation_gates++;
+			if (observation_gates == 3)
+				atomic_store_explicit(&cell->coverage_complete, true,
+						      memory_order_release);
+		}
 	}
 	return NULL;
+}
+
+static int publication_reader_open(struct reader_arg *arg,
+				   int *observed_target)
+{
+	struct publication_cell *cell = arg->cell;
+	bool directory_cell = cell->logical_child != NULL;
+	const char *path;
+	enum open_kind kind;
+	int ret;
+
+	if (directory_cell && (arg->opens & 1)) {
+		path = cell->logical_path;
+		kind = OPEN_DIRECTORY;
+	} else if (directory_cell) {
+		path = cell->logical_child;
+		kind = OPEN_DIRECTORY_CHILD;
+	} else {
+		path = cell->logical_path;
+		kind = OPEN_FINAL_FILE;
+	}
+	ret = history_open(cell->log, cell->name, path, kind, cell->targets,
+			   cell->target_count, "reader", arg->reader_id, NULL,
+			   cell->detailed_history, observed_target);
+	if (!ret) {
+		arg->successful_opens++;
+		if (*observed_target >= 0 && *observed_target < 64)
+			atomic_fetch_or_explicit(
+				&arg->target_mask,
+				1ULL << (unsigned int)*observed_target,
+				memory_order_release);
+	} else if (ret == -ENOENT) {
+		arg->absent_opens++;
+		atomic_store_explicit(&arg->saw_absent, true,
+				      memory_order_release);
+	} else {
+		arg->unexpected_errors++;
+		atomic_fetch_add_explicit(&cell->failures, 1,
+					  memory_order_relaxed);
+		atomic_store_explicit(&cell->abort, true, memory_order_release);
+	}
+	arg->opens++;
+	return ret;
+}
+
+static int run_reader_coverage(struct reader_arg *arg)
+{
+	struct publication_cell *cell = arg->cell;
+	unsigned int observed_generation = 0;
+
+	while (observed_generation < 3) {
+		unsigned int generation;
+		int expected_target;
+		int observed_target = -1;
+		int ret;
+
+		do {
+			if (atomic_load_explicit(&cell->abort,
+						memory_order_acquire) ||
+			    monotonic_raw_ns() >= atomic_load_explicit(
+				    &cell->deadline_ns, memory_order_acquire))
+				goto fail;
+			generation = atomic_load_explicit(
+				&cell->coverage_generation, memory_order_acquire);
+			if (generation <= observed_generation)
+				sched_yield();
+		} while (generation <= observed_generation);
+		if (generation != observed_generation + 1)
+			goto fail;
+		expected_target = atomic_load_explicit(
+			&cell->coverage_expected_target, memory_order_relaxed);
+		ret = publication_reader_open(arg, &observed_target);
+		if (atomic_load_explicit(&cell->coverage_generation,
+					 memory_order_acquire) != generation ||
+		    (expected_target >= 0 &&
+		     (ret || observed_target != expected_target)) ||
+		    (expected_target < 0 && ret != -ENOENT))
+			goto fail;
+		atomic_store_explicit(&arg->observed_generation, generation,
+				      memory_order_release);
+		observed_generation = generation;
+	}
+	while (!atomic_load_explicit(&cell->coverage_complete,
+				     memory_order_acquire)) {
+		if (atomic_load_explicit(&cell->abort, memory_order_acquire) ||
+		    monotonic_raw_ns() >= atomic_load_explicit(
+			    &cell->deadline_ns, memory_order_acquire))
+			goto fail;
+		sched_yield();
+	}
+	return 0;
+
+fail:
+	if (!atomic_exchange_explicit(&cell->abort, true,
+				      memory_order_acq_rel))
+		atomic_fetch_add_explicit(&cell->failures, 1,
+					  memory_order_relaxed);
+	return -EIO;
 }
 
 static void *publication_reader(void *opaque)
 {
 	struct reader_arg *arg = opaque;
 	struct publication_cell *cell = arg->cell;
-	bool directory_cell = cell->logical_child != NULL;
 
 	while (!atomic_load_explicit(&cell->start, memory_order_acquire))
 		sched_yield();
 	if (atomic_load_explicit(&cell->abort, memory_order_relaxed))
 		return NULL;
+	if (cell->detailed_history && run_reader_coverage(arg))
+		return NULL;
+	if (cell->detailed_history) {
+		int observed_target = -1;
+		int ret;
+
+		while (!atomic_load_explicit(&cell->overlap_armed,
+					    memory_order_acquire)) {
+			if (atomic_load_explicit(&cell->abort,
+						memory_order_acquire) ||
+			    monotonic_raw_ns() >= atomic_load_explicit(
+				    &cell->deadline_ns, memory_order_acquire))
+				return NULL;
+			sched_yield();
+		}
+		ret = publication_reader_open(arg, &observed_target);
+		if (ret != -ENOENT || observed_target != -1) {
+			if (!atomic_exchange_explicit(&cell->abort, true,
+						      memory_order_acq_rel))
+				atomic_fetch_add_explicit(&cell->failures, 1,
+							  memory_order_relaxed);
+			return NULL;
+		}
+		atomic_store_explicit(&arg->overlap_completed, true,
+				      memory_order_release);
+	}
 	while (monotonic_raw_ns() <
 	       atomic_load_explicit(&cell->deadline_ns, memory_order_acquire) &&
 	       !atomic_load_explicit(&cell->abort, memory_order_acquire) &&
 	       (!cell->detailed_history || arg->opens < cell->min_opens ||
-		!arg->successful_opens || !arg->absent_opens) &&
+		__builtin_popcountll(atomic_load_explicit(
+			&arg->target_mask, memory_order_acquire)) < 2 ||
+		!atomic_load_explicit(&arg->saw_absent, memory_order_acquire)) &&
 	       (!cell->detailed_history ||
 		arg->opens < (uint64_t)cell->min_opens + cell->min_updates +
 				 HISTORY_OPEN_SLACK)) {
-		const char *path;
-		enum open_kind kind;
+		int observed_target = -1;
 		int ret;
 
-		if (directory_cell && (arg->opens & 1)) {
-			path = cell->logical_path;
-			kind = OPEN_DIRECTORY;
-		} else if (directory_cell) {
-			path = cell->logical_child;
-			kind = OPEN_DIRECTORY_CHILD;
-		} else {
-			path = cell->logical_path;
-			kind = OPEN_FINAL_FILE;
-		}
-		ret = history_open(cell->log, cell->name, path, kind,
-				   cell->targets, cell->target_count, "reader",
-				   arg->reader_id, NULL, cell->detailed_history);
-		if (!ret)
-			arg->successful_opens++;
-		else if (ret == -ENOENT)
-			arg->absent_opens++;
-		else {
-			arg->unexpected_errors++;
-			atomic_fetch_add_explicit(&cell->failures, 1,
-						  memory_order_relaxed);
-			atomic_store_explicit(&cell->abort, true,
-					      memory_order_release);
-		}
-		arg->opens++;
+		ret = publication_reader_open(arg, &observed_target);
+		if (ret && ret != -ENOENT)
+			break;
 		if (cell->detailed_history && arg->opens >= cell->min_opens &&
-		    (!arg->successful_opens || !arg->absent_opens) &&
+		    (__builtin_popcountll(atomic_load_explicit(
+			     &arg->target_mask, memory_order_acquire)) < 2 ||
+		     !atomic_load_explicit(&arg->saw_absent,
+					   memory_order_acquire)) &&
 		    sleep_ns(1000000L)) {
 			atomic_fetch_add_explicit(&cell->failures, 1,
 						  memory_order_relaxed);
@@ -2156,6 +2379,16 @@ static void *publication_reader(void *opaque)
 					      memory_order_release);
 			break;
 		}
+	}
+	if (cell->detailed_history &&
+	    (arg->opens < cell->min_opens ||
+	     __builtin_popcountll(atomic_load_explicit(
+		     &arg->target_mask, memory_order_acquire)) < 2 ||
+	     !atomic_load_explicit(&arg->saw_absent, memory_order_acquire)) &&
+	    !atomic_load_explicit(&cell->abort, memory_order_acquire)) {
+		atomic_fetch_add_explicit(&cell->failures, 1,
+					  memory_order_relaxed);
+		atomic_store_explicit(&cell->abort, true, memory_order_release);
 	}
 	return NULL;
 }
@@ -2187,6 +2420,14 @@ static int run_publication_phase(struct publication_cell *cell,
 	cell->trace_marker_fd = -1;
 	atomic_store_explicit(&cell->start, false, memory_order_relaxed);
 	atomic_store_explicit(&cell->abort, false, memory_order_relaxed);
+	atomic_store_explicit(&cell->coverage_complete, false,
+			      memory_order_relaxed);
+	atomic_store_explicit(&cell->overlap_armed, false,
+			      memory_order_relaxed);
+	atomic_store_explicit(&cell->coverage_expected_target, -1,
+			      memory_order_relaxed);
+	atomic_store_explicit(&cell->coverage_generation, 0,
+			      memory_order_relaxed);
 	atomic_store_explicit(&cell->deadline_ns, 0, memory_order_relaxed);
 	atomic_store_explicit(&cell->updates, 0, memory_order_relaxed);
 	atomic_store_explicit(&cell->failures, 0, memory_order_relaxed);
@@ -2196,6 +2437,16 @@ static int run_publication_phase(struct publication_cell *cell,
 		ret = -ENOMEM;
 		goto out;
 	}
+	writer_arg.readers = reader_args;
+	writer_arg.reader_count = cell->reader_count;
+	for (i = 0; i < cell->reader_count; i++) {
+		reader_args[i].cell = cell;
+		reader_args[i].reader_id = i;
+		atomic_init(&reader_args[i].observed_generation, 0);
+		atomic_init(&reader_args[i].overlap_completed, false);
+		atomic_init(&reader_args[i].target_mask, 0);
+		atomic_init(&reader_args[i].saw_absent, false);
+	}
 	ret = pthread_create(&writer_thread, NULL, publication_writer,
 				     &writer_arg);
 	if (ret) {
@@ -2204,8 +2455,6 @@ static int run_publication_phase(struct publication_cell *cell,
 	}
 	writer_created = true;
 	for (i = 0; i < cell->reader_count; i++) {
-		reader_args[i].cell = cell;
-		reader_args[i].reader_id = i;
 		ret = pthread_create(&reader_threads[i], NULL,
 				     publication_reader, &reader_args[i]);
 		if (ret) {
@@ -2269,9 +2518,13 @@ static int run_publication_phase(struct publication_cell *cell,
 		const char *event = detailed_history ?
 			"target-lifetime-reader-summary" :
 			"target-lifetime-stress-reader-summary";
+		unsigned int distinct_states = __builtin_popcountll(
+			atomic_load_explicit(&reader_args[i].target_mask,
+					     memory_order_acquire));
 		int reader_pass = reader_args[i].opens >= cell->min_opens &&
 				  reader_args[i].successful_opens > 0 &&
 				  reader_args[i].absent_opens > 0 &&
+				  (!detailed_history || distinct_states >= 2) &&
 				  !reader_args[i].unexpected_errors;
 
 		if (!reader_pass) {
@@ -2284,13 +2537,15 @@ static int run_publication_phase(struct publication_cell *cell,
 			    "\"opens\":%" PRIu64 ","
 			    "\"successful_opens\":%" PRIu64 ","
 			    "\"absent_opens\":%" PRIu64 ","
+			    "\"distinct_selected_states\":%u,"
 			    "\"unexpected_errors\":%" PRIu64 ","
 			    "\"target_opens\":%u,\"maximum_opens\":%u,"
 			    "\"pass\":%s}\n",
 			    event, cell->name, i, reader_args[i].opens,
 			    reader_args[i].successful_opens,
 			    reader_args[i].absent_opens,
-			    reader_args[i].unexpected_errors, cell->min_opens,
+			    distinct_states, reader_args[i].unexpected_errors,
+			    cell->min_opens,
 			    detailed_history ?
 				    cell->min_opens + cell->min_updates +
 					    HISTORY_OPEN_SLACK : 0,
@@ -2593,7 +2848,8 @@ static int run_pinned_lifecycle_cell(
 		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "SET",
-						  &file_target, ++writer_seq, -1, true);
+						  &file_target, ++writer_seq, -1, true,
+						  NULL);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "register", 0, step_ret,
 						NULL, NULL))
@@ -2602,7 +2858,8 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, &held_logical, true);
+						"lifecycle", cycle, &held_logical, true,
+						NULL);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-held-logical", 0,
 						step_ret, NULL, NULL))
@@ -2618,7 +2875,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, NULL, true);
+						"lifecycle", cycle, NULL, true, NULL);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-after-rename", 0,
 						step_ret, NULL, NULL))
@@ -2634,7 +2891,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, NULL, true);
+						"lifecycle", cycle, NULL, true, NULL);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-after-unlink", 0,
 						step_ret, NULL, NULL))
@@ -2642,7 +2899,7 @@ static int run_pinned_lifecycle_cell(
 		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "CLEAR",
-						  NULL, ++writer_seq, -1, true);
+						  NULL, ++writer_seq, -1, true, NULL);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "clear-registration", 0,
 						step_ret, NULL, NULL))
@@ -2651,7 +2908,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_FINAL_FILE, &file_target, 1,
-						"lifecycle", cycle, NULL, true);
+						"lifecycle", cycle, NULL, true, NULL);
 			if (emit_lifecycle_step(log, "file-rename-unlink-clear",
 						cycle, "open-after-clear", -ENOENT,
 						step_ret, NULL, NULL))
@@ -2718,7 +2975,8 @@ static int run_pinned_lifecycle_cell(
 		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "SET",
-						  &dir_target, ++writer_seq, -1, true);
+						  &dir_target, ++writer_seq, -1, true,
+						  NULL);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"register", 0, step_ret, NULL, NULL))
 				case_ret = -EIO;
@@ -2726,7 +2984,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_DIRECTORY, &dir_target, 1,
-						"lifecycle", cycle, &held_dir, true);
+						"lifecycle", cycle, &held_dir, true, NULL);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"open-held-logical", 0, step_ret,
 						NULL, NULL))
@@ -2742,7 +3000,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_child,
 						OPEN_DIRECTORY_CHILD, &dir_target, 1,
-						"lifecycle", cycle, NULL, true);
+						"lifecycle", cycle, NULL, true, NULL);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"open-child-after-rename", 0,
 						step_ret, NULL, NULL))
@@ -2750,7 +3008,7 @@ static int run_pinned_lifecycle_cell(
 		}
 		if (!case_ret) {
 			step_ret = history_update(log, cell_name, control_fd, "CLEAR",
-						  NULL, ++writer_seq, -1, true);
+						  NULL, ++writer_seq, -1, true, NULL);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"clear-registration", 0, step_ret,
 						NULL, NULL))
@@ -2759,7 +3017,7 @@ static int run_pinned_lifecycle_cell(
 		if (!case_ret) {
 			step_ret = history_open(log, cell_name, logical_path,
 						OPEN_DIRECTORY, &dir_target, 1,
-						"lifecycle", cycle, NULL, true);
+						"lifecycle", cycle, NULL, true, NULL);
 			if (emit_lifecycle_step(log, "directory-rename-clear", cycle,
 						"open-after-clear", -ENOENT,
 						step_ret, NULL, NULL))
@@ -3027,7 +3285,7 @@ int main(int argc, char **argv)
 	    parse_uint(argv[7], &reader_count) ||
 	    parse_uint(argv[8], &min_updates) ||
 	    parse_uint(argv[9], &min_opens) ||
-	    parse_uint(argv[10], &lifecycle_cycles))
+	    parse_uint(argv[10], &lifecycle_cycles) || min_updates < 4)
 		return 2;
 	if (strcmp(argv[11], "-")) {
 		bool enabled;

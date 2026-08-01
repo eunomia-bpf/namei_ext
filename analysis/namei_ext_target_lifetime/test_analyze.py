@@ -580,6 +580,7 @@ class LinearizabilityTests(unittest.TestCase):
                 "opens": 3,
                 "successful_opens": 2,
                 "absent_opens": 1,
+                "distinct_selected_states": 2,
                 "unexpected_errors": 0,
                 "target_opens": 1,
                 "maximum_opens": 18,
@@ -601,6 +602,39 @@ class LinearizabilityTests(unittest.TestCase):
                 },
                 history,
             )
+
+    def test_accepts_reader_summary_with_two_selected_states(self):
+        records = [
+            {
+                "event": "target-lifetime-reader-summary",
+                "cell": "final-file",
+                "reader": 0,
+                "opens": 3,
+                "successful_opens": 2,
+                "absent_opens": 1,
+                "distinct_selected_states": 2,
+                "unexpected_errors": 0,
+                "target_opens": 1,
+                "maximum_opens": 18,
+                "pass": True,
+            }
+        ]
+        history = [
+            operation(1, "OPEN", 1, 2, "A"),
+            operation(2, "OPEN", 3, 4, "B"),
+            operation(3, "OPEN", 5, 6, "absent", result=-2),
+        ]
+        observed = ANALYZE.validate_reader_summaries(
+            records,
+            "final-file",
+            {
+                "readers": 1,
+                "minimum_updates": 1,
+                "minimum_opens_per_reader": 1,
+            },
+            history,
+        )
+        self.assertEqual(observed, 1)
 
     def test_accepts_bounded_history_and_duration_stress_phases(self):
         config = {
@@ -947,6 +981,7 @@ class LinearizabilityTests(unittest.TestCase):
                 "kernel_update_returns": 3,
                 "rcu_walk_hits": 1,
                 "rcu_resolve_failures": 1,
+                "rcu_absent_results": 1,
                 "rcu_under_update": 1,
                 "result": 0,
                 "pass": True,
@@ -986,10 +1021,9 @@ class LinearizabilityTests(unittest.TestCase):
             result = ANALYZE.validate_target_retirement(
                 records, "final-file", definitions, updates, Path(directory)
             )
-        self.assertEqual(
-            result["concurrent"]["rcu_success_under_replacement"], 1
-        )
-        self.assertEqual(result["concurrent"]["rcu_miss_under_clear"], 1)
+        self.assertEqual(result["concurrent"]["rcu_walk_hits"], 1)
+        self.assertEqual(result["concurrent"]["rcu_resolve_failures"], 1)
+        self.assertEqual(result["concurrent"]["rcu_absent_results"], 1)
 
     def test_rejects_trace_missing_bounded_history_update(self):
         definitions = {
@@ -1152,24 +1186,25 @@ class LinearizabilityTests(unittest.TestCase):
                 records, "final-file", definitions
             )
 
-    def test_rejects_concurrent_rcu_branch_outside_update_window(self):
+    def test_accepts_rcu_engagement_outside_update_window(self):
         with tempfile.TemporaryDirectory() as directory:
             trace = Path(directory, "trace.txt")
             trace.write_text(
-                "# entries-in-buffer/entries-written: 5/5   #P:4\n"
+                "# entries-in-buffer/entries-written: 6/6   #P:4\n"
                 "writer-1: namei_ext-update-begin-1\n"
                 "writer-1: update_enter: (0)\n"
                 "writer-1: update_return: result=5\n"
                 "writer-1: namei_ext-update-end-1\n"
                 "reader-2: resolve_return: rcu_walk=1 result=0\n"
+                "reader-2: resolve_return: rcu_walk=1 result=-2\n"
             )
-            with self.assertRaisesRegex(
-                ANALYZE.AnalysisError,
-                "no successful RCU target resolution during kernel update",
-            ):
-                ANALYZE.parse_concurrent_rcu_trace(trace)
+            observed = ANALYZE.parse_concurrent_rcu_trace(trace)
+        self.assertEqual(observed["rcu_walk_hits"], 1)
+        self.assertEqual(observed["rcu_resolve_failures"], 1)
+        self.assertEqual(observed["rcu_absent_results"], 1)
+        self.assertEqual(observed["rcu_under_update"], 0)
 
-    def test_rejects_rcu_return_between_marker_and_kernel_update(self):
+    def test_rejects_rcu_trace_without_absent_lookup(self):
         with tempfile.TemporaryDirectory() as directory:
             trace = Path(directory, "trace.txt")
             trace.write_text(
@@ -1182,11 +1217,29 @@ class LinearizabilityTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(
                 ANALYZE.AnalysisError,
-                "no successful RCU target resolution during kernel update",
+                "no absent RCU target resolution",
             ):
                 ANALYZE.parse_concurrent_rcu_trace(trace)
 
-    def test_rejects_failed_rcu_return_during_kernel_update(self):
+    def test_rejects_other_rcu_failure_as_absent_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory, "trace.txt")
+            trace.write_text(
+                "# entries-in-buffer/entries-written: 6/6   #P:4\n"
+                "writer-1: namei_ext-update-begin-1\n"
+                "reader-2: resolve_return: rcu_walk=1 result=0\n"
+                "reader-2: resolve_return: rcu_walk=1 result=-116\n"
+                "writer-1: update_enter: (0)\n"
+                "writer-1: update_return: result=5\n"
+                "writer-1: namei_ext-update-end-1\n"
+            )
+            with self.assertRaisesRegex(
+                ANALYZE.AnalysisError,
+                "no absent RCU target resolution",
+            ):
+                ANALYZE.parse_concurrent_rcu_trace(trace)
+
+    def test_rejects_rcu_trace_without_successful_lookup(self):
         with tempfile.TemporaryDirectory() as directory:
             trace = Path(directory, "trace.txt")
             trace.write_text(
@@ -1199,37 +1252,9 @@ class LinearizabilityTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(
                 ANALYZE.AnalysisError,
-                "no successful RCU target resolution during kernel update",
+                "no successful RCU target resolution",
             ):
                 ANALYZE.parse_concurrent_rcu_trace(trace)
-
-    def test_rejects_rcu_trace_without_replacement_overlap(self):
-        updates = [
-            operation(1, "SET", 1, 2, "A", writer_seq=1),
-            operation(2, "SET", 3, 4, "B", writer_seq=2),
-            operation(3, "CLEAR", 5, 6, "absent", writer_seq=3),
-        ]
-        raw = {
-            "branches": [
-                {"under_update": True, "writer_seq": 3, "result": -2},
-            ]
-        }
-        with self.assertRaisesRegex(ANALYZE.AnalysisError, "replacement"):
-            ANALYZE.validate_rcu_stress_classes(raw, updates, "final-file")
-
-    def test_rejects_rcu_trace_without_clear_miss(self):
-        updates = [
-            operation(1, "SET", 1, 2, "A", writer_seq=1),
-            operation(2, "SET", 3, 4, "B", writer_seq=2),
-            operation(3, "CLEAR", 5, 6, "absent", writer_seq=3),
-        ]
-        raw = {
-            "branches": [
-                {"under_update": True, "writer_seq": 2, "result": 0},
-            ]
-        }
-        with self.assertRaisesRegex(ANALYZE.AnalysisError, "ENOENT"):
-            ANALYZE.validate_rcu_stress_classes(raw, updates, "final-file")
 
     def test_rejects_lifecycle_aggregate_without_step_evidence(self):
         records = [

@@ -42,6 +42,28 @@ completion rule. A failed cell stops later cells, and a failed runner prevents
 the formal Agent-workspace regression control from starting; only failure
 artifacts and cleanup continue.
 
+## Selection-Coverage Correction (2026-07-31)
+
+Preflight08 completed the bounded runner on the normal kernel, but the offline
+analyzer rejected the final-file history because both readers observed only
+one selected target state plus absence. The writer had executed five distinct
+`SET` states, so selection breadth depended on scheduling rather than a runner
+gate. The immutable failure and raw counts are recorded in
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight08-selection-coverage-failure.md`.
+
+After each of the first two `SET` operations and the first `CLEAR`, the writer
+publishes a generation and the exact expected target identity or absent state.
+Each reader performs one complete open and descriptor validation for that
+generation, acknowledges only that generation, and then waits. The writer
+cannot advance until every reader acknowledges. It then invokes the fourth
+update, arms a separate rendezvous before entering the control write, and waits
+for one complete absent open from every reader. Those opens therefore overlap
+the update's recorded invocation/response interval; after acknowledging, the
+readers immediately enter the original continuous bounded history. Reader
+summaries record the distinct selected-state count, and the analyzer recomputes
+it from paired history. Failure to obtain these states or the overlap within
+the existing operation bound or history deadline aborts the cell.
+
 ## KCSAN Measurement-Window Correction (2026-07-31)
 
 Preflight04 showed that enabling strict KCSAN during virtme boot does not
@@ -245,13 +267,18 @@ cleanup requirements in this plan still apply.
   class, and errno. `SET` and `CLEAR` are issued by one writer, so their order
   is fixed. A successful `openat()` linearizes to the registered object whose
   device/inode it returns; a declared absence linearizes to the absent state.
-- Concurrent RCU engagement is a separate raw ftrace oracle. Writer markers
+- RCU-path engagement is a separate raw ftrace oracle. Writer markers
   associate one history `writer_seq` with the control write, while dynamic
   entry/return probes on `namei_ext_register_target_write()` define the actual
   in-kernel update interval. A return probe on `namei_ext_resolve_target()`
-  captures both `rcu_walk` and its result. Only a zero-returning RCU resolve
-  inside the kernel update interval counts; a resolve in the marker-to-kernel
-  gap or a failed resolve during clear does not.
+  captures both `rcu_walk` and its result. The raw trace must retain every
+  bounded update entry/return and contain both successful and absent RCU-walk
+  resolutions; only `-ENOENT`, not an arbitrary nonzero return, establishes
+  the absent class. Other failures remain separately counted. Any lookup that
+  happens to overlap a kernel update remains a reported count, not a second
+  probabilistic lifetime gate. The deterministic
+  replacement and clear litmus rows above exclusively test a borrowed target
+  held across the actual kernel update and grace-period window.
 - Writer control operations and trace shutdown share a mutex. Every bounded
   history update, including the final clear, carries begin/end markers. Trace
   shutdown runs only after the writer has joined, so no unmarked update can

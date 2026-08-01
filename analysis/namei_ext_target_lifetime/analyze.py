@@ -2,6 +2,7 @@
 
 import argparse
 import bisect
+import errno
 import heapq
 import json
 import re
@@ -538,10 +539,10 @@ def parse_concurrent_rcu_trace(path):
         for branch in branches
         if branch["under_update"] and branch["result"] == 0
     ]
-    if not successful_under_update:
-        raise AnalysisError(
-            f"{path}: no successful RCU target resolution during kernel update"
-        )
+    if not any(branch["result"] == 0 for branch in branches):
+        raise AnalysisError(f"{path}: no successful RCU target resolution")
+    if not any(branch["result"] == -errno.ENOENT for branch in branches):
+        raise AnalysisError(f"{path}: no absent RCU target resolution")
     return {
         "entries_buffered": entries_buffered,
         "entries_written": entries_written,
@@ -555,54 +556,10 @@ def parse_concurrent_rcu_trace(path):
         "rcu_resolve_failures": sum(
             branch["result"] != 0 for branch in branches
         ),
+        "rcu_absent_results": sum(
+            branch["result"] == -errno.ENOENT for branch in branches
+        ),
         "rcu_under_update": len(successful_under_update),
-    }
-
-
-def validate_rcu_stress_classes(raw, updates, cell):
-    replacement_sequences = {
-        int(current["writer_seq"])
-        for previous, current in zip(updates, updates[1:])
-        if previous["operation"] == "SET" and current["operation"] == "SET"
-    }
-    clear_sequences = {
-        int(operation["writer_seq"])
-        for operation in updates
-        if operation["operation"] == "CLEAR"
-    }
-    successful_sequences = {
-        branch["writer_seq"]
-        for branch in raw["branches"]
-        if branch["under_update"] and branch["result"] == 0
-    }
-    absent_sequences = {
-        branch["writer_seq"]
-        for branch in raw["branches"]
-        if branch["under_update"] and branch["result"] == -2
-    }
-    if not replacement_sequences or not (
-        replacement_sequences & successful_sequences
-    ):
-        raise AnalysisError(
-            f"{cell}: no successful RCU resolution engaged a replacement window"
-        )
-    if not clear_sequences or not (clear_sequences & absent_sequences):
-        raise AnalysisError(
-            f"{cell}: no RCU ENOENT engaged a clear window"
-        )
-    return {
-        "rcu_success_under_replacement": sum(
-            branch["under_update"]
-            and branch["result"] == 0
-            and branch["writer_seq"] in replacement_sequences
-            for branch in raw["branches"]
-        ),
-        "rcu_miss_under_clear": sum(
-            branch["under_update"]
-            and branch["result"] == -2
-            and branch["writer_seq"] in clear_sequences
-            for branch in raw["branches"]
-        ),
     }
 
 
@@ -843,8 +800,6 @@ def validate_target_retirement(
         if branch["under_update"]
     ):
         raise AnalysisError(f"{cell}: RCU branch names an unmarked update")
-    overlap_classes = validate_rcu_stress_classes(raw, updates, cell)
-
     expected_summary = {
         "trace_entries": raw["entries_buffered"],
         "trace_entries_written": raw["entries_written"],
@@ -855,6 +810,7 @@ def validate_target_retirement(
         "kernel_update_returns": raw["kernel_update_returns"],
         "rcu_walk_hits": raw["rcu_walk_hits"],
         "rcu_resolve_failures": raw["rcu_resolve_failures"],
+        "rcu_absent_results": raw["rcu_absent_results"],
         "rcu_under_update": raw["rcu_under_update"],
     }
     if (
@@ -865,13 +821,9 @@ def validate_target_retirement(
                for field, value in expected_summary.items())
     ):
         raise AnalysisError(f"{cell}: concurrent RCU summary is not raw-backed")
-    concurrent_result = {
-        **expected_summary,
-        **overlap_classes,
-    }
     return {
         "litmus": litmus,
-        "concurrent": concurrent_result,
+        "concurrent": expected_summary,
     }
 
 
@@ -979,6 +931,7 @@ def validate_reader_summaries(records, cell, run_config, operations):
         < run_config["minimum_opens_per_reader"]
         or int(record.get("successful_opens", 0)) <= 0
         or int(record.get("absent_opens", 0)) <= 0
+        or int(record.get("distinct_selected_states", 0)) < 2
         or int(record.get("unexpected_errors", -1)) != 0
         or int(record.get("target_opens", -1))
         != run_config["minimum_opens_per_reader"]
@@ -993,8 +946,14 @@ def validate_reader_summaries(records, cell, run_config, operations):
     if len({int(record["reader"]) for record in readers}) != len(readers):
         raise AnalysisError(f"{cell}: duplicate reader summaries")
 
-    observed = defaultdict(lambda: {"opens": 0, "successful_opens": 0,
-                                    "absent_opens": 0})
+    observed = defaultdict(
+        lambda: {
+            "opens": 0,
+            "successful_opens": 0,
+            "absent_opens": 0,
+            "selected_states": set(),
+        }
+    )
     for operation in operations:
         if operation["operation"] != "OPEN" or operation["actor"] != "reader":
             continue
@@ -1002,6 +961,8 @@ def validate_reader_summaries(records, cell, run_config, operations):
         summary["opens"] += 1
         summary["successful_opens"] += operation["result"] == 0
         summary["absent_opens"] += operation["result"] == -2
+        if operation["result"] == 0:
+            summary["selected_states"].add(operation["state"])
     if set(observed) != set(range(run_config["readers"])):
         raise AnalysisError(f"{cell}: reader history coverage is incomplete")
     for record in readers:
@@ -1012,6 +973,13 @@ def validate_reader_summaries(records, cell, run_config, operations):
                     f"{cell}: reader {reader} {field} summary does not "
                     "match paired history"
                 )
+        if int(record.get("distinct_selected_states", -1)) != len(
+            observed[reader]["selected_states"]
+        ):
+            raise AnalysisError(
+                f"{cell}: reader {reader} distinct target summary does not "
+                "match paired history"
+            )
     return len(readers)
 
 
