@@ -64,6 +64,40 @@ summaries record the distinct selected-state count, and the analyzer recomputes
 it from paired history. Failure to obtain these states or the overlap within
 the existing operation bound or history deadline aborts the cell.
 
+## KCSAN Weak-Memory Correction (2026-07-31)
+
+Preflight09 passed the complete normal and KASAN boots. The KCSAN runner also
+returned zero, and every semantic, lifetime, history, stress, lower-object, and
+cleanup oracle passed, but the boot was negative under the frozen diagnostic
+rule. KCSAN counted 248 data races during the enabled windows. The retained
+dmesg starts mid-report and contains only 179 complete blocks: 178
+`init_file / init_file` reports and one
+`acct_account_cputime / stop_this_handle` report. The remaining 69 detections
+cannot be attributed. Although no retained headline names a `namei_ext` kernel
+function, the stacks include the experiment reader/writer process and thus
+meet the frozen negative criterion. The immutable result is recorded in
+`docs/tmp/2026-07-31-rq3-target-lifetime-preflight09-kcsan-negative.md`.
+
+The dominant retained report occurs before the extension point:
+`path_openat()` calls
+`alloc_empty_file()` and `init_file()` before `path_init()`, component walk,
+or any `namei_ext` hook. Strict weak-memory KCSAN simulates reordering of plain
+initialization writes within `init_file()` while the `SLAB_TYPESAFE_BY_RCU`
+file cache rapidly reuses addresses. This mode therefore tests a broader VFS
+file-allocation ordering question rather than the selected-target handoff.
+This attribution motivates the next configuration; it does not reclassify
+preflight09.
+
+The KCSAN configuration remains strict and keeps the same watchpoint count,
+delays, unknown-origin reporting, zero-race gate, lockdep, and PROVE_RCU, but
+disables `CONFIG_KCSAN_WEAK_MEMORY`. KCSAN still samples actual conflicting
+concurrent accesses. KASAN and the deterministic replacement/clear litmus
+retain their separate use-after-free, RCU-borrow, grace-period, and
+publication-order roles. No report filter is added, and any diagnostic in the
+next workload window still makes the boot negative or inconclusive. If the
+same reports remain without weak-memory modeling, this correction is refuted
+and the experiment must not proceed to the formal matrix.
+
 ## KCSAN Measurement-Window Correction (2026-07-31)
 
 Preflight04 showed that enabling strict KCSAN during virtme boot does not
@@ -321,7 +355,7 @@ cleanup requirements in this plan still apply.
   `KASAN_VMALLOC`, lockdep, `PROVE_LOCKING`, `DEBUG_LOCK_ALLOC`, `PROVE_RCU`,
   and `PROVE_RCU_LIST`.
 - KCSAN uses a third independent build root and image with `CONFIG_KASAN=n`,
-  strict KCSAN, weak-memory modeling, unknown-origin reports, lockdep,
+  strict KCSAN without weak-memory modeling, unknown-origin reports, lockdep,
   `PROVE_LOCKING`, `DEBUG_LOCK_ALLOC`, `PROVE_RCU`, and `PROVE_RCU_LIST`.
   Sampling is frozen at 64 watchpoints, 80 microseconds task delay, 20
   microseconds interrupt delay, one watchpoint attempt per 1,000 instrumented
@@ -345,7 +379,7 @@ cleanup requirements in this plan still apply.
 | preflight | real path | all three lifetime cells at reduced duration | normal, KASAN, KCSAN | 1 each | establishes that the actual debug kernels, attach path, history, descriptor checks, and KCSAN counters run |
 | formal-normal | proposed | all three lifetime cells plus current 37-row namei control | normal Phase 1 | 3 boots | validates the production-config mechanism history |
 | formal-kasan | correctness instrumentation | same cells and control | Generic KASAN, lockdep, PROVE_RCU | 3 boots | tests use-after-free, invalid access, lock, and RCU failures |
-| formal-kcsan | correctness instrumentation | same cells and control | strict KCSAN, weak-memory modeling, lockdep, PROVE_RCU | 3 boots | tests data races and weak-memory-sensitive publication failures |
+| formal-kcsan | correctness instrumentation | same cells and control | strict KCSAN, lockdep, PROVE_RCU | 3 boots | tests sampled concurrent data races while the deterministic litmus tests publication ordering |
 
 ## Execution
 

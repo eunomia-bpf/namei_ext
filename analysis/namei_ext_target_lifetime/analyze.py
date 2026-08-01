@@ -1332,7 +1332,7 @@ def validate_kernel_config(path, kernel_kind):
             "CONFIG_KCSAN": "y",
             "CONFIG_KCSAN_EARLY_ENABLE": "n",
             "CONFIG_KCSAN_STRICT": "y",
-            "CONFIG_KCSAN_WEAK_MEMORY": "y",
+            "CONFIG_KCSAN_WEAK_MEMORY": "n",
             "CONFIG_KCSAN_NUM_WATCHPOINTS": "64",
             "CONFIG_KCSAN_UDELAY_TASK": "80",
             "CONFIG_KCSAN_UDELAY_INTERRUPT": "20",

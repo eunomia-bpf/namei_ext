@@ -493,6 +493,7 @@ class LinearizabilityTests(unittest.TestCase):
         config = Path("configs/kernel/x86_64_phase1_kcsan.config")
         checked = ANALYZE.validate_kernel_config(config, "kcsan")
         self.assertEqual(checked["CONFIG_KCSAN_EARLY_ENABLE"], "n")
+        self.assertEqual(checked["CONFIG_KCSAN_WEAK_MEMORY"], "n")
 
     def test_rejects_kcsan_config_with_early_instrumentation(self):
         source = Path("configs/kernel/x86_64_phase1_kcsan.config").read_text()
@@ -506,6 +507,21 @@ class LinearizabilityTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(
                 ANALYZE.AnalysisError, "CONFIG_KCSAN_EARLY_ENABLE"
+            ):
+                ANALYZE.validate_kernel_config(config, "kcsan")
+
+    def test_rejects_kcsan_config_with_weak_memory_modeling(self):
+        source = Path("configs/kernel/x86_64_phase1_kcsan.config").read_text()
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "kernel.config"
+            config.write_text(
+                source.replace(
+                    "# CONFIG_KCSAN_WEAK_MEMORY is not set",
+                    "CONFIG_KCSAN_WEAK_MEMORY=y",
+                )
+            )
+            with self.assertRaisesRegex(
+                ANALYZE.AnalysisError, "CONFIG_KCSAN_WEAK_MEMORY"
             ):
                 ANALYZE.validate_kernel_config(config, "kcsan")
 

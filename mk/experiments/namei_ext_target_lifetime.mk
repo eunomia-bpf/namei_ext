@@ -160,7 +160,7 @@ namei-ext-target-lifetime-debug-kernels:
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
 	grep '^CONFIG_KCSAN_STRICT=y' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
-	grep '^CONFIG_KCSAN_WEAK_MEMORY=y' \
+	grep '^# CONFIG_KCSAN_WEAK_MEMORY is not set' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
 	grep '^CONFIG_PROVE_RCU=y' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
