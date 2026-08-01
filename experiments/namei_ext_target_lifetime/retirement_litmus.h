@@ -11,7 +11,7 @@ typedef uint32_t litmus_u32;
 typedef uint64_t litmus_u64;
 #endif
 
-#define NAMEI_EXT_LITMUS_VERSION 1U
+#define NAMEI_EXT_LITMUS_VERSION 2U
 
 #define NAMEI_EXT_LITMUS_IDLE 0ULL
 #define NAMEI_EXT_LITMUS_ARMED 1ULL
@@ -81,6 +81,9 @@ struct retirement_litmus_state {
 	litmus_u32 observed_writer_cpu;
 	litmus_u32 timeout_reason;
 	litmus_u32 reserved;
+	litmus_u64 resolve_redirect;
+	litmus_u32 resolve_rcu_walk;
+	litmus_u32 reserved2;
 };
 
 _Static_assert(__builtin_offsetof(struct retirement_litmus_state, cookie) == 0,
@@ -108,7 +111,13 @@ _Static_assert(__builtin_offsetof(struct retirement_litmus_state,
 	       "retirement litmus CPU offset changed");
 _Static_assert(__builtin_offsetof(struct retirement_litmus_state, reserved) == 328,
 	       "retirement litmus tail offset changed");
-_Static_assert(sizeof(struct retirement_litmus_state) == 336,
+_Static_assert(__builtin_offsetof(struct retirement_litmus_state,
+				  resolve_redirect) == 336,
+	       "retirement litmus resolve pointer offset changed");
+_Static_assert(__builtin_offsetof(struct retirement_litmus_state,
+				  resolve_rcu_walk) == 344,
+	       "retirement litmus resolve mode offset changed");
+_Static_assert(sizeof(struct retirement_litmus_state) == 352,
 	       "retirement litmus state size changed");
 
 #endif /* NAMEI_EXT_RETIREMENT_LITMUS_H */

@@ -118,6 +118,8 @@ namei-ext-target-lifetime-analysis-test:
 	python3 -m unittest analysis.namei_ext_target_lifetime.test_analyze
 
 namei-ext-target-lifetime-debug-kernels:
+	grep '^CONFIG_KPROBES=y' "$(KERNEL_BUILD_DIR)/.config"
+	grep '^CONFIG_KPROBE_EVENTS=y' "$(KERNEL_BUILD_DIR)/.config"
 	$(MAKE) --no-print-directory -C "$(ROOT_DIR)" kernel kernel-config \
 		KERNEL_BUILD_DIR="$(TARGET_LIFETIME_KASAN_BUILD_DIR)" \
 		KERNEL_IMAGE="$(TARGET_LIFETIME_KASAN_IMAGE)" \
@@ -136,6 +138,8 @@ namei-ext-target-lifetime-debug-kernels:
 	grep '^CONFIG_DETECT_HUNG_TASK=y' \
 		"$(TARGET_LIFETIME_KASAN_BUILD_DIR)/.config"
 	grep '^CONFIG_DEFAULT_HUNG_TASK_TIMEOUT=120' \
+		"$(TARGET_LIFETIME_KASAN_BUILD_DIR)/.config"
+	grep '^CONFIG_KPROBES=y' \
 		"$(TARGET_LIFETIME_KASAN_BUILD_DIR)/.config"
 	grep '^CONFIG_KPROBE_EVENTS=y' \
 		"$(TARGET_LIFETIME_KASAN_BUILD_DIR)/.config"
@@ -161,6 +165,8 @@ namei-ext-target-lifetime-debug-kernels:
 	grep '^CONFIG_DETECT_HUNG_TASK=y' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
 	grep '^CONFIG_DEFAULT_HUNG_TASK_TIMEOUT=120' \
+		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
+	grep '^CONFIG_KPROBES=y' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"
 	grep '^CONFIG_KPROBE_EVENTS=y' \
 		"$(TARGET_LIFETIME_KCSAN_BUILD_DIR)/.config"

@@ -634,8 +634,8 @@ def validate_retirement_litmus(records, cell, definitions):
         old = definitions[old_state]
         if (
             row.get("pass") is not True
-            or row.get("source") != "tracing-bpf-fexit-kprobe"
-            or int(row.get("version", 0)) != 1
+            or row.get("source") != "tracing-bpf-kprobe-kretprobe"
+            or int(row.get("version", 0)) != 2
             or not cookie
             or int(row.get("mode", 0)) != mode
             or int(row.get("state", -1)) != 4
@@ -657,6 +657,8 @@ def validate_retirement_litmus(records, cell, definitions):
             or int(row.get("observed_target_id", 0)) != 1
             or int(row.get("observed_mount", 0)) <= 0
             or int(row.get("observed_dentry", 0)) <= 0
+            or int(row.get("resolve_redirect", 0)) <= 0
+            or int(row.get("resolve_rcu_walk", 0)) != 1
             or int(row.get("resolve_attempts", 0)) != 1
             or int(row.get("resolve_matches", 0)) != 1
             or int(row.get("update_entries", 0)) != 1

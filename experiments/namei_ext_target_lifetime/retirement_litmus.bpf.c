@@ -20,6 +20,30 @@ struct litmus_path {
 	void *dentry;
 };
 
+struct litmus_pt_regs {
+	litmus_u64 r15;
+	litmus_u64 r14;
+	litmus_u64 r13;
+	litmus_u64 r12;
+	litmus_u64 bp;
+	litmus_u64 bx;
+	litmus_u64 r11;
+	litmus_u64 r10;
+	litmus_u64 r9;
+	litmus_u64 r8;
+	litmus_u64 ax;
+	litmus_u64 cx;
+	litmus_u64 dx;
+	litmus_u64 si;
+	litmus_u64 di;
+	litmus_u64 orig_ax;
+	litmus_u64 ip;
+	litmus_u64 cs;
+	litmus_u64 flags;
+	litmus_u64 sp;
+	litmus_u64 ss;
+};
+
 struct litmus_redirect {
 	unsigned char active;
 	unsigned char target_pending;
@@ -68,19 +92,41 @@ static long wait_for_writer(litmus_u32 index, void *opaque)
 	return 1;
 }
 
-SEC("fexit/namei_ext_resolve_target")
-int hold_borrowed_target(litmus_u64 *ctx)
+SEC("kprobe/namei_ext_resolve_target")
+int capture_borrow_args(struct litmus_pt_regs *ctx)
+{
+	litmus_u64 attempts;
+
+	if (current_tid() != retirement_litmus.reader_tid ||
+	    retirement_litmus.state != NAMEI_EXT_LITMUS_ARMED)
+		return 0;
+	attempts = __sync_fetch_and_add(&retirement_litmus.resolve_attempts, 1);
+	if (attempts) {
+		set_error(NAMEI_EXT_LITMUS_ERROR_DUPLICATE_EVENT);
+		return 0;
+	}
+	retirement_litmus.resolve_redirect = ctx->di;
+	retirement_litmus.resolve_rcu_walk = (litmus_u32)ctx->si;
+	return 0;
+}
+
+SEC("kretprobe/namei_ext_resolve_target")
+int hold_borrowed_target(struct litmus_pt_regs *ctx)
 {
 	struct litmus_redirect redirect = {};
-	void *redirect_ptr = (void *)(unsigned long)ctx[0];
-	litmus_u32 rcu_walk = (litmus_u32)ctx[1];
-	int result = (int)ctx[2];
+	void *redirect_ptr =
+		(void *)(unsigned long)retirement_litmus.resolve_redirect;
+	litmus_u32 rcu_walk = retirement_litmus.resolve_rcu_walk;
+	int result = (int)ctx->ax;
 	litmus_u64 state;
 
 	if (current_tid() != retirement_litmus.reader_tid ||
 	    retirement_litmus.state != NAMEI_EXT_LITMUS_ARMED)
 		return 0;
-	__sync_fetch_and_add(&retirement_litmus.resolve_attempts, 1);
+	if (retirement_litmus.resolve_attempts != 1 || !redirect_ptr) {
+		set_error(NAMEI_EXT_LITMUS_ERROR_DUPLICATE_EVENT);
+		return 0;
+	}
 	if (result) {
 		set_error(NAMEI_EXT_LITMUS_ERROR_RESOLVE_RESULT);
 		return 0;

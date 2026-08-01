@@ -57,8 +57,8 @@ def litmus_record(operation, cookie, mount=100, dentry=200):
         "event": "target-lifetime-rcu-litmus",
         "cell": "final-file",
         "operation": operation,
-        "source": "tracing-bpf-fexit-kprobe",
-        "version": 1,
+        "source": "tracing-bpf-kprobe-kretprobe",
+        "version": 2,
         "cookie": cookie,
         "mode": 1 if replace else 2,
         "state": 4,
@@ -77,6 +77,8 @@ def litmus_record(operation, cookie, mount=100, dentry=200):
         "observed_target_id": 1,
         "observed_mount": mount,
         "observed_dentry": dentry,
+        "resolve_redirect": 300,
+        "resolve_rcu_walk": 1,
         "hold_seq": 1,
         "update_entry_seq": 2,
         "clear_entry_seq": 0 if replace else 3,
@@ -635,6 +637,35 @@ class LinearizabilityTests(unittest.TestCase):
     def test_rejects_litmus_reader_tid_mismatch(self):
         records = [litmus_record("replace", 1), litmus_record("clear", 2)]
         records[0]["observed_reader_tid"] = 999
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        with self.assertRaisesRegex(ANALYZE.AnalysisError, "fields are invalid"):
+            ANALYZE.validate_retirement_litmus(
+                records, "final-file", definitions
+            )
+
+    def test_rejects_litmus_without_entry_probe_evidence(self):
+        definitions = {
+            "A": {"device": 7, "inode": 11},
+            "B": {"device": 8, "inode": 12},
+        }
+        for field, value in (("resolve_redirect", 0), ("resolve_rcu_walk", 0)):
+            with self.subTest(field=field):
+                records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+                records[0][field] = value
+                with self.assertRaisesRegex(
+                    ANALYZE.AnalysisError, "fields are invalid"
+                ):
+                    ANALYZE.validate_retirement_litmus(
+                        records, "final-file", definitions
+                    )
+
+    def test_rejects_old_fexit_litmus_schema(self):
+        records = [litmus_record("replace", 1), litmus_record("clear", 2)]
+        records[0]["source"] = "tracing-bpf-fexit-kprobe"
+        records[0]["version"] = 1
         definitions = {
             "A": {"device": 7, "inode": 11},
             "B": {"device": 8, "inode": 12},

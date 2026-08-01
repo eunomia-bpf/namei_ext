@@ -32,7 +32,7 @@
 #define EVENT_BUFFER_SIZE 4096
 #define TRACE_BUFFER_SIZE (16 * 1024 * 1024)
 #define TARGET_ID 1
-#define LITMUS_LINK_COUNT 6
+#define LITMUS_LINK_COUNT 7
 #define LITMUS_HOLD_TIMEOUT_NS (2ULL * 1000000000ULL)
 #define LITMUS_USER_TIMEOUT_NS (3ULL * 1000000000ULL)
 
@@ -983,6 +983,7 @@ static bool retirement_snapshot_passes(
 		 state->expected_target_id == TARGET_ID &&
 		 state->observed_target_id == TARGET_ID &&
 		 state->observed_mount && state->observed_dentry &&
+		 state->resolve_redirect && state->resolve_rcu_walk == 1 &&
 		 state->resolve_attempts == 1 && state->resolve_matches == 1 &&
 		 state->update_entries == 1 && state->grace_entries == 1 &&
 		 state->update_exits == 1 && !state->error_flags &&
@@ -1032,7 +1033,7 @@ static int emit_retirement_litmus(
 		log,
 		"{\"event\":\"target-lifetime-rcu-litmus\","
 		"\"cell\":\"%s\",\"operation\":\"%s\","
-		"\"source\":\"tracing-bpf-fexit-kprobe\","
+		"\"source\":\"tracing-bpf-kprobe-kretprobe\","
 		"\"version\":%u,\"cookie\":%" PRIu64 ","
 		"\"mode\":%" PRIu64 ",\"state\":%" PRIu64 ","
 		"\"event_seq\":%" PRIu64 ","
@@ -1045,6 +1046,8 @@ static int emit_retirement_litmus(
 		"\"expected_target_id\":%u,\"observed_target_id\":%u,"
 		"\"observed_mount\":%" PRIu64 ","
 		"\"observed_dentry\":%" PRIu64 ","
+		"\"resolve_redirect\":%" PRIu64 ","
+		"\"resolve_rcu_walk\":%u,"
 		"\"hold_seq\":%" PRIu64 ",\"update_entry_seq\":%" PRIu64 ","
 		"\"clear_entry_seq\":%" PRIu64 ",\"grace_entry_seq\":%" PRIu64 ","
 		"\"reader_release_seq\":%" PRIu64 ","
@@ -1080,7 +1083,8 @@ static int emit_retirement_litmus(
 		state->observed_reader_cpu, state->expected_cgroup_id,
 		state->observed_cgroup_id, state->expected_target_id,
 		state->observed_target_id, state->observed_mount,
-		state->observed_dentry, state->hold_seq, state->update_entry_seq,
+		state->observed_dentry, state->resolve_redirect,
+		state->resolve_rcu_walk, state->hold_seq, state->update_entry_seq,
 		state->clear_entry_seq, state->grace_entry_seq,
 		state->reader_release_seq, state->clear_exit_seq,
 		state->update_exit_seq, state->hold_ns, state->update_entry_ns,
