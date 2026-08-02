@@ -395,14 +395,9 @@ spindle-staging-analyze:
 		'["metric","value"],["boots",.boots],["source_passes",.source_passes],["namei_ext_passes",.namei_ext_passes],["withdrawn_passes",.withdrawn_passes],["mappings",.mappings],["selections",.selections],["selection_hits",.selection_hits],["identities",.identities],["preserved",.preserved],["permission_probes",.permission_probes],["withdrawal_controls",.withdrawal_controls] | @csv' \
 		"$(SPINDLE_STAGING_ACTIVE_DIR)/analysis.tmp/summary.json" \
 		>"$(SPINDLE_STAGING_ACTIVE_DIR)/analysis.tmp/summary.csv"
-	printf '%s\n' \
-		'# Spindle HPC Staging Result' \
-		'' \
-		"Boots: $$(jq -r .boots "$(SPINDLE_STAGING_ACTIVE_DIR)/analysis.tmp/summary.json")" \
-		"Source/namei_ext/withdrawn: $$(jq -r '[.source_passes,.namei_ext_passes,.withdrawn_passes] | join(\"/\")' "$(SPINDLE_STAGING_ACTIVE_DIR)/analysis.tmp/summary.json")" \
-		"Focal mappings/selections/identities/preserved: $$(jq -r '[.mappings,.selections,.identities,.preserved] | join(\"/\")' "$(SPINDLE_STAGING_ACTIVE_DIR)/analysis.tmp/summary.json")" \
-		'' \
-		'Verdict: supported for the frozen source-derived loader slice.' \
+	jq -r \
+		'["# Spindle HPC Staging Result","","Boots: \(.boots)","Source/namei_ext/withdrawn: \([.source_passes,.namei_ext_passes,.withdrawn_passes] | join("/"))","Focal mappings/selections/identities/preserved: \([.mappings,.selections,.identities,.preserved] | join("/"))","","Verdict: supported for the frozen source-derived loader slice."] | .[]' \
+		"$(SPINDLE_STAGING_ACTIVE_DIR)/analysis.tmp/summary.json" \
 		>"$(SPINDLE_STAGING_ACTIVE_DIR)/analysis.tmp/report.md"
 	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$(SPINDLE_STAGING_ACTIVE_DIR)/analysis)
 

@@ -371,6 +371,18 @@ class AnalysisLifecycleTest(unittest.TestCase):
         )
         self.assertNotIn("file_is_empty(namei_stderr", runner)
 
+    def test_spindle_report_is_one_fallible_jq_command(self):
+        makefile = (
+            ROOT / "mk/experiments/spindle_staging.mk"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            '"Source/namei_ext/withdrawn: '
+            '\\([.source_passes,.namei_ext_passes,.withdrawn_passes] '
+            '| join("/"))"',
+            makefile,
+        )
+        self.assertNotIn("$$(jq -r '[.source_passes", makefile)
+
 
 if __name__ == "__main__":
     unittest.main()
