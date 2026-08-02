@@ -20,8 +20,9 @@ process-heavy version is archived at
 
 ### Paper-facing workload set
 
-The paper does not treat all surveyed workflows as equal experiments. The
-current evaluation has two deep cases and three supporting RQ1 cases:
+The paper has seven industrial RQ1 case studies. They do not need equal depth:
+two carry the deepest cross-RQ evidence, three already provide completed RQ1
+breadth, and two still require complete RQ1 execution:
 
 | Role | Workload | Completed evidence | Remaining paper-value gap |
 | --- | --- | --- | --- |
@@ -30,11 +31,12 @@ current evaluation has two deep cases and three supporting RQ1 cases:
 | Supporting breadth | W1 Sandboxed Application File Sharing | RQ1 against official `xdg-document-portal` 1.18.4 | No performance claim; the attempted official-portal timing protocol closed |
 | Supporting breadth | W4 Service Configuration and Secret Rotation | RQ1 against official Kubernetes v1.30.0 `AtomicWriter` | The result covers already-materialized leaf selection, not service reload |
 | Supporting breadth | W7 Toolchain and Dependency Environments | RQ1 with Ubuntu CPython 3.10/3.12 environments | No matched FUSE or custom-filesystem claim |
+| Required RQ1 case | W5 Checkpoint/Restore and Migration | Source behavior and oracle identified | Complete the DMTCP moved-root restart/reopen workflow in KVM |
+| Required RQ1 case | W6 HPC File Staging | Source build, loader slice, inventory, and generic selection dependency complete | Complete the Spindle/Pynamic or MPI/Python source workflow in KVM |
 
-W5 Checkpoint/Restore and W6 HPC File Staging remain source-grounded portfolio
-candidates, not completed paper results. FxMark and the historical ccache
-matrix are performance evidence, not additional case studies. The complete
-data and raw-result audit is
+W5 and W6 are incomplete required workloads, not optional portfolio
+candidates. FxMark and the historical ccache matrix are performance evidence,
+not substitutes for either case study. The complete data and raw-result audit is
 [`docs/tmp/2026-08-02-workload-evidence-audit.md`](tmp/2026-08-02-workload-evidence-audit.md).
 
 The evaluation separates three kinds of evidence:
@@ -84,13 +86,14 @@ The cases remain distinct even when their policies use the same bounded action:
 | W6 HPC File Staging vs W7 Toolchain and Dependency Environments | W6 moves the same object from shared storage to node-local storage to reduce launch and shared-filesystem load; W7 chooses among semantically different installed software variants. |
 | W4 Service Configuration and Secret Rotation vs W7 Toolchain and Dependency Environments | W4 publishes validated configuration, certificate, or secret releases to a running service; W7 selects a user, project, or job software environment. |
 
-W1--W7 are seven industrial workflow candidates, not seven unrelated
-performance benchmarks and not seven promised paper experiments. Multiple
-source systems are consolidated within the workflow they serve. Completed
-cases get a correctness cell for RQ1. RQ2 uses standard benchmarks plus
-feature-equivalent FUSE on representative macro cases, and RQ3 uses a matched
-custom or stackable implementation where it changes the ownership conclusion;
-neither RQ requires seven bespoke comparisons.
+W1--W7 are the seven promised industrial RQ1 case studies, not seven unrelated
+performance benchmarks. Multiple source systems are consolidated within the
+workflow they serve, but no workflow is removed or merged into another.
+Every case requires a complete source-oracle correctness result for RQ1. RQ2
+uses standard benchmarks plus feature-equivalent FUSE on representative macro
+cases, and RQ3 uses a matched custom or stackable implementation where it
+changes the ownership conclusion; neither RQ2 nor RQ3 requires seven bespoke
+comparisons.
 
 ### Related evidence, not case studies
 
@@ -184,8 +187,8 @@ judgment is
 | W2 Agent Workspaces | AgentFS-derived lifecycle plus released SWE-Factory-Gym `pallets__click-2622` source task fixed | Passed and independently reviewed: the lifecycle matrix plus three fresh source-task boots, 12/12 policy-backed task states, 6/6 physical source controls, concurrent completed/base views, switch, rollback, and withdrawal | Same-oracle formal comparison passed: 10 paired blocks, 20 KVM boots, 10,000 lifecycle samples per condition | Formal matched `namei_ext`/Wrapfs-derived experiment passed: 37/37 pairwise oracles for both mechanisms, 21/21 fault cells, and runtime attribution in each of three KVM boots |
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Passed and independently reviewed: three fresh KVM boots, six Bazel actions, six action-specific logical/lower inode matches, twelve preserved lower objects, and all allow/hide/select branches | Not run; RQ2 owns the separately frozen sandboxfs comparison | Policy/target/cgroup cleanup and lower-object preservation passed in every boot; full ownership table open |
 | W4 Service Configuration and Secret Rotation | Official Kubernetes v1.30.0 `AtomicWriter` payload publication fixed as V0, V1, V1 no-op, and V0 rollback under one stable root; full nginx live reload remains a separate extension | Passed and independently reviewed: three fresh KVM boots, 12/12 source states, 12/12 `namei_ext` states, 6/6 direct controls, 24/24 stable-root dirfd checks, 12/12 old-fd checks, and 36/36 lower-object checks | Not run; this is RQ1 breadth only | Payload-view subset admitted as supporting RQ1 evidence. Materialization, symlink/inotify behavior, service validation/reload, performance, and broader filesystem comparison remain open |
-| W5 Checkpoint/Restore and Migration | DMTCP plugin behavior identified | Not run | Not run | Not written |
-| W6 HPC File Staging | Spindle repository, build, source loader slice, 47-object inventory, and source/native oracle fixed | Final-file and cross-filesystem `SELECT` dependency passed complete Phase 1 (117/117 functional cases); three Spindle preflights ended in setup/wrapper failures before BPF attachment, so W6 has no RQ1 result | Not required for the RQ1 sufficiency row; any later RQ2 comparison needs a separate matched plan | Failed roots remain repository evidence only; no Spindle number enters the paper |
+| W5 Checkpoint/Restore and Migration | DMTCP plugin behavior identified | Required and not yet complete; the next RQ1 run must execute checkpoint, moved-root restart, successful reopen, and unmapped failure in modified-kernel KVM | A matched FUSE run is optional unless W5 is selected for RQ2 | Boundary record must separate pathname remapping from DMTCP checkpoint image, descriptor, and coordination ownership |
+| W6 HPC File Staging | Spindle repository, build, source loader slice, 47-object inventory, and source/native oracle fixed | Required and not yet complete. Final-file and cross-filesystem `SELECT` passed 117/117 dependency cases, but three Spindle preflights ended before BPF attachment and provide no RQ1 result | A matched FUSE run is optional unless W6 is selected for RQ2 | The complete RQ1 run must preserve Spindle's distribution/cache control plane and replace only final pathname selection; failed roots remain non-paper evidence |
 | W7 Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 `venv` workflow and interpreter/package oracle fixed | Passed and independently reviewed: three fresh KVM boots selected two existing environments through the same logical executable path, including paired start, switch, and rollback | Not required for this RQ1 sufficiency row; RQ2 owns matched FUSE comparisons | Logical root/interpreter identity matched the selected lower objects; controls observed lower `EACCES` and withdrawn `ENOENT`; inventoried type/mode/owner/size/device/inode/mtime fields were unchanged |
 
 ### A. Sandboxed Application File Sharing (supporting RQ1 breadth)

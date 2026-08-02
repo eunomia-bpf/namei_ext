@@ -69,7 +69,7 @@ implementation boundary differs from custom or stackable filesystem ownership.
 
 | RQ | Question | Evidence standard |
 | --- | --- | --- |
-| RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Representative source-derived workloads pass their correctness oracles through the real `cgroup/namei_ext` KVM attach path, with coherent lookup/readdir behavior and lower-filesystem permission/write/data-path preservation. |
+| RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | All seven industrial workflows W1--W7 pass their source-derived correctness oracles through the real `cgroup/namei_ext` KVM attach path, with coherent lookup/readdir behavior and lower-filesystem permission/write/data-path preservation. |
 | RQ2 Cost / overhead versus FUSE | What is the cost of putting programmable policy on the VFS name-resolution path compared with a feature-equivalent FUSE policy implementation? | Same-oracle `namei_ext` and FUSE policy implementations, with correctness gating lookup/open/stat/access/exec/readdir latency, macro runtime, pass-through overhead, action overhead, and operation-weighted invocation traces. |
 | RQ3 Ownership / responsibility boundary versus custom or stackable FS | When the required policy is only name resolution, which filesystem methods and runtime responsibilities does `namei_ext` own compared with a custom or stackable filesystem? | Same-oracle evidence for methods executed, daemon and mount lifetime, policy/target state, error handling, and continuation on the lower filesystem. |
 
@@ -113,11 +113,12 @@ Evidence program:
    agent/workspace, traditional build/cache, service/config, and
    checkpoint/restart systems is workload and oracle selection evidence, not a
    standalone contribution.
-2. A small set of complete, same-oracle experiments is organized around RQ1,
-   RQ2, and RQ3. FUSE is the central RQ2 comparison. Custom or stackable
-   filesystem ownership is the central RQ3 boundary comparison. Materialized
-   namespace mechanisms are related-work/background unless a renewed decision
-   gives them a specific source-driven role.
+2. Seven complete source-oracle case studies answer RQ1. A smaller
+   representative set of same-oracle comparisons answers RQ2 and RQ3. FUSE is
+   the central RQ2 comparison. Custom or stackable filesystem ownership is the
+   central RQ3 boundary comparison. Materialized namespace mechanisms are
+   related-work/background unless a renewed decision gives them a specific
+   source-driven role.
 
 ## Current Evidence Highlights
 

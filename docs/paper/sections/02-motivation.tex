@@ -126,24 +126,27 @@ evaluation in Section~\ref{sec:evaluation}.
 
 \subsection{Selected Workloads}
 
-The evaluated RQ1 set contains five non-overlapping workflows. The two main
-cases are Agent Workspaces and Build Action Sandboxing. The formal Agent
-workspace case exercises branch-visible staged/base selection, hides,
-readdir coherence, and lower-tree mutations. It also runs a released Click
-source task through concurrent base/completed views, switch, rollback, and
-withdrawal. The formal build-action run executes two concurrent real Bazel
-actions with distinct declared-input roots and an undeclared-input failure.
-The formal application-sharing run executes official
-\code{xdg-document-portal} 1.18.4 and \namei under the same
-per-application grant/isolation/revoke oracle. The formal Kubernetes case follows the official
-\code{AtomicWriter} payload-view sequence through update, no-op, and rollback
-under one stable logical root. The formal toolchain case selects two existing
-CPython environments, switches one process-group view, and rolls it back.
-These three supporting workflows broaden the source-system evidence without
-becoming separate headline claims.
+The RQ1 evaluation set comprises seven non-overlapping industrial workflows:
+W1 Application File Sharing, W2 Agent Workspaces, W3 Build Action Sandboxing,
+W4 Service Configuration and Secret Rotation, W5 Checkpoint/Restore and
+Migration, W6 HPC File Staging, and W7 Toolchain and Dependency Environments.
+All seven are required RQ1 cases; RQ2 and RQ3 use representative cases for
+deeper cost and ownership comparisons.
 
-Full service validation and reload, checkpoint/restore, and HPC file staging
-remain portfolio extensions rather than completed experiments. A workload
-becomes evidence only after a reviewed KVM same-oracle run. In every completed
-case, policy runs at lookup and directory enumeration; non-name-resolution
-behavior stays with the source system or lower filesystem.
+W1 replays the per-application grant, isolation, and revoke behavior of
+\code{xdg-document-portal}. W2 exercises branch-visible staged/base selection,
+hides, readdir coherence, and lower-tree mutations, then runs a released Click
+task through concurrent base/completed views, switch, rollback, and withdrawal.
+W3 executes concurrent Bazel actions with distinct declared-input roots and an
+undeclared-input failure. W4 follows the Kubernetes \code{AtomicWriter}
+payload-view sequence through update, no-op, and rollback under one stable
+logical root. W5 uses DMTCP's moved-root restart and reopen behavior. W6 uses
+Spindle's shared-versus-node-local object selection during HPC program launch.
+W7 selects two existing CPython environments, switches one process-group view,
+and rolls it back.
+
+Five of these seven workflows currently have reviewed KVM same-oracle results;
+W5 and W6 remain required experiments rather than optional extensions. A
+workload becomes evidence only after its reviewed KVM same-oracle run. In every
+completed case, policy runs at lookup and directory enumeration;
+non-name-resolution behavior stays with the source system or lower filesystem.

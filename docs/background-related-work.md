@@ -139,7 +139,7 @@ epochs). Promoted to the third use case on 2026-07-25.
 | --- | --- | --- | --- |
 | DMTCP path virtualization (IEEE Cluster'16) | "A path virtualization plugin translates paths remembered by the application into correct paths as per the new mount points." | LD_PRELOAD interposition of `open()` — fragile user-space path virtualization. | Direct precedent that lookup-time remapping is the crux behavior; the implementation layer is the problem. |
 | DMTCP × Intel (SELSE'17, arXiv:1703.00897) | Real industrial migration scenario: "the environment variables, the file paths, and the files that are saved as part of a checkpoint image make such migrations challenging." | Same plugin approach; interposes `open` for filename virtualization. | Industrial reality of the demand. |
-| CRIU `--external mnt`/`--inherit-fd` + KEP-2008 | Restore may run "at a later time, on a different system, or both". | Static, operator-supplied mapping at restore start; Kubernetes keeps migration a non-goal (Beta, forensic-only, in-place restore). | Bounds the use case: weakest demand of the four; keep conditional. |
+| CRIU `--external mnt`/`--inherit-fd` + KEP-2008 | Restore may run "at a later time, on a different system, or both". | Static, operator-supplied mapping at restore start; Kubernetes keeps migration a non-goal (Beta, forensic-only, in-place restore). | Bounds W5 to moved-root restart and reopen; broader migration and checkpoint ownership remain with DMTCP or CRIU. |
 
 ### W6 HPC File Staging
 
@@ -200,7 +200,7 @@ so the evaluation does not drift into a long baseline catalog.
 | Role | Evidence item | RQ served | Runnable status | Fairness or admission rule | Claim consequence if unavailable |
 | --- | --- | --- | --- | --- | --- |
 | Main baseline | Feature-equivalent FUSE policy over the same oracle | RQ2 | Formal Agent lifecycle and FxMark lookup/readdir matrices completed; workload-specific breadth remains possible | Same policy inputs, update schedule, and justified FUSE caching/passthrough settings as `namei_ext`; account for FUSE passthrough, FUSE-BPF, RFUSE, CoFS, and DFUSE as related acceleration context. | RQ2 cannot claim lower cost or acceptable overhead versus FUSE. |
-| Correctness oracle | Source/native behavior from XDG portal, AgentFS/BranchFS/YoloFS, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, and selected toolchain/profile systems | RQ1 | Agent workspace, W1 application sharing, W3 Bazel action views, the W4 AtomicWriter payload-view subset, and W7 toolchain environments have reviewed formal KVM results; W5--W6 remain motivating or dependency-limited scope | Establishes the source behavior and task input; it is not a weaker baseline. | RQ1 lacks source credibility. |
+| Correctness oracle | Source/native behavior from XDG portal, AgentFS/BranchFS/YoloFS, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, and selected toolchain/profile systems | RQ1 | Agent workspace, W1 application sharing, W3 Bazel action views, the W4 AtomicWriter payload-view subset, and W7 toolchain environments have reviewed formal KVM results; W5--W6 remain incomplete required RQ1 cases | Establishes the source behavior and task input; it is not a weaker baseline. | RQ1 lacks source credibility. |
 | Boundary evidence | Workload-specific custom/stackable/source-system ownership table | RQ3 | Citation/source-code evidence plus selected source artifacts; no full-system reimplementation unless required by the oracle | Compare required filesystem methods, daemon/runtime state, metadata, data/write-path ownership, privileged code, and invalid-policy containment. | RQ3 becomes unsupported prose. |
 | Control | Lower-FS/no-hook run through the project KVM target | RQ2 attribution | Existing Phase 1 controls; final workload controls pending | Same operation mix where meaningful; used only for overhead attribution. | RQ2 overhead attribution weakens. |
 
@@ -252,10 +252,11 @@ so the evaluation does not drift into a long baseline catalog.
 ## Venue Evaluation Patterns
 
 OSDI/SOSP-grade evidence should not look like a source catalog or a pile of
-microbenchmarks. The main paper needs a few complete experiment matrices. Each
-matrix must start from a real source oracle, pass correctness through the real
-KVM `cgroup/namei_ext` attach path, compare against feature-equivalent FUSE for
-RQ2, account for custom/stackable filesystem ownership for RQ3, preserve raw
+microbenchmarks. RQ1 requires complete source-oracle evidence for all seven
+industrial workflows. RQ2 and RQ3 use fewer, deeper same-oracle matrices. Each
+matrix must pass correctness through the real KVM `cgroup/namei_ext` attach
+path, compare against feature-equivalent FUSE when it answers RQ2, account for
+custom/stackable filesystem ownership when it answers RQ3, preserve raw
 results, and receive result review before paper interpretation. Controls and
 ablations are admitted only when they change an RQ answer.
 

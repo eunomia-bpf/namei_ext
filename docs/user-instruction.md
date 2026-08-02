@@ -1,5 +1,7 @@
 ## Current Effective Instructions (2026-07-24)
 
+谁让你收敛案例的? 我们不是要求完整 7 个吗?记住. 不要收敛
+
 ### Canonical Story
 
 `namei_ext` is an eBPF extension point for VFS name resolution.

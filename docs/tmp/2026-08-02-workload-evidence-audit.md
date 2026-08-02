@@ -32,7 +32,8 @@ protocol.
 
 ## Paper-Facing Workload Structure
 
-The evaluation should present two main cases and three supporting cases:
+The evaluation must complete all seven industrial RQ1 case studies. Evidence
+depth can differ, but the five completed workflows are not a stopping point:
 
 1. **Agent Workspaces** is the completed headline case. It covers source-task
    correctness, a same-oracle FUSE cost comparison, and a matched
@@ -43,11 +44,13 @@ The evaluation should present two main cases and three supporting cases:
 3. **Sandboxed Application File Sharing**, **Service Configuration and Secret
    Rotation**, and **Toolchain and Dependency Environments** provide RQ1
    breadth. They should not each grow a separate weak performance story.
+4. **Checkpoint/Restore and Migration** and **HPC File Staging** are required
+   W5/W6 RQ1 case studies. They are not completed experiments and do not yet
+   contribute paper numbers; both must receive a complete source-oracle KVM
+   result.
 
-Checkpoint/Restore and HPC File Staging remain cited, source-grounded portfolio
-candidates. They are not completed experiments and do not contribute to the
-current paper numbers. FxMark and ccache answer performance questions; they
-are not additional workload case studies.
+FxMark and ccache answer performance questions; they are not additional
+workload case studies and cannot substitute for W5 or W6.
 
 ## Completed Workload Data
 
@@ -61,9 +64,10 @@ are not additional workload case studies.
 | Service Configuration and Secret Rotation | Official Kubernetes v1.30.0 `AtomicWriter` V0/V1/no-op/rollback | Three KVM boots; 12/12 source states; 12/12 `namei_ext` states; 6 direct controls; 24 stable-root dirfd checks; 12 old-fd checks; 36 lower-object checks | Supporting RQ1 for already-materialized payload selection |
 | Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 venv workflow | Three KVM boots; 18 physical/logical states; 24 Python probes; concurrent views, switch, rollback; 3,270 lower-object records unchanged per boot | Supporting RQ1 environment-selection evidence |
 
-The five completed RQ1 workflows account for 15 fresh formal KVM boots. Their
-oracles differ by workflow; their individual counts should not be summed into
-one synthetic score.
+The five currently completed RQ1 workflows account for 15 fresh formal KVM
+boots. This is progress toward the seven-workload target, not the target
+itself. Their oracles differ by workflow; their individual counts should not
+be summed into one synthetic score.
 
 ## Performance Evidence Outside The Case-Study Count
 
@@ -77,21 +81,25 @@ one synthetic score.
 
 ## Incomplete Workloads
 
-| Candidate | Work completed | Why it is not current evidence |
+| Required workload | Work completed | Why it is not current evidence |
 | --- | --- | --- |
 | Checkpoint/Restore and Migration | DMTCP path-virtualization source behavior and oracle identified | Three source preflights failed; no valid `namei_ext` KVM result |
 | HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117 | Three Spindle preflights failed before BPF attachment; no Spindle RQ1 result |
 
-These failures do not weaken the five completed workload rows, but the paper
-must not count DMTCP or Spindle as reproduced workloads.
+These failures do not weaken the five completed workload rows, but they leave
+the seven-workload evaluation incomplete. The paper must not count DMTCP or
+Spindle as reproduced until their new end-to-end RQ1 runs pass.
 
-## Highest-Value Open Experiment
+## Open Experiment Order
 
-The load-bearing gap is a traditional application macro comparison for RQ2.
-Build Action Sandboxing is the best source because its RQ1 oracle already
-passes and official sandboxfs 0.2.0 is the natural competing implementation.
-It would test whether the Agent/FxMark cost result carries to a real build
-action with per-action views.
+The active mdtest experiment addresses the cold and mutating metadata gap in
+RQ2 with an official standard benchmark and official libfuse baseline. It does
+not reduce the seven-workload RQ1 requirement.
+
+After mdtest, the next workload experiments are W5 DMTCP and W6 Spindle. Each
+must reach a complete source workload and oracle through the modified-kernel
+KVM attach path. They should not be replaced by another microbenchmark, ccache
+variant, or supporting workflow.
 
 The old sandboxfs timing protocol cannot simply receive a fourth preflight.
 Its three attempts ended before a valid pair, and its final record explicitly
@@ -100,9 +108,8 @@ scientifically independent question or replace the old experiment with a
 fresh, materially different plan; otherwise it is process repetition rather
 than new evidence.
 
-The best fallback is not another RQ1 workload. It is to keep Bazel as the
-traditional RQ1 main case and present the already-valid Agent, FxMark, and
-ccache RQ2 evidence together. Adding another custom FUSE implementation for
+The existing Agent, FxMark, and ccache RQ2 evidence remains valid while mdtest
+is completed. Adding another custom FUSE implementation for
 ConfigMap or venv would be a weaker comparison than official sandboxfs.
 
 ## Raw Evidence

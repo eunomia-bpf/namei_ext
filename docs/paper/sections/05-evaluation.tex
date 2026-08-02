@@ -98,9 +98,9 @@ states, 12/12 \namei states, 6/6 direct controls, 24/24 stable-root
 descriptor checks, 12/12 old-descriptor checks, and 36/36 lower-object checks. \\
 \hline
 \end{tabular}
-\caption{RQ1 answer table. A row becomes evidence only after the source-oracle
-run passes through the real KVM attach path and lower-filesystem semantics are
-preserved.}
+\caption{Current completed rows of the seven-workload RQ1 answer table. A row
+becomes evidence only after the source-oracle run passes through the real KVM
+attach path and lower-filesystem semantics are preserved.}
 \label{tab:rq1-evidence}
 \end{table}
 \FloatBarrier
@@ -269,7 +269,8 @@ copy-up, conflict resolution, distributed metadata, or data-path mediation.
 
 \subsection{Evaluation Scope}
 
-The completed evidence includes five reviewed formal RQ1 workflows, an Agent
+The completed evidence includes five of the seven required formal RQ1
+workflows, an Agent
 lifecycle RQ2 comparison, cache-hot FxMark
 active and unused-path results, a formal corrected-FxMark directory-enumeration
 matrix, and one matched Agent-workspace RQ3 boundary experiment. A historical
@@ -279,11 +280,11 @@ and native/\namei 0.945\(\times\), but it lacks independent-run uncertainty and
 release-scale miss/stale/corrupt cells. It is not a headline workload because
 ccache already implements cache lookup and validation in userspace.
 
-Full service validation/reload, checkpoint/restore, and HPC staging remain
-portfolio extensions rather than completed evidence. The Kubernetes result
-covers already-materialized payload selection and visibility, not ConfigMap
-retrieval, symlink/inotify behavior, or application reload. Cache-cold lookup,
-broader metadata operations, tail latency, and a second
+W5 Checkpoint/Restore and Migration and W6 HPC File Staging are the remaining
+required RQ1 cases and are not yet completed evidence in this draft. The W4
+Kubernetes result covers already-materialized payload selection and visibility,
+not ConfigMap retrieval, symlink/inotify behavior, or application reload.
+Cache-cold lookup, broader metadata operations, tail latency, and a second
 source-derived RQ3 row remain open. Materialized namespaces, eBPF LSM, and
 native source mechanisms remain related work unless a fixed source oracle makes
 one a direct comparison.
