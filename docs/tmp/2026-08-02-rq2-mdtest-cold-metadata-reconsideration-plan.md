@@ -198,3 +198,13 @@ attempts are allowed.
 - Remaining execution risk: the upstream pinning fix may still be incompatible
   with this host or guest setup. That is resolved only by the launcher probe;
   it is not paper evidence.
+
+## Final Execution Outcome
+
+All three permitted preflights were consumed. The final attempt completed the
+stock, patched-unattached, `PASS`, and `SELECT` conditions with 24/24 passing
+cells, but the official FUSE child exited before mounting because the guest's
+initial `RLIMIT_NOFILE` hard limit was 4,096. The five-condition matrix is
+incomplete, no formal run is authorized, and this protocol is closed. The
+standalone execution record is
+`docs/tmp/2026-08-02-rq2-mdtest-reconsideration-preflight-attempt-3.md`.

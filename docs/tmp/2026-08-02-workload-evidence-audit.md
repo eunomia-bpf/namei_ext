@@ -92,14 +92,16 @@ Spindle as reproduced until their new end-to-end RQ1 runs pass.
 
 ## Open Experiment Order
 
-The active mdtest experiment addresses the cold and mutating metadata gap in
-RQ2 with an official standard benchmark and official libfuse baseline. It does
-not reduce the seven-workload RQ1 requirement.
+The reconsidered mdtest experiment closed after its third permitted preflight.
+Four conditions completed 24/24 cells, but the official FUSE condition failed
+before mounting because the guest hard open-file limit remained 4,096. The
+matrix is incomplete, there is no formal run or paper result, and the protocol
+will not receive a fourth attempt.
 
-After mdtest, the next workload experiments are W5 DMTCP and W6 Spindle. Each
-must reach a complete source workload and oracle through the modified-kernel
-KVM attach path. They should not be replaced by another microbenchmark, ccache
-variant, or supporting workflow.
+The next workload experiments are W5 DMTCP and W6 Spindle. Each must reach a
+complete source workload and oracle through the modified-kernel KVM attach
+path. They should not be replaced by another microbenchmark, ccache variant,
+or supporting workflow.
 
 The old sandboxfs timing protocol cannot simply receive a fourth preflight.
 Its three attempts ended before a valid pair, and its final record explicitly
@@ -108,9 +110,9 @@ scientifically independent question or replace the old experiment with a
 fresh, materially different plan; otherwise it is process repetition rather
 than new evidence.
 
-The existing Agent, FxMark, and ccache RQ2 evidence remains valid while mdtest
-is completed. Adding another custom FUSE implementation for
-ConfigMap or venv would be a weaker comparison than official sandboxfs.
+The existing Agent, FxMark, and ccache RQ2 evidence remains valid. Adding
+another custom FUSE implementation for ConfigMap or venv would be a weaker
+comparison than completing W5 and W6.
 
 ## Raw Evidence
 
