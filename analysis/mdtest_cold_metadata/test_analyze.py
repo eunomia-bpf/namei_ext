@@ -77,6 +77,8 @@ def rows_for(mode="preflight", rates=None):
                         if condition == "fuse" else 0,
                         "fuse_daemon_live": condition == "fuse",
                         "fuse_dev_fd_verified": condition == "fuse",
+                        "fuse_nofile_soft": analyze.FUSE_NOFILE_SOFT
+                        if condition == "fuse" else 0,
                         "ext4_f_type": analyze.EXT4_SUPER_MAGIC,
                         "cleanup_complete": True,
                         "actual_files": ranks * config["items_per_rank"]
@@ -196,13 +198,16 @@ class ValidationTests(unittest.TestCase):
         for field, value in (
                 ("fuse_f_type", 0),
                 ("fuse_daemon_live", False),
-                ("fuse_dev_fd_verified", False)):
+                ("fuse_dev_fd_verified", False),
+                ("fuse_nofile_soft", 1024)):
             with self.subTest(field=field):
                 self.assert_rejects(field, value, "fuse")
         self.assert_rejects(
             "fuse_f_type", analyze.FUSE_SUPER_MAGIC, "stock")
         self.assert_rejects("fuse_daemon_live", True, "unattached")
         self.assert_rejects("fuse_dev_fd_verified", True, "pass")
+        self.assert_rejects(
+            "fuse_nofile_soft", analyze.FUSE_NOFILE_SOFT, "stock")
 
     def test_cache_drop_is_required_only_for_stat_and_remove(self):
         for operation in ("stat", "remove"):

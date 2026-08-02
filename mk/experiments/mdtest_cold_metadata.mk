@@ -128,9 +128,10 @@ jq -n \
 	--arg libfuse_tag "$(MDTEST_LIBFUSE_TAG)" \
 	--arg libfuse_commit "$(MDTEST_LIBFUSE_COMMIT)" \
 	--arg libfuse_build "Meson release; default_library=static; examples=true; tests=false; utils=false; enable-io-uring=false" \
+	--argjson libfuse_nofile_soft "$(MDTEST_EXT4_INODES)" \
 	--arg virtme_ng_repository "$(MDTEST_VIRTME_NG_REPOSITORY)" \
 	--arg virtme_ng_commit "$(MDTEST_VIRTME_NG_COMMIT)" \
-	'{ior:{repository:$$ior_repository,tag:$$ior_tag,commit:$$ior_commit,build:$$ior_build,source_unmodified:true},libfuse:{repository:$$libfuse_repository,tag:$$libfuse_tag,commit:$$libfuse_commit,build:$$libfuse_build,example:"example/passthrough_ll.c",source_unmodified:true},virtme_ng:{repository:$$virtme_ng_repository,commit:$$virtme_ng_commit,source_unmodified:true,native_pin:true}}' \
+	'{ior:{repository:$$ior_repository,tag:$$ior_tag,commit:$$ior_commit,build:$$ior_build,source_unmodified:true},libfuse:{repository:$$libfuse_repository,tag:$$libfuse_tag,commit:$$libfuse_commit,build:$$libfuse_build,example:"example/passthrough_ll.c",source_unmodified:true,nofile_soft:$$libfuse_nofile_soft},virtme_ng:{repository:$$virtme_ng_repository,commit:$$virtme_ng_commit,source_unmodified:true,native_pin:true}}' \
 	>"$(1)/artifacts/source/manifest.json"
 jq -n \
 	--arg patched_commit "$$(cat "$(KERNEL_COMMIT_FILE)")" \

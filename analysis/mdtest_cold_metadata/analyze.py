@@ -32,6 +32,7 @@ BOOTSTRAP_SAMPLES = 10000
 FROZEN_SEED = 20260729
 FUSE_SUPER_MAGIC = 0x65735546
 EXT4_SUPER_MAGIC = 0xEF53
+FUSE_NOFILE_SOFT = 262144
 
 MODE_DEFAULTS = {
     "preflight": {"repetitions": 1, "items_per_rank": 4096},
@@ -141,11 +142,12 @@ def _validate_fuse(row, key):
     f_type = _int(row, "fuse_f_type", key)
     daemon_live = _bool(row, "fuse_daemon_live", key)
     dev_fd_verified = _bool(row, "fuse_dev_fd_verified", key)
+    nofile_soft = _int(row, "fuse_nofile_soft", key)
     if is_fuse:
         if f_type != FUSE_SUPER_MAGIC or not daemon_live or \
-                not dev_fd_verified:
+                not dev_fd_verified or nofile_soft != FUSE_NOFILE_SOFT:
             raise ValueError(f"invalid FUSE engagement evidence: {key}")
-    elif f_type != 0 or daemon_live or dev_fd_verified:
+    elif f_type != 0 or daemon_live or dev_fd_verified or nofile_soft != 0:
         raise ValueError(f"unexpected FUSE engagement evidence: {key}")
 
 

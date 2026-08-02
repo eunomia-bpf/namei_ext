@@ -33,11 +33,12 @@
 - Paper decision if contradictory, mixed, or inconclusive: retain the valid
   Agent and FxMark results and report the operation-specific boundary; do not
   average a losing or inconclusive cell into a favorable summary.
-- Best alternative experiment and why this one has higher decision value: a
-  DMTCP or Spindle run would add another RQ1 example, while five completed RQ1
-  source workflows already exist. A custom cold FxMark loop would be less
-  standard and would not add create/remove. Reopening the closed Bazel/sandboxfs
-  protocol would repeat an exhausted workload branch.
+- Best alternative experiment and why this one has higher decision value for
+  the selected RQ: DMTCP and Spindle remain required W5/W6 workload work, but
+  they answer RQ1 rather than this RQ2 cold/mutating-cost uncertainty. A custom
+  cold FxMark loop would be less standard and would not add create/remove.
+  Reopening the closed Bazel/sandboxfs protocol would repeat an exhausted
+  workload branch.
 
 ## Why Reconsideration Is Scientifically Legitimate
 
@@ -107,9 +108,9 @@ launcher dependency, not a fourth attempt under the old protocol.
   VFS/lower-ext4 execution.
 - Main baseline: official libfuse passthrough exposes the same lower directory
   at the same logical path, with favorable `cache=always`, long attribute
-  timeout, `clone_fd`, and a multithreaded daemon. A matched run is necessary
-  because published FUSE results do not use this policy, path, ext4 image, or
-  mdtest matrix.
+  timeout, `clone_fd`, a multithreaded daemon, and a 262,144 soft open-file
+  limit. A matched run is necessary because published FUSE results do not use
+  this policy, path, ext4 image, or mdtest matrix.
 - Controls: stock kernel, patched kernel unattached, and attached `PASS`.
   These are lower-bound and mechanism-cost controls, not additional competing
   systems.

@@ -103,6 +103,7 @@ struct phase_result {
 	bool selected_identity;
 	bool fuse_daemon_live;
 	bool fuse_dev_fd_verified;
+	unsigned long long fuse_nofile_soft;
 	bool cleanup_complete;
 	int cache_drop_value;
 	ssize_t cache_drop_bytes_written;
@@ -1009,11 +1010,13 @@ static bool process_has_fuse_fd(pid_t pid)
 static int start_fuse(const struct cell_config *config, const char *physical_root,
 		      const char *logical_view, const char *phase,
 		      pid_t *pid_out, unsigned long *f_type,
-		      bool *daemon_live, bool *fuse_fd_verified)
+		      bool *daemon_live, bool *fuse_fd_verified,
+		      unsigned long long *nofile_soft)
 {
 	char stdout_path[PATH_MAX];
 	char stderr_path[PATH_MAX];
 	char source_option[PATH_MAX + 16];
+	struct rlimit nofile;
 	pid_t pid;
 
 	if (path_format(stdout_path, sizeof(stdout_path), "%s.%s.fuse.stdout",
@@ -1028,6 +1031,11 @@ static int start_fuse(const struct cell_config *config, const char *physical_roo
 		return -errno;
 	if (!pid) {
 		if (setpgid(0, 0) ||
+		    getrlimit(RLIMIT_NOFILE, &nofile) ||
+		    nofile.rlim_max < (rlim_t)config->ext4_inodes)
+			_exit(126);
+		nofile.rlim_cur = (rlim_t)config->ext4_inodes;
+		if (setrlimit(RLIMIT_NOFILE, &nofile) ||
 		    redirect_fd(STDOUT_FILENO, stdout_path) ||
 		    redirect_fd(STDERR_FILENO, stderr_path))
 			_exit(126);
@@ -1046,7 +1054,17 @@ static int start_fuse(const struct cell_config *config, const char *physical_roo
 	}
 	*daemon_live = !kill(pid, 0);
 	*fuse_fd_verified = process_has_fuse_fd(pid);
-	if (!*daemon_live || !*fuse_fd_verified) {
+	if (prlimit(pid, RLIMIT_NOFILE, NULL, &nofile)) {
+		int saved_errno = errno;
+
+		umount2(logical_view, MNT_DETACH);
+		kill(-pid, SIGKILL);
+		waitpid(pid, NULL, 0);
+		return -saved_errno;
+	}
+	*nofile_soft = (unsigned long long)nofile.rlim_cur;
+	if (!*daemon_live || !*fuse_fd_verified ||
+	    nofile.rlim_cur != (rlim_t)config->ext4_inodes) {
 		umount2(logical_view, MNT_DETACH);
 		kill(-pid, SIGKILL);
 		waitpid(pid, NULL, 0);
@@ -1401,7 +1419,8 @@ static int run_phase(const struct cell_config *config, const char *phase,
 		ret = start_fuse(config, physical_root, logical_view, phase,
 				 &fuse_pid, &result->fuse_f_type,
 				 &result->fuse_daemon_live,
-				 &result->fuse_dev_fd_verified);
+				 &result->fuse_dev_fd_verified,
+				 &result->fuse_nofile_soft);
 		if (ret)
 			return ret;
 		fuse_started = true;
@@ -1492,9 +1511,11 @@ static int run_phase(const struct cell_config *config, const char *phase,
 		(strcmp(config->condition, "select") ||
 		 result->selected_identity) &&
 		(strcmp(config->condition, "fuse") ||
-		 (result->fuse_f_type == FUSE_SUPER_MAGIC &&
-		  result->fuse_daemon_live &&
-		  result->fuse_dev_fd_verified));
+			 (result->fuse_f_type == FUSE_SUPER_MAGIC &&
+			  result->fuse_daemon_live &&
+			  result->fuse_dev_fd_verified &&
+			  result->fuse_nofile_soft ==
+				  (unsigned long long)config->ext4_inodes));
 	return result->pass ? 0 : -EINVAL;
 }
 
@@ -1522,7 +1543,8 @@ static int write_observation(FILE *out, const struct cell_config *config,
 		"\"attached_program_id_after\":%u,"
 		"\"untimed_policy_runs\":%llu,\"selected_identity\":%s,"
 		"\"fuse_f_type\":%lu,\"fuse_daemon_live\":%s,"
-		"\"fuse_dev_fd_verified\":%s,\"ext4_f_type\":%lu,"
+		"\"fuse_dev_fd_verified\":%s,\"fuse_nofile_soft\":%llu,"
+		"\"ext4_f_type\":%lu,"
 		"\"cleanup_complete\":%s,"
 		"\"actual_files\":%llu,\"expected_files\":%llu,"
 		"\"actual_directories\":%llu,\"expected_directories\":%llu,"
@@ -1553,6 +1575,7 @@ static int write_observation(FILE *out, const struct cell_config *config,
 		result->fuse_f_type,
 		result->fuse_daemon_live ? "true" : "false",
 		result->fuse_dev_fd_verified ? "true" : "false",
+		result->fuse_nofile_soft,
 		ext4_f_type, result->cleanup_complete ? "true" : "false",
 		result->observed_tree.files, result->expected_tree.files,
 		result->observed_tree.directories,
