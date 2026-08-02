@@ -487,12 +487,14 @@ static void set_child_environment(const struct controller_config *config,
 		const char *physical = restart_phase ?
 			config->paths.workspace_b : config->paths.workspace_a;
 
+		setenv("DMTCP_PATHVIRT_PLUGIN", "1", 1);
 		if (snprintf(mapping, sizeof(mapping), "%s:%s",
 			     config->paths.logical_workspace, physical) >=
 		    (int)sizeof(mapping))
 			_exit(122);
 		setenv("DMTCP_PATH_MAPPING", mapping, 1);
 	} else {
+		setenv("DMTCP_PATHVIRT_PLUGIN", "0", 1);
 		unsetenv("DMTCP_PATH_MAPPING");
 	}
 	if (existing_library_path && existing_library_path[0]) {
@@ -841,11 +843,7 @@ static int run_lifecycle(struct controller_config *config, FILE *output)
 		"--port-file", config->paths.port_file, "--timeout", "120",
 		"--ckptdir", config->paths.checkpoint_dir, NULL,
 	};
-	char *launch_pathvirt_argv[] = {
-		config->launch, "--join-coordinator", "--pathvirt",
-		(char *)config->app_path, NULL,
-	};
-	char *launch_plain_argv[] = {
+	char *launch_argv[] = {
 		config->launch, "--join-coordinator",
 		(char *)config->app_path, NULL,
 	};
@@ -929,9 +927,7 @@ static int run_lifecycle(struct controller_config *config, FILE *output)
 	}
 
 	launch_pid = spawn_process(
-		config,
-		config->condition == CONDITION_PATHVIRT ?
-			launch_pathvirt_argv : launch_plain_argv,
+		config, launch_argv,
 		config->paths.launch_stdout, config->paths.launch_stderr,
 		config->condition == CONDITION_PATHVIRT ?
 			NULL : config->paths.cgroup,

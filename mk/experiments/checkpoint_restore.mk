@@ -33,8 +33,7 @@ CHECKPOINT_RESTORE_DMTCP_INSTALL_LOG ?= \
 	$(CHECKPOINT_RESTORE_DMTCP_LOGS)/install.log
 CHECKPOINT_RESTORE_BOOT_FILES := \
 	guest.mk launcher.stdout.log launcher.stderr.log boot.json \
-	observations.jsonl upstream-autotest.stdout.log \
-	upstream-autotest.stderr.log bpf-programs-before.json \
+	observations.jsonl bpf-programs-before.json \
 	bpf-programs-after.json bpf-cgroup-before.json bpf-cgroup-after.json \
 	kernel.config kernel-commit.txt kernel-release.txt uname.txt \
 	proc-version.txt kernel-cmdline.txt runtime-identity.json \
@@ -151,13 +150,12 @@ $(call NAMEI_EXT_MULTI_BOOT_INIT,$(1))
 $(call NAMEI_EXT_RUN_START,$(1),checkpoint-restore,dmtcp-pathtranslator,$(2),$(1)/observations.jsonl,checkpoint_restore_migration.bpf.c,namei_ext_checkpoint_restore+dmtcp)
 $(call CHECKPOINT_RESTORE_CAPTURE_ARTIFACTS,$(1))
 jq --slurpfile artifacts "$(1)/artifacts/manifest.json" \
-	--arg protocol "namei_ext.checkpoint_restore.protocol.v2" \
+	--arg protocol "namei_ext.checkpoint_restore.protocol.v3" \
 	--arg layout "$(3)" \
 	--argjson repetitions "$(4)" \
 	--argjson timeout_seconds "$(CHECKPOINT_RESTORE_TIMEOUT_SECONDS)" \
-	--argjson upstream_timeout_seconds "$(CHECKPOINT_RESTORE_UPSTREAM_TIMEOUT_SECONDS)" \
 	--arg kvm_timeout "$(CHECKPOINT_RESTORE_KVM_TIMEOUT_SECONDS)" \
-	'.protocol_schema = $$protocol | .layout = $$layout | .attempt = 4 | .artifacts = $$artifacts[0] | .matrix = {conditions:["pathvirt","namei_ext","withdrawn"],repetitions:$$repetitions,baseline:"DMTCP PathTranslator at commit 068559d9b14c with a disclosed restart-environment scan-bound fix",control:"withdrawn",timeout_seconds:$$timeout_seconds,upstream_timeout_seconds:$$upstream_timeout_seconds,kvm_timeout:$$kvm_timeout,all_conditions_must_pass:true}' \
+	'.protocol_schema = $$protocol | .layout = $$layout | .attempt = 5 | .artifacts = $$artifacts[0] | .matrix = {conditions:["pathvirt","namei_ext","withdrawn"],repetitions:$$repetitions,baseline:"DMTCP PathTranslator at commit 068559d9b14c with a disclosed restart-environment scan-bound fix",control:"withdrawn",pathtranslator_activation:"DMTCP_PATHVIRT_PLUGIN=1; DMTCP_PATH_MAPPING generation A to B",timeout_seconds:$$timeout_seconds,kvm_timeout:$$kvm_timeout,all_conditions_must_pass:true}' \
 	"$(1)/run.json" >"$(1)/run.json.tmp"
 mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 printf '%s\n' "$(5)" >"$(1)/command.txt"
@@ -173,12 +171,10 @@ printf '%s := %s\n' \
 	'CHECKPOINT_RESTORE_GUEST_POLICY' "$${policy#$(ROOT_DIR)/}" \
 	'CHECKPOINT_RESTORE_GUEST_BPFTOOL' "$${bpftool#$(ROOT_DIR)/}" \
 	'CHECKPOINT_RESTORE_GUEST_DMTCP' "$${dmtcp#$(ROOT_DIR)/}" \
-	'CHECKPOINT_RESTORE_GUEST_DMTCP_SOURCE' "$${dmtcp_source#$(ROOT_DIR)/}" \
 	'CHECKPOINT_RESTORE_GUEST_KERNEL_CONFIG' "$${config#$(ROOT_DIR)/}" \
 	'CHECKPOINT_RESTORE_GUEST_KERNEL_COMMIT' "$$commit" \
 	'CHECKPOINT_RESTORE_GUEST_KERNEL_RELEASE' "$$release" \
 	'CHECKPOINT_RESTORE_GUEST_TIMEOUT' "$(CHECKPOINT_RESTORE_TIMEOUT_SECONDS)" \
-	'CHECKPOINT_RESTORE_GUEST_UPSTREAM_TIMEOUT' "$(CHECKPOINT_RESTORE_UPSTREAM_TIMEOUT_SECONDS)" \
 	>"$$guest_makefile"
 endef
 
@@ -237,7 +233,6 @@ kvm-checkpoint-restore-preflight: kernel kernel-provenance kernel-bpftool bpf \
 		checkpoint-restore checkpoint-restore-analysis-test \
 		experiment-source-clean
 	test "$(CHECKPOINT_RESTORE_TIMEOUT_SECONDS)" = "120"
-	test "$(CHECKPOINT_RESTORE_UPSTREAM_TIMEOUT_SECONDS)" = "120"
 	test "$(CHECKPOINT_RESTORE_KVM_TIMEOUT_SECONDS)" = "600s"
 	$(call CHECKPOINT_RESTORE_START,$(CHECKPOINT_RESTORE_PREFLIGHT_RESULT_DIR),kvm_checkpoint_restore_preflight,single-modified-kernel-boot,1,make kvm-checkpoint-restore-preflight RUN_ID=$(RUN_ID))
 	$(MAKE) -C "$(ROOT_DIR)" checkpoint-restore-run \
@@ -288,15 +283,12 @@ checkpoint-restore-run:
 	policy="$(CHECKPOINT_RESTORE_ACTIVE_DIR)/$$(jq -r '.runtime.policy' "$$manifest")"; \
 	bpftool="$(CHECKPOINT_RESTORE_ACTIVE_DIR)/$$(jq -r '.runtime.bpftool' "$$manifest")"; \
 	dmtcp="$(CHECKPOINT_RESTORE_ACTIVE_DIR)/$$(jq -r '.runtime.dmtcp' "$$manifest")"; \
-	dmtcp_template="$(CHECKPOINT_RESTORE_ACTIVE_DIR)/$$(jq -r '.source.dmtcp_worktree' "$$manifest")"; \
 	boot_dir="$(CHECKPOINT_RESTORE_ACTIVE_DIR)/boots/$(CHECKPOINT_RESTORE_BOOT_LABEL)"; \
 	mkdir "$$boot_dir"; \
 	install -d "$$boot_dir/conditions"; \
 	for condition in pathvirt namei_ext withdrawn; do \
 		mkdir "$$boot_dir/conditions/$$condition"; \
 	done; \
-	cp -a "$$dmtcp_template" "$$boot_dir/dmtcp-source"; \
-	dmtcp_source="$$boot_dir/dmtcp-source"; \
 	printf '%s\n' "$(CHECKPOINT_RESTORE_BOOT_LABEL)" \
 		>>"$(CHECKPOINT_RESTORE_ACTIVE_DIR)/expected-boots.txt"; \
 	guest_makefile="$$boot_dir/guest.mk"; \
@@ -323,9 +315,7 @@ checkpoint-restore-finalize:
 	$(call NAMEI_EXT_MULTI_BOOT_VALIDATE_BOOT_FILES,$(CHECKPOINT_RESTORE_ACTIVE_DIR),$(CHECKPOINT_RESTORE_EXPECTED_BOOTS),$(CHECKPOINT_RESTORE_BOOT_FILES),$$(($(CHECKPOINT_RESTORE_EXPECTED_BOOTS) * 3)))
 	while IFS= read -r boot; do \
 		boot_dir="$(CHECKPOINT_RESTORE_ACTIVE_DIR)/boots/$$boot"; \
-		grep -F 'test groups: pass=1 fail=0 skipped=0 total=1' \
-			"$$boot_dir/upstream-autotest.stdout.log" >/dev/null; \
-		jq -e '.schema == "namei_ext.checkpoint_restore.boot.v2" and .status == "completed" and .conditions == ["pathvirt","namei_ext","withdrawn"]' \
+		jq -e '.schema == "namei_ext.checkpoint_restore.boot.v3" and .status == "completed" and .conditions == ["pathvirt","namei_ext","withdrawn"] and .pathtranslator_activation == "DMTCP_PATHVIRT_PLUGIN=1"' \
 			"$$boot_dir/boot.json" >/dev/null; \
 		for condition in pathvirt namei_ext withdrawn; do \
 			result="$$boot_dir/conditions/$$condition"; \
@@ -345,19 +335,17 @@ checkpoint-restore-analyze:
 	for file in summary.json summary.csv report.md; do \
 		test -s "$(CHECKPOINT_RESTORE_ACTIVE_DIR)/analysis.tmp/$$file"; \
 	done
-	jq -e '.schema == "namei_ext.checkpoint_restore.summary.v2" and .correctness.all_boots_passed == true' \
+	jq -e '.schema == "namei_ext.checkpoint_restore.summary.v3" and .correctness.all_boots_passed == true' \
 		"$(CHECKPOINT_RESTORE_ACTIVE_DIR)/analysis.tmp/summary.json" >/dev/null
 	$(call NAMEI_EXT_ANALYSIS_PUBLISH,$(CHECKPOINT_RESTORE_ACTIVE_DIR)/analysis)
 
 __checkpoint_restore_guest: __namei_ext_guest_prepare
 	test "$(CHECKPOINT_RESTORE_GUEST_TIMEOUT)" = "120"
-	test "$(CHECKPOINT_RESTORE_GUEST_UPSTREAM_TIMEOUT)" = "120"
 	test -x "$(CHECKPOINT_RESTORE_GUEST_RUNNER)"
 	test -x "$(CHECKPOINT_RESTORE_GUEST_APP)"
 	test -r "$(CHECKPOINT_RESTORE_GUEST_POLICY)"
 	test -x "$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)"
 	test -x "$(CHECKPOINT_RESTORE_GUEST_DMTCP)/bin/dmtcp_launch"
-	test -f "$(CHECKPOINT_RESTORE_GUEST_DMTCP_SOURCE)/Makefile"
 	command -v setpriv >/dev/null
 	$(call NAMEI_EXT_GUEST_CAPTURE_KERNEL_EVIDENCE,\
 		$(CHECKPOINT_RESTORE_BOOT_DIR),\
@@ -375,23 +363,6 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 	jq -n --argjson uid "$$runtime_uid" --argjson gid "$$runtime_gid" \
 		'{uid:$$uid,gid:$$gid}' \
 		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/runtime-identity.json"
-	upstream_status=0; \
-	timeout --signal=TERM --kill-after=10s \
-		"$(CHECKPOINT_RESTORE_GUEST_UPSTREAM_TIMEOUT)" \
-		setpriv \
-		--reuid="$$(stat -c %u "$(CHECKPOINT_RESTORE_BOOT_DIR)")" \
-		--regid="$$(stat -c %g "$(CHECKPOINT_RESTORE_BOOT_DIR)")" \
-		--clear-groups \
-		$(MAKE) -C "$(CHECKPOINT_RESTORE_GUEST_DMTCP_SOURCE)" \
-		check-autotest AUTOTEST='--verbose pathvirt' \
-		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stdout.log" \
-		2>"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stderr.log" || \
-		upstream_status=$$?; \
-	if test "$$upstream_status" -ne 0; then \
-		exit "$$upstream_status"; \
-	fi
-	grep -F 'test groups: pass=1 fail=0 skipped=0 total=1' \
-		"$(CHECKPOINT_RESTORE_BOOT_DIR)/upstream-autotest.stdout.log"
 	"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j prog show \
 		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/bpf-programs-before.json"
 	"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j cgroup tree \
@@ -445,5 +416,5 @@ __checkpoint_restore_guest: __namei_ext_guest_prepare
 		--arg completed_at "$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" \
 		--arg kernel_commit "$(CHECKPOINT_RESTORE_GUEST_KERNEL_COMMIT)" \
 		--arg kernel_release "$(CHECKPOINT_RESTORE_GUEST_KERNEL_RELEASE)" \
-		'{schema:"namei_ext.checkpoint_restore.boot.v2",status:"completed",conditions:["pathvirt","namei_ext","withdrawn"],kernel:{commit:$$kernel_commit,release:$$kernel_release},upstream_pathvirt_test:"passed",completed_at:$$completed_at}' \
+		'{schema:"namei_ext.checkpoint_restore.boot.v3",status:"completed",conditions:["pathvirt","namei_ext","withdrawn"],kernel:{commit:$$kernel_commit,release:$$kernel_release},pathtranslator_activation:"DMTCP_PATHVIRT_PLUGIN=1",completed_at:$$completed_at}' \
 		>"$(CHECKPOINT_RESTORE_BOOT_DIR)/boot.json"

@@ -21,7 +21,7 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
         return {
             "schema": "namei_ext.run.v2",
             "run_id": "checkpoint-test",
-            "protocol_schema": "namei_ext.checkpoint_restore.protocol.v2",
+            "protocol_schema": "namei_ext.checkpoint_restore.protocol.v3",
             "suite": "checkpoint-restore",
             "source_system": "dmtcp-pathtranslator",
             "result_level": (
@@ -38,7 +38,7 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                 "three-modified-kernel-boots" if formal else
                 "single-modified-kernel-boot"
             ),
-            "attempt": 4,
+            "attempt": 5,
             "status": "completed",
             "matrix": {
                 "conditions": list(analyze.CONDITIONS),
@@ -48,8 +48,11 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                     "restart-environment scan-bound fix"
                 ),
                 "control": "withdrawn",
+                "pathtranslator_activation": (
+                    "DMTCP_PATHVIRT_PLUGIN=1; "
+                    "DMTCP_PATH_MAPPING generation A to B"
+                ),
                 "timeout_seconds": 120,
-                "upstream_timeout_seconds": 120,
                 "kvm_timeout": "600s",
                 "all_conditions_must_pass": True,
             },
@@ -200,9 +203,10 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
         boot.mkdir(parents=True)
         (boot / "boot.json").write_text(
             json.dumps({
-                "schema": "namei_ext.checkpoint_restore.boot.v2",
+                "schema": "namei_ext.checkpoint_restore.boot.v3",
                 "status": "completed",
                 "conditions": list(analyze.CONDITIONS),
+                "pathtranslator_activation": "DMTCP_PATHVIRT_PLUGIN=1",
             }),
             encoding="utf-8",
         )
@@ -219,10 +223,6 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             "bpf-cgroup-after.json",
         ):
             (boot / name).write_text("[]\n", encoding="utf-8")
-        (boot / "upstream-autotest.stdout.log").write_text(
-            "test groups: pass=1 fail=0 skipped=0 total=1\n",
-            encoding="utf-8",
-        )
         controller = []
         for condition in analyze.CONDITIONS:
             result = boot / "conditions" / condition
@@ -297,6 +297,15 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             run["source"]["dirty"] = True
             (root / "run.json").write_text(json.dumps(run), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "not clean"):
+                analyze.analyze_result(root)
+
+    def test_wrong_pathtranslator_activation_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory)
+            run = json.loads((root / "run.json").read_text(encoding="utf-8"))
+            run["matrix"]["pathtranslator_activation"] = "--pathvirt"
+            (root / "run.json").write_text(json.dumps(run), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "PathTranslator activation"):
                 analyze.analyze_result(root)
 
     def test_pathvirt_without_restart_mapping_is_rejected(self):

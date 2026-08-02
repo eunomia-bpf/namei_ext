@@ -129,7 +129,19 @@ directories have the required application ownership, the relocated install is
 executable, and both one-boot preflight and three-boot formal paths are wired to
 the analyzer.
 
-No modified-kernel evidence has yet been claimed from this implementation. The
-reviewed changes must be committed so the clean-source gate passes, after which
-attempt 4 may run once. A passing attempt-4 preflight must receive a result
-review before the three-boot formal run begins.
+Attempt 4 ran at
+`results/experiments/checkpoint-restore-preflight/20260802T095000Z-w5-attempt04/`.
+The modified kernel and runtime-identity probe passed, and DMTCP's separate
+official autotest completed its checkpoint and restart phases. Its cleanup
+then reported PID 980 in the original worker process group. The run stopped
+before the external BPF inventory and before all three focal lifecycle
+conditions, so it is inconclusive and supplies no W5 KVM result.
+
+The result analysis and materially revised attempt-5 execution plan are in
+`docs/tmp/2026-08-02-w5-attempt-4-result-and-attempt-5-plan.md`.
+
+The revised activation passed from a relocated host install in
+`results/workloads/checkpoint-restore-source/20260802T111500Z-w5-attempt5-source/`.
+The direct lifecycle completed A-to-B restart with an empty launcher stderr
+log. The next missing evidence remains the modified-kernel attempt-5 KVM
+preflight.

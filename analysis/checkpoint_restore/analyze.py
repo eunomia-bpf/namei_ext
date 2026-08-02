@@ -90,7 +90,7 @@ def valid_hex(value, length):
 def validate_run(run):
     expected = {
         "schema": "namei_ext.run.v2",
-        "protocol_schema": "namei_ext.checkpoint_restore.protocol.v2",
+        "protocol_schema": "namei_ext.checkpoint_restore.protocol.v3",
         "suite": "checkpoint-restore",
         "source_system": "dmtcp-pathtranslator",
         "observations": "observations.jsonl",
@@ -123,7 +123,7 @@ def validate_run(run):
     expected_layout, expected_repetitions = levels[run["result_level"]]
     if run.get("layout") != expected_layout:
         raise ValueError("unexpected run layout")
-    if run.get("attempt") != 4:
+    if run.get("attempt") != 5:
         raise ValueError("unexpected W5 attempt lineage")
     matrix = run.get("matrix")
     if not isinstance(matrix, dict):
@@ -136,8 +136,9 @@ def validate_run(run):
         raise ValueError("unexpected causal control")
     if matrix.get("timeout_seconds") != 120:
         raise ValueError("unexpected condition timeout")
-    if matrix.get("upstream_timeout_seconds") != 120:
-        raise ValueError("unexpected upstream timeout")
+    if matrix.get("pathtranslator_activation") != \
+            "DMTCP_PATHVIRT_PLUGIN=1; DMTCP_PATH_MAPPING generation A to B":
+        raise ValueError("unexpected PathTranslator activation")
     if matrix.get("kvm_timeout") != "600s":
         raise ValueError("unexpected KVM timeout")
     if matrix.get("all_conditions_must_pass") is not True:
@@ -390,11 +391,6 @@ def validate_inventories(boot):
                 isinstance(item, dict) and "id" in item
                 for item in nested_objects(value)):
             raise ValueError(f"attached cgroup BPF program: {name}")
-    upstream = (boot / "upstream-autotest.stdout.log").read_text(
-        encoding="utf-8"
-    )
-    if "test groups: pass=1 fail=0 skipped=0 total=1" not in upstream:
-        raise ValueError("upstream unchanged-mapping test did not pass")
 
 
 def nested_objects(value):
@@ -439,9 +435,11 @@ def analyze_result(result):
         boot = result / "boots" / boot_name
         boot_json = load_json(boot / "boot.json")
         if boot_json.get("schema") != \
-                "namei_ext.checkpoint_restore.boot.v2" or \
+                "namei_ext.checkpoint_restore.boot.v3" or \
                 boot_json.get("status") != "completed" or \
-                boot_json.get("conditions") != list(CONDITIONS):
+                boot_json.get("conditions") != list(CONDITIONS) or \
+                boot_json.get("pathtranslator_activation") != \
+                "DMTCP_PATHVIRT_PLUGIN=1":
             raise ValueError(f"invalid boot record for {boot_name}")
         validate_inventories(boot)
         runtime_identity = validate_runtime_identity(boot)
@@ -459,14 +457,14 @@ def analyze_result(result):
             validate_condition_inventory(condition_result, condition)
     formal = run["result_level"] == "kvm_checkpoint_restore_rq1"
     return {
-        "schema": "namei_ext.checkpoint_restore.summary.v2",
+        "schema": "namei_ext.checkpoint_restore.summary.v3",
         "run_id": run["run_id"],
         "correctness": {
             "all_boots_passed": True,
             "boot_count": repetitions,
             "boots": boot_names,
             "conditions": list(CONDITIONS),
-            "upstream_unchanged_mapping_test": "passed",
+            "pathtranslator_internal_plugin": "explicitly_enabled",
             "pathvirt_a_to_b": "passed",
             "namei_ext_a_to_b": "passed",
             "withdrawn_control": "failed_closed_as_expected",

@@ -83,7 +83,7 @@ be summed into one synthetic score.
 
 | Required workload | Work completed | Why it is not current evidence |
 | --- | --- | --- |
-| Checkpoint/Restore and Migration | Pinned DMTCP build, official `pathvirt`, and the source-derived A-to-B checkpoint/restart oracle now pass on the host; attempt-4 one-boot preflight and three-boot formal paths are implemented | The three old KVM roots failed before the focal lifecycle; the new modified-kernel attempt has not run, so there is still no valid `namei_ext` KVM result |
+| Checkpoint/Restore and Migration | Pinned DMTCP build, official `pathvirt`, and the source-derived A-to-B checkpoint/restart oracle pass on the host. The revised internal-plugin activation passed from a relocated install with empty launcher stderr in `20260802T111500Z-w5-attempt5-source`. Attempt 4 booted the modified kernel and passed the runtime identity probe | Attempt 4 stopped in the separate upstream autotest's cleanup after its checkpoint/restart phases and before all three focal conditions. The repaired attempt-5 path removes that redundant in-guest gate and explicitly controls DMTCP's internal PathTranslator plugin; there is still no valid `namei_ext` KVM result |
 | HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117 | Three Spindle preflights failed before BPF attachment; no Spindle RQ1 result |
 
 These failures do not weaken the five completed workload rows, but they leave

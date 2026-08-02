@@ -255,13 +255,16 @@ class AnalysisLifecycleTest(unittest.TestCase):
                 self.assertNotIn("sha256", source)
                 self.assertNotIn("checksum", source)
 
-    def test_checkpoint_upstream_identity_is_computed_in_setpriv_recipe(self):
+    def test_checkpoint_runtime_identity_is_computed_and_verified(self):
         block = self.target_block(
             ROOT / "mk/experiments/checkpoint_restore.mk",
             "__checkpoint_restore_guest",
         )
         self.assertIn("runtime-identity-probe.txt", block)
-        probe = block[block.index("runtime_uid="):block.index("upstream_status=0")]
+        probe = block[
+            block.index("runtime_uid="):
+            block.index('"$(CHECKPOINT_RESTORE_GUEST_BPFTOOL)" -j prog show')
+        ]
         self.assertIn(
             '--reuid="$$runtime_uid" --regid="$$runtime_gid" --clear-groups',
             probe,
@@ -270,14 +273,13 @@ class AnalysisLifecycleTest(unittest.TestCase):
             "sh -c 'id -u; id -g'",
             probe,
         )
-        upstream = block[block.index("upstream_status=0"):]
         self.assertIn(
-            '--reuid="$$(stat -c %u "$(CHECKPOINT_RESTORE_BOOT_DIR)")"',
-            upstream,
+            'runtime-identity-probe.txt")" = "$$runtime_uid"',
+            probe,
         )
         self.assertIn(
-            '--regid="$$(stat -c %g "$(CHECKPOINT_RESTORE_BOOT_DIR)")"',
-            upstream,
+            'runtime-identity-probe.txt")" = "$$runtime_gid"',
+            probe,
         )
 
     def test_checkpoint_runtime_directories_are_owned_by_application_user(self):
