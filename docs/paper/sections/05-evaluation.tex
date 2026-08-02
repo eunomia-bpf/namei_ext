@@ -16,9 +16,9 @@ state-dependent path-view policies without taking over filesystem semantics?
 \item[RQ2] What is the cost of putting programmable policy on the VFS
 name-resolution path compared with a feature-equivalent FUSE policy
 implementation?
-\item[RQ3] Does \namei provide a narrower verifier-bounded, fail-closed
-ownership boundary than building a custom or stackable filesystem when the
-needed policy is only name resolution?
+\item[RQ3] When the required policy is only name resolution, which filesystem
+methods and runtime responsibilities does \namei own compared with a custom or
+stackable filesystem?
 \end{description}
 
 \subsection{Experimental Setup}
@@ -41,8 +41,8 @@ Correctness gates every number. A FUSE row is used for RQ2 only after it
 implements the same policy over the same source oracle. No-hook and
 lower-filesystem rows calibrate fixed hook and measurement cost. They are not
 competing baselines. RQ3 executes a matched Wrapfs-derived implementation for
-the Agent workspace oracle and compares responsibility and containment rather
-than throughput.
+the Agent workspace oracle and compares filesystem-method and runtime
+responsibility rather than throughput.
 
 \subsection{RQ1: Expressiveness And Sufficiency}
 
@@ -76,7 +76,7 @@ failed oracles plus six metadata records in each of three runs. Three fresh
 source-task boots passed 12/12 policy-backed task states and 6/6 physical
 source controls: concurrent base/completed views produced 39/40 and 40/40
 tests, followed by switch, rollback, and withdrawal. \\
-Build action sandboxing (supporting)~\cite{bazel_sandboxing} & Two concurrent Bazel actions
+Build action sandboxing (traditional main case)~\cite{bazel_sandboxing} & Two concurrent Bazel actions
 use one logical input path but different declared roots; an undeclared existing
 input must be absent. & \namei selects each action's declared object and hides
 the undeclared name. & Three fresh KVM boots completed all six Bazel 6.5.0
@@ -172,16 +172,19 @@ feature-equivalent FUSE policy service. & Ten paired blocks, 20 KVM boots,
 11.32\(\times\) [11.24, 11.64]. \\
 FxMark cache-hot path walks & Stock, patched-unattached, attached \code{PASS},
 same-filesystem \code{SELECT}, and multithreaded cached FUSE. & 50 fresh KVM
-boots, 450 cells over MRPL, MRPM, and MRPH at one/two/four workers. & 450/450 cells passed.
+boots and 450 condition-run observations over nine MRPL/MRPM/MRPH and
+worker-count cells. & 450/450 observations passed.
 \code{SELECT}/FUSE was 1.052--1.088\(\times\), with every paired 95\% CI above
 one; complete \code{SELECT} retained 0.895--0.931 of unattached throughput. \\
 Corrected FxMark directory enumeration & Same five conditions over
 private-directory MRDL and shared-directory MRDM. & Ten paired blocks, 50
-fresh KVM boots, and 300 cells at one/two/four workers. & 300/300 cells passed.
+fresh KVM boots, and 300 condition-run observations over six operation and
+worker-count cells. & 300/300 observations passed.
 \code{SELECT}/FUSE was 2.20--3.66\(\times\) with CIs above one in five cells;
 MRDM/4 was 1.018 [0.907, 1.135]. \\
 Unused fast path & Stock versus patched-unattached cache-hot MRPL in 30 paired
-blocks. & 60 fresh KVM boots and 180 cells. &
+blocks. & 60 fresh KVM boots and 180 condition-run observations over three
+worker-count cells. &
 Unattached/stock was 1.0009 [0.9921, 1.0036], 1.0083 [0.9950, 1.0179], and
 1.0007 [0.9918, 1.0139] at one/two/four workers. \\
 \hline
@@ -220,7 +223,7 @@ million entries/s; the \code{SELECT}/FUSE interval crosses one. The frozen
 overall verdict is therefore mixed: five cells support the throughput
 advantage, while shared-directory contention masks it in the sixth.
 
-\subsection{RQ3: Ownership And Containment Boundary}
+\subsection{RQ3: Ownership And Responsibility Boundary}
 
 RQ3 compares ownership boundaries for the same oracle-relevant behavior. The
 question is not whether custom or stackable filesystems are expressive, because
@@ -233,7 +236,7 @@ the policy effect is only name-resolution selection or visibility.
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}L{0.18\linewidth}L{0.20\linewidth}L{0.20\linewidth}L{0.20\linewidth}L{0.16\linewidth}@{}}
 \hline
-Evidence & \namei & Wrapfs-derived & Runtime/fault observation & Result \\
+Evidence & \namei & Wrapfs-derived & Runtime observation & Result \\
 \hline
 Agent workspace, same 37-row oracle & BPF decides lookup/readdir; ordinary
 operations use the selected ext4 object. & A port of official Wrapfs registers
@@ -249,9 +252,9 @@ preserved exact lower-object evidence. & 21/21 cells passed in each of three
 boots. \\
 \hline
 \end{tabular}
-\caption{RQ3 boundary table. The comparison is responsibility and containment for
-the same oracle-relevant behavior, not a claim that custom filesystems are less
-expressive.}
+\caption{RQ3 boundary table. The comparison is filesystem-method and runtime
+responsibility for the same oracle-relevant behavior, not a claim that custom
+filesystems are less expressive.}
 \label{tab:rq3-evidence}
 \end{table}
 \FloatBarrier
@@ -259,9 +262,9 @@ expressive.}
 For this existing-object workspace view, RQ3 is supported: \namei confines
 workload policy execution to lookup and directory iteration, while the matched
 stackable implementation owns and executes superblock, lookup, directory,
-inode, and file methods. This is a workload-specific ownership and containment
-result. It is not proof of complete-system security, nor a claim that custom
-filesystems are unnecessary when an oracle requires synthetic contents,
+inode, and file methods. This is a workload-specific ownership and
+responsibility result, not a claim that custom filesystems are unnecessary
+when an oracle requires synthetic contents,
 copy-up, conflict resolution, distributed metadata, or data-path mediation.
 
 \subsection{Evaluation Scope}

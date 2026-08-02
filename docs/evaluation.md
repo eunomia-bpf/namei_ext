@@ -1,6 +1,6 @@
 # Evaluation
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 This file holds the scientific evaluation state: use cases, experiment
 matrices, result pointers, and open questions. Research process rules and
@@ -14,9 +14,28 @@ process-heavy version is archived at
 | --- | --- | --- |
 | RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Source-system behavior as correctness oracle |
 | RQ2 Cost / overhead versus FUSE | What is the cost of programmable policy on the VFS name-resolution path compared with a feature-equivalent FUSE policy? | Feature-equivalent FUSE over the same oracle |
-| RQ3 Safety / boundary | Is the verifier-bounded, fail-closed ownership boundary narrower than custom or stackable filesystem ownership when only name resolution is needed? | Workload-specific ownership accounting |
+| RQ3 Ownership / responsibility boundary | When the required policy is only name resolution, which filesystem methods and runtime responsibilities does `namei_ext` own compared with a custom or stackable filesystem? | Same-oracle method and responsibility accounting |
 
 ## Use Cases
+
+### Paper-facing workload set
+
+The paper does not treat all surveyed workflows as equal experiments. The
+current evaluation has two deep cases and three supporting RQ1 cases:
+
+| Role | Workload | Completed evidence | Remaining paper-value gap |
+| --- | --- | --- | --- |
+| Headline | W2 Agent Workspaces | RQ1 source-task and lifecycle correctness; matched FUSE RQ2; matched Wrapfs-derived RQ3 | No additional workload experiment is required |
+| Second main case | W3 Build Action Sandboxing | RQ1 with two concurrent Bazel 6.5.0 actions | A valid official-sandboxfs macro comparison would add the missing traditional-application RQ2 result; the previous protocol closed without a paired run |
+| Supporting breadth | W1 Sandboxed Application File Sharing | RQ1 against official `xdg-document-portal` 1.18.4 | No performance claim; the attempted official-portal timing protocol closed |
+| Supporting breadth | W4 Service Configuration and Secret Rotation | RQ1 against official Kubernetes v1.30.0 `AtomicWriter` | The result covers already-materialized leaf selection, not service reload |
+| Supporting breadth | W7 Toolchain and Dependency Environments | RQ1 with Ubuntu CPython 3.10/3.12 environments | No matched FUSE or custom-filesystem claim |
+
+W5 Checkpoint/Restore and W6 HPC File Staging remain source-grounded portfolio
+candidates, not completed paper results. FxMark and the historical ccache
+matrix are performance evidence, not additional case studies. The complete
+data and raw-result audit is
+[`docs/tmp/2026-08-02-workload-evidence-audit.md`](tmp/2026-08-02-workload-evidence-audit.md).
 
 The evaluation separates three kinds of evidence:
 
@@ -65,12 +84,13 @@ The cases remain distinct even when their policies use the same bounded action:
 | W6 HPC File Staging vs W7 Toolchain and Dependency Environments | W6 moves the same object from shared storage to node-local storage to reduce launch and shared-filesystem load; W7 chooses among semantically different installed software variants. |
 | W4 Service Configuration and Secret Rotation vs W7 Toolchain and Dependency Environments | W4 publishes validated configuration, certificate, or secret releases to a running service; W7 selects a user, project, or job software environment. |
 
-W1--W7 are seven industrial workflow cases, not seven unrelated performance
-benchmarks. Multiple source systems are consolidated within the workflow they
-serve. Each case gets a correctness cell for RQ1 and an ownership/scope row for
-RQ3. RQ2 uses standard benchmarks plus feature-equivalent FUSE on
-representative macro cases; it does not require seven bespoke FUSE performance
-stories.
+W1--W7 are seven industrial workflow candidates, not seven unrelated
+performance benchmarks and not seven promised paper experiments. Multiple
+source systems are consolidated within the workflow they serve. Completed
+cases get a correctness cell for RQ1. RQ2 uses standard benchmarks plus
+feature-equivalent FUSE on representative macro cases, and RQ3 uses a matched
+custom or stackable implementation where it changes the ownership conclusion;
+neither RQ requires seven bespoke comparisons.
 
 ### Related evidence, not case studies
 
@@ -193,9 +213,9 @@ Entry points:
 | RQ2 operation decomposition | Mixed by design: `open` 8.35x and `readdir` 13.59x in favor of namei_ext; cache-hit `stat` and `access` favored FUSE; `exec` was inconclusive. This is a scoped AgentFS-derived lifecycle result, not an end-to-end agent-task speedup or a generic FUSE claim | Same raw root and `analysis/report.md` |
 | RQ2 result review | Valid; predeclared hypothesis supported; admitted as an OSDI/EuroSys-quality controlled mechanism result with supporting paper value | `docs/tmp/2026-07-27-agent-workspace-rq2-formal-v3-result-review.md` |
 | RQ3 matched stackable-FS boundary | Passed and independently reviewed: both `namei_ext` and the Wrapfs-derived implementation passed 37/37 pairwise AgentFS-derived oracles in all three boots; two verifier faults had exact rejection logs and all 19 runtime fault cells preserved lower-object manifests; 13 Wrapfs operation classes were observed at runtime | `results/experiments/agent-workspace-rq3-formal/20260728-rq3-formal-v3/` |
-| RQ3 result review | Valid for the existing-object Agent workspace slice; supports a narrower executed method and failure boundary, not complete-system security or generality | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
+| RQ3 result review | Valid for the existing-object Agent workspace slice; supports a narrower executed method and runtime-responsibility boundary, not a general comparison of complete filesystems | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 
-### C. Build Action Sandboxing (supporting RQ1 breadth)
+### C. Build Action Sandboxing (traditional main case)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -285,12 +305,12 @@ build/cache cases whose pathname view is the behavior under study.
 | Active-path decomposition | `PASS`/unattached medians are `0.901--0.934`; `SELECT`/`PASS` is `0.981--0.999`; the complete `SELECT` path retains `0.895--0.931` of unattached throughput | Same raw root; independently recomputed from raw JSONL |
 | Strong FUSE engagement | The multithreaded libfuse 2.9.9 baseline enables kernel and metadata caching; measured-phase requests are `0--19` per cell, so the result does not depend on one daemon round trip per lookup | Same raw root |
 | Host-pinned unused-fast-path confirmation | Supported in all three MRPL cells across 30 paired blocks and 60 fresh KVM boots: unattached/stock is `1.0009 [0.9921, 1.0036]`, `1.0083 [0.9950, 1.0179]`, and `1.0007 [0.9918, 1.0139]` at 1/2/4 workers | `results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/` |
-| Corrected directory-enumeration breadth | Valid and publication-usable: 50 fresh KVM boots and 300/300 cells passed. `SELECT/FUSE` was `2.20--3.66x` with every paired 95% CI above one in all three private-directory cells and the one/two-worker shared-directory cells. Shared-directory four-worker throughput was indistinguishable: `1.018x [0.907, 1.135]`. The frozen overall verdict is `mixed`, and the contention-bound cell remains in the paper | `results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/`; `docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md` |
+| Corrected directory-enumeration breadth | Valid and publication-usable: 50 fresh KVM boots and 300/300 condition-run observations across six operation/worker cells passed. `SELECT/FUSE` was `2.20--3.66x` with every paired 95% CI above one in all three private-directory cells and the one/two-worker shared-directory cells. Shared-directory four-worker throughput was indistinguishable: `1.018x [0.907, 1.135]`. The frozen overall verdict is `mixed`, and the contention-bound cell remains in the paper | `results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/`; `docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md` |
 | Current result reviews | Both runs are valid. Formal-v3 closes the active SELECT/FUSE comparison and quantifies active-policy cost; the isolated confirmation closes the predeclared unused-fast-path gate for cache-hot MRPL on this host | `docs/tmp/2026-07-28-rq2-fxmark-formal-v3-result-review.md`; `docs/tmp/2026-07-28-fxmark-fast-path-formal-v1-result-review.md` |
 | Prior provenance-defective matrix | Historical numerical diagnosis only: 50 boots and 450 observations, but patched binary was `g83d52c2168e2-dirty` rather than the recorded clean commit | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v2/` |
 | Prior invalid-run review | Required the clean committed-kernel reproduction now completed above | `docs/tmp/2026-07-27-rq2-fxmark-rcu-target-rerun-review.md` |
 | Interrupted full attempt | External five-hour timeout after 33/50 complete boots; preserved as raw evidence and excluded from every result | `results/experiments/fxmark-rq2/20260727T-rq2-rcu-target-full-v1/` |
-| Superseded pre-redesign matrix | Historical valid matrix on the earlier mechanism: 50 boots and 450 cells, retained as the diagnosis that motivated the mechanism repair; not a current paper performance result | `results/experiments/fxmark-rq2/20260726T-rq2-fxmark-full-v2/` |
+| Superseded pre-redesign matrix | Historical valid matrix on the earlier mechanism: 50 boots and 450 condition-run observations, retained as the diagnosis that motivated the mechanism repair; not a current paper performance result | `results/experiments/fxmark-rq2/20260726T-rq2-fxmark-full-v2/` |
 | Superseded result review | Earlier mechanism contradicted the hypothesis; the review required redesign and the unchanged fresh matrix that is now complete above | `docs/tmp/2026-07-27-rq2-fxmark-result-review.md` |
 | Exact-parent invocation attribution | Directional KVM preflight passed; policy runs fell from about 10 to about 1 per work unit, with about 25 ns in the BPF body per run | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-run-count-v1/` |
 | Exact-parent normal preflight | Directional only: stock 2.471M, unattached 2.332M, `PASS` 1.235M, `SELECT` 1.085M, FUSE 2.041M ops/s; dispatch-count repair did not justify a new full matrix | `results/experiments/fxmark-rq2-preflight/20260727T-policy-parent-preflight-v1/` |
@@ -321,7 +341,7 @@ roots is paper evidence. The independent result review is
 `docs/tmp/2026-07-30-rq2-mdtest-cold-metadata-preflight-result-review.md`.
 Cache-cold and broader mutating-metadata cost therefore remain unresolved.
 
-### G. Agent workspace ownership and containment (decisive RQ3 result)
+### G. Agent workspace ownership and responsibility (decisive RQ3 result)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -330,7 +350,7 @@ Cache-cold and broader mutating-metadata cost therefore remain unresolved.
 | Stackable method attribution | Passed 3/3: 13 probed Wrapfs method classes executed, covering superblock setup/teardown, lookup, readdir, open, read, write, fsync, getattr, setattr, create, rename, and unlink | Same raw root |
 | Fail-closed matrix | Passed 3/3: two verifier-rejected programs plus 19 independently loaded malformed or unsupported runtime decisions; every runtime cell returned the declared errno and preserved statx metadata for eight lower objects plus exact manifests for two directories | Same raw root |
 | Deployed-source accounting | Nine `namei_ext` kernel integration files; six compiled Wrapfs sources with 34 unique VFS slots; 12 userspace FUSE callbacks and 15 compiled kernel FUSE client sources | Same raw root and `report.md` |
-| Result review | Valid for a scoped ownership and containment claim; not evidence that custom filesystems are unsafe or unnecessary | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
+| Result review | Valid for a scoped method and runtime-responsibility claim; not a claim that custom filesystems are unnecessary | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 
 Make entrypoint:
 `make experiment-agent-workspace-rq3 RUN_ID=<fresh-id>`.
@@ -340,9 +360,9 @@ workspace view, policy execution is confined to lookup and directory iteration,
 and ordinary operations continue on the selected lower file. The matched
 stackable implementation owns and executes a broader filesystem-method surface.
 Invalid programs and unsupported outputs failed at the verifier or declared
-errno boundary in the tested matrix. This does not establish complete-system
-security or cover synthetic contents, copy-up, conflict resolution, distributed
-metadata, or arbitrary filesystem behavior.
+errno boundary in the tested matrix. The ownership result does not cover
+synthetic contents, copy-up, conflict resolution, distributed metadata, or
+arbitrary filesystem behavior.
 
 ## Open Questions
 

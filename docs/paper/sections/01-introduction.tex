@@ -79,8 +79,9 @@ while the kernel retains the subsystem machinery that owns objects and
 executes semantics~\cite{linux_sched_ext}.
 
 We evaluate whether this ownership split is sufficient for source-derived
-path-view policies, cheaper than feature-equivalent FUSE placement, and more
-contained than broader filesystem ownership. RQ1 asks whether KVM workloads pass
+path-view policies, cheaper than feature-equivalent FUSE placement, and
+narrower in method and runtime responsibility than broader filesystem
+ownership. RQ1 asks whether KVM workloads pass
 the same correctness conditions while preserving lower-filesystem semantics.
 Reviewed formal KVM runs pass fixed oracles for Agent workspaces, official XDG
 Documents portal application-sharing grants, concurrent Bazel action views, the

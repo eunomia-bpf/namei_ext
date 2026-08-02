@@ -117,7 +117,8 @@ oracles. Lookup and readdir therefore need one coherent decision contract.
 Together, these source-system observations set the paper's comparison rule:
 (1) source behavior supplies the oracle, (2) feature-equivalent FUSE supplies
 the direct programmable-policy cost comparison, and (3) custom or stackable
-filesystems define the broader safety and ownership boundary. Materialized
+filesystems define the broader filesystem-method and runtime-responsibility
+boundary. Materialized
 namespace mechanisms remain related-work and background comparisons rather than
 the central experiment. The same rule drives
 the design requirements in Section~\ref{sec:design} and the RQ-organized
@@ -125,19 +126,20 @@ evaluation in Section~\ref{sec:evaluation}.
 
 \subsection{Selected Workloads}
 
-The evaluated RQ1 set contains five non-overlapping workflows. The formal
-Agent workspace case exercises branch-visible staged/base selection, hides,
+The evaluated RQ1 set contains five non-overlapping workflows. The two main
+cases are Agent Workspaces and Build Action Sandboxing. The formal Agent
+workspace case exercises branch-visible staged/base selection, hides,
 readdir coherence, and lower-tree mutations. It also runs a released Click
 source task through concurrent base/completed views, switch, rollback, and
-withdrawal. The formal application-sharing run executes official
+withdrawal. The formal build-action run executes two concurrent real Bazel
+actions with distinct declared-input roots and an undeclared-input failure.
+The formal application-sharing run executes official
 \code{xdg-document-portal} 1.18.4 and \namei under the same
-per-application grant/isolation/revoke oracle. The build-action run executes two
-concurrent real Bazel actions with distinct declared-input roots and an
-undeclared-input failure. The formal Kubernetes case follows the official
+per-application grant/isolation/revoke oracle. The formal Kubernetes case follows the official
 \code{AtomicWriter} payload-view sequence through update, no-op, and rollback
 under one stable logical root. The formal toolchain case selects two existing
 CPython environments, switches one process-group view, and rolls it back.
-These four supporting workflows broaden the source-system evidence without
+These three supporting workflows broaden the source-system evidence without
 becoming separate headline claims.
 
 Full service validation and reload, checkpoint/restore, and HPC file staging

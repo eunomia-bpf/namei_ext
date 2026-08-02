@@ -1,6 +1,6 @@
 # Research State
 
-Last updated: 2026-07-30
+Last updated: 2026-08-02
 
 This file is only a handoff pointer. Research process state, gates, and
 orchestration belong to the orchestrator skill, not to this repository.
@@ -34,13 +34,12 @@ orchestration belong to the orchestrator skill, not to this repository.
   novelty by itself.
 - RQ1 asks expressiveness/sufficiency for source-derived state-dependent
   path-view policies. RQ2 measures cost versus feature-equivalent FUSE. RQ3
-  evaluates the verifier-bounded, fail-closed ownership boundary versus custom
-  or stackable filesystem ownership.
-- The source-derived portfolio contains seven non-overlapping industrial
-  workflows. W1 application file sharing, W2 Agent workspaces, W3 build action
-  sandboxing, W4's Kubernetes `AtomicWriter` payload-view subset, and W7
-  toolchain/environment selection have reviewed formal KVM correctness
-  evidence. W5--W6 and full service reload remain motivating or
+  compares filesystem-method and runtime responsibility versus custom or
+  stackable filesystem ownership.
+- The paper-facing workload set has two main cases, W2 Agent Workspaces and W3
+  Build Action Sandboxing, plus W1 application sharing, W4's Kubernetes
+  `AtomicWriter` payload-view subset, and W7 toolchain/environment selection as
+  supporting RQ1 breadth. W5--W6 and full service reload remain motivating or
   dependency-limited rows, not completed paper evidence.
 - Do not reopen table-only, materialized-view, or scattered-baseline side
   experiments as the novelty line.
@@ -79,8 +78,8 @@ orchestration belong to the orchestrator skill, not to this repository.
   unused-fast-path confirmation live under
   `results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/` and
   `results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/`.
-- Corrected FxMark directory enumeration: the reviewed 50-boot, 300-cell
-  formal matrix lives under
+- Corrected FxMark directory enumeration: the reviewed 50-boot, 300-observation
+  formal matrix across six operation/worker cells lives under
   `results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/`.
   Five of six `SELECT/FUSE` cells have paired 95% intervals above one; the
   four-worker shared-directory cell is inconclusive, so the frozen verdict is
@@ -101,6 +100,9 @@ orchestration belong to the orchestrator skill, not to this repository.
 
 Complete current inventory:
 `docs/tmp/2026-07-28-complete-experiment-status.md`.
+
+Current workload hierarchy and evidence audit:
+`docs/tmp/2026-08-02-workload-evidence-audit.md`.
 
 Do not perform Git mutation unless explicitly requested after status/diff
 inspection.

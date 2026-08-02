@@ -1011,9 +1011,9 @@ def render_markdown(result: dict) -> str:
         "lower object. The matched stackable implementation registers and "
         "executes superblock, lookup, directory, inode, and file methods for "
         "the same pairwise oracle. Invalid programs and unsupported decisions "
-        "are contained at the verifier or declared errno boundary in this "
-        "matrix. This is a boundary claim, not a complete-system security or "
-        "generality claim.",
+        "return the declared verifier or errno result in this matrix. This "
+        "supports the tested method and runtime-responsibility boundary, not "
+        "a general comparison of complete filesystems.",
         "",
     ])
     return "\n".join(lines)

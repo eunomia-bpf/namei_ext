@@ -71,7 +71,7 @@ implementation boundary differs from custom or stackable filesystem ownership.
 | --- | --- | --- |
 | RQ1 Expressiveness / sufficiency | Can a narrow VFS name-resolution extension express real state-dependent path-view policies without taking over filesystem semantics? | Representative source-derived workloads pass their correctness oracles through the real `cgroup/namei_ext` KVM attach path, with coherent lookup/readdir behavior and lower-filesystem permission/write/data-path preservation. |
 | RQ2 Cost / overhead versus FUSE | What is the cost of putting programmable policy on the VFS name-resolution path compared with a feature-equivalent FUSE policy implementation? | Same-oracle `namei_ext` and FUSE policy implementations, with correctness gating lookup/open/stat/access/exec/readdir latency, macro runtime, pass-through overhead, action overhead, and operation-weighted invocation traces. |
-| RQ3 Safety / boundary versus custom or stackable FS | Does `namei_ext` provide a narrower verifier-bounded, fail-closed ownership boundary than building a custom or stackable filesystem when the needed policy is only name resolution? | Ownership and containment evidence: filesystem methods owned, privileged code surface, daemon/state responsibility, verifier/kernel validation, invalid-policy handling, and lower-filesystem data/write preservation. |
+| RQ3 Ownership / responsibility boundary versus custom or stackable FS | When the required policy is only name resolution, which filesystem methods and runtime responsibilities does `namei_ext` own compared with a custom or stackable filesystem? | Same-oracle evidence for methods executed, daemon and mount lifetime, policy/target state, error handling, and continuation on the lower filesystem. |
 
 ## Contribution And Evidence Program
 
@@ -132,19 +132,22 @@ Evidence program:
   audit returned GO.
 - RQ2 cache-hot path resolution: the clean repeated FxMark matrix
   (`results/experiments/fxmark-rq2/20260728T-rq2-rcu-target-formal-v3/`)
-  completed 50 KVM boots and 450/450 passing cells. Same-filesystem
+  completed 50 KVM boots and 450/450 passing condition-run observations over
+  nine operation/worker cells. Same-filesystem
   `SELECT`/optimized FUSE is `1.052--1.088`, with every paired 95% confidence
   interval above one. Attached `PASS` retains `0.901--0.934` of unattached
   throughput; selected-target resolution adds `0.1--1.9%` median cost beyond
   `PASS`. A separate host-pinned confirmation
   (`results/experiments/fxmark-fast-path/20260728T-fxmark-fast-path-formal-v1/`)
-  completed 60 boots and 180/180 cells. Patched-unattached/stock is
+  completed 60 boots and 180/180 passing condition-run observations over
+  three worker-count cells. Patched-unattached/stock is
   `1.0009 [0.9921, 1.0036]`, `1.0083 [0.9950, 1.0179]`, and
   `1.0007 [0.9918, 1.0139]` at one, two, and four workers, closing the
   predeclared unused-fast-path criterion for this host and workload.
 - RQ2 directory enumeration: the corrected FxMark formal matrix
   (`results/experiments/fxmark-readdir/20260729T082800Z-fxmark-readdir-formal-v1/`)
-  completed 50 fresh KVM boots and 300/300 passing cells. `SELECT` reached
+  completed 50 fresh KVM boots and 300/300 passing condition-run observations
+  over six operation/worker cells. `SELECT` reached
   `2.20--3.66x` matched FUSE throughput in all private-directory cells and
   shared-directory enumeration at one/two workers, with every paired 95%
   confidence interval above one. At four shared-directory workers,

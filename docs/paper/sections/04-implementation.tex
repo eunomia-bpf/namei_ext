@@ -144,8 +144,9 @@ malformed redirect, missing registration, incompatible target type, or
 unsupported operation returns a specific error to the pathname operation. The
 implementation does not translate those errors into \code{PASS}; doing so
 would expose the ordinary lower name when the requested policy did not execute.
-This fail-closed behavior and the unchanged lower object after invalid
-decisions form the containment boundary evaluated in RQ3.
+This visible error behavior and the unchanged lower object after invalid
+decisions are implementation-correctness checks; RQ3 primarily compares which
+filesystem methods and runtime state each mechanism owns.
 
 Phase 1 validation runs in KVM with the modified kernel and the real
 \code{cgroup/namei_ext} attach path. Host-only checks, object inspection, and

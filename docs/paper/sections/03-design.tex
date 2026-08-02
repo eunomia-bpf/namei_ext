@@ -166,7 +166,7 @@ the result of ordinary VFS execution on the selected lower object.
 \subsection{Name-Resolution Boundary Goals}
 
 Four evaluation goals follow from this ownership split: expressiveness,
-semantic preservation, placement cost, and fail-closed validation. Like
+semantic preservation, placement cost, and visible output validation. Like
 \code{sched_ext}, \namei lets BPF choose policy while the kernel keeps the VFS
 mechanisms that own objects and execute filesystem semantics.
 
@@ -184,7 +184,7 @@ Goal & Design choice & RQ \\
 G1 Expressiveness & invoke one workload-scoped decision contract at lookup and directory-enumeration time & RQ1 \\
 G2 Semantic preservation & select only existing lower objects and resume ordinary VFS processing for data, writes, permissions, page cache, and persistence & RQ1, RQ3 \\
 G3 Placement cost & run bounded policy at lookup/readdir instead of routing the same decision through a filesystem service & RQ2 \\
-G4 Fail-closed validation & use verified eBPF outputs plus kernel validation so malformed or unsupported bindings fail visibly & RQ3 \\
+G4 Output validation & use verified eBPF outputs plus kernel validation so malformed or unsupported bindings fail visibly & Implementation correctness \\
 \hline
 \end{tabular}
 \caption{Design-goal mapping. If an oracle needs synthetic contents, custom
