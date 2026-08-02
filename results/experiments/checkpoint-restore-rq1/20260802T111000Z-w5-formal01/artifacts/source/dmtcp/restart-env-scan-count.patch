@@ -1,0 +1,19 @@
+From: namei_ext experiment maintainers
+Subject: [PATCH] dmtcpplugin: bound restart environment scan by bytes read
+
+env_buf is a pointer, so sizeof(env_buf) limits the flattened environment
+scan to the pointer width. Use the byte count returned by readLine() so
+dmtcp_get_restart_env() can inspect entries after the first few bytes.
+
+diff --git a/src/dmtcpplugin.cpp b/src/dmtcpplugin.cpp
+--- a/src/dmtcpplugin.cpp
++++ b/src/dmtcpplugin.cpp
+@@ -385,7 +385,7 @@ dmtcp_get_restart_env(const char *name,   // IN
+       char *start_ptr = env_buf;
+ 
+       // iterate over the flattened list of name-value pairs
+-      while (start_ptr - env_buf < (int)sizeof(env_buf)) {
++      while (start_ptr - env_buf < count) {
+         pos = NULL;
+         if (strncmp(start_ptr, name, namelen) == 0) {
+           if ((pos = strchr(start_ptr, '='))) {

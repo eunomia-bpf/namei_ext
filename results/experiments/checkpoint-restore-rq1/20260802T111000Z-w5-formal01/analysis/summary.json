@@ -1,0 +1,112 @@
+{
+  "correctness": {
+    "all_boots_passed": true,
+    "boot_count": 3,
+    "boots": [
+      "block-01",
+      "block-02",
+      "block-03"
+    ],
+    "bpf_inventory_clean": true,
+    "conditions": [
+      "pathvirt",
+      "namei_ext",
+      "withdrawn"
+    ],
+    "lower_objects_unchanged": true,
+    "namei_ext_a_to_b": "passed",
+    "pathtranslator_internal_plugin": "explicitly_enabled",
+    "pathvirt_a_to_b": "passed",
+    "runtime_identity_consistent": true,
+    "withdrawn_control": "failed_closed_as_expected"
+  },
+  "mechanism": {
+    "namei_ext": "bounded existing-directory selection",
+    "pathvirt": "DMTCP PathTranslator with disclosed scan fix",
+    "runtime_identity_by_boot": {
+      "block-01": {
+        "gid": 1000,
+        "uid": 1000
+      },
+      "block-02": {
+        "gid": 1000,
+        "uid": 1000
+      },
+      "block-03": {
+        "gid": 1000,
+        "uid": 1000
+      }
+    },
+    "same_logical_path": true,
+    "withdrawn": "causal control"
+  },
+  "run_id": "20260802T111000Z-w5-formal01",
+  "schema": "namei_ext.checkpoint_restore.summary.v3",
+  "timing_ns": {
+    "block-01": {
+      "namei_ext": {
+        "checkpoint_ns": 20177548,
+        "restart_ns": 1031042894,
+        "total_ns": 2890701421,
+        "update_ns": 20256476
+      },
+      "pathvirt": {
+        "checkpoint_ns": 30214150,
+        "restart_ns": 1131324628,
+        "total_ns": 3594384006,
+        "update_ns": 308
+      },
+      "withdrawn": {
+        "checkpoint_ns": 20167585,
+        "restart_ns": 1048157295,
+        "total_ns": 2807847579,
+        "update_ns": 244984
+      }
+    },
+    "block-02": {
+      "namei_ext": {
+        "checkpoint_ns": 20181784,
+        "restart_ns": 1177344875,
+        "total_ns": 3190394078,
+        "update_ns": 20176160
+      },
+      "pathvirt": {
+        "checkpoint_ns": 30301860,
+        "restart_ns": 1226540885,
+        "total_ns": 3304478838,
+        "update_ns": 40
+      },
+      "withdrawn": {
+        "checkpoint_ns": 30291887,
+        "restart_ns": 1184007313,
+        "total_ns": 3388678426,
+        "update_ns": 222230
+      }
+    },
+    "block-03": {
+      "namei_ext": {
+        "checkpoint_ns": 20189962,
+        "restart_ns": 1166413968,
+        "total_ns": 3172835720,
+        "update_ns": 20170770
+      },
+      "pathvirt": {
+        "checkpoint_ns": 30386163,
+        "restart_ns": 1158518466,
+        "total_ns": 3638926293,
+        "update_ns": 40
+      },
+      "withdrawn": {
+        "checkpoint_ns": 30431847,
+        "restart_ns": 1145630988,
+        "total_ns": 3232613835,
+        "update_ns": 292032
+      }
+    }
+  },
+  "verdict": {
+    "evidence_role": "formal_rq1_evidence",
+    "next_gate": "integrate W5 into the seven-case RQ1 evaluation",
+    "tested_hypothesis": "supported"
+  }
+}

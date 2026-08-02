@@ -1,0 +1,10 @@
+CHECKPOINT_RESTORE_BOOT_DIR := results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03
+CHECKPOINT_RESTORE_GUEST_RUNNER := results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/namei_ext_checkpoint_restore
+CHECKPOINT_RESTORE_GUEST_APP := results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/checkpoint_restore_app
+CHECKPOINT_RESTORE_GUEST_POLICY := results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/checkpoint_restore_migration.bpf.o
+CHECKPOINT_RESTORE_GUEST_BPFTOOL := results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool
+CHECKPOINT_RESTORE_GUEST_DMTCP := results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/dmtcp
+CHECKPOINT_RESTORE_GUEST_KERNEL_CONFIG := results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/kernel/config
+CHECKPOINT_RESTORE_GUEST_KERNEL_COMMIT := b07117a3cb41826a34af5ca61e3e2c81dade793f
+CHECKPOINT_RESTORE_GUEST_KERNEL_RELEASE := 7.1.0-rc7-gb07117a3cb41
+CHECKPOINT_RESTORE_GUEST_TIMEOUT := 120

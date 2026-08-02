@@ -1,0 +1,15 @@
+{
+  "schema": "namei_ext.checkpoint_restore.boot.v3",
+  "status": "completed",
+  "conditions": [
+    "pathvirt",
+    "namei_ext",
+    "withdrawn"
+  ],
+  "kernel": {
+    "commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+    "release": "7.1.0-rc7-gb07117a3cb41"
+  },
+  "pathtranslator_activation": "DMTCP_PATHVIRT_PLUGIN=1",
+  "completed_at": "2026-08-02T11:04:08.069583979Z"
+}

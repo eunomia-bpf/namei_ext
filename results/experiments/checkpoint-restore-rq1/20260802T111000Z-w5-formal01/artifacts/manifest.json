@@ -1,0 +1,25 @@
+{
+  "kernel": {
+    "commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+    "release": "7.1.0-rc7-gb07117a3cb41",
+    "image": "artifacts/kernel/bzImage",
+    "config": "artifacts/kernel/config"
+  },
+  "runtime": {
+    "runner": "artifacts/runtime/namei_ext_checkpoint_restore",
+    "application": "artifacts/runtime/checkpoint_restore_app",
+    "policy": "artifacts/runtime/checkpoint_restore_migration.bpf.o",
+    "bpftool": "artifacts/runtime/bpftool",
+    "dmtcp": "artifacts/runtime/dmtcp"
+  },
+  "source": {
+    "dmtcp_commit": "068559d9b14c5f96a57869753bba7c066cbf9653",
+    "dmtcp_repository": "https://github.com/dmtcp/dmtcp.git",
+    "dmtcp_worktree": "artifacts/source/dmtcp/worktree",
+    "patch": "artifacts/source/dmtcp/restart-env-scan-count.patch",
+    "patch_purpose": "repair dmtcp_get_restart_env scan bound; pathname translation is unchanged",
+    "configure_log": "artifacts/source/dmtcp/configure.log",
+    "build_log": "artifacts/source/dmtcp/build.log",
+    "install_log": "artifacts/source/dmtcp/install.log"
+  }
+}

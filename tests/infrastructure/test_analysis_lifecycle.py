@@ -345,6 +345,16 @@ class AnalysisLifecycleTest(unittest.TestCase):
         positions = [cleanup.index(operation) for operation in ordered]
         self.assertEqual(positions, sorted(positions))
 
+    def test_spindle_waits_for_source_executables_not_process_group_absence(self):
+        runner = (
+            ROOT / "experiments/spindle_staging/namei_ext_spindle_staging.c"
+        ).read_text(encoding="utf-8")
+        self.assertIn("static int wait_child(", runner)
+        self.assertIn("wait_for_spindle_quiescence(", runner)
+        self.assertIn("process_name_starts_spindle(self, &found)", runner)
+        self.assertNotIn("kill(-pid, 0)", runner)
+        self.assertIn('"source_process_quiescence"', runner)
+
 
 if __name__ == "__main__":
     unittest.main()

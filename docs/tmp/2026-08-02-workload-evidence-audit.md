@@ -12,9 +12,10 @@ completed result summary and report, the Build Action sandboxfs plan and its
 three preflight records, and the raw roots listed below. The repository and
 kernel worktrees were clean at the end of the audit.
 
-Current-source validation rebuilt the five completed workload runners through
+Current-source validation rebuilt the six completed workload runners through
 their Make targets: Agent source task, Application File Sharing, Build Action
-Sandboxing, Kubernetes ConfigMap Publication, and Toolchain Environments. The
+Sandboxing, Kubernetes ConfigMap Publication, Checkpoint/Restore, and Toolchain
+Environments. The
 Agent RQ2, Agent RQ3, Build Action RQ2, and Application File Sharing RQ2
 analyzer suites also passed 30/30 host-side tests. These checks establish that
 the current entrypoints still build and analyze; they are not new KVM or paper
@@ -33,7 +34,7 @@ protocol.
 ## Paper-Facing Workload Structure
 
 The evaluation must complete all seven industrial RQ1 case studies. Evidence
-depth can differ, but the five completed workflows are not a stopping point:
+depth can differ, but the six completed workflows are not a stopping point:
 
 1. **Agent Workspaces** is the completed headline case. It covers source-task
    correctness, a same-oracle FUSE cost comparison, and a matched
@@ -42,15 +43,15 @@ depth can differ, but the five completed workflows are not a stopping point:
    Its Bazel correctness result is complete. Its official sandboxfs cost
    comparison remains missing.
 3. **Sandboxed Application File Sharing**, **Service Configuration and Secret
-   Rotation**, and **Toolchain and Dependency Environments** provide RQ1
-   breadth. They should not each grow a separate weak performance story.
-4. **Checkpoint/Restore and Migration** and **HPC File Staging** are required
-   W5/W6 RQ1 case studies. They are not completed experiments and do not yet
-   contribute paper numbers; both must receive a complete source-oracle KVM
-   result.
+   Rotation**, **Checkpoint/Restore and Migration**, and **Toolchain and
+   Dependency Environments** provide RQ1 breadth. They should not each grow a
+   separate weak performance story.
+4. **HPC File Staging** remains the required W6 RQ1 case study. It must receive
+   a complete source-oracle KVM result; the six completed cases do not replace
+   it.
 
 FxMark and ccache answer performance questions; they are not additional
-workload case studies and cannot substitute for W5 or W6.
+workload case studies and cannot substitute for W6.
 
 ## Completed Workload Data
 
@@ -62,9 +63,10 @@ workload case studies and cannot substitute for W5 or W6.
 | Build Action Sandboxing | Bazel 6.5.0, two concurrent genrules, declared and undeclared inputs | Three KVM boots; 6/6 Bazel actions; 6 logical/lower object matches; 12 preserved lower objects; all allow/hide/select branches | Traditional-workload RQ1 evidence |
 | Sandboxed Application File Sharing | Official `xdg-document-portal` 1.18.4 grant/isolation/revoke lifecycle | Three KVM boots; 15/15 official-source states and 15/15 `namei_ext` states; exact operation agreement | Supporting RQ1 source-fidelity evidence |
 | Service Configuration and Secret Rotation | Official Kubernetes v1.30.0 `AtomicWriter` V0/V1/no-op/rollback | Three KVM boots; 12/12 source states; 12/12 `namei_ext` states; 6 direct controls; 24 stable-root dirfd checks; 12 old-fd checks; 36 lower-object checks | Supporting RQ1 for already-materialized payload selection |
+| Checkpoint/Restore and Migration | DMTCP PathTranslator and source-derived same-path A-to-B checkpoint/restart | Three KVM boots; nine real restart conditions; six positive A-to-B transitions; three withdrawn `ENOENT` controls; restart-time `SELECT` 12-to-24 versus withdrawn 12-to-12; 108 lower-object rows unchanged | Supporting RQ1 moved-root reopen evidence |
 | Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 venv workflow | Three KVM boots; 18 physical/logical states; 24 Python probes; concurrent views, switch, rollback; 3,270 lower-object records unchanged per boot | Supporting RQ1 environment-selection evidence |
 
-The five currently completed RQ1 workflows account for 15 fresh formal KVM
+The six currently completed RQ1 workflows account for 18 fresh formal KVM
 boots. This is progress toward the seven-workload target, not the target
 itself. Their oracles differ by workflow; their individual counts should not
 be summed into one synthetic score.
@@ -83,12 +85,11 @@ be summed into one synthetic score.
 
 | Required workload | Work completed | Why it is not current evidence |
 | --- | --- | --- |
-| Checkpoint/Restore and Migration | Pinned DMTCP build, official `pathvirt`, and the source-derived A-to-B checkpoint/restart oracle pass on the host. Attempt 6b also completed PathTranslator's same-application A-to-B lifecycle, checkpoint image, lower-object preservation, and cleanup in modified-kernel KVM | Attempt 6b stopped because the runner configured the policy parent before attaching BPF. The runner now follows attach-then-scope setup, scope/target-then-detach cleanup, records each setup operation, and independently cleans partial state. There is still no valid `namei_ext` KVM result |
-| HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117 | Three Spindle preflights failed before BPF attachment; no Spindle RQ1 result |
+| HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117. Attempt 3's official source command exited zero with empty stderr and reported 94 reads/92 stores | Attempt 3 was rejected by an added process-group disappearance check before mapping collection or BPF attach. The repaired runner gates on direct-child exit and actual live Spindle executables instead. No Spindle RQ1 result exists yet |
 
-These failures do not weaken the five completed workload rows, but they leave
-the seven-workload evaluation incomplete. The paper must not count DMTCP or
-Spindle as reproduced until their new end-to-end RQ1 runs pass.
+This failure does not weaken the six completed workload rows, but it leaves
+the seven-workload evaluation incomplete. The paper must not count Spindle as
+reproduced until its new end-to-end RQ1 run passes.
 
 ## Open Experiment Order
 
@@ -98,10 +99,9 @@ before mounting because the guest hard open-file limit remained 4,096. The
 matrix is incomplete, there is no formal run or paper result, and the protocol
 will not receive a fourth attempt.
 
-The next workload experiments are W5 DMTCP and W6 Spindle. Each must reach a
-complete source workload and oracle through the modified-kernel KVM attach
-path. They should not be replaced by another microbenchmark, ccache variant,
-or supporting workflow.
+The next workload experiment is W6 Spindle. It must reach a complete source
+workload and oracle through the modified-kernel KVM attach path. It must not be
+replaced by another microbenchmark, ccache variant, or supporting workflow.
 
 The old sandboxfs timing protocol cannot simply receive a fourth preflight.
 Its three attempts ended before a valid pair, and its final record explicitly
@@ -112,7 +112,7 @@ than new evidence.
 
 The existing Agent, FxMark, and ccache RQ2 evidence remains valid. Adding
 another custom FUSE implementation for ConfigMap or venv would be a weaker
-comparison than completing W5 and W6.
+comparison than completing W6.
 
 ## Raw Evidence
 
@@ -150,6 +150,9 @@ comparison than completing W5 and W6.
   `results/phase1/20260724T-epoch-switch-release-v2/w4-ccache-bulk-compile-epoch-switch.jsonl`
 - W5 DMTCP source-positive control:
   `results/workloads/checkpoint-restore-source/20260802T094525Z-df8ae7d4/`
+- W5 Checkpoint/Restore RQ1 summary and detailed report:
+  `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/analysis/summary.json` and
+  `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/analysis/report.md`
 
 ## Remaining Risks
 

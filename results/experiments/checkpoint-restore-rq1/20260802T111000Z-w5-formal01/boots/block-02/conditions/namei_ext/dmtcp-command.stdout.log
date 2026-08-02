@@ -1,0 +1,1 @@
+{"schema_version":1,"command":"DMT_KILL_AFTER_CKPT","command_status":"DMT_COORD_SUCCESS","coordinator_host":"localhost","coordinator_port":33099,"num_peers":1}

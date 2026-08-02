@@ -24,8 +24,8 @@ The paper has seven mandatory industrial RQ1 case studies. Each must reach a
 complete source-oracle correctness result on the modified kernel in KVM. RQ2
 performance and RQ3 ownership comparisons may use representative cases, but
 they do not replace or reduce any of the seven RQ1 cases:
-two carry the deepest cross-RQ evidence, three already provide completed RQ1
-breadth, and two still require complete RQ1 execution:
+two carry the deepest cross-RQ evidence, four provide completed RQ1 breadth,
+and one still requires complete RQ1 execution:
 
 | Role | Workload | Completed evidence | Remaining paper-value gap |
 | --- | --- | --- | --- |
@@ -34,12 +34,12 @@ breadth, and two still require complete RQ1 execution:
 | Supporting breadth | W1 Sandboxed Application File Sharing | RQ1 against official `xdg-document-portal` 1.18.4 | No performance claim; the attempted official-portal timing protocol closed |
 | Supporting breadth | W4 Service Configuration and Secret Rotation | RQ1 against official Kubernetes v1.30.0 `AtomicWriter` | The result covers already-materialized leaf selection, not service reload |
 | Supporting breadth | W7 Toolchain and Dependency Environments | RQ1 with Ubuntu CPython 3.10/3.12 environments | No matched FUSE or custom-filesystem claim |
-| Required RQ1 case | W5 Checkpoint/Restore and Migration | Pinned DMTCP `pathvirt` and the source-derived A-to-B checkpoint/restart oracle pass from a relocated host install; attempt 6b now completes the same PathTranslator A-to-B lifecycle in modified-kernel KVM | Attempt 6b closes the DMTCP shared-runtime failure, then stops because the runner set the policy parent before BPF attach. Setup and teardown now follow the kernel control-path order; complete that preflight and then the three-boot formal workflow |
-| Required RQ1 case | W6 HPC File Staging | Source build, loader slice, inventory, and generic selection dependency complete | Complete the Spindle/Pynamic or MPI/Python source workflow in KVM |
+| Supporting breadth | W5 Checkpoint/Restore and Migration | Three fresh modified-kernel KVM boots complete DMTCP PathTranslator, `namei_ext`, and withdrawn-map conditions for the same checkpoint/restart oracle | No performance or full migration claim; DMTCP retains checkpointing, descriptor restoration, and coordination |
+| Required RQ1 case | W6 HPC File Staging | Source build, loader slice, 47-object inventory, and generic selection dependency complete; attempt 3's source Spindle run exited zero with empty stderr and reported 94 reads/92 stores | Attempt 3 was rejected only by a non-source process-group disappearance rule. The repaired runner waits for direct-child exit and actual Spindle executables to quiesce; complete the source, `namei_ext`, and withdrawn KVM workflow |
 
-W5 and W6 are incomplete required workloads, not optional portfolio
-candidates. FxMark and the historical ccache matrix are performance evidence,
-not substitutes for either case study. The complete data and raw-result audit is
+W6 remains an incomplete required workload, not an optional portfolio
+candidate. FxMark and the historical ccache matrix are performance evidence,
+not substitutes for W6. The complete data and raw-result audit is
 [`docs/tmp/2026-08-02-workload-evidence-audit.md`](tmp/2026-08-02-workload-evidence-audit.md).
 
 The evaluation separates three kinds of evidence:
@@ -190,8 +190,8 @@ judgment is
 | W2 Agent Workspaces | AgentFS-derived lifecycle plus released SWE-Factory-Gym `pallets__click-2622` source task fixed | Passed and independently reviewed: the lifecycle matrix plus three fresh source-task boots, 12/12 policy-backed task states, 6/6 physical source controls, concurrent completed/base views, switch, rollback, and withdrawal | Same-oracle formal comparison passed: 10 paired blocks, 20 KVM boots, 10,000 lifecycle samples per condition | Formal matched `namei_ext`/Wrapfs-derived experiment passed: 37/37 pairwise oracles for both mechanisms, 21/21 fault cells, and runtime attribution in each of three KVM boots |
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Passed and independently reviewed: three fresh KVM boots, six Bazel actions, six action-specific logical/lower inode matches, twelve preserved lower objects, and all allow/hide/select branches | Not run; RQ2 owns the separately frozen sandboxfs comparison | Policy/target/cgroup cleanup and lower-object preservation passed in every boot; full ownership table open |
 | W4 Service Configuration and Secret Rotation | Official Kubernetes v1.30.0 `AtomicWriter` payload publication fixed as V0, V1, V1 no-op, and V0 rollback under one stable root; full nginx live reload remains a separate extension | Passed and independently reviewed: three fresh KVM boots, 12/12 source states, 12/12 `namei_ext` states, 6/6 direct controls, 24/24 stable-root dirfd checks, 12/12 old-fd checks, and 36/36 lower-object checks | Not run; this is RQ1 breadth only | Payload-view subset admitted as supporting RQ1 evidence. Materialization, symlink/inotify behavior, service validation/reload, performance, and broader filesystem comparison remain open |
-| W5 Checkpoint/Restore and Migration | DMTCP commit `068559d9b14c` is built from Git with the disclosed restart-environment scan fix; the official `pathvirt` test and source-derived A-to-B restart oracle pass from relocated result-owned installs. Attempt 6b also passed the full PathTranslator A-to-B lifecycle in modified-kernel KVM | Required and not yet complete. Attempt 6b passed guest identity, empty initial inventory, PathTranslator checkpoint/restart, same-path A-to-B transition, lower preservation, and runtime cleanup. The next `namei_ext` condition stopped because its runner configured parent scope before attaching the BPF policy; setup/cleanup order and per-operation attribution are now corrected | Not required for this RQ1 case; RQ2 owns matched FUSE comparisons | Direct lower bytes/metadata, checkpoint image, source attribution, BPF engagement/cleanup, and the DMTCP-owned checkpoint/coordination boundary are fixed; a complete `namei_ext` and withdrawn KVM execution remains the gate |
-| W6 HPC File Staging | Spindle repository, build, source loader slice, 47-object inventory, and source/native oracle fixed | Required and not yet complete. Final-file and cross-filesystem `SELECT` passed 117/117 dependency cases, but three Spindle preflights ended before BPF attachment and provide no RQ1 result | A matched FUSE run is optional unless W6 is selected for RQ2 | The complete RQ1 run must preserve Spindle's distribution/cache control plane and replace only final pathname selection; failed roots remain non-paper evidence |
+| W5 Checkpoint/Restore and Migration | DMTCP commit `068559d9b14c` is built from Git with the disclosed restart-environment scan fix; the official `pathvirt` test and source-derived A-to-B restart oracle pass from relocated result-owned installs | Passed and independently reviewed: three fresh KVM boots, nine real DMTCP checkpoint/restart conditions, PathTranslator and `namei_ext` A-to-B transitions through one pathname, and three withdrawn-map `ENOENT` controls. Restart-time `SELECT` rose 12-to-24 only with the installed mapping and remained 12-to-12 after withdrawal | Not required for this RQ1 case; RQ2 owns matched FUSE comparisons | All nine checkpoint images, 18 application observations, 165 controller observations, 108 before/after lower-object rows, and BPF/cgroup cleanup passed. DMTCP retains checkpointing, descriptor restoration, and coordination; no performance or broad migration claim is made |
+| W6 HPC File Staging | Spindle repository, build, source loader slice, 47-object inventory, and source/native oracle fixed. Final-file and cross-filesystem `SELECT` passed 117/117 dependency cases. Attempt 3's source Spindle command exited zero with empty stderr and reported 94 reads/92 stores | Required and not yet complete. Attempt 3 stopped before mapping collection because an added process-group disappearance check reported `EBUSY`, although the final executable scan was clean. The repaired runner uses direct-child exit plus bounded live-Spindle executable quiescence; a complete fresh KVM run remains required | A matched FUSE run is optional unless W6 is selected for RQ2 | The complete RQ1 run must preserve Spindle's distribution/cache control plane and replace only final pathname selection; failed roots remain non-paper evidence |
 | W7 Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 `venv` workflow and interpreter/package oracle fixed | Passed and independently reviewed: three fresh KVM boots selected two existing environments through the same logical executable path, including paired start, switch, and rollback | Not required for this RQ1 sufficiency row; RQ2 owns matched FUSE comparisons | Logical root/interpreter identity matched the selected lower objects; controls observed lower `EACCES` and withdrawn `ENOENT`; inventoried type/mode/owner/size/device/inode/mtime fields were unchanged |
 
 ### A. Sandboxed Application File Sharing (supporting RQ1 breadth)
@@ -253,7 +253,20 @@ protocol is closed without a valid pair, so no formal run is authorized.
 Entry points: `make kvm-kubernetes-configmap-publication-rq1-preflight` and
 `make experiment-kubernetes-configmap-publication-rq1`.
 
-### E. Toolchain and Dependency Environments (supporting RQ1 breadth)
+### E. Checkpoint/Restore and Migration (supporting RQ1 breadth)
+
+| Cell | Status | Raw root |
+| --- | --- | --- |
+| Source and application oracle | DMTCP commit `068559d9b14c` with the disclosed one-line restart-environment scan-bound fix; all three fresh KVM boots ran PathTranslator, `namei_ext`, and withdrawn-map conditions through real checkpoint images and restarts | `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/` |
+| Same-path A-to-B restart | Passed in all six positive conditions: PathTranslator and `namei_ext` both changed the application's unchanged pathname from generation A before checkpoint to generation B after restart, with logical inode identity matching the selected physical object | Same raw root |
+| Causal attribution | Passed in every boot: installed-policy `SELECT` increased from 12 before checkpoint to 24 after restart; after withdrawing the rule it remained 12-to-12 and the restarted application received the expected `ENOENT` | Same raw root |
+| Checkpoint and lower-object evidence | Nine real DMTCP checkpoint images, 18 application observations, and 165 controller observations passed. All 54 before and 54 after lower-object rows matched device, inode, mode, size, mtime, and contents | Same raw root |
+| Cleanup and independent review | BPF program and cgroup inventories were empty before and after every boot. The result is valid W5 RQ1 evidence for moved-root reopen of existing objects; it is not a performance, open-descriptor redirection, multiprocess, cross-host migration, or general DMTCP/CRIU claim | `docs/tmp/2026-08-02-w5-checkpoint-restore-formal01-result-review.md` |
+
+Entry points: `make kvm-checkpoint-restore-preflight` and
+`make kvm-checkpoint-restore-rq1`.
+
+### F. Toolchain and Dependency Environments (supporting RQ1 breadth)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -266,7 +279,7 @@ Entry points: `make kvm-kubernetes-configmap-publication-rq1-preflight` and
 Entry points: `make kvm-toolchain-environment-preflight` and
 `make experiment-toolchain-environment`.
 
-### F. ccache compile macrobenchmark (existing performance evidence)
+### G. ccache compile macrobenchmark (existing performance evidence)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -285,6 +298,8 @@ Current case-study entrypoints: `make experiments`,
 `make experiment-build-action-sandboxing-rq1`,
 `make experiment-toolchain-environment`,
 and `make experiment-kubernetes-configmap-publication-rq1`.
+The completed checkpoint/restore entrypoint is
+`make kvm-checkpoint-restore-rq1`.
 
 The W4 AtomicWriter payload-view subset is complete. The older nginx live-reload
 V2 dependency protocol remains closed after three failed preflights;
@@ -301,7 +316,7 @@ ccache already implements cache lookup and validation in user space. W3 Bazel
 action views and W6 Spindle file relocation provide the source-derived
 build/cache cases whose pathname view is the behavior under study.
 
-### F. FxMark path-resolution cost (decisive RQ2 mechanism result)
+### H. FxMark path-resolution cost (decisive RQ2 mechanism result)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -346,9 +361,9 @@ five-condition matrix is incomplete, formal execution is not authorized, and
 no number from these roots is paper evidence. The final execution record is
 `docs/tmp/2026-08-02-rq2-mdtest-reconsideration-preflight-attempt-3.md`.
 Cache-cold and broader mutating-metadata cost therefore remain unresolved; this
-closed RQ2 branch does not replace either required W5 or W6 RQ1 workload.
+closed RQ2 branch does not replace the required W6 RQ1 workload.
 
-### G. Agent workspace ownership and responsibility (decisive RQ3 result)
+### I. Agent workspace ownership and responsibility (decisive RQ3 result)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |

@@ -30,6 +30,7 @@
 #define SOURCE_TIMEOUT_SECONDS 180
 #define NAMEI_TIMEOUT_SECONDS 120
 #define WITHDRAWN_TIMEOUT_SECONDS 120
+#define PROCESS_QUIESCENCE_SECONDS 10
 
 enum spindle_staging_counter {
 	SPINDLE_COUNTER_TOTAL = 0,
@@ -378,8 +379,7 @@ static int drop_privileges(uid_t uid, gid_t gid)
 	return 0;
 }
 
-static int wait_process_group(pid_t pid, unsigned int timeout_seconds,
-			      int *status_out)
+static int wait_child(pid_t pid, unsigned int timeout_seconds, int *status_out)
 {
 	uint64_t deadline = monotonic_ns() +
 		(uint64_t)timeout_seconds * 1000000000ULL;
@@ -403,16 +403,7 @@ static int wait_process_group(pid_t pid, unsigned int timeout_seconds,
 		usleep(10000);
 	}
 	*status_out = status;
-	for (unsigned int attempt = 0; attempt < 1000; attempt++) {
-		if (kill(-pid, 0) && errno == ESRCH)
-			return 0;
-		usleep(10000);
-		if (attempt == 999) {
-			kill(-pid, SIGKILL);
-			return -EBUSY;
-		}
-	}
-	return -EBUSY;
+	return 0;
 }
 
 static int run_process(const char *working_directory,
@@ -461,7 +452,7 @@ static int run_process(const char *working_directory,
 		waitpid(pid, NULL, 0);
 		return -errno;
 	}
-	ret = wait_process_group(pid, timeout_seconds, &status);
+	ret = wait_child(pid, timeout_seconds, &status);
 	result->duration_ns = monotonic_ns() - started;
 	if (WIFEXITED(status))
 		result->exit_status = WEXITSTATUS(status);
@@ -941,6 +932,26 @@ static int process_name_starts_spindle(pid_t self, bool *found_out)
 		ret = -errno;
 	*found_out = found;
 	return ret;
+}
+
+static int wait_for_spindle_quiescence(pid_t self,
+				       unsigned int timeout_seconds)
+{
+	uint64_t deadline = monotonic_ns() +
+		(uint64_t)timeout_seconds * 1000000000ULL;
+
+	for (;;) {
+		bool found = false;
+		int ret = process_name_starts_spindle(self, &found);
+
+		if (ret)
+			return ret;
+		if (!found)
+			return 0;
+		if (monotonic_ns() >= deadline)
+			return -ETIMEDOUT;
+		usleep(10000);
+	}
 }
 
 static int unique_parent_add(struct namei_ext_harness_policy *policy,
@@ -1519,12 +1530,12 @@ int main(int argc, char **argv)
 		failures++;
 		goto cleanup;
 	}
-	ret = process_name_starts_spindle(getpid(), &no_spindle_process);
-	if (!ret)
-		no_spindle_process = !no_spindle_process;
+	ret = wait_for_spindle_quiescence(
+		getpid(), PROCESS_QUIESCENCE_SECONDS);
+	no_spindle_process = !ret;
 	emit_case(out, "source_process_quiescence",
 		  !ret && no_spindle_process, ret ? -ret : 0,
-		  "no Spindle executable remains after source condition");
+		  "no live Spindle executable remains after source condition");
 	if (ret || !no_spindle_process) {
 		failures++;
 		goto cleanup;

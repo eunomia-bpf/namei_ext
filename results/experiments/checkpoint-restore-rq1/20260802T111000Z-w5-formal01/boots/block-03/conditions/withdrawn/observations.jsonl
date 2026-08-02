@@ -1,0 +1,22 @@
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"setup_fixture","errno":0,"detail":"prepared A/B trees, guest-local DMTCP runtime, and absent logical workspace","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"capture_lower_before","errno":0,"detail":"captured lower-object identity, metadata, and contents","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"create_policy_cgroup","errno":0,"detail":"created the condition cgroup","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"resolve_policy_cgroup_id","errno":0,"detail":"resolved the condition cgroup ID","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"register_policy_target","errno":0,"detail":"registered generation A as target ID 1","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"load_attach_policy","errno":0,"detail":"loaded and attached the cgroup/namei_ext program","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"set_policy_parent","errno":0,"detail":"limited policy invocation to the logical parent","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"read_policy_program_id","errno":0,"detail":"read the attached kernel program ID","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"install_policy_rule","errno":0,"detail":"installed the logical workspace to target ID rule","pass":true}
+{"event":"checkpoint-restore-policy","condition":"withdrawn","program_id":10,"cgroup_id":36,"target_id":1,"pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"start_coordinator","errno":0,"detail":"started isolated DMTCP coordinator","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"pre_checkpoint_oracle","errno":0,"detail":"application resolved generation A and closed path descriptors","pass":true}
+{"event":"checkpoint-restore-policy-counter","condition":"withdrawn","phase":"pre-checkpoint","counter":"select","value":12,"pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"checkpoint","errno":0,"detail":"DMTCP created a checkpoint image and killed the original worker","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"update_mapping","errno":0,"detail":"withdrew the restart-time component mapping","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"restart_oracle","errno":0,"detail":"withdrawn mapping produced the expected post-restart failure","pass":true}
+{"event":"checkpoint-restore-policy-counter","condition":"withdrawn","phase":"post-restart","counter":"select","value":12,"pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"policy_restart_attribution","errno":0,"detail":"pre-checkpoint SELECT attribution preserved","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"lower_objects_unchanged","errno":0,"detail":"lower object identity, metadata, and contents remained unchanged","pass":true}
+{"event":"checkpoint-restore-case","condition":"withdrawn","case":"cleanup_runtime_tmp","errno":0,"detail":"removed guest-local DMTCP runtime directory","pass":true}
+{"event":"checkpoint-restore-lifecycle","condition":"withdrawn","checkpoint_ns":30431847,"update_ns":292032,"restart_ns":1145630988,"total_ns":3232613835,"pass":true}
+{"event":"checkpoint-restore-summary","condition":"withdrawn","failures":0,"pass":true}

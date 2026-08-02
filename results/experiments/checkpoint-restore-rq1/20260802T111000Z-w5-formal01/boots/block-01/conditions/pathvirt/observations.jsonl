@@ -1,0 +1,11 @@
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"setup_fixture","errno":0,"detail":"prepared A/B trees, guest-local DMTCP runtime, and absent logical workspace","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"capture_lower_before","errno":0,"detail":"captured lower-object identity, metadata, and contents","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"start_coordinator","errno":0,"detail":"started isolated DMTCP coordinator","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"pre_checkpoint_oracle","errno":0,"detail":"application resolved generation A and closed path descriptors","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"checkpoint","errno":0,"detail":"DMTCP created a checkpoint image and killed the original worker","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"update_mapping","errno":0,"detail":"restart environment will supply generation B mapping","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"restart_oracle","errno":0,"detail":"restored application resolved generation B through the same path","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"lower_objects_unchanged","errno":0,"detail":"lower object identity, metadata, and contents remained unchanged","pass":true}
+{"event":"checkpoint-restore-case","condition":"pathvirt","case":"cleanup_runtime_tmp","errno":0,"detail":"removed guest-local DMTCP runtime directory","pass":true}
+{"event":"checkpoint-restore-lifecycle","condition":"pathvirt","checkpoint_ns":30214150,"update_ns":308,"restart_ns":1131324628,"total_ns":3594384006,"pass":true}
+{"event":"checkpoint-restore-summary","condition":"pathvirt","failures":0,"pass":true}

@@ -1,0 +1,112 @@
+make[1]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source'
+DMTCP version: 5.0
+Date built:    Sun Aug 2 02:31:20 PDT 2026
+config.log:    ./configure --prefix=/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install
+32-bit build:  gcc -m32
+Description:	Ubuntu 24.04.3 LTS
+Codename:	noble
+Linux lab 6.15.11-061511-generic #202508201748 SMP PREEMPT_DYNAMIC Wed Aug 20 20:23:19 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+libc version: ldd (Ubuntu GLIBC 2.39-0ubuntu8.8) 2.39
+Compiler:  gcc
+Using built-in specs.
+COLLECT_GCC=gcc
+COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper
+OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+OFFLOAD_TARGET_DEFAULT=1
+Target: x86_64-linux-gnu
+Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04.1' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 
+CFLAGS: -g -O2 -std=gnu11 -pthread
+CXXFLAGS: -g -O2
+CPPFLAGS: 
+LDFLAGS: 
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10-1-24.04.2-Ubuntu)
+OpenJDK 64-Bit Server VM (build 21.0.11+10-1-24.04.2-Ubuntu, mixed mode, sharing)
+javac 21.0.11
+
+if test -d .git/hooks; then \
+  cd .git/hooks && ln -s ../../util/hooks/pre-commit . ; \
+fi
+if test -d .git/hooks; then \
+  cd .git/hooks && ln -s ../../util/hooks/post-rewrite . ; \
+fi
+/usr/bin/mkdir -p ./bin
+/usr/bin/mkdir -p ./lib/dmtcp
+rm -f src/config.h
+cd src && make
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+Making all in mtcp
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src/mtcp'
+make[3]: Nothing to be done for 'all'.
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src/mtcp'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+make[3]: Nothing to be done for 'all-am'.
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+cd plugin && make
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+cd contrib && make
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/contrib'
+make[2]: Nothing to be done for 'default'.
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/contrib'
+/usr/bin/install -c -d /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/bin
+/usr/bin/install -c -d /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib
+/usr/bin/install -c -d /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib/dmtcp
+/usr/bin/install -c -d /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/include
+/usr/bin/install -c -d /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/doc/dmtcp-5.0
+/usr/bin/install -c -d /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/man/man1
+cd src && make DESTDIR= install
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+Making install in mtcp
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src/mtcp'
+/usr/bin/install -c ../../bin/mtcp_restart /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/bin
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src/mtcp'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/bin'
+  /usr/bin/install -c ../bin/dmtcp_command ../bin/dmtcp_coordinator ../bin/dmtcp_launch ../bin/dmtcp_nocheckpoint ../bin/dmtcp_get_libc_offset ../bin/dmtcp_restart ../bin/dmtcp_ssh ../bin/dmtcp_sshd '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/bin'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib/dmtcp'
+  /usr/bin/install -c ../lib/dmtcp/libdmtcp.so '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib/dmtcp'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/include/dmtcp'
+ /usr/bin/install -c -m 644 ./../include/dmtcp/version.h '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/include/dmtcp'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/include'
+ /usr/bin/install -c -m 644 ./../include/dmtcp.h '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/include'
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+cd plugin && make DESTDIR= install
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib/dmtcp'
+  /usr/bin/install -c ../lib/dmtcp/libdmtcp_modify-env.so '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib/dmtcp'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+cd contrib && make DESTDIR= install
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/contrib'
+test -e /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/bin || /usr/bin/mkdir -p /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/bin
+test -e /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib || /usr/bin/mkdir -p /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/lib
+test -e /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/include || /usr/bin/mkdir -p /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/include
+for p in ; do (cd $p && make install); done
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/contrib'
+cd manpages && make install
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/manpages'
+gzip < dmtcp.1 > dmtcp.1.gz
+gzip < dmtcp_command.1 > dmtcp_command.1.gz
+gzip < dmtcp_coordinator.1 > dmtcp_coordinator.1.gz
+gzip < dmtcp_launch.1 > dmtcp_launch.1.gz
+gzip < dmtcp_restart.1 > dmtcp_restart.1.gz
+gzip < dmtcp_srun_helper.1 > dmtcp_srun_helper.1.gz
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/manpages'
+/usr/bin/install -c -m 644 ./QUICK-START.md /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/doc/dmtcp-5.0
+/usr/bin/install -c -m 644 ./COPYING /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/doc/dmtcp-5.0
+/usr/bin/install -c -m 644 ./AUTHORS /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/doc/dmtcp-5.0
+/usr/bin/install -c -m 644 ./NEWS /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/doc/dmtcp-5.0
+/usr/bin/install -c -m 644 ./manpages/*.1.gz /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/man/man1
+(cd /home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install/share/man/man1; \
+  for file in dmtcp_nocheckpoint.1.gz mtcp_restart.1.gz dmtcp_ssh.1.gz dmtcp_sshd.1.gz dmtcp_discover_rm.1.gz dmtcp_rm_loclaunch.1.gz; do ln -s -f dmtcp.1.gz $file; done)
+make[1]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source'

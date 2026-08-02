@@ -1,0 +1,84 @@
+make: Entering directory '/home/yunwei37/workspace/namei_ext'
+if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+test "120" = "120"
+test -x "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/namei_ext_checkpoint_restore"
+test -x "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/checkpoint_restore_app"
+test -r "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/checkpoint_restore_migration.bpf.o"
+test -x "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool"
+test -x "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/dmtcp/bin/dmtcp_launch"
+command -v setpriv >/dev/null
+cp "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/kernel/config" "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/kernel.config"
+printf '%s\n' "b07117a3cb41826a34af5ca61e3e2c81dade793f" >"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/kernel-commit.txt"
+actual_release=$(uname -r); test "$actual_release" = "7.1.0-rc7-gb07117a3cb41"; printf '%s\n' "$actual_release" >"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/kernel-release.txt"
+uname -a >"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/uname.txt"
+cat /proc/version >"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/proc-version.txt"
+cat /proc/cmdline >"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/kernel-cmdline.txt"
+grep -q ' [Tt] namei_ext_lookup$' /proc/kallsyms
+runtime_uid=$(stat -c %u "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03"); \
+runtime_gid=$(stat -c %g "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03"); \
+setpriv --reuid="$runtime_uid" --regid="$runtime_gid" --clear-groups \
+	sh -c 'id -u; id -g' \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/runtime-identity-probe.txt"; \
+test "$(sed -n '1p' "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/runtime-identity-probe.txt")" = "$runtime_uid"; \
+test "$(sed -n '2p' "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/runtime-identity-probe.txt")" = "$runtime_gid"; \
+jq -n --argjson uid "$runtime_uid" --argjson gid "$runtime_gid" \
+	'{uid:$uid,gid:$gid}' \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/runtime-identity.json"
+"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool" -j prog show \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-programs-before.json"
+"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool" -j cgroup tree \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-cgroup-before.json"
+jq -e 'type == "array" and length == 0' \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-programs-before.json" >/dev/null
+jq -e 'type == "array" and ([.. | objects | select(has("id"))] | length) == 0' \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-cgroup-before.json" >/dev/null
+for condition in pathvirt namei_ext withdrawn; do \
+	result="results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/conditions/$condition"; \
+	test -d "$result"; \
+	policy=/dev/null; \
+	if test "$condition" != pathvirt; then \
+		policy="results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/checkpoint_restore_migration.bpf.o"; \
+	fi; \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/namei_ext_checkpoint_restore" "$condition" \
+		"$result/observations.jsonl" "$result" \
+		"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/dmtcp" "$policy" \
+		"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/checkpoint_restore_app" /sys/fs/cgroup \
+		"120" \
+		>"$result/controller.stdout.log" \
+		2>"$result/controller.stderr.log"; \
+	jq -s -e --arg condition "$condition" \
+		'all(.[]; .pass == true) and ([.[] | select(.event == "checkpoint-restore-summary" and .condition == $condition and .failures == 0)] | length) == 1' \
+		"$result/observations.jsonl" >/dev/null; \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool" -j prog show \
+		>"$result/bpf-programs-after.json"; \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool" -j cgroup tree \
+		>"$result/bpf-cgroup-after.json"; \
+	jq -e 'type == "array" and length == 0' \
+		"$result/bpf-programs-after.json" >/dev/null; \
+	jq -e 'type == "array" and ([.. | objects | select(has("id"))] | length) == 0' \
+		"$result/bpf-cgroup-after.json" >/dev/null; \
+done
+cat \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/conditions/pathvirt/observations.jsonl" \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/conditions/namei_ext/observations.jsonl" \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/conditions/withdrawn/observations.jsonl" \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/observations.jsonl"
+"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool" -j prog show \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-programs-after.json"
+"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/artifacts/runtime/bpftool" -j cgroup tree \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-cgroup-after.json"
+jq -e 'type == "array" and length == 0' \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-programs-after.json" >/dev/null
+jq -e 'type == "array" and ([.. | objects | select(has("id"))] | length) == 0' \
+	"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/bpf-cgroup-after.json" >/dev/null
+dmesg >"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/dmesg.log"
+! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|INFO: task .* blocked for more than|general protection|NULL pointer|KASAN|UBSAN|clocksource: Watchdog .*read timed out|Marking clocksource .* unstable' "results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/dmesg.log" >/dev/null
+jq -n \
+	--arg completed_at "$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" \
+	--arg kernel_commit "b07117a3cb41826a34af5ca61e3e2c81dade793f" \
+	--arg kernel_release "7.1.0-rc7-gb07117a3cb41" \
+	'{schema:"namei_ext.checkpoint_restore.boot.v3",status:"completed",conditions:["pathvirt","namei_ext","withdrawn"],kernel:{commit:$kernel_commit,release:$kernel_release},pathtranslator_activation:"DMTCP_PATHVIRT_PLUGIN=1",completed_at:$completed_at}' \
+	>"results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/boots/block-03/boot.json"
+make: Leaving directory '/home/yunwei37/workspace/namei_ext'

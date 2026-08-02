@@ -38,9 +38,10 @@ orchestration belong to the orchestrator skill, not to this repository.
   stackable filesystem ownership.
 - The paper-facing workload set has two main cases, W2 Agent Workspaces and W3
   Build Action Sandboxing, plus W1 application sharing, W4's Kubernetes
-  `AtomicWriter` payload-view subset, and W7 toolchain/environment selection as
-  supporting RQ1 breadth. W5--W6 and full service reload remain motivating or
-  dependency-limited rows, not completed paper evidence.
+  `AtomicWriter` payload-view subset, W5 DMTCP checkpoint/restart, and W7
+  toolchain/environment selection as supporting RQ1 breadth. W6 HPC File
+  Staging remains the incomplete seventh case. All seven are mandatory; no
+  completed case or representative RQ2/RQ3 comparison replaces W6.
 - Do not reopen table-only, materialized-view, or scattered-baseline side
   experiments as the novelty line.
 
@@ -71,6 +72,12 @@ orchestration belong to the orchestrator skill, not to this repository.
   stable-root descriptor checks, 12/12 old-descriptor checks, and 36/36
   lower-object checks under
   `results/experiments/kubernetes-configmap-publication-rq1/20260729T-kubernetes-configmap-publication-rq1-01/`.
+- DMTCP checkpoint/restore RQ1: three fresh KVM boots completed nine real
+  checkpoint/restart conditions. PathTranslator and `namei_ext` each passed
+  three same-path A-to-B transitions; the three withdrawn controls returned
+  `ENOENT` without restart-time `SELECT`; 108 lower-object rows were unchanged
+  under
+  `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/`.
 - Agent workspace RQ2: 20 fresh KVM boots and 960/960 required oracles under
   `results/experiments/agent-workspace-rq2/20260727T-agent-workspace-rq2-formal-v3/`;
   paired FUSE/namei_ext lifecycle ratio `11.32x [11.24, 11.64]`.
@@ -92,11 +99,11 @@ orchestration belong to the orchestrator skill, not to this repository.
   (hot cache + trace-derived state row) and
   `results/phase1/20260724T-epoch-switch-release-v2/` (real compile epoch
   switch). Observed FUSE/namei_ext compile-time ratio is about 2.1x.
-- Open evidence gaps: cache-cold lookup or broader metadata operations for RQ2
-  and a second source-derived RQ3 boundary row. W5 DMTCP and W6 Spindle remain
-  optional RQ1 breadth extensions rather than prerequisites for the current
-  five-workflow RQ1 answer. The ccache
-  matrix is supporting macro evidence, not a headline workload.
+- Open evidence gaps: W6 Spindle is the required seventh RQ1 case; cache-cold
+  lookup or broader metadata operations remain gaps for RQ2, and a second
+  source-derived boundary row remains open for RQ3. The current six-workflow
+  result is progress, not the RQ1 answer. The ccache matrix is supporting macro
+  evidence, not a headline workload.
 
 Complete current inventory:
 `docs/tmp/2026-07-28-complete-experiment-status.md`.

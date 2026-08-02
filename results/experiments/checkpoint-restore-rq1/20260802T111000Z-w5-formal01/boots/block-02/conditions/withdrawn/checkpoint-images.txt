@@ -1,0 +1,1 @@
+checkpoint/ckpt_checkpoint_restore_app_2dc8083fba715511-40000-27eddf8b5.dmtcp

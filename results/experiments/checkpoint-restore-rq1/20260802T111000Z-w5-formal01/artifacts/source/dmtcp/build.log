@@ -1,0 +1,405 @@
+make[1]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source'
+if test -d .git/hooks; then \
+  cd .git/hooks && ln -s ../../util/hooks/pre-commit . ; \
+fi
+DMTCP version: 5.0
+if test -d .git/hooks; then \
+  cd .git/hooks && ln -s ../../util/hooks/post-rewrite . ; \
+fi
+Date built:    Sun Aug 2 02:31:10 PDT 2026
+config.log:    ./configure --prefix=/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/install
+32-bit build:  gcc -m32
+Description:	Ubuntu 24.04.3 LTS
+Codename:	noble
+Linux lab 6.15.11-061511-generic #202508201748 SMP PREEMPT_DYNAMIC Wed Aug 20 20:23:19 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+libc version: ldd (Ubuntu GLIBC 2.39-0ubuntu8.8) 2.39
+Compiler:  gcc
+Using built-in specs.
+COLLECT_GCC=gcc
+COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper
+OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+OFFLOAD_TARGET_DEFAULT=1
+Target: x86_64-linux-gnu
+Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04.1' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 
+CFLAGS: -g -O2 -std=gnu11 -pthread
+CXXFLAGS: -g -O2
+CPPFLAGS: 
+LDFLAGS: 
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10-1-24.04.2-Ubuntu)
+OpenJDK 64-Bit Server VM (build 21.0.11+10-1-24.04.2-Ubuntu, mixed mode, sharing)
+javac 21.0.11
+
+/usr/bin/mkdir -p ./bin
+/usr/bin/mkdir -p ./lib/dmtcp
+rm -f src/config.h
+cd src && make
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+Making all in mtcp
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src/mtcp'
+gcc -I../../include -I.  -g -O2 -std=gnu11 -pthread -c -o main.o -DPIC -fPIC -fno-stack-protector -g -O0 main.c
+gcc -I../../include -I.  -g -O2 -std=gnu11 -pthread -c -o mtcp_restart.o -DPIC -fPIC -fno-stack-protector -g -O0 mtcp_restart.c
+gcc -I../../include -I.  -g -O2 -std=gnu11 -pthread -c -o stdlibfnc.o -DPIC -fPIC -fno-stack-protector -g -O0 stdlibfnc.c
+gcc -I../../include -I.  -g -O2 -std=gnu11 -pthread -c -o mtcp_util.o -DPIC -fPIC -fno-stack-protector -g -O0 mtcp_util.c
+gcc -I../../include -I.  -g -O2 -std=gnu11 -pthread -c -o mtcp_check_vdso.o -DPIC -fPIC -fno-stack-protector -g -O0 mtcp_check_vdso.c
+ar rcs libmtcprestart.a mtcp_restart.o stdlibfnc.o mtcp_util.o mtcp_check_vdso.o
+gcc -g -O2 -std=gnu11 -pthread  -o ../../bin/mtcp_restart -fPIC -g -O0 -nodefaultlibs -static  main.o libmtcprestart.a
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src/mtcp'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+depbase=`echo dmtcp_command.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcp_command.o -MD -MP -MF $depbase.Tpo -c -o dmtcp_command.o dmtcp_command.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo coordinatorapi.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT coordinatorapi.o -MD -MP -MF $depbase.Tpo -c -o coordinatorapi.o coordinatorapi.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcpmessagetypes.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcpmessagetypes.o -MD -MP -MF $depbase.Tpo -c -o dmtcpmessagetypes.o dmtcpmessagetypes.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcp_dlsym.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcp_dlsym.o -MD -MP -MF $depbase.Tpo -c -o dmtcp_dlsym.o dmtcp_dlsym.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo json.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT json.o -MD -MP -MF $depbase.Tpo -c -o json.o json.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo jalibinterface.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT jalibinterface.o -MD -MP -MF $depbase.Tpo -c -o jalibinterface.o jalibinterface.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo logger.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT logger.o -MD -MP -MF $depbase.Tpo -c -o logger.o logger.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo mutex.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT mutex.o -MD -MP -MF $depbase.Tpo -c -o mutex.o mutex.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo processinfo.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT processinfo.o -MD -MP -MF $depbase.Tpo -c -o processinfo.o processinfo.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo procselfmaps.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT procselfmaps.o -MD -MP -MF $depbase.Tpo -c -o procselfmaps.o procselfmaps.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo rwlock.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT rwlock.o -MD -MP -MF $depbase.Tpo -c -o rwlock.o rwlock.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo shareddata.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT shareddata.o -MD -MP -MF $depbase.Tpo -c -o shareddata.o shareddata.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo tokenize.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT tokenize.o -MD -MP -MF $depbase.Tpo -c -o tokenize.o tokenize.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo uniquepid.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT uniquepid.o -MD -MP -MF $depbase.Tpo -c -o uniquepid.o uniquepid.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo util_exec.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT util_exec.o -MD -MP -MF $depbase.Tpo -c -o util_exec.o util_exec.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo util_init.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT util_init.o -MD -MP -MF $depbase.Tpo -c -o util_init.o util_init.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo util_misc.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT util_misc.o -MD -MP -MF $depbase.Tpo -c -o util_misc.o util_misc.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo workerstate.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT workerstate.o -MD -MP -MF $depbase.Tpo -c -o workerstate.o workerstate.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcpnohijackstubs.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcpnohijackstubs.o -MD -MP -MF $depbase.Tpo -c -o dmtcpnohijackstubs.o dmtcpnohijackstubs.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo nosyscallsreal.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+gcc -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC -g -O2 -std=gnu11 -pthread -MT nosyscallsreal.o -MD -MP -MF $depbase.Tpo -c -o nosyscallsreal.o nosyscallsreal.c &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcp_coordinator.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcp_coordinator.o -MD -MP -MF $depbase.Tpo -c -o dmtcp_coordinator.o dmtcp_coordinator.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo lookup_service.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT lookup_service.o -MD -MP -MF $depbase.Tpo -c -o lookup_service.o lookup_service.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo restartscript.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT restartscript.o -MD -MP -MF $depbase.Tpo -c -o restartscript.o restartscript.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcp_launch.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcp_launch.o -MD -MP -MF $depbase.Tpo -c -o dmtcp_launch.o dmtcp_launch.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcp_nocheckpoint.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+gcc -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC -g -O2 -std=gnu11 -pthread -MT dmtcp_nocheckpoint.o -MD -MP -MF $depbase.Tpo -c -o dmtcp_nocheckpoint.o dmtcp_nocheckpoint.c &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcp_get_libc_offset.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+gcc -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC -g -O2 -std=gnu11 -pthread -MT dmtcp_get_libc_offset.o -MD -MP -MF $depbase.Tpo -c -o dmtcp_get_libc_offset.o dmtcp_get_libc_offset.c &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcp_restart.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcp_restart.o -MD -MP -MF $depbase.Tpo -c -o dmtcp_restart.o dmtcp_restart.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo dmtcprestartinternal.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT dmtcprestartinternal.o -MD -MP -MF $depbase.Tpo -c -o dmtcprestartinternal.o dmtcprestartinternal.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/ssh/dmtcp_ssh.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"ssh\"  -fPIC    -g -O2 -MT plugin/ssh/dmtcp_ssh.o -MD -MP -MF $depbase.Tpo -c -o plugin/ssh/dmtcp_ssh.o plugin/ssh/dmtcp_ssh.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/ssh/util_ssh.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"ssh\"  -fPIC    -g -O2 -MT plugin/ssh/util_ssh.o -MD -MP -MF $depbase.Tpo -c -o plugin/ssh/util_ssh.o plugin/ssh/util_ssh.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/ssh/dmtcp_sshd.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"ssh\"  -fPIC    -g -O2 -MT plugin/ssh/dmtcp_sshd.o -MD -MP -MF $depbase.Tpo -c -o plugin/ssh/dmtcp_sshd.o plugin/ssh/dmtcp_sshd.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-alarm.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-alarm.Tpo -c -o __d_libdir__libdmtcp_so-alarm.o `test -f 'alarm.cpp' || echo './'`alarm.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-ckptserializer.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-ckptserializer.Tpo -c -o __d_libdir__libdmtcp_so-ckptserializer.o `test -f 'ckptserializer.cpp' || echo './'`ckptserializer.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-dmtcpplugin.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-dmtcpplugin.Tpo -c -o __d_libdir__libdmtcp_so-dmtcpplugin.o `test -f 'dmtcpplugin.cpp' || echo './'`dmtcpplugin.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-dmtcpworker.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-dmtcpworker.Tpo -c -o __d_libdir__libdmtcp_so-dmtcpworker.o `test -f 'dmtcpworker.cpp' || echo './'`dmtcpworker.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-dmtcp_dlsym_wrappers.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-dmtcp_dlsym_wrappers.Tpo -c -o __d_libdir__libdmtcp_so-dmtcp_dlsym_wrappers.o `test -f 'dmtcp_dlsym_wrappers.cpp' || echo './'`dmtcp_dlsym_wrappers.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-execwrappers.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-execwrappers.Tpo -c -o __d_libdir__libdmtcp_so-execwrappers.o `test -f 'execwrappers.cpp' || echo './'`execwrappers.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-dmtcp_dlsym_wrappers.Tpo .deps/__d_libdir__libdmtcp_so-dmtcp_dlsym_wrappers.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-glibcsystem.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-glibcsystem.Tpo -c -o __d_libdir__libdmtcp_so-glibcsystem.o `test -f 'glibcsystem.cpp' || echo './'`glibcsystem.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-kvdb.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-kvdb.Tpo -c -o __d_libdir__libdmtcp_so-kvdb.o `test -f 'kvdb.cpp' || echo './'`kvdb.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-miscwrappers.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-miscwrappers.Tpo -c -o __d_libdir__libdmtcp_so-miscwrappers.o `test -f 'miscwrappers.cpp' || echo './'`miscwrappers.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-glibcsystem.Tpo .deps/__d_libdir__libdmtcp_so-glibcsystem.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-plugin_pathtranslator.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-plugin_pathtranslator.Tpo -c -o __d_libdir__libdmtcp_so-plugin_pathtranslator.o `test -f 'plugin_pathtranslator.cpp' || echo './'`plugin_pathtranslator.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-alarm.Tpo .deps/__d_libdir__libdmtcp_so-alarm.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-plugininfo.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-plugininfo.Tpo -c -o __d_libdir__libdmtcp_so-plugininfo.o `test -f 'plugininfo.cpp' || echo './'`plugininfo.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-pluginmanager.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-pluginmanager.Tpo -c -o __d_libdir__libdmtcp_so-pluginmanager.o `test -f 'pluginmanager.cpp' || echo './'`pluginmanager.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-popen.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-popen.Tpo -c -o __d_libdir__libdmtcp_so-popen.o `test -f 'popen.cpp' || echo './'`popen.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-tls.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-tls.Tpo -c -o __d_libdir__libdmtcp_so-tls.o `test -f 'tls.cpp' || echo './'`tls.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-posix_spawn.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-posix_spawn.Tpo -c -o __d_libdir__libdmtcp_so-posix_spawn.o `test -f 'posix_spawn.cpp' || echo './'`posix_spawn.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-rlimitfloatenv.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-rlimitfloatenv.Tpo -c -o __d_libdir__libdmtcp_so-rlimitfloatenv.o `test -f 'rlimitfloatenv.cpp' || echo './'`rlimitfloatenv.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-signalwrappers.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-signalwrappers.Tpo -c -o __d_libdir__libdmtcp_so-signalwrappers.o `test -f 'signalwrappers.cpp' || echo './'`signalwrappers.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-plugininfo.Tpo .deps/__d_libdir__libdmtcp_so-plugininfo.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-siginfo.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-siginfo.Tpo -c -o __d_libdir__libdmtcp_so-siginfo.o `test -f 'siginfo.cpp' || echo './'`siginfo.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-posix_spawn.Tpo .deps/__d_libdir__libdmtcp_so-posix_spawn.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-syslogwrappers.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-syslogwrappers.Tpo -c -o __d_libdir__libdmtcp_so-syslogwrappers.o `test -f 'syslogwrappers.cpp' || echo './'`syslogwrappers.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-miscwrappers.Tpo .deps/__d_libdir__libdmtcp_so-miscwrappers.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-terminal.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-terminal.Tpo -c -o __d_libdir__libdmtcp_so-terminal.o `test -f 'terminal.cpp' || echo './'`terminal.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-threadlist.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-threadlist.Tpo -c -o __d_libdir__libdmtcp_so-threadlist.o `test -f 'threadlist.cpp' || echo './'`threadlist.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-popen.Tpo .deps/__d_libdir__libdmtcp_so-popen.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-threadsync.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-threadsync.Tpo -c -o __d_libdir__libdmtcp_so-threadsync.o `test -f 'threadsync.cpp' || echo './'`threadsync.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-threadwrappers.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-threadwrappers.Tpo -c -o __d_libdir__libdmtcp_so-threadwrappers.o `test -f 'threadwrappers.cpp' || echo './'`threadwrappers.cpp
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-wrapperlock.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-wrapperlock.Tpo -c -o __d_libdir__libdmtcp_so-wrapperlock.o `test -f 'wrapperlock.cpp' || echo './'`wrapperlock.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-kvdb.Tpo .deps/__d_libdir__libdmtcp_so-kvdb.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-wrappers.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-wrappers.Tpo -c -o __d_libdir__libdmtcp_so-wrappers.o `test -f 'wrappers.cpp' || echo './'`wrappers.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-terminal.Tpo .deps/__d_libdir__libdmtcp_so-terminal.Po
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT __d_libdir__libdmtcp_so-writeckpt.o -MD -MP -MF .deps/__d_libdir__libdmtcp_so-writeckpt.Tpo -c -o __d_libdir__libdmtcp_so-writeckpt.o `test -f 'writeckpt.cpp' || echo './'`writeckpt.cpp
+mv -f .deps/__d_libdir__libdmtcp_so-wrapperlock.Tpo .deps/__d_libdir__libdmtcp_so-wrapperlock.Po
+depbase=`echo plugin/ssh/ssh.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"ssh\"  -fPIC    -g -O2 -MT plugin/ssh/ssh.o -MD -MP -MF $depbase.Tpo -c -o plugin/ssh/ssh.o plugin/ssh/ssh.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/ssh/sshdrainer.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"ssh\"  -fPIC    -g -O2 -MT plugin/ssh/sshdrainer.o -MD -MP -MF $depbase.Tpo -c -o plugin/ssh/sshdrainer.o plugin/ssh/sshdrainer.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/event/eventconnection.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"event\"  -fPIC    -g -O2 -MT plugin/event/eventconnection.o -MD -MP -MF $depbase.Tpo -c -o plugin/event/eventconnection.o plugin/event/eventconnection.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/event/eventconnlist.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"event\"  -fPIC    -g -O2 -MT plugin/event/eventconnlist.o -MD -MP -MF $depbase.Tpo -c -o plugin/event/eventconnlist.o plugin/event/eventconnlist.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-dmtcpplugin.Tpo .deps/__d_libdir__libdmtcp_so-dmtcpplugin.Po
+depbase=`echo plugin/event/eventwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"event\"  -fPIC    -g -O2 -MT plugin/event/eventwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/event/eventwrappers.o plugin/event/eventwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-syslogwrappers.Tpo .deps/__d_libdir__libdmtcp_so-syslogwrappers.Po
+depbase=`echo plugin/event/util_descriptor.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"event\"  -fPIC    -g -O2 -MT plugin/event/util_descriptor.o -MD -MP -MF $depbase.Tpo -c -o plugin/event/util_descriptor.o plugin/event/util_descriptor.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-tls.Tpo .deps/__d_libdir__libdmtcp_so-tls.Po
+mv -f .deps/__d_libdir__libdmtcp_so-siginfo.Tpo .deps/__d_libdir__libdmtcp_so-siginfo.Po
+depbase=`echo plugin/connection.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT plugin/connection.o -MD -MP -MF $depbase.Tpo -c -o plugin/connection.o plugin/connection.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/connectionidentifier.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"connection\"  -fPIC    -g -O2 -MT plugin/connectionidentifier.o -MD -MP -MF $depbase.Tpo -c -o plugin/connectionidentifier.o plugin/connectionidentifier.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-ckptserializer.Tpo .deps/__d_libdir__libdmtcp_so-ckptserializer.Po
+depbase=`echo plugin/connectionlist.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"connection\"  -fPIC    -g -O2 -MT plugin/connectionlist.o -MD -MP -MF $depbase.Tpo -c -o plugin/connectionlist.o plugin/connectionlist.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/file/fileconnection.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"file\"  -fPIC    -g -O2 -MT plugin/file/fileconnection.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/fileconnection.o plugin/file/fileconnection.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-signalwrappers.Tpo .deps/__d_libdir__libdmtcp_so-signalwrappers.Po
+depbase=`echo plugin/file/fileconnlist.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"file\"  -fPIC    -g -O2 -MT plugin/file/fileconnlist.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/fileconnlist.o plugin/file/fileconnlist.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-dmtcpworker.Tpo .deps/__d_libdir__libdmtcp_so-dmtcpworker.Po
+depbase=`echo plugin/file/filewrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"file\"  -fPIC    -g -O2 -MT plugin/file/filewrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/filewrappers.o plugin/file/filewrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-pluginmanager.Tpo .deps/__d_libdir__libdmtcp_so-pluginmanager.Po
+depbase=`echo plugin/file/openwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"file\"  -fPIC    -g -O2 -MT plugin/file/openwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/openwrappers.o plugin/file/openwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/file/posixipcwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"file\"  -fPIC    -g -O2 -MT plugin/file/posixipcwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/posixipcwrappers.o plugin/file/posixipcwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-plugin_pathtranslator.Tpo .deps/__d_libdir__libdmtcp_so-plugin_pathtranslator.Po
+depbase=`echo plugin/file/ptyconnection.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pty\"  -fPIC    -g -O2 -MT plugin/file/ptyconnection.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/ptyconnection.o plugin/file/ptyconnection.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/file/ptyconnlist.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pty\"  -fPIC    -g -O2 -MT plugin/file/ptyconnlist.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/ptyconnlist.o plugin/file/ptyconnlist.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/file/ptywrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pty\"  -fPIC    -g -O2 -MT plugin/file/ptywrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/file/ptywrappers.o plugin/file/ptywrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/socket/connectionrewirer.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"socket\"  -fPIC    -g -O2 -MT plugin/socket/connectionrewirer.o -MD -MP -MF $depbase.Tpo -c -o plugin/socket/connectionrewirer.o plugin/socket/connectionrewirer.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-rlimitfloatenv.Tpo .deps/__d_libdir__libdmtcp_so-rlimitfloatenv.Po
+depbase=`echo plugin/socket/kernelbufferdrainer.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"socket\"  -fPIC    -g -O2 -MT plugin/socket/kernelbufferdrainer.o -MD -MP -MF $depbase.Tpo -c -o plugin/socket/kernelbufferdrainer.o plugin/socket/kernelbufferdrainer.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/socket/socketconnection.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"socket\"  -fPIC    -g -O2 -MT plugin/socket/socketconnection.o -MD -MP -MF $depbase.Tpo -c -o plugin/socket/socketconnection.o plugin/socket/socketconnection.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-threadlist.Tpo .deps/__d_libdir__libdmtcp_so-threadlist.Po
+depbase=`echo plugin/socket/socketconnlist.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"socket\"  -fPIC    -g -O2 -MT plugin/socket/socketconnlist.o -MD -MP -MF $depbase.Tpo -c -o plugin/socket/socketconnlist.o plugin/socket/socketconnlist.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-execwrappers.Tpo .deps/__d_libdir__libdmtcp_so-execwrappers.Po
+depbase=`echo plugin/socket/socketwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"socket\"  -fPIC    -g -O2 -MT plugin/socket/socketwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/socket/socketwrappers.o plugin/socket/socketwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/svipc/sysvipc.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"svipc\"  -fPIC    -g -O2 -MT plugin/svipc/sysvipc.o -MD -MP -MF $depbase.Tpo -c -o plugin/svipc/sysvipc.o plugin/svipc/sysvipc.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-threadsync.Tpo .deps/__d_libdir__libdmtcp_so-threadsync.Po
+depbase=`echo plugin/svipc/sysvipcwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"svipc\"  -fPIC    -g -O2 -MT plugin/svipc/sysvipcwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/svipc/sysvipcwrappers.o plugin/svipc/sysvipcwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-threadwrappers.Tpo .deps/__d_libdir__libdmtcp_so-threadwrappers.Po
+depbase=`echo plugin/timer/timer_create.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"timer\"  -fPIC    -g -O2 -MT plugin/timer/timer_create.o -MD -MP -MF $depbase.Tpo -c -o plugin/timer/timer_create.o plugin/timer/timer_create.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/timer/timerlist.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"timer\"  -fPIC    -g -O2 -MT plugin/timer/timerlist.o -MD -MP -MF $depbase.Tpo -c -o plugin/timer/timerlist.o plugin/timer/timerlist.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/timer/timerwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"timer\"  -fPIC    -g -O2 -MT plugin/timer/timerwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/timer/timerwrappers.o plugin/timer/timerwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/pid/glibc_pthread.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pid\"  -fPIC    -g -O2 -MT plugin/pid/glibc_pthread.o -MD -MP -MF $depbase.Tpo -c -o plugin/pid/glibc_pthread.o plugin/pid/glibc_pthread.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-wrappers.Tpo .deps/__d_libdir__libdmtcp_so-wrappers.Po
+depbase=`echo plugin/pid/pid.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pid\"  -fPIC    -g -O2 -MT plugin/pid/pid.o -MD -MP -MF $depbase.Tpo -c -o plugin/pid/pid.o plugin/pid/pid.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/pid/pid_filewrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pid\"  -fPIC    -g -O2 -MT plugin/pid/pid_filewrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/pid/pid_filewrappers.o plugin/pid/pid_filewrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/pid/pidwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pid\"  -fPIC    -g -O2 -MT plugin/pid/pidwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/pid/pidwrappers.o plugin/pid/pidwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/pid/sched_wrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pid\"  -fPIC    -g -O2 -MT plugin/pid/sched_wrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/pid/sched_wrappers.o plugin/pid/sched_wrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/pid/virtualpidtable.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"pid\"  -fPIC    -g -O2 -MT plugin/pid/virtualpidtable.o -MD -MP -MF $depbase.Tpo -c -o plugin/pid/virtualpidtable.o plugin/pid/virtualpidtable.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/unique-ckpt/unique-ckpt.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"unique-ckpt\"  -fPIC    -g -O2 -MT plugin/unique-ckpt/unique-ckpt.o -MD -MP -MF $depbase.Tpo -c -o plugin/unique-ckpt/unique-ckpt.o plugin/unique-ckpt/unique-ckpt.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/alloc/mallocwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"alloc\"  -fPIC    -g -O2 -MT plugin/alloc/mallocwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/alloc/mallocwrappers.o plugin/alloc/mallocwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo plugin/alloc/mmapwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"alloc\"  -fPIC    -g -O2 -MT plugin/alloc/mmapwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/alloc/mmapwrappers.o plugin/alloc/mmapwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+mv -f .deps/__d_libdir__libdmtcp_so-writeckpt.Tpo .deps/__d_libdir__libdmtcp_so-writeckpt.Po
+depbase=`echo plugin/dl/dlwrappers.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid -DDMTCP_LOG_COMPONENT_DEFAULT=\"dl\"  -fPIC    -g -O2 -MT plugin/dl/dlwrappers.o -MD -MP -MF $depbase.Tpo -c -o plugin/dl/dlwrappers.o plugin/dl/dlwrappers.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo syscallsreal.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+gcc -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC -g -O2 -std=gnu11 -pthread -MT syscallsreal.o -MD -MP -MF $depbase.Tpo -c -o syscallsreal.o syscallsreal.c &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo trampolines.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT trampolines.o -MD -MP -MF $depbase.Tpo -c -o trampolines.o trampolines.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+rm -f libdmtcpinternal.a
+ar rc libdmtcpinternal.a coordinatorapi.o dmtcpmessagetypes.o dmtcp_dlsym.o json.o jalibinterface.o logger.o mutex.o processinfo.o procselfmaps.o rwlock.o shareddata.o tokenize.o uniquepid.o util_exec.o util_init.o util_misc.o workerstate.o 
+depbase=`echo ../jalib/jalib.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT ../jalib/jalib.o -MD -MP -MF $depbase.Tpo -c -o ../jalib/jalib.o ../jalib/jalib.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+ranlib libdmtcpinternal.a
+depbase=`echo ../jalib/jalloc.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT ../jalib/jalloc.o -MD -MP -MF $depbase.Tpo -c -o ../jalib/jalloc.o ../jalib/jalloc.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo ../jalib/jfilesystem.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT ../jalib/jfilesystem.o -MD -MP -MF $depbase.Tpo -c -o ../jalib/jfilesystem.o ../jalib/jfilesystem.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo ../jalib/jserialize.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT ../jalib/jserialize.o -MD -MP -MF $depbase.Tpo -c -o ../jalib/jserialize.o ../jalib/jserialize.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo ../jalib/jsocket.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib -I. -I./plugin -I./plugin/timer -I./plugin/pid  -fPIC    -g -O2 -MT ../jalib/jsocket.o -MD -MP -MF $depbase.Tpo -c -o ../jalib/jsocket.o ../jalib/jsocket.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+rm -f libnohijack.a
+ar rc libnohijack.a dmtcpnohijackstubs.o nosyscallsreal.o 
+gcc -fPIC -g -O2 -std=gnu11 -pthread -fPIC  -o ../bin/dmtcp_nocheckpoint dmtcp_nocheckpoint.o  -latomic
+ranlib libnohijack.a
+gcc -fPIC -g -O2 -std=gnu11 -pthread -fPIC  -o ../bin/dmtcp_get_libc_offset dmtcp_get_libc_offset.o -ldl -latomic
+rm -f libssh.a
+ar rc libssh.a plugin/ssh/util_ssh.o 
+rm -f libdmtcp_ssh_internal.a
+ar rc libdmtcp_ssh_internal.a plugin/ssh/ssh.o plugin/ssh/sshdrainer.o 
+rm -f libdmtcp_event_internal.a
+ar rc libdmtcp_event_internal.a plugin/event/eventconnection.o plugin/event/eventconnlist.o plugin/event/eventwrappers.o plugin/event/util_descriptor.o 
+rm -f libdmtcp_alloc_internal.a
+ar rc libdmtcp_alloc_internal.a plugin/alloc/mallocwrappers.o plugin/alloc/mmapwrappers.o 
+ranlib libssh.a
+ranlib libdmtcp_ssh_internal.a
+ranlib libdmtcp_alloc_internal.a
+ranlib libdmtcp_event_internal.a
+g++ -std=c++20 -fPIC    -g -O2 -fPIC  -o ../bin/dmtcp_ssh plugin/ssh/dmtcp_ssh.o libssh.a -ldl -lpthread -latomic
+g++ -std=c++20 -fPIC    -g -O2 -fPIC  -o ../bin/dmtcp_sshd plugin/ssh/dmtcp_sshd.o libssh.a -ldl -lpthread -latomic
+rm -f libsyscallsreal.a
+ar rc libsyscallsreal.a syscallsreal.o trampolines.o 
+ranlib libsyscallsreal.a
+rm -f libdmtcp_unique_ckpt_internal.a
+ar rc libdmtcp_unique_ckpt_internal.a plugin/unique-ckpt/unique-ckpt.o 
+ranlib libdmtcp_unique_ckpt_internal.a
+rm -f libdmtcp_pty_internal.a
+ar rc libdmtcp_pty_internal.a plugin/file/ptyconnection.o plugin/file/ptyconnlist.o plugin/file/ptywrappers.o 
+ranlib libdmtcp_pty_internal.a
+rm -f libdmtcp_dl_internal.a
+ar rc libdmtcp_dl_internal.a plugin/dl/dlwrappers.o 
+ranlib libdmtcp_dl_internal.a
+rm -f libdmtcp_pid_internal.a
+ar rc libdmtcp_pid_internal.a plugin/pid/glibc_pthread.o plugin/pid/pid.o plugin/pid/pid_filewrappers.o plugin/pid/pidwrappers.o plugin/pid/sched_wrappers.o plugin/pid/virtualpidtable.o 
+ranlib libdmtcp_pid_internal.a
+rm -f libdmtcp_timer_internal.a
+ar rc libdmtcp_timer_internal.a plugin/timer/timer_create.o plugin/timer/timerlist.o plugin/timer/timerwrappers.o 
+ranlib libdmtcp_timer_internal.a
+rm -f libjalib.a
+ar rc libjalib.a ../jalib/jalib.o ../jalib/jalloc.o ../jalib/jfilesystem.o ../jalib/jserialize.o ../jalib/jsocket.o 
+ranlib libjalib.a
+rm -f libdmtcprestart.a
+g++ -std=c++20 -fPIC    -g -O2 -fPIC  -o ../bin/dmtcp_command dmtcp_command.o libdmtcpinternal.a libjalib.a libnohijack.a -lpthread -lrt -ldl -latomic
+g++ -std=c++20 -fPIC    -g -O2 -fPIC  -o ../bin/dmtcp_coordinator dmtcp_coordinator.o lookup_service.o restartscript.o libdmtcpinternal.a libjalib.a libnohijack.a -lpthread -lrt -ldl -latomic
+g++ -std=c++20 -fPIC    -g -O2 -fPIC  -o ../bin/dmtcp_launch dmtcp_launch.o libdmtcpinternal.a libjalib.a libnohijack.a -lpthread -lrt -ldl -latomic
+ar rc libdmtcprestart.a dmtcprestartinternal.o libdmtcpinternal.a libjalib.a libnohijack.a
+ranlib libdmtcprestart.a
+g++ -std=c++20 -fPIC    -g -O2 -fPIC  -o ../bin/dmtcp_restart dmtcp_restart.o libdmtcprestart.a libdmtcpinternal.a libjalib.a libnohijack.a -lpthread -lrt -ldl  -latomic
+rm -f libdmtcp_svipc_internal.a
+ar rc libdmtcp_svipc_internal.a plugin/svipc/sysvipc.o plugin/svipc/sysvipcwrappers.o 
+ranlib libdmtcp_svipc_internal.a
+rm -f libdmtcp_file_internal.a
+ar rc libdmtcp_file_internal.a plugin/connection.o plugin/connectionidentifier.o plugin/connectionlist.o plugin/file/fileconnection.o plugin/file/fileconnlist.o plugin/file/filewrappers.o plugin/file/openwrappers.o plugin/file/posixipcwrappers.o 
+ranlib libdmtcp_file_internal.a
+rm -f libdmtcp_socket_internal.a
+ar rc libdmtcp_socket_internal.a plugin/socket/connectionrewirer.o plugin/socket/kernelbufferdrainer.o plugin/socket/socketconnection.o plugin/socket/socketconnlist.o plugin/socket/socketwrappers.o 
+ranlib libdmtcp_socket_internal.a
+g++ -std=c++20 -fPIC    -g -O2 -shared -Xlinker -znow  -o ../lib/dmtcp/libdmtcp.so __d_libdir__libdmtcp_so-alarm.o __d_libdir__libdmtcp_so-ckptserializer.o __d_libdir__libdmtcp_so-dmtcpplugin.o __d_libdir__libdmtcp_so-dmtcpworker.o __d_libdir__libdmtcp_so-dmtcp_dlsym_wrappers.o __d_libdir__libdmtcp_so-execwrappers.o __d_libdir__libdmtcp_so-glibcsystem.o __d_libdir__libdmtcp_so-kvdb.o __d_libdir__libdmtcp_so-miscwrappers.o __d_libdir__libdmtcp_so-plugin_pathtranslator.o __d_libdir__libdmtcp_so-plugininfo.o __d_libdir__libdmtcp_so-pluginmanager.o __d_libdir__libdmtcp_so-popen.o __d_libdir__libdmtcp_so-tls.o __d_libdir__libdmtcp_so-posix_spawn.o __d_libdir__libdmtcp_so-rlimitfloatenv.o __d_libdir__libdmtcp_so-signalwrappers.o __d_libdir__libdmtcp_so-siginfo.o __d_libdir__libdmtcp_so-syslogwrappers.o __d_libdir__libdmtcp_so-terminal.o __d_libdir__libdmtcp_so-threadlist.o __d_libdir__libdmtcp_so-threadsync.o __d_libdir__libdmtcp_so-threadwrappers.o __d_libdir__libdmtcp_so-wrapperlock.o __d_libdir__libdmtcp_so-wrappers.o __d_libdir__libdmtcp_so-writeckpt.o -Wl,--whole-archive libdmtcp_ssh_internal.a libdmtcp_event_internal.a libdmtcp_file_internal.a libdmtcp_pty_internal.a libdmtcp_socket_internal.a libdmtcp_svipc_internal.a libdmtcp_timer_internal.a libdmtcp_pid_internal.a libdmtcp_unique_ckpt_internal.a libdmtcp_alloc_internal.a libdmtcp_dl_internal.a -Wl,--no-whole-archive libdmtcpinternal.a libjalib.a libsyscallsreal.a -ldl -lpthread -lrt  -latomic
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/src'
+cd plugin && make
+cd contrib && make
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/contrib'
+make[2]: Nothing to be done for 'default'.
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/contrib'
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+depbase=`echo modify-env/modify-env.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+gcc -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib  -fPIC -g -O2 -std=gnu11 -pthread -MT modify-env/modify-env.o -MD -MP -MF $depbase.Tpo -c -o modify-env/modify-env.o modify-env/modify-env.c &&\
+mv -f $depbase.Tpo $depbase.Po
+depbase=`echo modify-env/warning.o | sed 's|[^/]*$|.deps/&|;s|\.o$||'`;\
+g++ -std=c++20 -DHAVE_CONFIG_H -I. -I../include  -I../include -I../jalib  -fPIC -g -O2 -MT modify-env/warning.o -MD -MP -MF $depbase.Tpo -c -o modify-env/warning.o modify-env/warning.cpp &&\
+mv -f $depbase.Tpo $depbase.Po
+g++ -std=c++20 -fPIC -g -O2 -shared -Xlinker -znow -Wl,--unresolved-symbols=ignore-all  -o ../lib/dmtcp/libdmtcp_modify-env.so modify-env/modify-env.o modify-env/warning.o -ldl -lpthread -latomic
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source/plugin'
+make[1]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/checkpoint-restore/dmtcp-068559d9b14c/source'

@@ -8,7 +8,7 @@
 - RQ1 contains seven mandatory industrial case studies, W1 through W7. Every
   case must reach a complete source-oracle correctness result on the modified
   kernel in KVM. Never merge, delete, converge, or replace these seven cases;
-  partial completion such as five of seven is progress, not the RQ1 result.
+  partial completion such as six of seven is progress, not the RQ1 result.
   Representative RQ2 or RQ3 comparisons do not substitute for an incomplete
   RQ1 case.
 - A policy is an eBPF program under `bpf/policies/*.bpf.c`, not a YAML/JSON

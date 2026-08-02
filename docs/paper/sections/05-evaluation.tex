@@ -96,6 +96,16 @@ already-materialized leaf objects while VFS retains modes, ownership, open
 descriptors, and lower objects. & Three fresh KVM boots passed 12/12 source
 states, 12/12 \namei states, 6/6 direct controls, 24/24 stable-root
 descriptor checks, 12/12 old-descriptor checks, and 36/36 lower-object checks. \\
+Checkpoint/restore (supporting)~\cite{dmtcp_path_virtualization} &
+DMTCP restarts one application after its remembered pathname moves from
+generation A to generation B; withdrawing the mapping must make the reopened
+path absent. & \namei selects the existing generation directory after restart,
+while DMTCP retains checkpointing, descriptor restoration, and coordination. &
+Three fresh KVM boots completed all nine DMTCP conditions. PathTranslator and
+\namei each passed three same-path A-to-B transitions; three withdrawn controls
+returned the expected \code{ENOENT}. Restart-time \code{SELECT} increased
+12-to-24 with the rule and remained 12-to-12 after withdrawal; all 108
+before/after lower-object rows were unchanged. \\
 \hline
 \end{tabular}
 \caption{Current completed rows of the seven-workload RQ1 answer table. A row
@@ -269,7 +279,7 @@ copy-up, conflict resolution, distributed metadata, or data-path mediation.
 
 \subsection{Evaluation Scope}
 
-The completed evidence includes five of the seven required formal RQ1
+The completed evidence includes six of the seven required formal RQ1
 workflows, an Agent
 lifecycle RQ2 comparison, cache-hot FxMark
 active and unused-path results, a formal corrected-FxMark directory-enumeration
@@ -280,8 +290,8 @@ and native/\namei 0.945\(\times\), but it lacks independent-run uncertainty and
 release-scale miss/stale/corrupt cells. It is not a headline workload because
 ccache already implements cache lookup and validation in userspace.
 
-W5 Checkpoint/Restore and Migration and W6 HPC File Staging are the remaining
-required RQ1 cases and are not yet completed evidence in this draft. The W4
+W6 HPC File Staging is the remaining required RQ1 case and is not yet
+completed evidence in this draft. The W4
 Kubernetes result covers already-materialized payload selection and visibility,
 not ConfigMap retrieval, symlink/inotify behavior, or application reload.
 Cache-cold lookup, broader metadata operations, tail latency, and a second

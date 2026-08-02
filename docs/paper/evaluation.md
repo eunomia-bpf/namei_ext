@@ -26,6 +26,7 @@ skill, not by this repository.
 | Formal Agent workspace RQ3 review | `docs/tmp/2026-07-28-agent-workspace-rq3-formal-v3-result-review.md` |
 | Formal corrected FxMark readdir review | `docs/tmp/2026-07-29-rq2-fxmark-readdir-formal-v1-result-review.md` |
 | Formal Kubernetes ConfigMap publication RQ1 result and review | `docs/tmp/2026-07-29-kubernetes-configmap-publication-rq1-result.md` |
+| Formal DMTCP checkpoint/restore RQ1 review | `docs/tmp/2026-08-02-w5-checkpoint-restore-formal01-result-review.md` |
 | RQ3 target-lifetime failed preflight and deterministic repair | `docs/tmp/2026-07-31-rq3-target-lifetime-preflight01-failure-and-deterministic-repair.md` |
 
 Current boundary:
