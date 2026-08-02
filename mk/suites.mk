@@ -15,6 +15,7 @@ NAMEI_EXT_DEPENDENCY_PREFLIGHT_ENTRYPOINTS := \
 	kvm-agent-workspace-source-task-rq1-preflight \
 	kvm-checkpoint-restore-preflight \
 	kvm-spindle-staging-preflight \
+	kvm-spindle-staging-rq2-preflight \
 	kvm-toolchain-environment-preflight \
 	kvm-kubernetes-configmap-publication-rq1-preflight \
 	kvm-semantic-continuation-preflight \
@@ -43,6 +44,10 @@ NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	kvm-kubernetes-configmap-publication-rq1 \
 	experiment-spindle-staging \
 	kvm-spindle-staging
+
+NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS += \
+	experiment-spindle-staging-rq2 \
+	kvm-spindle-staging-rq2
 
 # Implemented entrypoints that are not eligible for aggregate evidence
 # collection because their dependency gate is currently closed.

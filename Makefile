@@ -29,6 +29,7 @@ include $(ROOT_DIR)/configs/benchmarks/build_action_rq2.mk
 include $(ROOT_DIR)/configs/benchmarks/service_config_rotation.mk
 include $(ROOT_DIR)/configs/benchmarks/checkpoint_restore.mk
 include $(ROOT_DIR)/configs/benchmarks/spindle_staging.mk
+include $(ROOT_DIR)/configs/benchmarks/spindle_staging_rq2.mk
 include $(ROOT_DIR)/configs/benchmarks/toolchain_environment.mk
 include $(ROOT_DIR)/configs/benchmarks/kubernetes_configmap_publication.mk
 include $(ROOT_DIR)/configs/benchmarks/semantic_continuation.mk
@@ -49,6 +50,7 @@ include $(ROOT_DIR)/mk/experiments/build_action_rq2.mk
 include $(ROOT_DIR)/mk/experiments/service_config_rotation.mk
 include $(ROOT_DIR)/mk/experiments/checkpoint_restore.mk
 include $(ROOT_DIR)/mk/experiments/spindle_staging.mk
+include $(ROOT_DIR)/mk/experiments/spindle_staging_rq2.mk
 include $(ROOT_DIR)/mk/experiments/toolchain_environment.mk
 include $(ROOT_DIR)/mk/experiments/kubernetes_configmap_publication.mk
 include $(ROOT_DIR)/mk/experiments/semantic_continuation.mk
@@ -74,6 +76,11 @@ include $(ROOT_DIR)/mk/experiments/namei_ext_target_lifetime.mk
 	spindle-staging kvm-spindle-staging-preflight kvm-spindle-staging \
 	spindle-staging-run-matrix spindle-staging-finalize \
 	spindle-staging-analyze experiment-spindle-staging \
+	spindle-staging-rq2-build spindle-staging-rq2-host-gate \
+	kvm-spindle-staging-rq2-preflight \
+	kvm-spindle-staging-rq2 spindle-staging-rq2-run-matrix \
+	spindle-staging-rq2-finalize spindle-staging-rq2-report \
+	experiment-spindle-staging-rq2 \
 	toolchain-environment kvm-toolchain-environment-preflight \
 	kvm-toolchain-environment toolchain-environment-run \
 	toolchain-environment-finalize toolchain-environment-analyze \

@@ -1433,6 +1433,7 @@ static int validate_preservation(
 	return failures ? -EINVAL : 0;
 }
 
+#ifndef SPINDLE_STAGING_NO_MAIN
 int main(int argc, char **argv)
 {
 	struct namei_ext_harness_policy policy = {
@@ -1926,3 +1927,4 @@ cleanup:
 	fclose(out);
 	return failures ? 1 : 0;
 }
+#endif
