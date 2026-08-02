@@ -173,6 +173,13 @@ static int build_paths(struct controller_config *config)
 {
 	struct controller_paths *paths = &config->paths;
 	const char *result = config->result_dir;
+	int length;
+
+	length = snprintf(paths->tmp_dir, sizeof(paths->tmp_dir),
+			  "/tmp/namei-ext-checkpoint-restore-%s-%ld",
+			  config->condition_name, (long)getpid());
+	if (length < 0 || (size_t)length >= sizeof(paths->tmp_dir))
+		return -ENAMETOOLONG;
 
 	return namei_ext_path_join(paths->fixture, sizeof(paths->fixture),
 				   result, "fixture") ||
@@ -197,8 +204,6 @@ static int build_paths(struct controller_config *config)
 		       namei_ext_path_join(paths->checkpoint_dir,
 				   sizeof(paths->checkpoint_dir), result,
 				   "checkpoint") ||
-		       namei_ext_path_join(paths->tmp_dir,
-				   sizeof(paths->tmp_dir), result, "tmp") ||
 		       namei_ext_path_join(paths->cgroup,
 				   sizeof(paths->cgroup), config->cgroup_root,
 				   config->condition_name) ||
@@ -274,7 +279,8 @@ static int write_fixture_file(const char *directory, const char *name,
 	return ret ? ret : namei_ext_write_text(path, content);
 }
 
-static int setup_fixture(struct controller_config *config)
+static int setup_fixture(struct controller_config *config,
+			 bool *runtime_tmp_created)
 {
 	struct controller_paths *paths = &config->paths;
 	int ret;
@@ -291,8 +297,14 @@ static int setup_fixture(struct controller_config *config)
 		{ paths->workspace_a, 0755 },
 		{ paths->workspace_b, 0755 },
 		{ paths->checkpoint_dir, 0755 },
-		{ paths->tmp_dir, 0700 },
 	};
+
+	*runtime_tmp_created = false;
+
+	if (access(paths->tmp_dir, F_OK) == 0)
+		return -EEXIST;
+	if (errno != ENOENT)
+		return -errno;
 
 	for (unsigned int index = 0;
 	     index < sizeof(directories) / sizeof(directories[0]); index++) {
@@ -305,6 +317,12 @@ static int setup_fixture(struct controller_config *config)
 			  config->runtime_gid))
 			return -errno;
 	}
+	if (mkdir(paths->tmp_dir, 0700))
+		return -errno;
+	*runtime_tmp_created = true;
+	if (geteuid() == 0 &&
+	    chown(paths->tmp_dir, config->runtime_uid, config->runtime_gid))
+		return -errno;
 	if (access(paths->logical_workspace, F_OK) == 0)
 		return -EEXIST;
 	if (errno != ENOENT)
@@ -879,20 +897,25 @@ static int run_lifecycle(struct controller_config *config, FILE *output)
 	int ret;
 	bool policy_configured = false;
 	bool cgroup_created = false;
+	bool runtime_tmp_created = false;
 
-	ret = setup_fixture(config);
+	ret = setup_fixture(config, &runtime_tmp_created);
 	emit_case(output, config->condition_name, "setup_fixture", !ret,
-		  ret, "prepared immutable A/B trees and absent logical workspace");
-	if (ret)
-		return 1;
+		  ret, "prepared A/B trees, guest-local DMTCP runtime, and absent logical workspace");
+	if (ret) {
+		fails++;
+		goto cleanup;
+	}
 	ret = capture_snapshots(config, before);
 	if (!ret)
 		ret = write_snapshot_manifest(config->paths.lower_before,
 					      "before", before);
 	emit_case(output, config->condition_name, "capture_lower_before", !ret,
 		  ret, "captured lower-object identity, metadata, and contents");
-	if (ret)
-		return 1;
+	if (ret) {
+		fails++;
+		goto cleanup;
+	}
 
 	if (config->condition != CONDITION_PATHVIRT) {
 		cgroup_created = true;
@@ -1101,6 +1124,18 @@ cleanup:
 			fails++;
 	}
 	if (cgroup_created && rmdir(config->paths.cgroup))
+		fails++;
+	ret = 0;
+	if (runtime_tmp_created) {
+		namei_ext_remove_tree(config->paths.tmp_dir);
+		if (access(config->paths.tmp_dir, F_OK) == 0)
+			ret = -EBUSY;
+		else
+			ret = errno == ENOENT ? 0 : -errno;
+	}
+	emit_case(output, config->condition_name, "cleanup_runtime_tmp", !ret,
+		  ret, "removed guest-local DMTCP runtime directory");
+	if (ret)
 		fails++;
 	emit_lifecycle(output, config->condition_name,
 		       checkpoint_end > checkpoint_start ?

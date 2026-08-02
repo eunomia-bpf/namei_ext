@@ -38,7 +38,7 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                 "three-modified-kernel-boots" if formal else
                 "single-modified-kernel-boot"
             ),
-            "attempt": 5,
+            "attempt": 6,
             "status": "completed",
             "matrix": {
                 "conditions": list(analyze.CONDITIONS),
@@ -52,6 +52,7 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                     "DMTCP_PATHVIRT_PLUGIN=1; "
                     "DMTCP_PATH_MAPPING generation A to B"
                 ),
+                "dmtcp_tmpdir": "guest-local /tmp",
                 "timeout_seconds": 120,
                 "kvm_timeout": "600s",
                 "all_conditions_must_pass": True,

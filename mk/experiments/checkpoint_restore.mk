@@ -155,7 +155,7 @@ jq --slurpfile artifacts "$(1)/artifacts/manifest.json" \
 	--argjson repetitions "$(4)" \
 	--argjson timeout_seconds "$(CHECKPOINT_RESTORE_TIMEOUT_SECONDS)" \
 	--arg kvm_timeout "$(CHECKPOINT_RESTORE_KVM_TIMEOUT_SECONDS)" \
-	'.protocol_schema = $$protocol | .layout = $$layout | .attempt = 5 | .artifacts = $$artifacts[0] | .matrix = {conditions:["pathvirt","namei_ext","withdrawn"],repetitions:$$repetitions,baseline:"DMTCP PathTranslator at commit 068559d9b14c with a disclosed restart-environment scan-bound fix",control:"withdrawn",pathtranslator_activation:"DMTCP_PATHVIRT_PLUGIN=1; DMTCP_PATH_MAPPING generation A to B",timeout_seconds:$$timeout_seconds,kvm_timeout:$$kvm_timeout,all_conditions_must_pass:true}' \
+		'.protocol_schema = $$protocol | .layout = $$layout | .attempt = 6 | .artifacts = $$artifacts[0] | .matrix = {conditions:["pathvirt","namei_ext","withdrawn"],repetitions:$$repetitions,baseline:"DMTCP PathTranslator at commit 068559d9b14c with a disclosed restart-environment scan-bound fix",control:"withdrawn",pathtranslator_activation:"DMTCP_PATHVIRT_PLUGIN=1; DMTCP_PATH_MAPPING generation A to B",dmtcp_tmpdir:"guest-local /tmp",timeout_seconds:$$timeout_seconds,kvm_timeout:$$kvm_timeout,all_conditions_must_pass:true}' \
 	"$(1)/run.json" >"$(1)/run.json.tmp"
 mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 printf '%s\n' "$(5)" >"$(1)/command.txt"

@@ -16,6 +16,7 @@ COMMON_CASES = {
     "update_mapping",
     "restart_oracle",
     "lower_objects_unchanged",
+    "cleanup_runtime_tmp",
 }
 POLICY_CASES = {"configure_policy", "policy_restart_attribution"}
 ALLOWED_EVENTS = {
@@ -123,7 +124,7 @@ def validate_run(run):
     expected_layout, expected_repetitions = levels[run["result_level"]]
     if run.get("layout") != expected_layout:
         raise ValueError("unexpected run layout")
-    if run.get("attempt") != 5:
+    if run.get("attempt") != 6:
         raise ValueError("unexpected W5 attempt lineage")
     matrix = run.get("matrix")
     if not isinstance(matrix, dict):
@@ -139,6 +140,8 @@ def validate_run(run):
     if matrix.get("pathtranslator_activation") != \
             "DMTCP_PATHVIRT_PLUGIN=1; DMTCP_PATH_MAPPING generation A to B":
         raise ValueError("unexpected PathTranslator activation")
+    if matrix.get("dmtcp_tmpdir") != "guest-local /tmp":
+        raise ValueError("unexpected DMTCP runtime filesystem")
     if matrix.get("kvm_timeout") != "600s":
         raise ValueError("unexpected KVM timeout")
     if matrix.get("all_conditions_must_pass") is not True:

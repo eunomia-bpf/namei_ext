@@ -307,6 +307,18 @@ class AnalysisLifecycleTest(unittest.TestCase):
         self.assertIn("config->runtime_gid)", runner)
         self.assertIn("CHECKPOINT_RESTORE_GUEST_RUNNER", suite)
 
+    def test_checkpoint_dmtcp_runtime_is_guest_local_and_cleaned(self):
+        runner = (
+            ROOT / "experiments/checkpoint_restore/"
+            "namei_ext_checkpoint_restore.c"
+        ).read_text(encoding="utf-8")
+        self.assertIn("/tmp/namei-ext-checkpoint-restore-%s-%ld", runner)
+        self.assertIn('setenv("DMTCP_TMPDIR", config->paths.tmp_dir, 1)', runner)
+        self.assertNotIn('sizeof(paths->tmp_dir), result, "tmp"', runner)
+        self.assertIn("namei_ext_remove_tree(config->paths.tmp_dir)", runner)
+        self.assertIn("if (runtime_tmp_created)", runner)
+        self.assertIn('"cleanup_runtime_tmp"', runner)
+
 
 if __name__ == "__main__":
     unittest.main()
