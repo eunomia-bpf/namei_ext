@@ -146,3 +146,20 @@ as Phase 1 validation.
 
 The next step is independent implementation review. Only a `GO` authorizes the
 first new KVM preflight attempt.
+
+## Attempt-1 Repair
+
+The first authorized stock boot exposed a separate runner defect before the
+guest barrier: the encoded guest Make command repeated six long absolute
+artifact paths, and the kernel command line lost the later 9p root arguments.
+The stock kernel panicked while mounting root before mdtest. The immutable root
+and diagnosis are recorded in
+`2026-08-02-rq2-mdtest-reconsideration-preflight-attempt-1.md`.
+
+For attempt 2, the host passes one `MDTEST_RUN_ROOT`; guest Make derives the
+runtime binaries, policies, boot directory, and kernel config path. No
+scientific workload or oracle field changes. Native capture now reports a
+combined launcher-and-verifier failure when both raw return values are nonzero.
+The official launcher's `--dry-run` confirms that the shortened command retains
+the encoded guest command, 9p root type and flags, `raid=noautodetect`, and the
+official `virtme-init` argument that were truncated in attempt 1.

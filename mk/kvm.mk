@@ -104,6 +104,9 @@ if test -n "$(6)"; then \
 		failure=kvm-launch-or-guest-command; \
 		if test "$$listener_status" -ne 0; then failure=qmp-listener-timeout; \
 		elif test "$$pin_status" -ne 0; then failure=vcpu-affinity-pinning; \
+		elif test "$(NAMEI_EXT_KVM_CAPTURE_NATIVE_PIN)" = 1 && \
+				test "$$launcher_status" -ne 0 && test "$$affinity_status" -ne 0; then \
+			failure=kvm-launch-and-affinity-verification; \
 		elif test "$$affinity_status" -ne 0; then failure=vcpu-affinity-verification; fi; \
 		failed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
 		$(call NAMEI_EXT_MARK_RUN_FAILED,$(5),$$failed_at,$$failure) || exit 1; \

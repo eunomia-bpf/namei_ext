@@ -25,6 +25,17 @@ MDTEST_RESULT_DIR ?= $(RESULT_ROOT)/experiments/mdtest-cold-metadata-rq2/$(RUN_I
 MDTEST_PREFLIGHT_RESULT_DIR ?= $(RESULT_ROOT)/experiments/mdtest-cold-metadata-rq2-preflight/$(RUN_ID)
 MDTEST_GUEST_WORK_ROOT ?= /run/namei-ext-mdtest
 
+ifneq ($(strip $(MDTEST_RUN_ROOT)),)
+MDTEST_RUN_BINARY ?= $(MDTEST_RUN_ROOT)/artifacts/runtime/mdtest
+MDTEST_RUN_FUSE ?= $(MDTEST_RUN_ROOT)/artifacts/runtime/passthrough_ll
+MDTEST_RUN_CELL ?= $(MDTEST_RUN_ROOT)/artifacts/runtime/mdtest_cell
+MDTEST_RUN_BPFTOOL ?= $(MDTEST_RUN_ROOT)/artifacts/runtime/bpftool
+MDTEST_RUN_PASS_POLICY ?= $(MDTEST_RUN_ROOT)/artifacts/runtime/fxmark_pass.bpf.o
+MDTEST_RUN_SELECT_POLICY ?= $(MDTEST_RUN_ROOT)/artifacts/runtime/fxmark_select.bpf.o
+MDTEST_BOOT_RESULT_DIR ?= $(MDTEST_RUN_ROOT)/boots/block-$(shell printf '%02d' "$(REPETITION)")-$(CONDITION)
+MDTEST_BOOT_KERNEL_CONFIG ?= $(MDTEST_RUN_ROOT)/artifacts/kernel/$(MDTEST_BOOT_KERNEL_FLAVOR)/config
+endif
+
 define MDTEST_ASSERT_SHARED_PROTOCOL
 test "$(MDTEST_IOR_COMMIT)" = 967a9f65109760db8a3ac14a7fdd007f337d2960
 test "$(MDTEST_IOR_TAG)" = 4.0.0
@@ -192,12 +203,6 @@ endef
 
 define MDTEST_RUN_MATRIX
 manifest="$(1)/artifacts/manifest.json"; \
-mdtest_binary="$(1)/$$(jq -r '.runtime.mdtest' "$$manifest")"; \
-fuse_binary="$(1)/$$(jq -r '.runtime.fuse' "$$manifest")"; \
-cell_binary="$(1)/$$(jq -r '.runtime.cell' "$$manifest")"; \
-bpftool_binary="$(1)/$$(jq -r '.runtime.bpftool' "$$manifest")"; \
-pass_policy="$(1)/$$(jq -r '.runtime.pass_policy' "$$manifest")"; \
-select_policy="$(1)/$$(jq -r '.runtime.select_policy' "$$manifest")"; \
 base=(stock unattached pass select fuse); \
 order_index=0; \
 for repetition in $$(seq 1 "$(2)"); do \
@@ -229,7 +234,7 @@ for repetition in $$(seq 1 "$(2)"); do \
 			NAMEI_EXT_VNG_RUN_FLAGS="--verbose --pin $(MDTEST_HOST_CPUS)" \
 			NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
 			NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="__mdtest_cold_metadata_guest" \
-			NAMEI_EXT_KVM_CAPTURE_GUEST_VARS="CONDITION=$$condition REPETITION=$$repetition MDTEST_RUN_ITEMS=$(3) MDTEST_RUN_BINARY=$$mdtest_binary MDTEST_RUN_FUSE=$$fuse_binary MDTEST_RUN_CELL=$$cell_binary MDTEST_RUN_BPFTOOL=$$bpftool_binary MDTEST_RUN_PASS_POLICY=$$pass_policy MDTEST_RUN_SELECT_POLICY=$$select_policy MDTEST_BOOT_RESULT_DIR=$$boot_dir MDTEST_BOOT_KERNEL_CONFIG=$$config MDTEST_BOOT_KERNEL_COMMIT=$$commit MDTEST_BOOT_KERNEL_RELEASE=$$release MDTEST_BOOT_KERNEL_FLAVOR=$$flavor" \
+			NAMEI_EXT_KVM_CAPTURE_GUEST_VARS="CONDITION=$$condition REPETITION=$$repetition MDTEST_RUN_ITEMS=$(3) MDTEST_RUN_ROOT=$(1) MDTEST_BOOT_KERNEL_COMMIT=$$commit MDTEST_BOOT_KERNEL_RELEASE=$$release MDTEST_BOOT_KERNEL_FLAVOR=$$flavor" \
 			NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
 			NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(1)" \
 			NAMEI_EXT_KVM_CAPTURE_HOST_CPUS="$(MDTEST_HOST_CPUS)" \

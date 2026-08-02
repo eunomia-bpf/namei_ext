@@ -43,3 +43,24 @@ Formal execution remains prohibited until the complete preflight receives an
 independent result review. The suggested native-capture fixture is not added:
 it would be a dependency-only project-authored control and the admitted real
 stock boot directly tests the official launch path.
+
+## Attempt-1 Repair Follow-Up
+
+Attempt 1 failed before the guest workload because the repeated absolute paths
+inside `virtme.exec` caused later 9p root arguments to be truncated. The final
+bounded follow-up reviewed the single-root repair, the immutable attempt-1 raw
+statuses, and the official-launcher dry run. It found no blocker or
+nonblocking defect:
+
+- guest Make derives the exact runtime, boot, and kernel-config paths from one
+  `MDTEST_RUN_ROOT`;
+- the repaired launcher command retains `rootfstype=9p`, full `rootflags`,
+  `raid=noautodetect`, and the official `virtme-init` argument;
+- simultaneous launcher and verifier failures now have an honest combined
+  classification while preserving both raw statuses; and
+- conditions, ranks, operations, sample sizes, cache dropping, workload
+  parser, oracle, finalizer, and analysis are unchanged.
+
+```text
+Verdict: GO for fresh preflight attempt 2 after commit and host gates.
+```
