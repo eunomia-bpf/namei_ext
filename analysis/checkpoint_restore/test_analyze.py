@@ -351,6 +351,22 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "fail closed"):
                 analyze.analyze_result(root)
 
+    def test_withdrawn_restart_select_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory)
+            path = root / "boots/preflight/observations.jsonl"
+            rows = analyze.load_jsonl(path)
+            post = next(
+                row for row in rows
+                if row.get("event") == "checkpoint-restore-policy-counter"
+                and row.get("condition") == "withdrawn"
+                and row.get("phase") == "post-restart"
+            )
+            post["value"] += 1
+            self.write_jsonl(path, rows)
+            with self.assertRaisesRegex(ValueError, "restart-time SELECT"):
+                analyze.analyze_result(root)
+
     def test_runtime_identity_probe_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory)

@@ -240,6 +240,10 @@ def validate_controller_rows(rows):
                 by_phase["post-restart"]["value"] <= \
                 by_phase["pre-checkpoint"]["value"]:
             raise ValueError("namei_ext SELECT count did not increase")
+        if condition == "withdrawn" and \
+                by_phase["post-restart"]["value"] != \
+                by_phase["pre-checkpoint"]["value"]:
+            raise ValueError("withdrawn mapping performed restart-time SELECT")
     return lifecycles
 
 
