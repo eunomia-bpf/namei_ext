@@ -319,6 +319,32 @@ class AnalysisLifecycleTest(unittest.TestCase):
         self.assertIn("if (runtime_tmp_created)", runner)
         self.assertIn('"cleanup_runtime_tmp"', runner)
 
+    def test_checkpoint_policy_setup_and_cleanup_order(self):
+        runner = (
+            ROOT / "experiments/checkpoint_restore/"
+            "namei_ext_checkpoint_restore.c"
+        ).read_text(encoding="utf-8")
+        setup = runner[
+            runner.index("static int configure_policy("):
+            runner.index("static int collect_counter(")
+        ]
+        self.assertLess(
+            setup.index("namei_ext_policy_load_attach"),
+            setup.index("namei_ext_policy_parent_exact"),
+        )
+        self.assertIn("mkdir(config->paths.cgroup, 0755) ? -errno : 0", setup)
+        cleanup_start = runner.index("\ncleanup:\n")
+        cleanup_end = runner.index("\temit_lifecycle(", cleanup_start)
+        cleanup = runner[cleanup_start:cleanup_end]
+        ordered = (
+            "namei_ext_policy_parent_clear",
+            "namei_ext_clear_targets",
+            "namei_ext_policy_destroy",
+            "rmdir(config->paths.cgroup)",
+        )
+        positions = [cleanup.index(operation) for operation in ordered]
+        self.assertEqual(positions, sorted(positions))
+
 
 if __name__ == "__main__":
     unittest.main()

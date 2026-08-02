@@ -18,7 +18,16 @@ COMMON_CASES = {
     "lower_objects_unchanged",
     "cleanup_runtime_tmp",
 }
-POLICY_CASES = {"configure_policy", "policy_restart_attribution"}
+POLICY_CASES = {
+    "create_policy_cgroup",
+    "resolve_policy_cgroup_id",
+    "register_policy_target",
+    "set_policy_parent",
+    "load_attach_policy",
+    "read_policy_program_id",
+    "install_policy_rule",
+    "policy_restart_attribution",
+}
 ALLOWED_EVENTS = {
     "checkpoint-restore-case",
     "checkpoint-restore-policy",

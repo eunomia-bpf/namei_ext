@@ -796,32 +796,60 @@ static int policy_program_id(struct namei_ext_harness_policy *policy,
 
 static int configure_policy(struct controller_config *config,
 			    struct namei_ext_harness_policy *policy,
-			    uint64_t *cgroup_id_out, uint32_t *program_id_out)
+			    uint64_t *cgroup_id_out, uint32_t *program_id_out,
+			    FILE *output, bool *cgroup_created,
+			    bool *target_registered, bool *parent_configured,
+			    bool *policy_loaded)
 {
 	int ret;
 
-	if (make_directory(config->paths.cgroup, 0755))
-		return -errno;
+	ret = mkdir(config->paths.cgroup, 0755) ? -errno : 0;
+	if (!ret)
+		*cgroup_created = true;
+	emit_case(output, config->condition_name, "create_policy_cgroup", !ret,
+		  ret, "created the condition cgroup");
+	if (ret)
+		return ret;
 	ret = namei_ext_cgroup_id(config->paths.cgroup, cgroup_id_out);
+	emit_case(output, config->condition_name, "resolve_policy_cgroup_id",
+		  !ret, ret, "resolved the condition cgroup ID");
 	if (ret)
 		return ret;
 	ret = namei_ext_register_target(config->paths.cgroup,
 					 config->paths.workspace_a, TARGET_ID);
+	if (!ret)
+		*target_registered = true;
+	emit_case(output, config->condition_name, "register_policy_target", !ret,
+		  ret, "registered generation A as target ID 1");
+	if (ret)
+		return ret;
+	ret = namei_ext_policy_load_attach(config->policy_path,
+					   config->paths.cgroup, policy) ? -errno : 0;
+	if (!ret)
+		*policy_loaded = true;
+	emit_case(output, config->condition_name, "load_attach_policy", !ret,
+		  ret, "loaded and attached the cgroup/namei_ext program");
 	if (ret)
 		return ret;
 	ret = namei_ext_policy_parent_exact(config->paths.cgroup,
 					    config->paths.logical);
+	if (!ret)
+		*parent_configured = true;
+	emit_case(output, config->condition_name, "set_policy_parent", !ret,
+		  ret, "limited policy invocation to the logical parent");
 	if (ret)
 		return ret;
-	if (namei_ext_policy_load_attach(config->policy_path,
-					  config->paths.cgroup, policy))
-		return -errno;
 	ret = policy_program_id(policy, program_id_out);
+	emit_case(output, config->condition_name, "read_policy_program_id", !ret,
+		  ret, "read the attached kernel program ID");
 	if (ret)
 		return ret;
-	return namei_ext_component_map_update(
+	ret = namei_ext_component_map_update(
 		policy, "checkpoint_restore_views", *cgroup_id_out,
 		config->paths.logical, "workspace", TARGET_ID);
+	emit_case(output, config->condition_name, "install_policy_rule", !ret,
+		  ret, "installed the logical workspace to target ID rule");
+	return ret;
 }
 
 static int collect_counter(FILE *output,
@@ -898,6 +926,8 @@ static int run_lifecycle(struct controller_config *config, FILE *output)
 	bool policy_configured = false;
 	bool cgroup_created = false;
 	bool runtime_tmp_created = false;
+	bool target_registered = false;
+	bool parent_configured = false;
 
 	ret = setup_fixture(config, &runtime_tmp_created);
 	emit_case(output, config->condition_name, "setup_fixture", !ret,
@@ -918,15 +948,14 @@ static int run_lifecycle(struct controller_config *config, FILE *output)
 	}
 
 	if (config->condition != CONDITION_PATHVIRT) {
-		cgroup_created = true;
-		ret = configure_policy(config, &policy, &cgroup_id, &program_id);
-		emit_case(output, config->condition_name, "configure_policy", !ret,
-			  ret, "attached exact-parent policy and selected target A");
+		ret = configure_policy(config, &policy, &cgroup_id, &program_id,
+				       output, &cgroup_created,
+				       &target_registered, &parent_configured,
+				       &policy_configured);
 		if (ret) {
 			fails++;
 			goto cleanup;
 		}
-		policy_configured = true;
 		fprintf(output,
 			"{\"event\":\"checkpoint-restore-policy\","
 			"\"condition\":\"%s\",\"program_id\":%u,"
@@ -1115,14 +1144,13 @@ cleanup:
 	terminate_process(launch_pid);
 	terminate_process(restart_pid);
 	terminate_process(coordinator_pid);
-	if (policy_configured) {
-		if (namei_ext_policy_destroy(&policy))
-			fails++;
-		if (namei_ext_clear_targets(config->paths.cgroup))
-			fails++;
-		if (namei_ext_policy_parent_clear(config->paths.cgroup))
-			fails++;
-	}
+	if (parent_configured &&
+	    namei_ext_policy_parent_clear(config->paths.cgroup))
+		fails++;
+	if (target_registered && namei_ext_clear_targets(config->paths.cgroup))
+		fails++;
+	if (policy_configured && namei_ext_policy_destroy(&policy))
+		fails++;
 	if (cgroup_created && rmdir(config->paths.cgroup))
 		fails++;
 	ret = 0;
