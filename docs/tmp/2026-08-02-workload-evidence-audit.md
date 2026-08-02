@@ -85,7 +85,7 @@ be summed into one synthetic score.
 
 | Required workload | Work completed | Why it is not current evidence |
 | --- | --- | --- |
-| HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117. Attempt 3's official source command exited zero with empty stderr and reported 94 reads/92 stores | Attempt 3 was rejected by an added process-group disappearance check before mapping collection or BPF attach. The repaired runner gates on direct-child exit and actual live Spindle executables instead. No Spindle RQ1 result exists yet |
+| HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117. Attempt 5 passed source Spindle, 47 first-party source-to-cache mappings, policy attachment, and a zero-exit direct loader | Attempt 5 stopped at a harness-only diagnostic mismatch: pinned upstream deliberately emits 44 ordered `dlstart` progress lines when run without the Spindle audit client, but the runner required empty stderr. The repaired oracle requires the exact transcript. No Spindle RQ1 result exists yet |
 
 This failure does not weaken the six completed workload rows, but it leaves
 the seven-workload evaluation incomplete. The paper must not count Spindle as
@@ -153,6 +153,8 @@ comparison than completing W6.
 - W5 Checkpoint/Restore RQ1 summary and detailed report:
   `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/analysis/summary.json` and
   `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/analysis/report.md`
+- W6 latest valid preflight attempt:
+  `results/experiments/spindle-staging-preflight/20260802T113300Z-spindle05/`
 
 ## Remaining Risks
 

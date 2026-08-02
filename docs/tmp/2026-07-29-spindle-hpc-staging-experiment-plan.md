@@ -2,6 +2,17 @@
 
 ## Status And Revision
 
+Revision 5 follows valid modified-kernel preflight root
+`20260802T113300Z-spindle05`. The source Spindle condition passed, all 47
+first-party source-to-cache mappings passed, and the direct `namei_ext`
+application exited zero. The runner rejected that application because it
+required empty stderr, while pinned upstream `test_driver.c` deliberately
+routes its 44 `dlstart <library>` progress records to stderr when the Spindle
+audit client is absent. The repaired oracle requires that exact ordered
+44-line transcript and rejects any missing, extra, reordered, or error line.
+The workload, source command, focal objects, policy, withdrawn control, and
+acceptance claim do not change.
+
 Revision 4 records a source-input packaging correction found by the second KVM
 preflight. It does not change the source command, focal objects, policy,
 hypothesis, or acceptance rule.
@@ -320,6 +331,9 @@ testsuite so readlink and alias fixtures retain their source semantics.
 Require:
 
 - exit status zero;
+- stderr exactly matches the 44 ordered `dlstart <library>` progress records
+  emitted by the pinned upstream `test_driver.c` loader slice, with no missing,
+  extra, reordered, or error line;
 - all 47 focal-object groups record at least one lookup selection;
 - aggregate `SELECT_TARGET` count is positive and equals the sum of per-rule
   hits;

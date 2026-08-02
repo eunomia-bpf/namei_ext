@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #define FOCAL_OBJECTS 47
+#define EXPECTED_LOADER_PROGRESS 44
 #define SPINDLE_TARGET_MAX 64
 #define CACHE_ROOT "/tmp/namei-ext-spindle-cache"
 #define COMM_ROOT "/tmp/namei-ext-spindle-comm"
@@ -133,6 +134,53 @@ static const struct focal_spec focal_specs[FOCAL_OBJECTS] = {
 	{ "libtls18.so", "" },
 	{ "libtls19.so", "" },
 	{ "libtls20.so", "" },
+};
+
+static const char *const expected_loader_progress[EXPECTED_LOADER_PROGRESS] = {
+	"dlstart libtest10.so\n",
+	"dlstart libtest11.so\n",
+	"dlstart libtest12.so\n",
+	"dlstart libtest13.so\n",
+	"dlstart libtest14.so\n",
+	"dlstart libtest15.so\n",
+	"dlstart libtest16.so\n",
+	"dlstart libtest17.so\n",
+	"dlstart libtest18.so\n",
+	"dlstart libtest19.so\n",
+	"dlstart libtest20.so\n",
+	"dlstart libtest50.so\n",
+	"dlstart libtest100.so\n",
+	"dlstart libtest500.so\n",
+	"dlstart libtest1000.so\n",
+	"dlstart libtest2000.so\n",
+	"dlstart libtest4000.so\n",
+	"dlstart libtest6000.so\n",
+	"dlstart libtest8000.so\n",
+	"dlstart libtest10000.so\n",
+	"dlstart libdepA.so\n",
+	"dlstart libcxxexceptA.so\n",
+	"dlstart libnoexist.so\n",
+	"dlstart liboriginlib.so\n",
+	"dlstart libtls1.so\n",
+	"dlstart libtls2.so\n",
+	"dlstart libtls3.so\n",
+	"dlstart libtls4.so\n",
+	"dlstart libtls5.so\n",
+	"dlstart libtls6.so\n",
+	"dlstart libtls7.so\n",
+	"dlstart libtls8.so\n",
+	"dlstart libtls9.so\n",
+	"dlstart libtls10.so\n",
+	"dlstart libtls11.so\n",
+	"dlstart libtls12.so\n",
+	"dlstart libtls13.so\n",
+	"dlstart libtls14.so\n",
+	"dlstart libtls15.so\n",
+	"dlstart libtls16.so\n",
+	"dlstart libtls17.so\n",
+	"dlstart libtls18.so\n",
+	"dlstart libtls19.so\n",
+	"dlstart libtls20.so\n",
 };
 
 static uint64_t monotonic_ns(void)
@@ -1183,6 +1231,33 @@ static int file_is_empty(const char *path, bool *empty)
 	return 0;
 }
 
+static int validate_loader_progress(const char *path, bool *valid)
+{
+	char line[256];
+	size_t index = 0;
+	FILE *input = fopen(path, "r");
+	int ret = 0;
+
+	*valid = false;
+	if (!input)
+		return -errno;
+	while (fgets(line, sizeof(line), input)) {
+		if (index >= EXPECTED_LOADER_PROGRESS ||
+		    strcmp(line, expected_loader_progress[index]))
+			goto out;
+		index++;
+	}
+	if (ferror(input)) {
+		ret = -EIO;
+		goto out;
+	}
+	*valid = index == EXPECTED_LOADER_PROGRESS;
+out:
+	if (fclose(input) && !ret)
+		ret = -errno;
+	return ret;
+}
+
 static int capture_cache_tree(const char *result_dir)
 {
 	char output_path[PATH_MAX];
@@ -1605,12 +1680,13 @@ int main(int argc, char **argv)
 			  NAMEI_TIMEOUT_SECONDS, &namei_result);
 	bool namei_diagnostic_ok = false;
 
-	diagnostic_ret = file_is_empty(namei_stderr, &namei_diagnostic_ok);
+	diagnostic_ret = validate_loader_progress(namei_stderr,
+						  &namei_diagnostic_ok);
 	bool namei_passed = !ret && !diagnostic_ret &&
 		namei_result.exit_status == 0 && namei_diagnostic_ok;
 	emit_condition(out, "namei_ext", &namei_result,
 		       namei_diagnostic_ok, namei_passed,
-		       "unchanged upstream loader test consumes registered cache files");
+		       "upstream loader exits zero with its exact 44-line progress transcript");
 	if (!namei_passed) {
 		failures++;
 		goto cleanup;

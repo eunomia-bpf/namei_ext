@@ -355,6 +355,22 @@ class AnalysisLifecycleTest(unittest.TestCase):
         self.assertNotIn("kill(-pid, 0)", runner)
         self.assertIn('"source_process_quiescence"', runner)
 
+    def test_spindle_validates_exact_upstream_loader_progress(self):
+        runner = (
+            ROOT / "experiments/spindle_staging/namei_ext_spindle_staging.c"
+        ).read_text(encoding="utf-8")
+        start = runner.index("static const char *const expected_loader_progress")
+        end = runner.index("\n};", start)
+        expected = runner[start:end]
+        self.assertEqual(expected.count('"dlstart '), 44)
+        self.assertIn('"dlstart libnoexist.so\\n"', expected)
+        self.assertIn('"dlstart libtls20.so\\n"', expected)
+        self.assertIn("static int validate_loader_progress(", runner)
+        self.assertIn(
+            "diagnostic_ret = validate_loader_progress(namei_stderr,", runner
+        )
+        self.assertNotIn("file_is_empty(namei_stderr", runner)
+
 
 if __name__ == "__main__":
     unittest.main()
