@@ -12,6 +12,10 @@ MDTEST_LIBFUSE_BUILD ?= $(BUILD_ROOT)/mdtest-cold-metadata/libfuse-build
 MDTEST_LIBFUSE_BUILD_LOG ?= $(BUILD_ROOT)/mdtest-cold-metadata/libfuse-build.log
 MDTEST_FUSE_BINARY ?= $(BUILD_ROOT)/mdtest-cold-metadata/runtime/passthrough_ll
 
+MDTEST_VIRTME_NG_SOURCE ?= $(MDTEST_CACHE_DIR)/virtme-ng-$(MDTEST_VIRTME_NG_COMMIT)
+MDTEST_VIRTME_NG_SOURCE_STAMP ?= $(MDTEST_VIRTME_NG_SOURCE)/.namei-ext-source
+MDTEST_VNG ?= $(MDTEST_VIRTME_NG_SOURCE)/vng
+
 MDTEST_CELL ?= $(BUILD_ROOT)/mdtest-cold-metadata/mdtest_cell
 MDTEST_BPFTOOL ?= $(KERNEL_BPFTOOL)
 MDTEST_PASS_POLICY ?= $(BUILD_ROOT)/bpf/fxmark_pass.bpf.o
@@ -37,12 +41,17 @@ test "$(MDTEST_TMPFS_SIZE)" = 4G
 test "$(MDTEST_EXT4_IMAGE_SIZE)" = 2G
 test "$(MDTEST_EXT4_INODES)" = 262144
 test "$(MDTEST_ANALYSIS_SEED)" = 20260729
+test "$(MDTEST_VIRTME_NG_COMMIT)" = 8f74cceecb163a5d5b08e70c101de85920eb624c
+test "$(MDTEST_QMP_LISTENER_TIMEOUT)" = 30
+test "$(MDTEST_VCPU_VERIFY_INITIAL_DELAY)" = 6
+test "$(MDTEST_AFFINITY_BARRIER_TIMEOUT)" = 60
 test "$(NAMEI_EXT_QMP_HOST)" = 127.0.0.1
 test "$(NAMEI_EXT_QMP_PORT)" = 3636
 test "$(KVM_APPEND)" = \
 	"loglevel=7 panic=30 oops=panic tsc=reliable clocksource=tsc"
 test "$(VNG_MODULE_FLAGS)" = --skip-modules
-grep -Fx 'Follow-up verdict: GO.' "$(MDTEST_PLAN_REVIEW)"
+grep -Fx 'Final verdict: GO' "$(MDTEST_PLAN_REVIEW)"
+command -v ss >/dev/null
 endef
 
 define MDTEST_ASSERT_PREFLIGHT_PROTOCOL
@@ -94,6 +103,11 @@ readelf -d "$(1)/artifacts/runtime/passthrough_ll" \
 		>"$(1)/artifacts/source/ior-source-version.txt"
 	grep -Fx "$(MDTEST_IOR_COMMIT)" \
 		"$(1)/artifacts/source/ior-source-version.txt"
+	git -C "$(MDTEST_VIRTME_NG_SOURCE)" show -s \
+		--format='%H%n%s' HEAD \
+		>"$(1)/artifacts/source/virtme-ng-source-version.txt"
+	grep -Fx "$(MDTEST_VIRTME_NG_COMMIT)" \
+		"$(1)/artifacts/source/virtme-ng-source-version.txt"
 jq -n \
 	--arg ior_repository "$(MDTEST_IOR_REPOSITORY)" \
 	--arg ior_tag "$(MDTEST_IOR_TAG)" \
@@ -103,7 +117,9 @@ jq -n \
 	--arg libfuse_tag "$(MDTEST_LIBFUSE_TAG)" \
 	--arg libfuse_commit "$(MDTEST_LIBFUSE_COMMIT)" \
 	--arg libfuse_build "Meson release; default_library=static; examples=true; tests=false; utils=false; enable-io-uring=false" \
-	'{ior:{repository:$$ior_repository,tag:$$ior_tag,commit:$$ior_commit,build:$$ior_build,source_unmodified:true},libfuse:{repository:$$libfuse_repository,tag:$$libfuse_tag,commit:$$libfuse_commit,build:$$libfuse_build,example:"example/passthrough_ll.c",source_unmodified:true}}' \
+	--arg virtme_ng_repository "$(MDTEST_VIRTME_NG_REPOSITORY)" \
+	--arg virtme_ng_commit "$(MDTEST_VIRTME_NG_COMMIT)" \
+	'{ior:{repository:$$ior_repository,tag:$$ior_tag,commit:$$ior_commit,build:$$ior_build,source_unmodified:true},libfuse:{repository:$$libfuse_repository,tag:$$libfuse_tag,commit:$$libfuse_commit,build:$$libfuse_build,example:"example/passthrough_ll.c",source_unmodified:true},virtme_ng:{repository:$$virtme_ng_repository,commit:$$virtme_ng_commit,source_unmodified:true,native_pin:true}}' \
 	>"$(1)/artifacts/source/manifest.json"
 jq -n \
 	--arg patched_commit "$$(cat "$(KERNEL_COMMIT_FILE)")" \
@@ -132,11 +148,21 @@ printf '%s\n' "$(MDTEST_HOST_CPUS)" >"$(1)/host-cpu-pin.txt"
 		"$$(cat "/sys/devices/system/cpu/cpu$$cpu/cpufreq/cpuinfo_max_freq")" \
 		>>"$(1)/host-cpu-frequency-policy.txt"; \
 done
-$(VNG) --version >"$(1)/vng-version.txt"
+"$(MDTEST_VNG)" --version >"$(1)/vng-version.txt"
 endef
 
 define MDTEST_START_RUN
 $(call NAMEI_EXT_VALIDATE_HOST_CPU_PIN,$(MDTEST_HOST_CPUS),$(MDTEST_KVM_CPUS))
+test -z "$$(ss -H -ltn "sport = :$(NAMEI_EXT_QMP_PORT)")"
+test "$(MDTEST_VNG)" = "$(MDTEST_VIRTME_NG_SOURCE)/vng"
+test -x "$(MDTEST_VNG)"
+test ! -L "$(MDTEST_VNG)"
+test "$$(cat "$(MDTEST_VIRTME_NG_SOURCE_STAMP)")" = \
+	"$(MDTEST_VIRTME_NG_COMMIT)"
+test "$$(git -C "$(MDTEST_VIRTME_NG_SOURCE)" rev-parse HEAD)" = \
+	"$(MDTEST_VIRTME_NG_COMMIT)"
+test -z "$$(git -C "$(MDTEST_VIRTME_NG_SOURCE)" status \
+	--porcelain=v1 --untracked-files=no)"
 test "$$(cat "$(KERNEL_COMMIT_FILE)")" = \
 	"$(MDTEST_EXPECTED_PATCHED_KERNEL_COMMIT)"
 test "$$(cat "$(STOCK_KERNEL_COMMIT_FILE)")" = \
@@ -153,7 +179,10 @@ jq --slurpfile artifacts "$(1)/artifacts/manifest.json" \
 	--argjson kvm_cpus "$(MDTEST_KVM_CPUS)" \
 	--arg host_cpu_pin "$(MDTEST_HOST_CPUS)" \
 	--arg kvm_append "$(KVM_APPEND)" \
-	'.layout = "rotating-condition-boot-matrix" | .kernel_artifacts = $$artifacts[0] | .benchmark_source = $$source[0] | .kernel_commits = {patched:$$artifacts[0].patched.commit,stock:$$artifacts[0].stock.commit} | .guest_launch = {kvm_cpus:$$kvm_cpus,host_cpu_pin:$$host_cpu_pin,kvm_append:$$kvm_append,affinity:"exact-vcpu-index-mapping"} | .matrix = {event:"mdtest-cold-metadata-phase",mode:$$mode,conditions:["stock","unattached","pass","select","fuse"],ranks:[1,4],operations:["create","stat","remove"],repetitions:$$repetitions,items_per_rank:$$items_per_rank,order:"rotating-condition-order-and-alternating-rank-order",fresh_ext4_per_rank_cell:true}' \
+	--arg virtme_ng_commit "$(MDTEST_VIRTME_NG_COMMIT)" \
+	--argjson verifier_initial_delay_seconds "$(MDTEST_VCPU_VERIFY_INITIAL_DELAY)" \
+	--argjson affinity_barrier_timeout_seconds "$(MDTEST_AFFINITY_BARRIER_TIMEOUT)" \
+	'.layout = "rotating-condition-boot-matrix" | .kernel_artifacts = $$artifacts[0] | .benchmark_source = $$source[0] | .kernel_commits = {patched:$$artifacts[0].patched.commit,stock:$$artifacts[0].stock.commit} | .guest_launch = {kvm_cpus:$$kvm_cpus,host_cpu_pin:$$host_cpu_pin,kvm_append:$$kvm_append,affinity:"official-virtme-ng-native-pin-plus-independent-verification",virtme_ng_commit:$$virtme_ng_commit,verifier_initial_delay_seconds:$$verifier_initial_delay_seconds,affinity_barrier_timeout_seconds:$$affinity_barrier_timeout_seconds} | .matrix = {event:"mdtest-cold-metadata-phase",mode:$$mode,conditions:["stock","unattached","pass","select","fuse"],ranks:[1,4],operations:["create","stat","remove"],repetitions:$$repetitions,items_per_rank:$$items_per_rank,order:"rotating-condition-order-and-alternating-rank-order",fresh_ext4_per_rank_cell:true}' \
 	"$(1)/run.json" >"$(1)/run.json.tmp"
 mv -f "$(1)/run.json.tmp" "$(1)/run.json"
 printf '%s\n' "$(5)" >"$(1)/command.txt"
@@ -196,12 +225,17 @@ for repetition in $$(seq 1 "$(2)"); do \
 			__namei_ext_kvm_capture \
 			RUN_ID="$(RUN_ID)" KVM_CPUS="$(MDTEST_KVM_CPUS)" \
 			KVM_MEM="$(MDTEST_KVM_MEMORY)" \
+			VNG="$(MDTEST_VNG)" \
+			NAMEI_EXT_VNG_RUN_FLAGS="--verbose --pin $(MDTEST_HOST_CPUS)" \
 			NAMEI_EXT_KVM_CAPTURE_IMAGE="$$image" \
 			NAMEI_EXT_KVM_CAPTURE_GUEST_TARGET="__mdtest_cold_metadata_guest" \
 			NAMEI_EXT_KVM_CAPTURE_GUEST_VARS="CONDITION=$$condition REPETITION=$$repetition MDTEST_RUN_ITEMS=$(3) MDTEST_RUN_BINARY=$$mdtest_binary MDTEST_RUN_FUSE=$$fuse_binary MDTEST_RUN_CELL=$$cell_binary MDTEST_RUN_BPFTOOL=$$bpftool_binary MDTEST_RUN_PASS_POLICY=$$pass_policy MDTEST_RUN_SELECT_POLICY=$$select_policy MDTEST_BOOT_RESULT_DIR=$$boot_dir MDTEST_BOOT_KERNEL_CONFIG=$$config MDTEST_BOOT_KERNEL_COMMIT=$$commit MDTEST_BOOT_KERNEL_RELEASE=$$release MDTEST_BOOT_KERNEL_FLAVOR=$$flavor" \
 			NAMEI_EXT_KVM_CAPTURE_BOOT_DIR="$$boot_dir" \
 			NAMEI_EXT_KVM_CAPTURE_RUN_DIR="$(1)" \
 			NAMEI_EXT_KVM_CAPTURE_HOST_CPUS="$(MDTEST_HOST_CPUS)" \
+			NAMEI_EXT_KVM_CAPTURE_NATIVE_PIN=1 \
+			NAMEI_EXT_KVM_CAPTURE_QMP_LISTENER_TIMEOUT="$(MDTEST_QMP_LISTENER_TIMEOUT)" \
+			NAMEI_EXT_KVM_CAPTURE_VERIFY_INITIAL_DELAY="$(MDTEST_VCPU_VERIFY_INITIAL_DELAY)" \
 			NAMEI_EXT_KVM_CAPTURE_TIMEOUT="$(MDTEST_BOOT_TIMEOUT)"; \
 		host_completed_at=$$(date -u +%Y-%m-%dT%H:%M:%S.%NZ); \
 		jq -cn \
@@ -248,10 +282,15 @@ test "$$(jq -s '[.[] | [.repetition,.condition,.ranks,.operation]] | unique | le
 			"$$boot/boot.json" >/dev/null; \
 		test "$$(cat "$$boot/kernel-flavor.txt")" = "$$expected_flavor"; \
 		test "$$(cat "$$boot/kernel-commit.txt")" = "$$expected_commit"; \
-		jq -e '.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified" and .qmp == {host:"127.0.0.1",port:3636} and (.verified_at | type == "string" and length > 0) and .expected_host_cpus == [8,9,10,11,12,13,14,15] and .expected_vcpu_mapping == [range(0; 8) as $$index | {vcpu_index:$$index,host_cpu:(8 + $$index)}] and [.vcpus[] | [.vcpu_index,.cpus_allowed]] == [range(0; 8) as $$index | [$$index,[8 + $$index]]]' \
+		jq -e '.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified" and .qmp == {host:"127.0.0.1",port:3636} and .initial_delay_seconds == 6 and (.verified_at | type == "string" and length > 0) and .expected_host_cpus == [8,9,10,11,12,13,14,15] and .expected_vcpu_mapping == [range(0; 8) as $$index | {vcpu_index:$$index,host_cpu:(8 + $$index)}] and [.vcpus[] | [.vcpu_index,.cpus_allowed]] == [range(0; 8) as $$index | [$$index,[8 + $$index]]]' \
 			"$$boot/vcpu-affinity.json" >/dev/null; \
-		jq -e '.schema == "namei_ext.vcpu_affinity_pin.v1" and .status == "pinned" and .qmp == {host:"127.0.0.1",port:3636} and (.pinned_at | type == "string" and length > 0) and .expected_host_cpus == [8,9,10,11,12,13,14,15] and .expected_vcpu_mapping == [range(0; 8) as $$index | {vcpu_index:$$index,host_cpu:(8 + $$index)}] and [.vcpus[] | [.vcpu_index,.cpus_allowed]] == [range(0; 8) as $$index | [$$index,[8 + $$index]]]' \
-			"$$boot/vcpu-affinity-pin.json" >/dev/null; \
+		test ! -e "$$boot/vcpu-affinity-pin.json"; \
+		test "$$(cat "$$boot/qmp-listener-status.txt")" = 0; \
+		test -s "$$boot/qmp-listener.txt"; \
+		test -s "$$boot/qmp-listener-wait-started-at.txt"; \
+		test -s "$$boot/qmp-listener-observed-at.txt"; \
+		test "$$(cat "$$boot/vcpu-affinity.status")" = 0; \
+		test "$$(cat "$$boot/launcher.status")" = 0; \
 		for file in bpf-programs-before.json bpf-programs-after.json; do \
 			jq -e 'type == "array" and length == 0' "$$boot/$$file" >/dev/null; \
 		done; \
@@ -285,7 +324,7 @@ jq -s -e --argjson repetitions "$(2)" \
 	"$(1)/launch-order.jsonl" >/dev/null
 jq -e --arg mode "$(3)" --argjson repetitions "$(2)" \
 	--argjson items "$(4)" \
-	'.layout == "rotating-condition-boot-matrix" and .matrix.mode == $$mode and .matrix.conditions == ["stock","unattached","pass","select","fuse"] and .matrix.ranks == [1,4] and .matrix.operations == ["create","stat","remove"] and .matrix.repetitions == $$repetitions and .matrix.items_per_rank == $$items and .matrix.fresh_ext4_per_rank_cell == true and .kernel_commits.patched == "$(MDTEST_EXPECTED_PATCHED_KERNEL_COMMIT)" and .kernel_commits.stock == "$(MDTEST_EXPECTED_STOCK_KERNEL_COMMIT)"' \
+	'.layout == "rotating-condition-boot-matrix" and .guest_launch.affinity == "official-virtme-ng-native-pin-plus-independent-verification" and .guest_launch.virtme_ng_commit == "$(MDTEST_VIRTME_NG_COMMIT)" and .guest_launch.verifier_initial_delay_seconds == 6 and .guest_launch.affinity_barrier_timeout_seconds == 60 and .matrix.mode == $$mode and .matrix.conditions == ["stock","unattached","pass","select","fuse"] and .matrix.ranks == [1,4] and .matrix.operations == ["create","stat","remove"] and .matrix.repetitions == $$repetitions and .matrix.items_per_rank == $$items and .matrix.fresh_ext4_per_rank_cell == true and .kernel_commits.patched == "$(MDTEST_EXPECTED_PATCHED_KERNEL_COMMIT)" and .kernel_commits.stock == "$(MDTEST_EXPECTED_STOCK_KERNEL_COMMIT)"' \
 	"$(1)/run.json" >/dev/null
 endef
 
@@ -297,7 +336,7 @@ endef
 		experiment-mdtest-cold-metadata-rq2 __mdtest_cold_metadata_guest
 
 mdtest-cold-metadata-source: $(MDTEST_IOR_SOURCE_STAMP) \
-	$(MDTEST_LIBFUSE_SOURCE_STAMP)
+	$(MDTEST_LIBFUSE_SOURCE_STAMP) $(MDTEST_VIRTME_NG_SOURCE_STAMP)
 
 $(MDTEST_IOR_SOURCE_STAMP):
 	rm -rf "$(MDTEST_IOR_SOURCE)"
@@ -324,6 +363,20 @@ $(MDTEST_LIBFUSE_SOURCE_STAMP):
 		"$(MDTEST_LIBFUSE_TAG)"
 	test -z "$$(git -C "$(MDTEST_LIBFUSE_SOURCE)" status --porcelain=v1)"
 	printf '%s\n' "$(MDTEST_LIBFUSE_COMMIT)" >"$@"
+
+$(MDTEST_VIRTME_NG_SOURCE_STAMP):
+	rm -rf "$(MDTEST_VIRTME_NG_SOURCE)"
+	install -d "$(MDTEST_CACHE_DIR)"
+	git clone --no-checkout "$(MDTEST_VIRTME_NG_REPOSITORY)" \
+		"$(MDTEST_VIRTME_NG_SOURCE)"
+	git -C "$(MDTEST_VIRTME_NG_SOURCE)" checkout --detach \
+		"$(MDTEST_VIRTME_NG_COMMIT)"
+	test "$$(git -C "$(MDTEST_VIRTME_NG_SOURCE)" rev-parse HEAD)" = \
+		"$(MDTEST_VIRTME_NG_COMMIT)"
+	test -z "$$(git -C "$(MDTEST_VIRTME_NG_SOURCE)" status --porcelain=v1)"
+	test -x "$(MDTEST_VNG)"
+	"$(MDTEST_VNG)" --version
+	printf '%s\n' "$(MDTEST_VIRTME_NG_COMMIT)" >"$@"
 
 $(MDTEST_BINARY): $(MDTEST_IOR_SOURCE_STAMP)
 	rm -rf "$(MDTEST_IOR_BUILD_SOURCE)" "$(MDTEST_IOR_BUILD)"
@@ -360,9 +413,10 @@ $(MDTEST_CELL): bench/mdtest/mdtest_cell.c
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
 mdtest-cold-metadata-build: $(MDTEST_BINARY) $(MDTEST_FUSE_BINARY) \
-	$(MDTEST_CELL) kernel-bpftool bpf
+	$(MDTEST_CELL) $(MDTEST_VIRTME_NG_SOURCE_STAMP) kernel-bpftool bpf
 	test -x "$(MDTEST_BINARY)"
 	test -x "$(MDTEST_FUSE_BINARY)"
+	test -x "$(MDTEST_VNG)"
 	test -x "$(MDTEST_CELL)"
 	test -x "$(MDTEST_BPFTOOL)"
 	test -r "$(MDTEST_PASS_POLICY)"
@@ -495,7 +549,7 @@ __mdtest_cold_metadata_guest:
 	test -r "$(MDTEST_RUN_SELECT_POLICY)"
 	test -d "$(MDTEST_BOOT_RESULT_DIR)"
 	affinity_status=waiting; \
-	for attempt in $$(seq 1 500); do \
+	for attempt in $$(seq 1 "$$(( $(MDTEST_AFFINITY_BARRIER_TIMEOUT) * 20 ))"); do \
 		if test -s "$(MDTEST_BOOT_RESULT_DIR)/vcpu-affinity.json"; then \
 			if jq -e '.schema == "namei_ext.vcpu_affinity.v1" and .status == "verified"' \
 					"$(MDTEST_BOOT_RESULT_DIR)/vcpu-affinity.json" >/dev/null 2>&1; then \
