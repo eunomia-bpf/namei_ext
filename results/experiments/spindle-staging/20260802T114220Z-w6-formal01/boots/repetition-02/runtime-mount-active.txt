@@ -1,0 +1,1 @@
+virtme.initmount0[/results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-02/runtime/worktree] /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77 9p rw,relatime,access=any,trans=virtio

@@ -200,7 +200,7 @@ so the evaluation does not drift into a long baseline catalog.
 | Role | Evidence item | RQ served | Runnable status | Fairness or admission rule | Claim consequence if unavailable |
 | --- | --- | --- | --- | --- | --- |
 | Main baseline | Feature-equivalent FUSE policy over the same oracle | RQ2 | Formal Agent lifecycle and FxMark lookup/readdir matrices completed; workload-specific breadth remains possible | Same policy inputs, update schedule, and justified FUSE caching/passthrough settings as `namei_ext`; account for FUSE passthrough, FUSE-BPF, RFUSE, CoFS, and DFUSE as related acceleration context. | RQ2 cannot claim lower cost or acceptable overhead versus FUSE. |
-| Correctness oracle | Source/native behavior from XDG portal, AgentFS/BranchFS/YoloFS, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, and selected toolchain/profile systems | RQ1 | Agent workspace, W1 application sharing, W3 Bazel action views, the W4 AtomicWriter payload-view subset, W5 DMTCP restart, and W7 toolchain environments have reviewed formal KVM results; W6 remains an incomplete required RQ1 case | Establishes the source behavior and task input; it is not a weaker baseline. | RQ1 lacks source credibility. |
+| Correctness oracle | Source/native behavior from XDG portal, AgentFS/BranchFS/YoloFS, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, and selected toolchain/profile systems | RQ1 | All seven industrial workflows have reviewed formal KVM results, including W6 source Spindle, direct `namei_ext`, and withdrawn-target conditions over 47 source-produced cache objects | Establishes the source behavior and task input; it is not a weaker baseline. | RQ1 lacks source credibility. |
 | Boundary evidence | Workload-specific custom/stackable/source-system ownership table | RQ3 | Citation/source-code evidence plus selected source artifacts; no full-system reimplementation unless required by the oracle | Compare required filesystem methods, daemon/runtime state, metadata, data/write-path ownership, privileged code, and invalid-policy containment. | RQ3 becomes unsupported prose. |
 | Control | Lower-FS/no-hook run through the project KVM target | RQ2 attribution | Existing Phase 1 controls; final workload controls pending | Same operation mix where meaningful; used only for overhead attribution. | RQ2 overhead attribution weakens. |
 
@@ -209,7 +209,7 @@ so the evaluation does not drift into a long baseline catalog.
 | RQ/claim | Accepted paper/protocol citation | Official benchmark/dataset/software/test tool | Version/artifact | Real-world provenance | Reusable design | Required deviation or glue |
 | --- | --- | --- | --- | --- | --- | --- |
 | RQ1 Agent workspace | AgentFS/BranchFS/YoloFS/Sandlock/Mirage source systems plus SWE-Factory-Gym | AgentFS lifecycle tests and released Click task `pallets__click-2622` | See `docs/reference/CODE_SOURCES.md` | AI agent workspace filesystems, sandboxes, and executable SWE tasks | Branch/stage/hide/whiteout oracles plus exact fail-to-pass task outcome | Thin KVM glue maps only existing-object workspace selection to `namei_ext`; COW, patch generation, and evaluator orchestration remain outside. |
-| RQ1 Traditional path views | XDG Documents portal, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, Nix/Guix/Spack/CernVM-FS | Official source repositories, APIs, tests, and real command oracles | See `docs/reference/CODE_SOURCES.md` and `docs/tmp/2026-07-25-case-study-and-standard-benchmark-plan.md` | Desktop sandboxing, build actions, service operation, restart, HPC launch, and software environments | Grant/revoke, action input views, epoch switch, path remap, shared-to-local relocation, profile switch/rollback | One hard-failing KVM preflight per family before deep performance work. |
+| RQ1 Traditional path views | XDG Documents portal, Bazel sandboxfs, Kubernetes AtomicWriter, DMTCP, Spindle, Nix/Guix/Spack/CernVM-FS | Official source repositories, APIs, tests, and real command oracles | See `docs/reference/CODE_SOURCES.md` and `docs/tmp/2026-07-25-case-study-and-standard-benchmark-plan.md` | Desktop sandboxing, build actions, service operation, restart, HPC launch, and software environments | Grant/revoke, action input views, epoch switch, path remap, shared-to-local relocation, profile switch/rollback | Each family now has a reviewed three-boot KVM source-oracle result; deeper performance work remains representative rather than per-family. |
 | RQ2 Standard VFS cost | FxMark ATC'16, IOR/mdtest, Filebench | FxMark `MRPL/MRPM/MRPH/MRDL/MRDM`, selected mdtest operations, Filebench fileserver/webserver | Checked-out source commits in the dated plan | Standard pathname, directory, metadata, and mixed filesystem operations | Stock versus patched-unattached versus attached `PASS`/`SELECT` versus FUSE | Add Make-owned KVM runners and preserve per-run raw throughput, latency, CPU, and perf counters. |
 | RQ2 Existing ccache macro | ccache plus Redis/nginx compile workload | Current KVM compile matrix | `results/experiments/build-cache/` and `results/phase1/` | Real compile output and cache traffic | Retain as representative macro timing evidence | Do not use ccache itself as the headline source-system motivation; add independent-run statistics and hardened FUSE settings. |
 | RQ2 FUSE overhead | FAST 2017 FUSE study; ExtFUSE; FUSE-BPF; RFUSE; CoFS; DFUSE; kernel FUSE and FUSE passthrough docs | libfuse/project FUSE runner | Local runner plus official FUSE docs and closest-work records | Filesystem request path | Measure same-oracle FUSE, not generic FUSE weakness | Implement feature-equivalent policy cells and explain why FUSE-BPF/ExtFUSE/RFUSE/CoFS/DFUSE remain related-work pressure rather than main baselines unless admitted by the final protocol. |
@@ -302,8 +302,8 @@ ablations are admitted only when they change an RQ answer.
   needs filesystem-service ownership.
 - Ambitious target claims: keep `namei_ext` as a `sched_ext`-style VFS
   extension point between eBPF LSM and FUSE/custom FS; keep RQ1/RQ2/RQ3 as
-  expressiveness, cost versus FUSE, and safety/boundary versus custom or
-  stackable filesystems.
+  expressiveness, cost versus FUSE, and ownership/responsibility boundary
+  versus custom or stackable filesystems.
 - Claims requiring stronger differentiation or evidence: do not claim exclusive
   necessity for `namei_ext`; do not say workloads intrinsically require eBPF;
   do not treat source characterization or prototype matrices as final RQ
@@ -332,9 +332,10 @@ ablations are admitted only when they change an RQ answer.
   lookup-time selection in Lua). Build/cache is repositioned as access-point
   view governance rather than acceleration. Remote filesystem cache
   (nydus FUSE→erofs+fscache) is recorded as motivation evidence only.
-- Current evidence state: W1, W2, W3, W4's `AtomicWriter` payload-view subset,
-  and W7 have reviewed formal RQ1 results;
-  W2 now includes a released source task. The Agent lifecycle, FxMark lookup,
+- Current evidence state: W1 through W7 all have reviewed formal RQ1 results;
+  W2 includes a released source task, W5 includes real DMTCP restarts, and W6
+  includes exact selection of 47 Spindle-created node-local objects. The Agent
+  lifecycle, FxMark lookup,
   and FxMark readdir FUSE comparisons are complete. The next high-value depth
   questions are cache-cold or broader metadata RQ2 behavior and a second
   source-derived RQ3 ownership row. The existing ccache matrix remains

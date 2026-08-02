@@ -106,9 +106,18 @@ Three fresh KVM boots completed all nine DMTCP conditions. PathTranslator and
 returned the expected \code{ENOENT}. Restart-time \code{SELECT} increased
 12-to-24 with the rule and remained 12-to-12 after withdrawal; all 108
 before/after lower-object rows were unchanged. \\
+HPC file staging (supporting)~\cite{spindle_ics13} & Pinned LLNL Spindle in
+serial pull mode runs its unchanged 47-object dynamic-loader slice and
+populates node-local cache files from the source objects. & \namei selects the
+exact Spindle-created cache objects for the same loader; Spindle retains cache
+population and object discovery. & Three fresh KVM boots passed all source,
+\namei, and withdrawn conditions. All 141 mapping, selection, identity, and
+preservation rows passed; 204 \code{SELECT} events were attributed to the 141
+targets, and all three withdrawn-target controls failed with the expected
+loader diagnostic and no additional target hit. \\
 \hline
 \end{tabular}
-\caption{Current completed rows of the seven-workload RQ1 answer table. A row
+\caption{The seven-workload RQ1 answer table. A row
 becomes evidence only after the source-oracle run passes through the real KVM
 attach path and lower-filesystem semantics are preserved.}
 \label{tab:rq1-evidence}
@@ -279,8 +288,7 @@ copy-up, conflict resolution, distributed metadata, or data-path mediation.
 
 \subsection{Evaluation Scope}
 
-The completed evidence includes six of the seven required formal RQ1
-workflows, an Agent
+The completed evidence includes all seven required formal RQ1 workflows, an Agent
 lifecycle RQ2 comparison, cache-hot FxMark
 active and unused-path results, a formal corrected-FxMark directory-enumeration
 matrix, and one matched Agent-workspace RQ3 boundary experiment. A historical
@@ -290,8 +298,9 @@ and native/\namei 0.945\(\times\), but it lacks independent-run uncertainty and
 release-scale miss/stale/corrupt cells. It is not a headline workload because
 ccache already implements cache lookup and validation in userspace.
 
-W6 HPC File Staging is the remaining required RQ1 case and is not yet
-completed evidence in this draft. The W4
+The W6 Spindle result covers final pathname selection among 47 cache objects
+created by the source system; it does not cover Spindle's distribution,
+cache-population scalability, or production launch performance. The W4
 Kubernetes result covers already-materialized payload selection and visibility,
 not ConfigMap retrieval, symlink/inotify behavior, or application reload.
 Cache-cold lookup, broader metadata operations, tail latency, and a second

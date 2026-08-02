@@ -1,0 +1,39 @@
+{
+  "schema": "namei_ext.run.v2",
+  "run_id": "20260802T114220Z-w6-formal01",
+  "suite": "spindle-staging",
+  "source_system": "LLNL-Spindle",
+  "result_level": "kvm_spindle_staging",
+  "status": "completed",
+  "started_at": "2026-08-02T11:42:29Z",
+  "observations": "observations.jsonl",
+  "source": {
+    "commit": "4673c1fa3f2bcf38e1adaf8f2e4bd254ee179ec6",
+    "dirty": false
+  },
+  "kernel": {
+    "commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+    "dirty": false
+  },
+  "kernel_commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+  "policy": "spindle_staging.bpf.c",
+  "runner": "namei_ext_spindle_staging",
+  "protocol_schema": "namei_ext.spindle_staging.protocol.v1",
+  "layout": "fresh-boot-source-namei-withdrawn",
+  "source_commit": "8853636d2d774729a5a728f5cf6c296b65a1099c",
+  "matrix": {
+    "conditions": [
+      "source_spindle",
+      "namei_ext",
+      "withdrawn"
+    ],
+    "focal_objects": 47,
+    "repetitions": 3,
+    "source_timeout_seconds": 180,
+    "namei_timeout_seconds": 120,
+    "withdrawn_timeout_seconds": 120,
+    "kvm_timeout": "600s",
+    "all_boots_must_pass": true
+  },
+  "completed_at": "2026-08-02T11:43:15Z"
+}

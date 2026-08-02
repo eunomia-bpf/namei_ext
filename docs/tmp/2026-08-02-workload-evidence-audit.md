@@ -12,10 +12,10 @@ completed result summary and report, the Build Action sandboxfs plan and its
 three preflight records, and the raw roots listed below. The repository and
 kernel worktrees were clean at the end of the audit.
 
-Current-source validation rebuilt the six completed workload runners through
+Current-source validation rebuilt the seven completed workload runners through
 their Make targets: Agent source task, Application File Sharing, Build Action
 Sandboxing, Kubernetes ConfigMap Publication, Checkpoint/Restore, and Toolchain
-Environments. The
+Environments, followed by the complete Spindle formal path. The
 Agent RQ2, Agent RQ3, Build Action RQ2, and Application File Sharing RQ2
 analyzer suites also passed 30/30 host-side tests. These checks establish that
 the current entrypoints still build and analyze; they are not new KVM or paper
@@ -33,8 +33,8 @@ protocol.
 
 ## Paper-Facing Workload Structure
 
-The evaluation must complete all seven industrial RQ1 case studies. Evidence
-depth can differ, but the six completed workflows are not a stopping point:
+The evaluation contains all seven mandatory industrial RQ1 case studies.
+Evidence depth can differ, but no workflow is merged, removed, or replaced:
 
 1. **Agent Workspaces** is the completed headline case. It covers source-task
    correctness, a same-oracle FUSE cost comparison, and a matched
@@ -43,15 +43,12 @@ depth can differ, but the six completed workflows are not a stopping point:
    Its Bazel correctness result is complete. Its official sandboxfs cost
    comparison remains missing.
 3. **Sandboxed Application File Sharing**, **Service Configuration and Secret
-   Rotation**, **Checkpoint/Restore and Migration**, and **Toolchain and
-   Dependency Environments** provide RQ1 breadth. They should not each grow a
-   separate weak performance story.
-4. **HPC File Staging** remains the required W6 RQ1 case study. It must receive
-   a complete source-oracle KVM result; the six completed cases do not replace
-   it.
+   Rotation**, **Checkpoint/Restore and Migration**, **HPC File Staging**, and
+   **Toolchain and Dependency Environments** provide complete RQ1 breadth.
+   They should not each grow a separate weak performance story.
 
 FxMark and ccache answer performance questions; they are not additional
-workload case studies and cannot substitute for W6.
+workload case studies and do not alter the seven-case portfolio.
 
 ## Completed Workload Data
 
@@ -64,11 +61,12 @@ workload case studies and cannot substitute for W6.
 | Sandboxed Application File Sharing | Official `xdg-document-portal` 1.18.4 grant/isolation/revoke lifecycle | Three KVM boots; 15/15 official-source states and 15/15 `namei_ext` states; exact operation agreement | Supporting RQ1 source-fidelity evidence |
 | Service Configuration and Secret Rotation | Official Kubernetes v1.30.0 `AtomicWriter` V0/V1/no-op/rollback | Three KVM boots; 12/12 source states; 12/12 `namei_ext` states; 6 direct controls; 24 stable-root dirfd checks; 12 old-fd checks; 36 lower-object checks | Supporting RQ1 for already-materialized payload selection |
 | Checkpoint/Restore and Migration | DMTCP PathTranslator and source-derived same-path A-to-B checkpoint/restart | Three KVM boots; nine real restart conditions; six positive A-to-B transitions; three withdrawn `ENOENT` controls; restart-time `SELECT` 12-to-24 versus withdrawn 12-to-12; 108 lower-object rows unchanged | Supporting RQ1 moved-root reopen evidence |
+| HPC File Staging | Pinned LLNL Spindle serial-pull loader slice and 47 first-party source-to-cache mappings | Three KVM boots; 3/3 source, 3/3 `namei_ext`, and 3/3 withdrawn conditions; 141 mapping/selection/identity/preservation rows per category; 204 `SELECT` hits; three permission and withdrawal controls | Supporting RQ1 for final selection of Spindle-populated node-local objects, not distribution, scaling, or performance |
 | Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 venv workflow | Three KVM boots; 18 physical/logical states; 24 Python probes; concurrent views, switch, rollback; 3,270 lower-object records unchanged per boot | Supporting RQ1 environment-selection evidence |
 
-The six currently completed RQ1 workflows account for 18 fresh formal KVM
-boots. This is progress toward the seven-workload target, not the target
-itself. Their oracles differ by workflow; their individual counts should not
+The seven completed RQ1 workflows account for 21 fresh formal KVM boots in
+their current source-oracle result rows. Their oracles differ by workflow;
+their individual counts should not
 be summed into one synthetic score.
 
 ## Performance Evidence Outside The Case-Study Count
@@ -81,15 +79,15 @@ be summed into one synthetic score.
 | Historical ccache hot-cache compile | 20 samples per mechanism, 400/400 output checks; FUSE/`namei_ext` 2.18x; native/`namei_ext` 0.945x | Traditional macro support only; ccache already owns cache validation |
 | Historical ccache epoch switch | 20 samples over two epochs, 800/800 outputs; FUSE/`namei_ext` 2.10x | Supporting update-path evidence without independent-run uncertainty |
 
-## Incomplete Workloads
+## Seven-Case Completion
 
-| Required workload | Work completed | Why it is not current evidence |
-| --- | --- | --- |
-| HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117. Attempt 5 passed source Spindle, 47 first-party source-to-cache mappings, policy attachment, and a zero-exit direct loader | Attempt 5 stopped at a harness-only diagnostic mismatch: pinned upstream deliberately emits 44 ordered `dlstart` progress lines when run without the Spindle audit client, but the runner required empty stderr. The repaired oracle requires the exact transcript. No Spindle RQ1 result exists yet |
-
-This failure does not weaken the six completed workload rows, but it leaves
-the seven-workload evaluation incomplete. The paper must not count Spindle as
-reproduced until its new end-to-end RQ1 run passes.
+W6 formal root
+`results/experiments/spindle-staging/20260802T114220Z-w6-formal01/`
+closes the only missing RQ1 row. Three fresh modified-kernel KVM boots each
+completed the source Spindle, direct `namei_ext`, and withdrawn-target
+conditions. The result is admitted only for the frozen 47-object loader slice
+and exact Spindle-created cache files. Earlier failed or incomplete Spindle
+roots remain diagnostic history and are not combined with the formal result.
 
 ## Open Experiment Order
 
@@ -99,9 +97,10 @@ before mounting because the guest hard open-file limit remained 4,096. The
 matrix is incomplete, there is no formal run or paper result, and the protocol
 will not receive a fourth attempt.
 
-The next workload experiment is W6 Spindle. It must reach a complete source
-workload and oracle through the modified-kernel KVM attach path. It must not be
-replaced by another microbenchmark, ccache variant, or supporting workflow.
+There is no remaining RQ1 workload slot. W1--W7 stay fixed as seven separate
+case studies. The highest-value next experiment is a traditional
+source-derived RQ2 comparison, preferably W6 final-object selection or a new
+scientifically independent W3 protocol, against feature-equivalent FUSE.
 
 The old sandboxfs timing protocol cannot simply receive a fourth preflight.
 Its three attempts ended before a valid pair, and its final record explicitly
@@ -111,8 +110,8 @@ fresh, materially different plan; otherwise it is process repetition rather
 than new evidence.
 
 The existing Agent, FxMark, and ccache RQ2 evidence remains valid. Adding
-another custom FUSE implementation for ConfigMap or venv would be a weaker
-comparison than completing W6.
+separate weak FUSE variants for every supporting case would fragment the
+performance story rather than deepen the representative comparison.
 
 ## Raw Evidence
 
@@ -153,8 +152,9 @@ comparison than completing W6.
 - W5 Checkpoint/Restore RQ1 summary and detailed report:
   `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/analysis/summary.json` and
   `results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/analysis/report.md`
-- W6 latest valid preflight attempt:
-  `results/experiments/spindle-staging-preflight/20260802T113300Z-spindle05/`
+- W6 HPC File Staging RQ1 summary and detailed report:
+  `results/experiments/spindle-staging/20260802T114220Z-w6-formal01/analysis/summary.json` and
+  `results/experiments/spindle-staging/20260802T114220Z-w6-formal01/analysis/report.md`
 
 ## Remaining Risks
 
@@ -163,5 +163,8 @@ comparison than completing W6.
   application comparison.
 - RQ3 has one matched custom/stackable-filesystem workload. It is an ownership
   and runtime-responsibility result, not a security ranking.
+- W6 covers one serial-pull loader slice and final-object selection. It does
+  not reproduce Spindle's distributed launch scaling or establish a W6
+  performance comparison.
 - The paper must keep incomplete source-integration attempts and historical
   preflights out of headline evidence.

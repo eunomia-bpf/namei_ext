@@ -1,0 +1,30 @@
+dlstart libtest10.so
+Error - [/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source/testsuite/test_driver.c:482] - Failed to dlopen library ../testsuite/libtest10.so: ../testsuite/libtest10.so: file too short
+Error - [/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source/testsuite/test_driver.c:482] - Failed to dlopen library ../testsuite/libtest10.so: ../testsuite/libtest10.so: file too short
+
+dlstart libtest11.so
+dlstart libtest12.so
+dlstart libtest13.so
+dlstart libtest14.so
+dlstart libtest15.so
+dlstart libtest16.so
+dlstart libtest17.so
+dlstart libtest18.so
+dlstart libtest19.so
+dlstart libtest20.so
+dlstart libtest50.so
+dlstart libtest100.so
+dlstart libtest500.so
+dlstart libtest1000.so
+dlstart libtest2000.so
+dlstart libtest4000.so
+dlstart libtest6000.so
+dlstart libtest8000.so
+dlstart libtest10000.so
+dlstart libdepA.so
+dlstart libcxxexceptA.so
+dlstart libnoexist.so
+dlstart liboriginlib.so
+Error - [/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source/testsuite/test_driver.c:266] - Could not mmap ../testsuite/libtest10.so of size 0: Invalid argument
+Error - [/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source/testsuite/test_driver.c:266] - Could not mmap ../testsuite/libtest10.so of size 0: Invalid argument
+

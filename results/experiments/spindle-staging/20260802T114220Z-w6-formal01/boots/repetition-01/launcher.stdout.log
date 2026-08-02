@@ -1,0 +1,250 @@
+make: Entering directory '/home/yunwei37/workspace/namei_ext'
+install -d "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01"
+prepare_status=0; \
+make --no-print-directory -C "/home/yunwei37/workspace/namei_ext" \
+	__namei_ext_guest_prepare || prepare_status=$?; \
+printf '%s\n' "$prepare_status" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/guest-prepare.status"; \
+inner_status=125; \
+if test "$prepare_status" -eq 0; then \
+	inner_status=0; \
+	make --no-print-directory -C "/home/yunwei37/workspace/namei_ext" \
+		-f Makefile -f "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/guest.mk" \
+		__spindle_staging_guest_inner || inner_status=$?; \
+fi; \
+printf '%s\n' "$inner_status" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/guest-inner.status"; \
+if test -s "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/raw-runner.jsonl" && \
+   test ! -e "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/observations.jsonl"; then \
+	cp "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/raw-runner.jsonl" \
+		"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/observations.jsonl"; \
+fi; \
+cleanup_status=0; \
+for spec in hello_.py:600 hello_x.py:700; do \
+	fixture="${spec%%:*}"; mode="${spec##*:}"; \
+	path="results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree/build/testsuite/$fixture"; \
+	if test -e "$path"; then \
+		chmod "$mode" "$path" || cleanup_status=$?; \
+	else \
+		cleanup_status=1; \
+	fi; \
+done; \
+if test "$cleanup_status" -eq 0; then \
+	stat -c '%n	%a	%u	%g	%s	%d	%i' \
+		"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree/build/testsuite/hello_.py" \
+		"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree/build/testsuite/hello_x.py" \
+		>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/readlink-fixtures-restored.tsv" || \
+		cleanup_status=$?; \
+fi; \
+if mountpoint -q "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77"; then \
+	umount -R "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77" || \
+		cleanup_status=$?; \
+fi; \
+mount_status=0; \
+mountpoint -q "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77" || \
+	mount_status=$?; \
+if test "$mount_status" -eq 0; then cleanup_status=1; fi; \
+printf '%s\n' "$mount_status" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-mount-after.status"; \
+printf '%s\n' "$cleanup_status" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/guest-cleanup.status"; \
+inventory_status=0; \
+make --no-print-directory -C "/home/yunwei37/workspace/namei_ext" \
+	-f Makefile -f "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/guest.mk" \
+	__spindle_staging_guest_inventory_after || inventory_status=$?; \
+printf '%s\n' "$inventory_status" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/guest-inventory-after.status"; \
+dmesg_status=0; \
+dmesg >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/dmesg.log" || dmesg_status=$?; \
+if test "$dmesg_status" -eq 0; then \
+	! grep -E 'BUG:|WARNING:|Oops:|Call Trace:|hung task|INFO: task .* blocked for more than|general protection|NULL pointer|KASAN|UBSAN|clocksource: Watchdog .*read timed out|Marking clocksource .* unstable' "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/dmesg.log" >/dev/null || \
+		dmesg_status=$?; \
+fi; \
+printf '%s\n' "$dmesg_status" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/guest-dmesg.status"; \
+boot_status=completed; \
+if test "$prepare_status" -ne 0 || test "$inner_status" -ne 0 || \
+   test "$cleanup_status" -ne 0 || \
+   test "$inventory_status" -ne 0 || test "$dmesg_status" -ne 0; then \
+	boot_status=failed; \
+fi; \
+jq -n \
+	--argjson repetition "1" \
+	--arg kernel_commit "b07117a3cb41826a34af5ca61e3e2c81dade793f" \
+	--arg kernel_release "7.1.0-rc7-gb07117a3cb41" \
+	--arg status "$boot_status" \
+	--argjson prepare_status "$prepare_status" \
+	--argjson inner_status "$inner_status" \
+	--argjson cleanup_status "$cleanup_status" \
+	--argjson inventory_status "$inventory_status" \
+	--argjson dmesg_status "$dmesg_status" \
+	--arg completed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+	'{schema:"namei_ext.spindle_staging.boot.v1",repetition:$repetition,kernel_commit:$kernel_commit,kernel_release:$kernel_release,status:$status,prepare_status:$prepare_status,inner_status:$inner_status,cleanup_status:$cleanup_status,inventory_status:$inventory_status,dmesg_status:$dmesg_status,completed_at:$completed_at}' \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/boot.json"; \
+test "$boot_status" = completed
+if ! mountpoint -q /sys/fs/bpf; then mount -t bpf bpf /sys/fs/bpf; fi
+if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
+if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
+test -n "1"
+test -x "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/namei_ext_spindle_staging"
+test -r "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/spindle_staging.bpf.o"
+test -x "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool"
+test -d "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree"
+test -d "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77"
+command -v file >/dev/null
+command -v readelf >/dev/null
+command -v strings >/dev/null
+(cd "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree" && \
+	find build prefix -type l -printf '%p\t%l\n' | \
+	LC_ALL=C sort) | cmp - \
+		"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-symlinks.txt"
+runtime_mount_status=0; \
+mountpoint -q "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77" || \
+	runtime_mount_status=$?; \
+printf '%s\n' "$runtime_mount_status" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-mount-before.status"; \
+test "$runtime_mount_status" -ne 0
+mount --bind "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree" \
+	"/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77"
+mountpoint -q "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77"
+test "$(stat -c '%d:%i' "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree")" = \
+	"$(stat -c '%d:%i' "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77")"
+findmnt -rn --mountpoint "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77" \
+	-o SOURCE,TARGET,FSTYPE,OPTIONS \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-mount-active.txt"
+test -s "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-mount-active.txt"
+test -x "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle"
+test -x "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver"
+for fixture in retzero_ retzero_x; do \
+	test ! -e "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/$fixture"; \
+done
+test "$(stat -c %a "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_.py")" = 600
+test "$(stat -c %a "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_x.py")" = 700
+for fixture in hello_.py hello_x.py; do \
+	cmp "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/$fixture" \
+		"/home/yunwei37/workspace/namei_ext/results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/source/hello.py"; \
+done
+install -d "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01"
+: >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/raw-runner.jsonl"
+cp "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/kernel/config" "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/kernel.config"
+printf '%s\n' "b07117a3cb41826a34af5ca61e3e2c81dade793f" >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/kernel-commit.txt"
+actual_release=$(uname -r); test "$actual_release" = "7.1.0-rc7-gb07117a3cb41"; printf '%s\n' "$actual_release" >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/kernel-release.txt"
+uname -a >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/uname.txt"
+cat /proc/version >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/proc-version.txt"
+cat /proc/cmdline >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/kernel-cmdline.txt"
+grep -q ' [Tt] namei_ext_lookup$' /proc/kallsyms
+runtime_uid=$(stat -c %u "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01"); \
+runtime_gid=$(stat -c %g "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01"); \
+test "$runtime_uid" -ne 0; \
+jq -n --argjson uid "$runtime_uid" --argjson gid "$runtime_gid" \
+	'{uid:$uid,gid:$gid}' \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-identity.json"
+LD_LIBRARY_PATH="/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite" \
+	ldd "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-ldd.txt"
+! grep -F 'not found' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-ldd.txt"
+grep -F "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/libtestoutput.so" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-ldd.txt"
+	libtestoutput.so => /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/libtestoutput.so (0x00007f6e2a7a8000)
+grep -F "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/libfuncdict.so" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-ldd.txt"
+	libfuncdict.so => /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/libfuncdict.so (0x00007f6e2a79d000)
+grep -F "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api/.libs/libspindle.so.0" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-ldd.txt"
+	libspindle.so.0 => /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api/.libs/libspindle.so.0 (0x00007f6e2a798000)
+ldd "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/spindle-ldd.txt"
+! grep -F 'not found' "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/spindle-ldd.txt"
+file "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-file.txt"
+readelf -lW "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-readelf-program.txt"
+readelf -dW "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-readelf-dynamic.txt"
+grep -F "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api/.libs" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/test-driver-readelf-dynamic.txt"
+ 0x000000000000001d (RUNPATH)            Library runpath: [/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api/.libs:/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib]
+strings "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle" | \
+	grep -F "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/" | \
+	LC_ALL=C sort -u \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/spindle-compiled-paths.txt"
+grep -F "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_be" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/spindle-compiled-paths.txt"
+/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_be
+grep -F "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_bootstrap" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/spindle-compiled-paths.txt"
+/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_bootstrap
+test -x "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_be"
+test -x "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_bootstrap"
+jq -n \
+	--arg runner "$(readlink -f "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/namei_ext_spindle_staging")" \
+	--arg policy "$(readlink -f "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/spindle_staging.bpf.o")" \
+	--arg bpftool "$(readlink -f "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool")" \
+	--arg spindle "$(readlink -f "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle")" \
+	--arg test_driver "$(readlink -f "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver")" \
+	--arg runtime_root "$(readlink -f "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree")" \
+	--arg compiled_root "$(readlink -f "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77")" \
+	--arg runtime_root_identity "$(stat -c '%d:%i' "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime/worktree")" \
+	--arg compiled_root_identity "$(stat -c '%d:%i' "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77")" \
+	'{runner:{path:$runner},policy:{path:$policy},bpftool:{path:$bpftool},spindle:{path:$spindle},test_driver:{path:$test_driver},runtime:{source:$runtime_root,compiled_mount:$compiled_root,source_identity:$runtime_root_identity,mount_identity:$compiled_root_identity}}' \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-metadata.json"
+jq -e '.runtime.source_identity == .runtime.mount_identity' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-metadata.json" >/dev/null
+test -d "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01"; test -n "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool"; test -n "before"; command -v findmnt >/dev/null; command -v lsof >/dev/null; test -c /dev/fuse; "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool" -j prog show >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-programs-before.json"; "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool" -j cgroup tree >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-cgroup-before.json"; findmnt -rn -o FSTYPE,TARGET | awk '$1 == "fuse" || $1 == "fuseblk" || index($1, "fuse.") == 1' >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-mounts-before.txt"; lsof_status=0; lsof -Fpc /dev/fuse >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-before.txt" || lsof_status=$?; printf '%s\n' "$lsof_status" >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-before.status"; case "$lsof_status" in 0|1) ;; *) exit 1 ;; esac
+jq -e 'type == "array" and length == 0' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-programs-before.json" \
+	>/dev/null
+jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-cgroup-before.json" \
+	>/dev/null
+test ! -s "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-mounts-before.txt"
+test "$(cat "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-before.status")" = 1
+test ! -s "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-before.txt"
+chmod 0200 "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_.py"
+chmod 0300 "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_x.py"
+stat -c '%n	%a	%u	%g	%s	%d	%i' \
+	"/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_.py" \
+	"/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_x.py" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/readlink-fixtures-active.tsv"
+"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/namei_ext_spindle_staging" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/spindle_staging.bpf.o" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/raw-runner.jsonl" \
+	"/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle" \
+	"/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01" /sys/fs/cgroup
+stat -c '%n	%a	%u	%g	%s	%d	%i' \
+	"/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_.py" \
+	"/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/hello_x.py" \
+	>"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/readlink-fixtures-after.tsv"
+cmp "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/readlink-fixtures-active.tsv" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/readlink-fixtures-after.tsv"
+cp "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/raw-runner.jsonl" \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/observations.jsonl"
+jq -e 'select(.event == "spindle-staging-summary" and .focal_objects == 47 and .failures == 0 and .pass == true)' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/observations.jsonl" >/dev/null
+! jq -e 'select(.pass != true)' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/observations.jsonl" >/dev/null
+for event in mapping selection identity preservation; do \
+	test "$(jq -s --arg event "spindle-staging-$event" '[.[] | select(.event == $event)] | length' "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/observations.jsonl")" = 47; \
+done
+test "$(find "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01" -maxdepth 1 -type f -name 'source-spindle_output.*' | wc -l)" -ge 1
+test ! -e /tmp/namei-ext-spindle-cache
+test ! -e /tmp/namei-ext-spindle-comm
+test ! -e /tmp/namei-ext-spindle-tmp
+test "$(find /sys/fs/cgroup -maxdepth 1 -type d -name 'namei-ext-spindle-*' | wc -l)" = 0
+(cd "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77" && \
+	find build prefix -type l -printf '%p\t%l\n' | \
+	LC_ALL=C sort) | cmp - \
+		"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/runtime-symlinks.txt"
+test -d "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01"; test -n "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool"; test -n "after"; command -v findmnt >/dev/null; command -v lsof >/dev/null; test -c /dev/fuse; "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool" -j prog show >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-programs-after.json"; "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool" -j cgroup tree >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-cgroup-after.json"; findmnt -rn -o FSTYPE,TARGET | awk '$1 == "fuse" || $1 == "fuseblk" || index($1, "fuse.") == 1' >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-mounts-after.txt"; lsof_status=0; lsof -Fpc /dev/fuse >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-after.txt" || lsof_status=$?; printf '%s\n' "$lsof_status" >"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-after.status"; case "$lsof_status" in 0|1) ;; *) exit 1 ;; esac
+jq -e 'type == "array" and length == 0' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-programs-after.json" \
+	>/dev/null
+jq -e 'type == "array" and all(.[]; has("error") | not) and ([.. | objects | select(has("id"))] | length) == 0' \
+	"results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/bpf-cgroup-after.json" \
+	>/dev/null
+test ! -s "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-mounts-after.txt"
+test "$(cat "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-after.status")" = 1
+test ! -s "results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-01/fuse-open-fds-after.txt"
+make: Leaving directory '/home/yunwei37/workspace/namei_ext'

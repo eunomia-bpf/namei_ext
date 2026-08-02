@@ -23,9 +23,8 @@ process-heavy version is archived at
 The paper has seven mandatory industrial RQ1 case studies. Each must reach a
 complete source-oracle correctness result on the modified kernel in KVM. RQ2
 performance and RQ3 ownership comparisons may use representative cases, but
-they do not replace or reduce any of the seven RQ1 cases:
-two carry the deepest cross-RQ evidence, four provide completed RQ1 breadth,
-and one still requires complete RQ1 execution:
+they do not replace or reduce any of the seven RQ1 cases. All seven now have
+complete reviewed RQ1 evidence; two also carry the deepest cross-RQ evidence:
 
 | Role | Workload | Completed evidence | Remaining paper-value gap |
 | --- | --- | --- | --- |
@@ -35,11 +34,11 @@ and one still requires complete RQ1 execution:
 | Supporting breadth | W4 Service Configuration and Secret Rotation | RQ1 against official Kubernetes v1.30.0 `AtomicWriter` | The result covers already-materialized leaf selection, not service reload |
 | Supporting breadth | W7 Toolchain and Dependency Environments | RQ1 with Ubuntu CPython 3.10/3.12 environments | No matched FUSE or custom-filesystem claim |
 | Supporting breadth | W5 Checkpoint/Restore and Migration | Three fresh modified-kernel KVM boots complete DMTCP PathTranslator, `namei_ext`, and withdrawn-map conditions for the same checkpoint/restart oracle | No performance or full migration claim; DMTCP retains checkpointing, descriptor restoration, and coordination |
-| Required RQ1 case | W6 HPC File Staging | Attempt 5 reaches the real modified-kernel attach path: source Spindle and all 47 source-to-cache mappings pass, then the unchanged direct loader exits zero through `namei_ext` | The runner incorrectly required empty direct-loader stderr, although pinned upstream emits 44 ordered `dlstart` progress lines. The repaired oracle requires that exact transcript; selection, identity, permission, withdrawn, preservation, and formal three-boot gates remain |
+| Supporting breadth | W6 HPC File Staging | Three fresh modified-kernel KVM boots complete source Spindle, `namei_ext`, and withdrawn-target conditions over the same 47-object loader slice | No distribution, cache-population scalability, production launch-performance, or matched FUSE claim |
 
-W6 remains an incomplete required workload, not an optional portfolio
-candidate. FxMark and the historical ccache matrix are performance evidence,
-not substitutes for W6. The complete data and raw-result audit is
+All seven rows remain mandatory and distinct; completion does not merge or
+remove any case. FxMark and the historical ccache matrix remain performance
+evidence outside the seven-case count. The complete data and raw-result audit is
 [`docs/tmp/2026-08-02-workload-evidence-audit.md`](tmp/2026-08-02-workload-evidence-audit.md).
 
 The evaluation separates three kinds of evidence:
@@ -77,7 +76,7 @@ different production problems remain separate.
 | W3 | Build Action Sandboxing | Bazel's [sandboxfs](https://blog.bazel.build/2017/08/25/introducing-sandboxfs.html) was built because an action may require hundreds or thousands of mappings; symlink-forest construction was costly and error-prone, while FUSE could expose an arbitrary view. Its [official repository](https://github.com/bazelbuild/sandboxfs) is archived but reproducible. | `(action identity, declared-input set, configuration)` maps action paths to existing source or generated objects and hides undeclared paths. | A real Bazel build/test succeeds with the declared inputs, exact outputs contain the expected bytes, an undeclared-input probe fails, and two concurrent actions observe their own mappings. | Reuse an action trace and local existing targets. Compare `namei_ext` with the source symlink-forest behavior and feature-equivalent FUSE; remote execution, CAS download, output upload, and sandbox process isolation are out of scope. |
 | W4 | Service Configuration and Secret Rotation | Kubernetes [AtomicWriter](https://github.com/kubernetes/kubernetes/blob/7c48c2bd72b9bf5c44d21d7338cc7bea77d0ad2a/pkg/volume/util/atomic_writer.go) materializes timestamped versions and atomically retargets `..data`; [ConfigMap documentation](https://kubernetes.io/docs/concepts/configuration/configmap/) records delayed propagation and non-updating `subPath` mounts. nginx reload is a broader application-level extension. | `(workload identity, published generation, pathname)` selects a V0 or V1 config/certificate object and hides retired names. The completed subset executes initial, update, repeated no-op, and rollback under one stable volume root. | The official `AtomicWriter` control and `namei_ext` must agree on exact bytes, modes, visible names, non-root reads, stable-root `openat()`, and old-descriptor behavior. Selected logical files must be the direct lower objects, and both lower generation trees must remain unchanged. | Three reviewed formal KVM boots support the already-materialized payload-view subset. ConfigMap retrieval, materialization, `..data`/symlink topology, inotify, validation, application reload, and reload failure handling remain outside this result; the older nginx V2 path did not pass dependency preflight. |
 | W5 | Checkpoint/Restore and Migration | [DMTCP path virtualization](https://dmtcp.sourceforge.io/papers/cluster16.pdf) translates paths remembered before checkpoint to paths valid after migration; the implementation interposes pathname operations in user space. | `(restart image, restored root/mount state, remembered pathname)` selects the restored existing object or fails closed when the mapping is absent. | The source application checkpoints, moves to a different root, restarts, and reopens the expected object with matching bytes/metadata; an unmapped stale path fails. | Compare the same remapping with DMTCP's source plugin behavior and a withdrawn-mapping causal control. Process checkpointing, descriptor restoration, distributed coordination, and file-content transfer remain DMTCP/CRIU responsibilities; RQ2 owns representative FUSE comparisons. |
-| W6 | HPC File Staging | LLNL [Spindle](https://computing.llnl.gov/projects/spindle) intercepts library, executable, Python, and selected data-file operations, distributes one shared-filesystem read to node-local storage, and redirects applications to the local object. It is [enabled automatically on El Capitan](https://hpc.llnl.gov/documentation/user-guides/using-el-capitan-systems/using-el-capitan-systems-spindle-and-library). Its public [source](https://github.com/LLNL/Spindle) interposes `open`, `stat`, `exec`, and dynamic-loader operations. | `(job/session, local-stage readiness, pathname)` selects the prepared local copy or the shared canonical object; a negative or invalid entry hides the local candidate. | Pynamic or an LLNL-style MPI/Python launch completes with the expected loaded-object identity and exact program output; file-operation and shared-filesystem request counts fall; stale or wrong local objects are not loaded. | Reuse Spindle's distribution/cache control plane and replace only its pathname redirection decision. `namei_ext` does not distribute bytes, populate caches, or recognize libraries. Compare with source Spindle behavior and feature-equivalent FUSE over the same pre-populated objects. |
+| W6 | HPC File Staging | LLNL [Spindle](https://computing.llnl.gov/projects/spindle) intercepts library, executable, Python, and selected data-file operations, distributes one shared-filesystem read to node-local storage, and redirects applications to the local object. It is [enabled automatically on El Capitan](https://hpc.llnl.gov/documentation/user-guides/using-el-capitan-systems/using-el-capitan-systems-spindle-and-library). Its public [source](https://github.com/LLNL/Spindle) interposes `open`, `stat`, `exec`, and dynamic-loader operations. | `(job/session, staged-object inventory, pathname)` selects a prepared node-local object. Withdrawing one registered target makes the covered source pathname unavailable to the unchanged loader. | Pinned Spindle in serial pull mode must populate 47 required objects and complete its loader slice; the same direct loader must complete through the selected cache objects with exact object identity and transcript; withdrawal must produce the expected loader failure without another target hit. | The completed RQ1 case reuses Spindle's cache population and first-party mapping logs, replacing only final pathname selection. `namei_ext` does not distribute bytes, populate caches, recognize libraries, or reproduce Spindle's scaling result. Source Spindle is the natural oracle; a feature-equivalent FUSE run would be a separate RQ2 extension. |
 | W7 | Toolchain and Dependency Environments | [Nix profiles](https://nix.dev/manual/nix/2.34/command-ref/files/profiles.html) and [Guix profiles](https://guix.gnu.org/manual/en/guix.pdf) are versioned symlink trees into immutable stores; [Spack environment views](https://spack.readthedocs.io/en/v0.23.1/environments.html) link installed packages into `bin/lib/include` trees; Python [venv](https://docs.python.org/3/library/venv.html), [Conda](https://docs.conda.io/en/latest/user-guide/tasks/manage-environments.html), [nvm](https://github.com/nvm-sh/nvm), [rbenv](https://github.com/rbenv/rbenv), [Lmod](https://lmod.readthedocs.io/en/6.6/), and Debian [update-alternatives](https://manpages.debian.org/bookworm/dpkg/update-alternatives.1.en.html) select versions through environment, shims, profiles, or symlink groups. CernVM-FS even implements [variant symlinks](https://cvmfs.readthedocs.io/en/2.14/cpt-repo/#variant-symlinks) in FUSE so one software or certificate path resolves according to client configuration. | `(project/job/process group, selected environment, pathname)` selects one installed executable, library tree, dependency profile, or site-specific target; switching the environment changes later exec/open/readdir results without changing the application's path. | Run source-native version and build/import checks in two real environments; verify executable/library identity and output, concurrent isolation, switch, and rollback. | Reuse installed objects from Spack/Nix/Guix or two Python/Node environments. The natural source behavior remains the oracle; feature-equivalent FUSE is the RQ2 comparison. Package solving, installation, builds, activation scripts, and ABI compatibility stay with the source package manager. |
 
 The cases remain distinct even when their policies use the same bounded action:
@@ -191,7 +190,7 @@ judgment is
 | W3 Build Action Sandboxing | Bazel 6.5.0 two-genrule oracle fixed: same logical path, distinct declared roots, undeclared-input lookup/readdir probe, concurrent overlap | Passed and independently reviewed: three fresh KVM boots, six Bazel actions, six action-specific logical/lower inode matches, twelve preserved lower objects, and all allow/hide/select branches | Not run; RQ2 owns the separately frozen sandboxfs comparison | Policy/target/cgroup cleanup and lower-object preservation passed in every boot; full ownership table open |
 | W4 Service Configuration and Secret Rotation | Official Kubernetes v1.30.0 `AtomicWriter` payload publication fixed as V0, V1, V1 no-op, and V0 rollback under one stable root; full nginx live reload remains a separate extension | Passed and independently reviewed: three fresh KVM boots, 12/12 source states, 12/12 `namei_ext` states, 6/6 direct controls, 24/24 stable-root dirfd checks, 12/12 old-fd checks, and 36/36 lower-object checks | Not run; this is RQ1 breadth only | Payload-view subset admitted as supporting RQ1 evidence. Materialization, symlink/inotify behavior, service validation/reload, performance, and broader filesystem comparison remain open |
 | W5 Checkpoint/Restore and Migration | DMTCP commit `068559d9b14c` is built from Git with the disclosed restart-environment scan fix; the official `pathvirt` test and source-derived A-to-B restart oracle pass from relocated result-owned installs | Passed and independently reviewed: three fresh KVM boots, nine real DMTCP checkpoint/restart conditions, PathTranslator and `namei_ext` A-to-B transitions through one pathname, and three withdrawn-map `ENOENT` controls. Restart-time `SELECT` rose 12-to-24 only with the installed mapping and remained 12-to-12 after withdrawal | Not required for this RQ1 case; RQ2 owns matched FUSE comparisons | All nine checkpoint images, 18 application observations, 165 controller observations, 108 before/after lower-object rows, and BPF/cgroup cleanup passed. DMTCP retains checkpointing, descriptor restoration, and coordination; no performance or broad migration claim is made |
-| W6 HPC File Staging | Spindle repository, build, source loader slice, 47-object inventory, and source/native oracle fixed. Final-file and cross-filesystem `SELECT` passed 117/117 dependency cases. Attempt 5 passed source Spindle, live-process quiescence, all 47 distinct tmpfs cache mappings, canary coverage, policy attachment, and a zero-exit direct loader | Required and not yet complete. Attempt 5 stopped because the harness required empty direct-loader stderr, while pinned upstream deliberately emits 44 `dlstart` progress lines there without its audit client. The repaired oracle requires the exact ordered transcript; a complete fresh KVM run remains required | A matched FUSE run is optional unless W6 is selected for RQ2 | Selection counters, 47 identity probes, permission propagation, withdrawn failure, preservation, cleanup, and then three formal boots remain the gate; failed roots remain non-paper evidence |
+| W6 HPC File Staging | Pinned LLNL Spindle commit `8853636` in serial pull mode populates 47 exact cache objects and supplies their first-party source-to-local mappings | Passed and independently reviewed: three fresh KVM boots, 3/3 source Spindle, 3/3 `namei_ext`, and 3/3 withdrawn conditions; 141/141 mappings, selections, identities, and preservation rows; 204 attributed `SELECT` hits; 3/3 lower-permission and withdrawn-target controls | Not required for this RQ1 case; a matched FUSE run would be separate RQ2 work | Spindle retains object recognition, distribution, and cache population. Policy/target/cgroup/mount/process cleanup and dmesg gates passed in every boot; no performance or production-scaling claim is made |
 | W7 Toolchain and Dependency Environments | Ubuntu CPython 3.10/3.12 `venv` workflow and interpreter/package oracle fixed | Passed and independently reviewed: three fresh KVM boots selected two existing environments through the same logical executable path, including paired start, switch, and rollback | Not required for this RQ1 sufficiency row; RQ2 owns matched FUSE comparisons | Logical root/interpreter identity matched the selected lower objects; controls observed lower `EACCES` and withdrawn `ENOENT`; inventoried type/mode/owner/size/device/inode/mtime fields were unchanged |
 
 ### A. Sandboxed Application File Sharing (supporting RQ1 breadth)
@@ -266,7 +265,20 @@ Entry points: `make kvm-kubernetes-configmap-publication-rq1-preflight` and
 Entry points: `make kvm-checkpoint-restore-preflight` and
 `make kvm-checkpoint-restore-rq1`.
 
-### F. Toolchain and Dependency Environments (supporting RQ1 breadth)
+### F. HPC File Staging (supporting RQ1 breadth)
+
+| Cell | Status | Raw root |
+| --- | --- | --- |
+| Source Spindle and cache population | Passed in three fresh modified-kernel KVM boots. Pinned LLNL Spindle commit `8853636` ran in serial pull mode, exited zero with empty launcher stderr, and produced exactly 47 first-party source-to-node-local mapping records per boot | `results/experiments/spindle-staging/20260802T114220Z-w6-formal01/` |
+| Same loader through `namei_ext` | Passed 3/3: the unchanged upstream loader exited zero with its exact 44-line progress transcript. All 141 registered-object selection rows passed, with 204 aggregate `SELECT` hits and at least one hit for each target | Same raw root |
+| Selected-object identity and lower semantics | Passed 141/141 logical-path identity probes against the exact Spindle-created tmpfs objects. All 141 preservation rows retained before/after source and cache metadata and ended with byte-equal source/cache objects; all three mode-`000` target probes returned lower-filesystem `EACCES` | Same raw root |
+| Withdrawn-target control | Passed 3/3: removing the `libtest10.so` target left its hit count unchanged at five and made the same loader exit 255 with the expected diagnostic | Same raw root |
+| Cleanup and scope | Guest prepare, workload, cleanup, BPF/FUSE inventory, and dmesg gates passed in every boot. Valid only for Spindle-populated final-object selection; no distribution, cache-population scalability, production launch-performance, or FUSE comparison claim | `docs/tmp/2026-08-02-w6-spindle-formal01-result-review.md` |
+
+Entry points: `make kvm-spindle-staging-preflight` and
+`make experiment-spindle-staging`.
+
+### G. Toolchain and Dependency Environments (supporting RQ1 breadth)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -279,7 +291,7 @@ Entry points: `make kvm-checkpoint-restore-preflight` and
 Entry points: `make kvm-toolchain-environment-preflight` and
 `make experiment-toolchain-environment`.
 
-### G. ccache compile macrobenchmark (existing performance evidence)
+### H. ccache compile macrobenchmark (existing performance evidence)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -300,6 +312,8 @@ Current case-study entrypoints: `make experiments`,
 and `make experiment-kubernetes-configmap-publication-rq1`.
 The completed checkpoint/restore entrypoint is
 `make kvm-checkpoint-restore-rq1`.
+The completed HPC file-staging entrypoint is
+`make experiment-spindle-staging`.
 
 The W4 AtomicWriter payload-view subset is complete. The older nginx live-reload
 V2 dependency protocol remains closed after three failed preflights;
@@ -316,7 +330,7 @@ ccache already implements cache lookup and validation in user space. W3 Bazel
 action views and W6 Spindle file relocation provide the source-derived
 build/cache cases whose pathname view is the behavior under study.
 
-### H. FxMark path-resolution cost (decisive RQ2 mechanism result)
+### I. FxMark path-resolution cost (decisive RQ2 mechanism result)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -361,9 +375,10 @@ five-condition matrix is incomplete, formal execution is not authorized, and
 no number from these roots is paper evidence. The final execution record is
 `docs/tmp/2026-08-02-rq2-mdtest-reconsideration-preflight-attempt-3.md`.
 Cache-cold and broader mutating-metadata cost therefore remain unresolved; this
-closed RQ2 branch does not replace the required W6 RQ1 workload.
+closed RQ2 branch remains excluded and is not counted among the seven RQ1
+workload cases.
 
-### I. Agent workspace ownership and responsibility (decisive RQ3 result)
+### J. Agent workspace ownership and responsibility (decisive RQ3 result)
 
 | Cell | Status | Raw root |
 | --- | --- | --- |
@@ -394,15 +409,12 @@ arbitrary filesystem behavior.
 2. What are the setup and steady-state costs of the W3 action view relative to
    Bazel's symlink-forest behavior and a matched FUSE view after the real Bazel
    correctness preflight?
-3. Can the Phase 1-validated cross-filesystem final-file action replay
-   Spindle's source-produced shared-to-local mappings under the unmodified
-   upstream loader oracle, without implementing cache population or
-   distribution?
-4. Which concrete Spack/Nix/Python workflow gives W7 the strongest unmodified
-   application oracle while staying within existing-object selection?
-5. Does the existing ccache macro ratio survive independent-run
+3. Does the completed W6 final-object result retain its cost advantage under a
+   matched FUSE implementation and a larger Pynamic/MPI launch, while Spindle
+   still owns distribution and cache population?
+4. Does the existing ccache macro ratio survive independent-run
    median/dispersion reporting and a hardened FUSE configuration with caching
    and passthrough explicitly accounted for?
-6. Does the Agent workspace RQ3 boundary result generalize to a second
+5. Does the Agent workspace RQ3 boundary result generalize to a second
    source-derived traditional workflow without requiring broader filesystem
    semantics?

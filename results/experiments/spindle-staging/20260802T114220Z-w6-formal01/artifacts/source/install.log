@@ -1,0 +1,403 @@
+make[1]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+Making install in src/client
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+Making install in logging
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/logging'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/logging'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/logging'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/logging'
+Making install in biter
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/biter'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/biter'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/biter'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/biter'
+Making install in shm_cache
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/shm_cache'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/shm_cache'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/shm_cache'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/shm_cache'
+Making install in client_comlib
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client_comlib'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client_comlib'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client_comlib'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client_comlib'
+Making install in client
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client'
+Making install in auditclient
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/auditclient'
+  CCLD     libspindle_audit_pipe.la
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/auditclient'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+ /bin/bash ../libtool   --mode=install /usr/bin/install -c   libspindle_audit_pipe.la '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+libtool: install: /usr/bin/install -c .libs/libspindle_audit_pipe.so /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libspindle_audit_pipe.so
+libtool: install: /usr/bin/install -c .libs/libspindle_audit_pipe.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libspindle_audit_pipe.la
+libtool: finish: PATH="/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.codex/tmp/arg0/codex-arg00efF7I:/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.grok/bin:/home/yunwei37/.kimi-code/bin:/home/yunwei37/.bun/bin:/home/yunwei37/.opencode/bin:/home/yunwei37/.nvm/versions/node/v22.22.0/bin:/usr/local/cuda-12.9/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/sbin" ldconfig -n /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+----------------------------------------------------------------------
+Libraries have been installed in:
+   /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.
+----------------------------------------------------------------------
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/auditclient'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/auditclient'
+Making install in subaudit
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/subaudit'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/subaudit'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+ /bin/bash ../libtool   --mode=install /usr/bin/install -c   libspindleint.la libspindle_subaudit_pipe.la '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+libtool: install: /usr/bin/install -c .libs/libspindleint.so /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libspindleint.so
+libtool: install: /usr/bin/install -c .libs/libspindleint.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libspindleint.la
+libtool: install: /usr/bin/install -c .libs/libspindle_subaudit_pipe.so /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libspindle_subaudit_pipe.so
+libtool: install: /usr/bin/install -c .libs/libspindle_subaudit_pipe.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libspindle_subaudit_pipe.la
+libtool: finish: PATH="/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.codex/tmp/arg0/codex-arg00efF7I:/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.grok/bin:/home/yunwei37/.kimi-code/bin:/home/yunwei37/.bun/bin:/home/yunwei37/.opencode/bin:/home/yunwei37/.nvm/versions/node/v22.22.0/bin:/usr/local/cuda-12.9/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/sbin" ldconfig -n /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+----------------------------------------------------------------------
+Libraries have been installed in:
+   /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.
+----------------------------------------------------------------------
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/subaudit'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/subaudit'
+Making install in beboot
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/beboot'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/beboot'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+  /bin/bash ../libtool   --mode=install /usr/bin/install -c spindle_bootstrap '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+libtool: install: /usr/bin/install -c spindle_bootstrap /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_bootstrap
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/beboot'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/beboot'
+Making install in spindle_api
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib'
+ /bin/bash ../libtool   --mode=install /usr/bin/install -c   libspindle.la '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib'
+libtool: install: /usr/bin/install -c .libs/libspindle.so.0.0.1 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindle.so.0.0.1
+libtool: install: (cd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib && { ln -s -f libspindle.so.0.0.1 libspindle.so.0 || { rm -f libspindle.so.0 && ln -s libspindle.so.0.0.1 libspindle.so.0; }; })
+libtool: install: (cd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib && { ln -s -f libspindle.so.0.0.1 libspindle.so || { rm -f libspindle.so && ln -s libspindle.so.0.0.1 libspindle.so; }; })
+libtool: install: /usr/bin/install -c .libs/libspindle.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindle.la
+libtool: finish: PATH="/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.codex/tmp/arg0/codex-arg00efF7I:/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.grok/bin:/home/yunwei37/.kimi-code/bin:/home/yunwei37/.bun/bin:/home/yunwei37/.opencode/bin:/home/yunwei37/.nvm/versions/node/v22.22.0/bin:/usr/local/cuda-12.9/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/sbin" ldconfig -n /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib
+----------------------------------------------------------------------
+Libraries have been installed in:
+   /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.
+----------------------------------------------------------------------
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/include'
+ /usr/bin/install -c -m 644 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source/src/client/spindle_api/spindle.h '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/include'
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api'
+Making install in ldsolookup
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/ldsolookup'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/ldsolookup'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+ /bin/bash ../libtool   --mode=install /usr/bin/install -c   libprint_ldso_audit.la '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+libtool: install: /usr/bin/install -c .libs/libprint_ldso_audit.so /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libprint_ldso_audit.so
+libtool: install: /usr/bin/install -c .libs/libprint_ldso_audit.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libprint_ldso_audit.la
+libtool: finish: PATH="/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.codex/tmp/arg0/codex-arg00efF7I:/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.grok/bin:/home/yunwei37/.kimi-code/bin:/home/yunwei37/.bun/bin:/home/yunwei37/.opencode/bin:/home/yunwei37/.nvm/versions/node/v22.22.0/bin:/usr/local/cuda-12.9/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/sbin" ldconfig -n /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+----------------------------------------------------------------------
+Libraries have been installed in:
+   /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.
+----------------------------------------------------------------------
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+  /bin/bash ../libtool   --mode=install /usr/bin/install -c print_ldso_entry '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+libtool: install: /usr/bin/install -c print_ldso_entry /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/print_ldso_entry
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/ldsolookup'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/ldsolookup'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+Making install in src/server
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+Making install in logging
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/logging'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/logging'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+  /bin/bash ../libtool   --mode=install /usr/bin/install -c spindled_logd '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+libtool: install: /usr/bin/install -c spindled_logd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindled_logd
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/logging'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/logging'
+Making install in biter
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/biter'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/biter'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/biter'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/biter'
+Making install in cache
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cache'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cache'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cache'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cache'
+Making install in cobo
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cobo'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cobo'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cobo'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cobo'
+Making install in comlib
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/comlib'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/comlib'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/comlib'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/comlib'
+Making install in auditserver
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/auditserver'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/auditserver'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/auditserver'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/auditserver'
+Making install in startup
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make  install-am
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib'
+ /bin/bash ../libtool   --mode=install /usr/bin/install -c   libspindlebe.la '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib'
+libtool: install: /usr/bin/install -c .libs/libspindlebe.so.2.1.0 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlebe.so.2.1.0
+libtool: install: (cd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib && { ln -s -f libspindlebe.so.2.1.0 libspindlebe.so.2 || { rm -f libspindlebe.so.2 && ln -s libspindlebe.so.2.1.0 libspindlebe.so.2; }; })
+libtool: install: (cd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib && { ln -s -f libspindlebe.so.2.1.0 libspindlebe.so || { rm -f libspindlebe.so && ln -s libspindlebe.so.2.1.0 libspindlebe.so; }; })
+libtool: install: /usr/bin/install -c .libs/libspindlebe.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlebe.la
+libtool: install: /usr/bin/install -c .libs/libspindlebe.a /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlebe.a
+libtool: install: chmod 644 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlebe.a
+libtool: install: ranlib /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlebe.a
+libtool: finish: PATH="/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.codex/tmp/arg0/codex-arg00efF7I:/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.grok/bin:/home/yunwei37/.kimi-code/bin:/home/yunwei37/.bun/bin:/home/yunwei37/.opencode/bin:/home/yunwei37/.nvm/versions/node/v22.22.0/bin:/usr/local/cuda-12.9/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/sbin" ldconfig -n /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib
+----------------------------------------------------------------------
+Libraries have been installed in:
+   /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.
+----------------------------------------------------------------------
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+  /bin/bash ../libtool   --mode=install /usr/bin/install -c spindle_be '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+libtool: install: /usr/bin/install -c spindle_be /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindle_be
+make[5]: Nothing to be done for 'install-data-am'.
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+Making install in src/fe
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+Making install in logging
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/logging'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/logging'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+  /bin/bash ../libtool   --mode=install /usr/bin/install -c spindlef_logd '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle'
+libtool: install: /usr/bin/install -c spindlef_logd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/libexec/spindle/spindlef_logd
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/logging'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/logging'
+Making install in cobo
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/cobo'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/cobo'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/cobo'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/cobo'
+Making install in comlib
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/comlib'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/comlib'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/comlib'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/comlib'
+Making install in openmpi_intercept
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/openmpi_intercept'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/openmpi_intercept'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+ /bin/bash ../libtool   --mode=install /usr/bin/install -c   libompiintercept.la '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle'
+libtool: install: /usr/bin/install -c .libs/libompiintercept.so /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libompiintercept.so
+libtool: install: /usr/bin/install -c .libs/libompiintercept.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle/libompiintercept.la
+libtool: finish: PATH="/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.codex/tmp/arg0/codex-arg00efF7I:/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.grok/bin:/home/yunwei37/.kimi-code/bin:/home/yunwei37/.bun/bin:/home/yunwei37/.opencode/bin:/home/yunwei37/.nvm/versions/node/v22.22.0/bin:/usr/local/cuda-12.9/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/sbin" ldconfig -n /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+----------------------------------------------------------------------
+Libraries have been installed in:
+   /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/spindle
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.
+----------------------------------------------------------------------
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/openmpi_intercept'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/openmpi_intercept'
+Making install in hostbin
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/hostbin'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/hostbin'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/hostbin'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/hostbin'
+Making install in startup
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/startup'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/startup'
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib'
+ /bin/bash ../libtool   --mode=install /usr/bin/install -c   libspindlefe.la '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib'
+libtool: install: /usr/bin/install -c .libs/libspindlefe.so.2.1.0 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlefe.so.2.1.0
+libtool: install: (cd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib && { ln -s -f libspindlefe.so.2.1.0 libspindlefe.so.2 || { rm -f libspindlefe.so.2 && ln -s libspindlefe.so.2.1.0 libspindlefe.so.2; }; })
+libtool: install: (cd /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib && { ln -s -f libspindlefe.so.2.1.0 libspindlefe.so || { rm -f libspindlefe.so && ln -s libspindlefe.so.2.1.0 libspindlefe.so; }; })
+libtool: install: /usr/bin/install -c .libs/libspindlefe.lai /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlefe.la
+libtool: install: /usr/bin/install -c .libs/libspindlefe.a /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlefe.a
+libtool: install: chmod 644 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlefe.a
+libtool: install: ranlib /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib/libspindlefe.a
+libtool: finish: PATH="/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.codex/tmp/arg0/codex-arg00efF7I:/home/yunwei37/.codex/packages/standalone/releases/0.145.0-x86_64-unknown-linux-musl/codex-path:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.local/bin:/home/yunwei37/.grok/bin:/home/yunwei37/.kimi-code/bin:/home/yunwei37/.bun/bin:/home/yunwei37/.opencode/bin:/home/yunwei37/.nvm/versions/node/v22.22.0/bin:/usr/local/cuda-12.9/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/home/yunwei37/.lmstudio/bin:/home/yunwei37/.local/bin:/sbin" ldconfig -n /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib
+----------------------------------------------------------------------
+Libraries have been installed in:
+   /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/lib
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.
+----------------------------------------------------------------------
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin'
+  /bin/bash ../libtool   --mode=install /usr/bin/install -c spindle '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin'
+libtool: install: /usr/bin/install -c spindle /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/include'
+ /usr/bin/install -c -m 644 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source/src/fe/../include/spindle_launch.h '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/include'
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/startup'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/startup'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+Making install in doc
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/doc'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/doc'
+make[3]: Nothing to be done for 'install-exec-am'.
+ /usr/bin/mkdir -p '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/share/man/man1'
+ /usr/bin/install -c -m 644 /home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source/doc/spindle.1 '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/share/man/man1'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/doc'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/doc'
+Making install in testsuite
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make  install-am
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[4]: Nothing to be done for 'install-exec-am'.
+make[4]: Nothing to be done for 'install-data-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make[3]: Nothing to be done for 'install-exec-am'.
+make[3]: Nothing to be done for 'install-data-am'.
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make[1]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'

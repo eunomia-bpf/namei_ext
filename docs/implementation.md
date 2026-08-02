@@ -247,18 +247,21 @@ records are
 `docs/tmp/2026-07-29-namei-ext-final-file-selection-implementation.md`.
 
 The paper direction needs admitted complete experiments, not isolated runner
-checks. Agent workspace RQ1, RQ2, and RQ3 are complete for the admitted
-existing-object slice, including the released source task. The Kubernetes
-`AtomicWriter` payload-view subset is also complete as supporting RQ1 evidence.
+checks. All seven mandatory RQ1 workflows now have reviewed three-boot KVM
+source-oracle results. Agent workspace RQ1, RQ2, and RQ3 are complete for the
+admitted existing-object slice, including the released source task. W5 adds
+real DMTCP checkpoint/restart evidence, and W6 selects 47 exact
+Spindle-populated node-local objects while Spindle retains cache population.
 The highest-value remaining implementation work is:
 
-1. Add cache-cold lookup or selected mdtest metadata operations for RQ2 rather
-   than rerunning completed cache-hot or readdir matrices.
+1. Add one traditional source-derived, feature-equivalent FUSE comparison for
+   RQ2, preferably the completed W6 selection oracle or a scientifically new
+   W3 protocol, rather than reopening the closed mdtest/sandboxfs attempts.
 2. Add a second source-derived RQ3 boundary row if it can reuse a complete RQ1
    oracle and a real custom, stackable, or source filesystem implementation.
-3. Treat full nginx validation/reload, DMTCP, and Spindle as separate
-   source-native extensions. The completed `AtomicWriter` result does not turn
-   the older nginx or Spindle failed preflights into paper evidence.
+3. Treat full nginx validation/reload, broader DMTCP migration, and distributed
+   Spindle/Pynamic scaling as separate source-native extensions. The completed
+   narrow rows do not imply those broader claims.
 4. Treat the old ccache hit/epoch/stale/corrupt matrix as supporting macro
    evidence. It must not replace a source-derived workload because ccache
    already owns cache lookup and validation in userspace.

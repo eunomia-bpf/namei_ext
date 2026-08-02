@@ -1,0 +1,3 @@
+source	target	transport_mode	active_mode
+hello.py	hello_.py	0600	0200
+hello.py	hello_x.py	0700	0300

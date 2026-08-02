@@ -1,0 +1,40 @@
+{
+  "kernel": {
+    "commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+    "release": "7.1.0-rc7-gb07117a3cb41",
+    "image": "artifacts/kernel/bzImage",
+    "config": "artifacts/kernel/config"
+  },
+  "runtime": {
+    "runner": {
+      "path": "artifacts/runtime/namei_ext_spindle_staging"
+    },
+    "policy": {
+      "path": "artifacts/runtime/spindle_staging.bpf.o"
+    },
+    "bpftool": {
+      "path": "artifacts/runtime/bpftool"
+    }
+  },
+  "source": {
+    "spindle_commit": "8853636d2d774729a5a728f5cf6c296b65a1099c",
+    "build": "artifacts/source/build.json",
+    "runtime_tree": {
+      "path": "artifacts/source/spindle-runtime-tree.tar.gz"
+    },
+    "excluded_permission_fixtures": {
+      "path": "artifacts/source/excluded-permission-fixtures.tsv",
+      "count": 2
+    },
+    "reconstructed_readlink_fixtures": {
+      "path": "artifacts/source/reconstructed-readlink-fixtures.tsv",
+      "count": 2,
+      "source": {
+        "path": "artifacts/source/hello.py"
+      }
+    }
+  },
+  "execution": {
+    "compiled_root": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77"
+  }
+}

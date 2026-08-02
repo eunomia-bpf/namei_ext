@@ -1,0 +1,33 @@
+{
+  "schema": "namei_ext.workload_build_provenance.v1",
+  "project": "Spindle",
+  "commit": "8853636d2d774729a5a728f5cf6c296b65a1099c",
+  "source": {
+    "url": "https://codeload.github.com/LLNL/Spindle/tar.gz/8853636d2d774729a5a728f5cf6c296b65a1099c",
+    "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/spindle-8853636d2d774729a5a728f5cf6c296b65a1099c.tar.gz",
+    "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/source",
+    "license": {
+      "spdx": "LGPL-2.1-or-later",
+      "path": "LGPL"
+    }
+  },
+  "build": {
+    "build_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build",
+    "prefix": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix",
+    "security": "none",
+    "resource_manager": "serial",
+    "cachepaths": "/tmp/namei-ext-spindle-cache",
+    "commpath": "/tmp/namei-ext-spindle-comm",
+    "configure_log": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/spindle-8853636d2d77/configure.log",
+    "build_log": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/spindle-8853636d2d77/build.log",
+    "install_log": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/spindle-8853636d2d77/install.log"
+  },
+  "install": {
+    "root": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix",
+    "file_count": 27,
+    "artifacts": {
+      "spindle": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle",
+      "test_driver_elf": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver"
+    }
+  }
+}

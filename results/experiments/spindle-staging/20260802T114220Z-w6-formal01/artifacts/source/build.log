@@ -1,0 +1,481 @@
+make[1]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make  all-recursive
+make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+Making all in src/client
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make  all-recursive
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+Making all in logging
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/logging'
+  CC       ../../logging/libspindleclogc_la-spindle_logc.lo
+  CC       ../../utils/libspindleclogc_la-spindle_mkdir.lo
+  CCLD     libspindleclogc.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/logging'
+Making all in biter
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/biter'
+  CC       ../../biter/libbiterc_la-biterc.lo
+  CC       ../../biter/libbiterc_la-client_queue.lo
+  CC       ../../biter/libbiterc_la-demultiplex.lo
+  CC       ../../biter/libbiterc_la-linux_ids.lo
+  CC       ../../biter/sheep.lo
+  CC       ../../biter/shmutil.lo
+  CC       ../../biter/shm_wrappers.lo
+  CCLD     libsheep.la
+  CCLD     libbiterc.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/biter'
+Making all in shm_cache
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/shm_cache'
+  CC       shmcache.lo
+  CCLD     libshmcache.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/shm_cache'
+Making all in client_comlib
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client_comlib'
+  CC       libclient_pipe_la-client_api_pipe.lo
+  CC       libclient_pipe_la-client_api.lo
+  CC       libclient_pipe_la-client_heap.lo
+  CC       libclient_pipe_la-client_wrappers.lo
+  CC       libclient_socket_la-client_api_socket.lo
+  CC       libclient_socket_la-client_api.lo
+  CC       libclient_socket_la-client_heap.lo
+  CC       libclient_socket_la-client_wrappers.lo
+  CC       libclient_biter_la-client_api_biter.lo
+  CC       libclient_biter_la-client_heap.lo
+  CC       libclient_biter_la-client_api.lo
+  CC       libclient_biter_la-client_wrappers.lo
+  CCLD     libclient_biter.la
+  CCLD     libclient_socket.la
+  CCLD     libclient_pipe.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client_comlib'
+Making all in client
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client'
+  CC       libspindle_audit_la-intercept_open.lo
+  CC       libspindle_audit_la-intercept_exec.lo
+  CC       libspindle_audit_la-intercept_stat.lo
+  CC       libspindle_audit_la-intercept_readlink.lo
+  CC       libspindle_audit_la-intercept_spindleapi.lo
+  CC       libspindle_audit_la-intercept.lo
+  CC       libspindle_audit_la-spindle_regex.lo
+  CC       libspindle_audit_la-patch_interception.lo
+  CC       libspindle_audit_la-realpath.lo
+  CC       ../../utils/libspindle_audit_la-fileutil.lo
+  CC       client.lo
+  CC       lookup.lo
+  CC       should_intercept.lo
+  CC       exec_util.lo
+  CC       remap_exec.lo
+  CC       lookup_libc.lo
+  CC       adjust_argv.lo
+  CC       ../../utils/parseloc.lo
+  CC       ../../utils/getcpu.lo
+  CC       ../crash_handler/crash_io.lo
+  CC       ../crash_handler/crash_fmt.lo
+  CC       ../crash_handler/crash_handler.lo
+  CC       ../crash_handler/crash_lib_offset.lo
+  CC       ../crash_handler/crash_sigchain.lo
+  CCLD     libspindlec_pipe.la
+  CCLD     libspindle_audit.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/client'
+Making all in auditclient
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/auditclient'
+  CC       auditclient.lo
+  CC       auditclient_common.lo
+  CC       patch_linkmap.lo
+  CC       redirect.lo
+  CC       bindgot.lo
+  CC       writablegot.lo
+  CC       patch_bad_dtv.lo
+  CC       malloc_wrapper.lo
+  CC       fixlocale.lo
+  CC       auditclient_x86_64.lo
+  CCLD     libspindle_audit_pipe.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/auditclient'
+Making all in subaudit
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/subaudit'
+  CC       preloadlib.lo
+  CC       subaudit.lo
+  CC       intercept_malloc.lo
+  CC       update_pltbind.lo
+  CC       ../auditclient/auditclient_common.lo
+  CC       ../auditclient/patch_linkmap.lo
+  CC       ../auditclient/fixlocale.lo
+  CCLD     libspindleint.la
+  CCLD     libspindle_subaudit_pipe.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/subaudit'
+Making all in beboot
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/beboot'
+  CC       spindle_bootstrap-spindle_bootstrap.o
+  CC       ../../utils/spindle_bootstrap-parseloc.o
+  CC       ../../utils/spindle_bootstrap-spindle_mkdir.o
+  CC       ../../utils/spindle_bootstrap-getcpu.o
+  CC       ../../utils/spindle_bootstrap-fileutil.o
+  CC       ../client/spindle_bootstrap-exec_util.o
+  CC       ../client/spindle_bootstrap-lookup.o
+  CCLD     spindle_bootstrap
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/beboot'
+Making all in spindle_api
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api'
+  CC       spindle_api.lo
+  CCLD     libspindle.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/spindle_api'
+Making all in ldsolookup
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/ldsolookup'
+  CC       print_ldso_entry-print_ldso_entry.o
+  CC       print_ldso_audit.lo
+  CCLD     print_ldso_entry
+  CCLD     libprint_ldso_audit.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client/ldsolookup'
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/client'
+Making all in src/server
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make  all-recursive
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+Making all in logging
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/logging'
+  CXX      ../../logging/spindled_logd-spindle_logd.o
+  CC       ../../logging/libspindledlogc_la-spindle_logc.lo
+  CCLD     libspindledlogc.la
+  CXXLD    spindled_logd
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/logging'
+Making all in biter
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/biter'
+  CC       ../../biter/libbiterd_la-biterd.lo
+  CC       ../../biter/libbiterd_la-server_queue.lo
+  CC       ../../biter/libbiterd_la-demultiplex.lo
+  CC       ../../biter/libbiterd_la-linux_daemon_ids.lo
+  CCLD     libbiterd.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/biter'
+Making all in cache
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cache'
+  CXX      ldcs_cache.lo
+  CC       ldcs_cache_file_op.lo
+  CXX      stat_cache.lo
+  CC       global_name.lo
+  CC       ../../utils/pathfn.lo
+  CXXLD    libldcs_cache.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cache'
+Making all in cobo
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cobo'
+  CC       ../../cobo/cobo.lo
+  CC       ../../cobo/handshake.lo
+  CC       ../../cobo/cobo_comm.lo
+  CC       ../../cobo/cobo_handshake.lo
+  CCLD     libldcs_cobo.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/cobo'
+Making all in comlib
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/comlib'
+  CC       libserver_pipe_la-ldcs_api_pipe.lo
+  CC       libserver_pipe_la-ldcs_api_pipe_notify.lo
+  CC       libserver_pipe_la-ldcs_api_util.lo
+  CC       libserver_pipe_la-ldcs_api_listen.lo
+  CC       libserver_pipe_la-ldcs_api_wrapper.lo
+  CC       libserver_socket_la-ldcs_api_socket.lo
+  CC       libserver_socket_la-ldcs_api_util.lo
+  CC       libserver_socket_la-ldcs_api_listen.lo
+  CC       libserver_socket_la-ldcs_api_wrapper.lo
+  CC       libserver_biter_la-ldcs_api_biter.lo
+  CC       libserver_biter_la-ldcs_api_util.lo
+  CC       libserver_biter_la-ldcs_api_listen.lo
+  CC       libserver_biter_la-ldcs_api_wrapper.lo
+  CCLD     libserver_biter.la
+  CCLD     libserver_socket.la
+  CCLD     libserver_pipe.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/comlib'
+Making all in auditserver
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/auditserver'
+  CC       ldcs_audit_server_md_cobo.lo
+  CC       ldcs_audit_server_client_cb.lo
+  CC       ldcs_audit_server_server_cb.lo
+  CC       ldcs_audit_server_process.lo
+  CC       ldcs_audit_server_filemngt.lo
+  CC       ldcs_audit_server_handlers.lo
+  CC       ldcs_audit_server_crash_handler.lo
+  CC       ldcs_elf_read.lo
+  CC       ldcs_audit_server_requestors.lo
+  CC       ldcs_audit_server_numa.lo
+  CC       msgbundle.lo
+  CXX      parse_mounts.lo
+  CXX      cleanup_proc.lo
+  CC       translate_maps.lo
+  CC       force_exit.lo
+  CC       ../../utils/fileutil.lo
+  CXXLD    libserverbase.la
+  CCLD     libaudit_server_cobo.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/auditserver'
+Making all in startup
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make  all-am
+make[6]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+  CXX      spindle_be-spindle_be_main.o
+  CXX      spindle_be-spindle_be_serial.o
+  CXX      spindle_be-spindle_be_hostbin.o
+  CXX      spindle_be-spindle_be_mpilaunch.o
+  CC       ../../utils/spindle_be-rshlaunch.o
+  CXX      spindle_be-spindle_be.o
+  CC       spindle_be-hookexec.o
+  CC       ../../utils/spindle_be-parseloc.o
+  CC       ../../utils/spindle_be-keyfile.o
+  CC       ../../utils/spindle_be-spindle_mkdir.o
+  CC       ../../utils/spindle_be-exitnote.o
+  CXX      libspindlebe_la-spindle_be.lo
+  CC       libspindlebe_la-hookexec.lo
+  CC       ../../utils/libspindlebe_la-parseloc.lo
+  CC       ../../utils/libspindlebe_la-keyfile.lo
+  CC       ../../utils/libspindlebe_la-spindle_mkdir.lo
+  CC       ../../utils/libspindlebe_la-exitnote.lo
+  CXX      libspindlebe_static_la-spindle_be.lo
+  CC       libspindlebe_static_la-hookexec.lo
+  CC       ../../utils/libspindlebe_static_la-parseloc.lo
+  CC       ../../utils/libspindlebe_static_la-keyfile.lo
+  CC       ../../utils/libspindlebe_static_la-spindle_mkdir.lo
+  CC       ../../utils/libspindlebe_static_la-exitnote.lo
+  CXXLD    spindle_be
+  CXXLD    libspindlebe_static.la
+  CXXLD    libspindlebe.la
+make[6]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server/startup'
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/server'
+Making all in src/fe
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make  all-recursive
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+Making all in logging
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/logging'
+  CXX      ../../logging/spindlef_logd-spindle_logd.o
+  CC       ../../logging/libspindleflogc_la-spindle_logc.lo
+  CC       ../../utils/libspindleflogc_la-spindle_mkdir.lo
+  CCLD     libspindleflogc.la
+  CXXLD    spindlef_logd
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/logging'
+Making all in cobo
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/cobo'
+  CCLD     libldcs_cobo.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/cobo'
+Making all in comlib
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/comlib'
+  CC       cobo_fe_comm.lo
+  CC       ../../server/comlib/ldcs_api_util.lo
+  CCLD     libfe_cobo.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/comlib'
+Making all in openmpi_intercept
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/openmpi_intercept'
+  CXX      libparseompi_la-parse_openmpi.lo
+  CC       ompi_intercept.lo
+  CCLD     libompiintercept.la
+  CXXLD    libparseompi.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/openmpi_intercept'
+Making all in hostbin
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/hostbin'
+  CXX      libhostbin_la-launch_hostbin.lo
+  CXXLD    libhostbin.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/hostbin'
+Making all in startup
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/startup'
+  CXX      spindle-spindle_fe_main.o
+  CXX      spindle-spindle_fe_serial.o
+  CXX      spindle-parse_launcher.o
+  CXX      spindle-parse_launcher_args.o
+  CXX      spindle-launcher.o
+  CXX      spindle-spindle_session.o
+  CXX      spindle-launch_slurm.o
+  CXX      spindle-launch_lsf.o
+  CXX      spindle-spindle_fe.o
+  CXX      spindle-parseargs.o
+  CXX      spindle-config_parser.o
+  CXX      spindle-config_mgr.o
+  CXX      spindle-parse_preload.o
+  CC       ../../utils/spindle-pathfn.o
+  CC       ../../utils/spindle-keyfile.o
+  CC       ../../utils/spindle-parseloc.o
+  CC       ../../utils/spindle-rshlaunch.o
+  CXX      libspindlefe_la-spindle_fe.lo
+  CXX      libspindlefe_la-parseargs.lo
+  CXX      libspindlefe_la-config_parser.lo
+  CXX      libspindlefe_la-config_mgr.lo
+  CXX      libspindlefe_la-parse_preload.lo
+  CC       ../../utils/libspindlefe_la-keyfile.lo
+  CC       ../../utils/libspindlefe_la-pathfn.lo
+  CC       ../../utils/libspindlefe_la-parseloc.lo
+  CC       ../../utils/libspindlefe_la-rshlaunch.lo
+  CXX      libspindlefe_static_la-spindle_fe.lo
+  CXX      libspindlefe_static_la-parseargs.lo
+  CXX      libspindlefe_static_la-config_parser.lo
+  CXX      libspindlefe_static_la-config_mgr.lo
+  CXX      libspindlefe_static_la-parse_preload.lo
+  CC       ../../utils/libspindlefe_static_la-pathfn.lo
+  CC       ../../utils/libspindlefe_static_la-keyfile.lo
+  CC       ../../utils/libspindlefe_static_la-parseloc.lo
+  CC       ../../utils/libspindlefe_static_la-rshlaunch.lo
+  CXXLD    spindle
+  CXXLD    libspindlefe_static.la
+  CXXLD    libspindlefe.la
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe/startup'
+make[5]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make[5]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/src/fe'
+Making all in doc
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/doc'
+make[3]: Nothing to be done for 'all'.
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/doc'
+Making all in testsuite
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+  CC       libgenerator.o
+  CCLD     libfuncdict.so
+  CCLD     libdepC.so
+  CC       registerlib_exceptB.o
+  CC       registerlib_exceptA.o
+  GEN      origin_dir/origin_subdir
+  CCLD     libtestoutput.so
+  GEN      run_driver_rm
+  GEN      runTests
+  CCLD     retzero_rx
+  GEN      run_driver
+  CCLD     retzero_r
+  GEN      spindle.rc
+  CCLD     retzero_x
+  GEN      preload_file_list
+  CCLD     retzero_
+  GEN      badinterp
+  GEN      hello_r.py
+  GEN      hello_x.py
+  GEN      hello_rx.py
+  GEN      hello_l.py
+  CCLD     spindle_exec_test
+  GEN      badlink.py
+  GEN      spindle_deactivated.sh
+  CCLD     libsymbind_b.so
+  CCLD     libsymbind_d.so
+  CCLD     libsymbind_e.so
+  CCLD     libsymbind_f.so
+  CC       libsymbind_g.so
+  GEN      hello_.py
+  GEN      interpreter_test
+  GEN      interpreter_test_dir
+  GEN      alias/aliastest.py
+  GEN      exec_shell.tcsh
+  GEN      exec_shell_expected_output
+  GEN      exec_shell.sh
+  CCLD     exec_shell
+  GEN      exec_shell_env.sh
+  CCLD     libcrashfuncs.so
+  CCLD     libcrashctor.so
+  CCLD     libcrashfixed.so
+  CCLD     crash_test_fixedaddr
+  CCLD     crash_test_pie
+  GEN      run_crash_tests.sh
+  CCLD     origin_dir/origin_subdir/liborigintarget.so
+  GEN      interpreter_test_dir/interpreter_test_perl
+  CCLD     libcxxexceptB.so
+  GEN      retzero_x
+  GEN      retzero_
+  GEN      retzero_rx
+  CCLD     crash_test
+  GEN      retzero_r
+  CCLD     libsymbind_g.so
+  CCLD     libgenerator
+  CCLD     origin_dir/liboriginlib.so
+  CCLD     liblocal.so
+  CCLD     libdepB.so
+  CCLD     libsymbind_c.so
+  CCLD     libsymbind_a.so
+  CCLD     test_driver
+  GEN      libtest10.c
+  GEN      libtest11.c
+  GEN      libtest12.c
+  GEN      libtest13.c
+  GEN      libtest14.c
+  GEN      libtest15.c
+  GEN      libtest17.c
+  GEN      libtest19.c
+  GEN      libtest20.c
+  GEN      libtest16.c
+  GEN      libtest18.c
+  GEN      libtest50.c
+  GEN      libtest100.c
+  GEN      libtest500.c
+  GEN      libtest1000.c
+  GEN      libtest2000.c
+  GEN      libtest4000.c
+  GEN      libtest6000.c
+  GEN      libtest8000.c
+  GEN      libtest10000.c
+  GEN      libtls1.c
+  GEN      libtls2.c
+  GEN      libtls3.c
+  GEN      libtls5.c
+  GEN      libtls6.c
+  GEN      libtls8.c
+  GEN      libtls9.c
+  GEN      libtls10.c
+  GEN      libtls7.c
+  GEN      libtls4.c
+  GEN      libtls11.c
+  GEN      libtls12.c
+  GEN      libtls13.c
+  GEN      libtls14.c
+  GEN      libtls15.c
+  GEN      libtls16.c
+  GEN      libtls17.c
+  GEN      libtls19.c
+  GEN      libtls18.c
+  GEN      libtls20.c
+  CCLD     libcxxexceptA.so
+  CCLD     libtls1.so
+  CCLD     libtls2.so
+  CCLD     libtls4.so
+  CCLD     libtls3.so
+  CCLD     libtls5.so
+  CCLD     libtls6.so
+  CCLD     libtls7.so
+  CCLD     libtls8.so
+  CCLD     libtls9.so
+  CCLD     libtls10.so
+  CCLD     libtls11.so
+  CCLD     libtls12.so
+  CCLD     libtls13.so
+  CCLD     libtls14.so
+  CCLD     libtls15.so
+  CCLD     libtls16.so
+  CCLD     libtls17.so
+  CCLD     libtls18.so
+  CCLD     libtls19.so
+  CCLD     libtls20.so
+  CCLD     symbind_test
+  CCLD     libtest10.so
+  CCLD     libtest11.so
+  CCLD     libtest12.so
+  CCLD     libtest13.so
+  CCLD     libtest14.so
+  CCLD     libtest15.so
+  CCLD     libtest16.so
+  CCLD     libtest17.so
+  CCLD     libtest18.so
+  CCLD     libtest19.so
+  CCLD     libtest20.so
+  CCLD     libtest50.so
+  CCLD     libtest100.so
+  CCLD     libtest500.so
+  CCLD     libtest1000.so
+  CCLD     libtest2000.so
+  CCLD     libtest4000.so
+  CCLD     libtest6000.so
+  CCLD     libtest8000.so
+  CCLD     libtest10000.so
+  CCLD     libdepA.so
+  GEN      libsymlink.so
+  CCLD     test_driver_libs
+make  all-am
+make[4]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[4]: Nothing to be done for 'all-am'.
+make[4]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite'
+make[3]: Entering directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make[3]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'
+make[1]: Leaving directory '/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build'

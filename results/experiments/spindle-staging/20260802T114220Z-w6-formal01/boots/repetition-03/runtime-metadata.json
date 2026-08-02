@@ -1,0 +1,23 @@
+{
+  "runner": {
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/namei_ext_spindle_staging"
+  },
+  "policy": {
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/spindle_staging.bpf.o"
+  },
+  "bpftool": {
+    "path": "/home/yunwei37/workspace/namei_ext/results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool"
+  },
+  "spindle": {
+    "path": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/prefix/bin/spindle"
+  },
+  "test_driver": {
+    "path": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77/build/testsuite/test_driver"
+  },
+  "runtime": {
+    "source": "/home/yunwei37/workspace/namei_ext/results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-03/runtime/worktree",
+    "compiled_mount": "/home/yunwei37/workspace/namei_ext/.build/workloads/spindle-8853636d2d77",
+    "source_identity": "64:36511015",
+    "mount_identity": "64:36511015"
+  }
+}

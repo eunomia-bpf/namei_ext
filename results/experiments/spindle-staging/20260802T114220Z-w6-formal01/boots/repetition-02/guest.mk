@@ -1,0 +1,13 @@
+REPETITION := 2
+SPINDLE_STAGING_BOOT_DIR := results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-02
+SPINDLE_STAGING_GUEST_RUN_DIR := results/experiments/spindle-staging/20260802T114220Z-w6-formal01
+SPINDLE_STAGING_GUEST_RUNNER := results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/namei_ext_spindle_staging
+SPINDLE_STAGING_GUEST_POLICY := results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/spindle_staging.bpf.o
+SPINDLE_STAGING_GUEST_SPINDLE := .build/workloads/spindle-8853636d2d77/prefix/bin/spindle
+SPINDLE_STAGING_GUEST_TEST_DIR := .build/workloads/spindle-8853636d2d77/build/testsuite
+SPINDLE_STAGING_GUEST_RUNTIME_ROOT := results/experiments/spindle-staging/20260802T114220Z-w6-formal01/boots/repetition-02/runtime/worktree
+SPINDLE_STAGING_GUEST_COMPILED_ROOT := .build/workloads/spindle-8853636d2d77
+SPINDLE_STAGING_GUEST_KERNEL_CONFIG := results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/kernel/config
+SPINDLE_STAGING_GUEST_KERNEL_COMMIT := b07117a3cb41826a34af5ca61e3e2c81dade793f
+SPINDLE_STAGING_GUEST_KERNEL_RELEASE := 7.1.0-rc7-gb07117a3cb41
+SPINDLE_STAGING_GUEST_BPFTOOL := results/experiments/spindle-staging/20260802T114220Z-w6-formal01/artifacts/runtime/bpftool

@@ -1,0 +1,14 @@
+{
+  "schema": "namei_ext.spindle_staging.boot.v1",
+  "repetition": 2,
+  "kernel_commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+  "kernel_release": "7.1.0-rc7-gb07117a3cb41",
+  "status": "completed",
+  "prepare_status": 0,
+  "inner_status": 0,
+  "cleanup_status": 0,
+  "inventory_status": 0,
+  "dmesg_status": 0,
+  "completed_at": "2026-08-02T11:43:02Z",
+  "host_capture_completed_at": "2026-08-02T11:43:02Z"
+}

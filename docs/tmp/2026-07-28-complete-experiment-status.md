@@ -1,6 +1,6 @@
 # Complete Experiment Status
 
-Date: 2026-07-29
+Date: 2026-08-02
 
 ## Purpose
 
@@ -8,6 +8,31 @@ This document is the single current inventory of every experiment relevant to
 the paper. It separates publication evidence from supporting diagnostics,
 failed protocols, and future portfolio cases. A development run is not promoted
 merely because it booted or emitted plausible numbers.
+
+## 2026-08-02 Seven-Workload Addendum
+
+All seven mandatory industrial RQ1 cases now have reviewed formal evidence
+from three fresh modified-kernel KVM boots each. W1--W7 remain seven separate
+case studies; none is merged, removed, or replaced by a benchmark.
+
+The two rows added after the earlier inventory are:
+
+- **W5 Checkpoint/Restore and Migration:** nine real DMTCP checkpoint/restart
+  conditions across three boots; both PathTranslator and `namei_ext` completed
+  three same-path A-to-B transitions, while three withdrawn-map controls
+  returned `ENOENT`. All 108 lower-object rows were unchanged.
+- **W6 HPC File Staging:** source Spindle, direct `namei_ext`, and
+  withdrawn-target conditions passed in all three boots over the same
+  47-object loader slice. All 141 mapping, selection, identity, and
+  preservation rows passed, with 204 attributed `SELECT` hits and three
+  lower-permission and withdrawal controls.
+
+The W6 claim is final pathname selection of exact Spindle-created node-local
+objects. It is not a claim about Spindle distribution, cache-population
+scalability, production launch performance, or a matched FUSE comparison.
+Canonical current details remain in `docs/evaluation.md`; this addendum
+supersedes the older W5/W6 and workload-count statements retained below as
+execution history.
 
 ## 2026-07-29 RQ1 Addendum
 
@@ -151,22 +176,26 @@ authorized without a new reviewed dependency plan.
 Source behavior: DMTCP path virtualization translates a pathname remembered
 before checkpoint to the restored location after migration.
 
-Status: the DMTCP-derived application, restart-path plugin, Make-owned KVM
-runner, analyzer, and source contracts are implemented. The frozen protocol
-exhausted three KVM attempts on a hidden DMTCP assertion, a guest UID mismatch,
-and a Make per-line-shell UID/GID propagation error. The final harness repair
-passes source tests, but the closed protocol does not authorize a fourth run.
-There is no completed checkpoint/restore paper result.
+Result: passed and independently reviewed in three fresh KVM boots at
+`results/experiments/checkpoint-restore-rq1/20260802T111000Z-w5-formal01/`.
+PathTranslator and `namei_ext` each completed three same-path A-to-B restarts;
+three withdrawn-map controls returned `ENOENT`; all 108 lower-object rows and
+BPF/cgroup cleanup gates passed. Broader migration and performance remain out
+of scope.
 
 ### W6 HPC File Staging
 
 Source behavior: LLNL Spindle redirects library, executable, Python, and data
 lookups from shared storage to prepared node-local objects.
 
-Status: the Spindle source loader slice and source/native oracle are fixed, and
-the final-file plus cross-filesystem `SELECT` dependency passed 117/117
-functional cases. Three source-task preflights stopped in setup or wrapper code
-before BPF attachment. There is no Spindle RQ1 result.
+Result: passed and independently reviewed in three fresh KVM boots at
+`results/experiments/spindle-staging/20260802T114220Z-w6-formal01/`. Source
+Spindle populated 47 exact node-local cache objects per boot; the unchanged
+direct loader consumed them through `namei_ext`; withdrawing `libtest10.so`
+made the same loader fail without another target hit. All 141 mapping,
+selection, identity, and preservation rows passed, together with permission,
+cleanup, inventory, and dmesg gates. Distribution, scaling, and performance
+remain out of scope.
 
 ### W7 Toolchain And Dependency Environments
 
