@@ -20,7 +20,10 @@ process-heavy version is archived at
 
 ### Paper-facing workload set
 
-The paper has seven industrial RQ1 case studies. They do not need equal depth:
+The paper has seven mandatory industrial RQ1 case studies. Each must reach a
+complete source-oracle correctness result on the modified kernel in KVM. RQ2
+performance and RQ3 ownership comparisons may use representative cases, but
+they do not replace or reduce any of the seven RQ1 cases:
 two carry the deepest cross-RQ evidence, three already provide completed RQ1
 breadth, and two still require complete RQ1 execution:
 

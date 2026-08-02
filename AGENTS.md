@@ -5,6 +5,12 @@
 - `namei_ext` is not a BPF filesystem. It is a narrow VFS name-resolution
   extension point where an eBPF policy decides path-resolution actions and the
   kernel keeps ownership of VFS objects and lower-filesystem semantics.
+- RQ1 contains seven mandatory industrial case studies, W1 through W7. Every
+  case must reach a complete source-oracle correctness result on the modified
+  kernel in KVM. Never merge, delete, converge, or replace these seven cases;
+  partial completion such as five of seven is progress, not the RQ1 result.
+  Representative RQ2 or RQ3 comparisons do not substitute for an incomplete
+  RQ1 case.
 - A policy is an eBPF program under `bpf/policies/*.bpf.c`, not a YAML/JSON
   policy file or custom configuration language.
 - The kernel-facing BPF ABI exposes one decision function. Lookup and directory
