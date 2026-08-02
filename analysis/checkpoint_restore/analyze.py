@@ -87,21 +87,15 @@ def valid_hex(value, length):
     )
 
 
-def valid_digest(value):
-    return valid_hex(value, 64)
-
-
 def validate_run(run):
     expected = {
         "schema": "namei_ext.run.v2",
-        "protocol_schema": "namei_ext.checkpoint_restore.protocol.v1",
+        "protocol_schema": "namei_ext.checkpoint_restore.protocol.v2",
         "suite": "checkpoint-restore",
         "source_system": "dmtcp-pathtranslator",
-        "result_level": "kvm_checkpoint_restore_preflight",
         "observations": "observations.jsonl",
         "policy": "checkpoint_restore_migration.bpf.c",
         "runner": "namei_ext_checkpoint_restore+dmtcp",
-        "layout": "single-modified-kernel-boot",
         "status": "completed",
     }
     for field, value in expected.items():
@@ -116,11 +110,28 @@ def validate_run(run):
             raise ValueError(f"invalid {field} commit")
     if run.get("kernel_commit") != run["kernel"]["commit"]:
         raise ValueError("kernel commit mismatch")
+    levels = {
+        "kvm_checkpoint_restore_preflight": (
+            "single-modified-kernel-boot", 1
+        ),
+        "kvm_checkpoint_restore_rq1": (
+            "three-modified-kernel-boots", 3
+        ),
+    }
+    if run.get("result_level") not in levels:
+        raise ValueError("unexpected result level")
+    expected_layout, expected_repetitions = levels[run["result_level"]]
+    if run.get("layout") != expected_layout:
+        raise ValueError("unexpected run layout")
+    if run.get("attempt") != 4:
+        raise ValueError("unexpected W5 attempt lineage")
     matrix = run.get("matrix")
     if not isinstance(matrix, dict):
         raise ValueError("missing run matrix")
     if matrix.get("conditions") != list(CONDITIONS):
         raise ValueError("unexpected condition sequence")
+    if matrix.get("repetitions") != expected_repetitions:
+        raise ValueError("unexpected repetition count")
     if matrix.get("control") != "withdrawn":
         raise ValueError("unexpected causal control")
     if matrix.get("timeout_seconds") != 120:
@@ -132,9 +143,10 @@ def validate_run(run):
     if matrix.get("all_conditions_must_pass") is not True:
         raise ValueError("missing all-condition correctness gate")
     baseline = matrix.get("baseline", "")
-    if "patched DMTCP PathTranslator" not in baseline or \
+    if "DMTCP PathTranslator" not in baseline or \
             "scan-bound fix" not in baseline:
         raise ValueError("patched baseline is not labeled precisely")
+    return expected_repetitions
 
 
 def validate_controller_rows(rows):
@@ -300,16 +312,37 @@ def validate_lower_objects(result, condition):
     after_by_key = {lower_key(row): row for row in after}
     if len(before_by_key) != 6 or set(before_by_key) != set(after_by_key):
         raise ValueError(f"lower-object key mismatch for {condition}")
+    expected_contents = {
+        "generation-a/workspace/state.txt": "generation-a",
+        "generation-a/workspace/shared.txt": "shared-common",
+        "generation-a/workspace/stale.txt": "stale-only",
+        "generation-b/workspace/state.txt": "generation-b",
+        "generation-b/workspace/shared.txt": "shared-common",
+        "generation-b/workspace/new.txt": "new-only",
+    }
+    if set(before_by_key) != set(expected_contents):
+        raise ValueError(f"unexpected lower-object set for {condition}")
     fields = (
-        "dev", "ino", "mode", "size", "mtime_sec", "mtime_nsec", "sha256"
+        "dev", "ino", "mode", "size", "mtime_sec", "mtime_nsec",
+        "content", "final_newline",
     )
     for key in before_by_key:
         left = before_by_key[key]
         right = after_by_key[key]
         if left.get("phase") != "before" or right.get("phase") != "after":
             raise ValueError(f"invalid lower phase for {condition}:{key}")
-        if not valid_digest(left.get("sha256")):
-            raise ValueError(f"invalid lower digest for {condition}:{key}")
+        if left.get("event") != "checkpoint-restore-lower" or \
+                right.get("event") != "checkpoint-restore-lower" or \
+                type(left.get("dev")) is not int or left["dev"] <= 0 or \
+                type(left.get("ino")) is not int or left["ino"] <= 0 or \
+                type(left.get("mode")) is not int or \
+                left["mode"] & 0o170000 != 0o100000:
+            raise ValueError(f"invalid lower object for {condition}:{key}")
+        if left.get("content") != expected_contents[key] or \
+                left.get("final_newline") is not True:
+            raise ValueError(f"wrong lower contents for {condition}:{key}")
+        if left.get("size") != len(expected_contents[key]) + 1:
+            raise ValueError(f"wrong lower size for {condition}:{key}")
         if any(left.get(field) != right.get(field) for field in fields):
             raise ValueError(f"lower object changed for {condition}:{key}")
 
@@ -326,33 +359,37 @@ def validate_checkpoint_artifact(result, condition):
     image = Path(lines[0])
     if image.is_absolute() or ".." in image.parts:
         raise ValueError(f"non-relocatable checkpoint path for {condition}")
-    if not (result / image).is_file():
+    checkpoint = result / image
+    if not checkpoint.is_file() or checkpoint.stat().st_size <= 0:
         raise ValueError(f"missing checkpoint image for {condition}")
 
 
+def validate_condition_inventory(result, condition):
+    programs = json.loads(
+        (result / "bpf-programs-after.json").read_text(encoding="utf-8")
+    )
+    if programs != []:
+        raise ValueError(f"residual BPF program after {condition}")
+    cgroups = json.loads(
+        (result / "bpf-cgroup-after.json").read_text(encoding="utf-8")
+    )
+    if not isinstance(cgroups, list) or any(
+            isinstance(item, dict) and "id" in item
+            for item in nested_objects(cgroups)):
+        raise ValueError(f"residual cgroup BPF program after {condition}")
+
+
 def validate_inventories(boot):
-    for name in (
-        "bpf-programs-before.json",
-        "bpf-programs-after.json",
-        "bpf-cgroup-before.json",
-        "bpf-cgroup-after.json",
-    ):
+    for name in ("bpf-programs-before.json", "bpf-programs-after.json"):
         value = json.loads((boot / name).read_text(encoding="utf-8"))
         if value != []:
             raise ValueError(f"nonempty BPF inventory: {name}")
-    pathvirt = boot / "conditions/pathvirt"
-    for name in ("bpf-programs-after.json", "bpf-cgroup-after.json"):
-        value = json.loads((pathvirt / name).read_text(encoding="utf-8"))
-        if value != []:
-            raise ValueError(f"pathvirt engaged BPF: {name}")
-    for name in (
-        "fuse-mounts-before.txt",
-        "fuse-mounts-after.txt",
-        "fuse-open-fds-before.txt",
-        "fuse-open-fds-after.txt",
-    ):
-        if (boot / name).read_bytes():
-            raise ValueError(f"nonempty FUSE inventory: {name}")
+    for name in ("bpf-cgroup-before.json", "bpf-cgroup-after.json"):
+        value = json.loads((boot / name).read_text(encoding="utf-8"))
+        if not isinstance(value, list) or any(
+                isinstance(item, dict) and "id" in item
+                for item in nested_objects(value)):
+            raise ValueError(f"attached cgroup BPF program: {name}")
     upstream = (boot / "upstream-autotest.stdout.log").read_text(
         encoding="utf-8"
     )
@@ -360,41 +397,74 @@ def validate_inventories(boot):
         raise ValueError("upstream unchanged-mapping test did not pass")
 
 
+def nested_objects(value):
+    if isinstance(value, dict):
+        yield value
+        for nested in value.values():
+            yield from nested_objects(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            yield from nested_objects(nested)
+
+
 def validate_runtime_identity(boot):
     identity = load_json(boot / "runtime-identity.json")
     for field in ("uid", "gid"):
         if type(identity.get(field)) is not int or identity[field] < 0:
             raise ValueError(f"invalid runtime {field}")
+    probe = (boot / "runtime-identity-probe.txt").read_text(
+        encoding="utf-8"
+    ).splitlines()
+    if probe != [str(identity["uid"]), str(identity["gid"])]:
+        raise ValueError("setpriv runtime identity probe mismatch")
     return identity
 
 
 def analyze_result(result):
     result = Path(result)
     run = load_json(result / "run.json")
-    validate_run(run)
-    rows = load_jsonl(result / "observations.jsonl")
-    lifecycles = validate_controller_rows(rows)
-    boot = result / "boots/preflight"
-    boot_json = load_json(boot / "boot.json")
-    if boot_json.get("schema") != "namei_ext.checkpoint_restore.boot.v1" or \
-            boot_json.get("status") != "completed" or \
-            boot_json.get("conditions") != list(CONDITIONS):
-        raise ValueError("invalid boot record")
-    validate_inventories(boot)
-    runtime_identity = validate_runtime_identity(boot)
+    repetitions = validate_run(run)
+    boot_names = [
+        line.strip()
+        for line in (result / "expected-boots.txt")
+        .read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    if len(boot_names) != repetitions or len(set(boot_names)) != repetitions:
+        raise ValueError("unexpected boot list")
+    timings = {}
+    runtime_identities = {}
     applications = {}
-    for condition in CONDITIONS:
-        condition_result = boot / "conditions" / condition
-        applications[condition] = validate_application_rows(
-            condition_result, condition, runtime_identity
-        )
-        validate_lower_objects(condition_result, condition)
-        validate_checkpoint_artifact(condition_result, condition)
+    for boot_name in boot_names:
+        boot = result / "boots" / boot_name
+        boot_json = load_json(boot / "boot.json")
+        if boot_json.get("schema") != \
+                "namei_ext.checkpoint_restore.boot.v2" or \
+                boot_json.get("status") != "completed" or \
+                boot_json.get("conditions") != list(CONDITIONS):
+            raise ValueError(f"invalid boot record for {boot_name}")
+        validate_inventories(boot)
+        runtime_identity = validate_runtime_identity(boot)
+        runtime_identities[boot_name] = runtime_identity
+        rows = load_jsonl(boot / "observations.jsonl")
+        timings[boot_name] = validate_controller_rows(rows)
+        applications[boot_name] = {}
+        for condition in CONDITIONS:
+            condition_result = boot / "conditions" / condition
+            applications[boot_name][condition] = validate_application_rows(
+                condition_result, condition, runtime_identity
+            )
+            validate_lower_objects(condition_result, condition)
+            validate_checkpoint_artifact(condition_result, condition)
+            validate_condition_inventory(condition_result, condition)
+    formal = run["result_level"] == "kvm_checkpoint_restore_rq1"
     return {
-        "schema": "namei_ext.checkpoint_restore.summary.v1",
+        "schema": "namei_ext.checkpoint_restore.summary.v2",
         "run_id": run["run_id"],
         "correctness": {
-            "all_conditions_passed": True,
+            "all_boots_passed": True,
+            "boot_count": repetitions,
+            "boots": boot_names,
             "conditions": list(CONDITIONS),
             "upstream_unchanged_mapping_test": "passed",
             "pathvirt_a_to_b": "passed",
@@ -402,36 +472,47 @@ def analyze_result(result):
             "withdrawn_control": "failed_closed_as_expected",
             "lower_objects_unchanged": True,
             "bpf_inventory_clean": True,
-            "fuse_inventory_clean": True,
             "runtime_identity_consistent": True,
         },
         "timing_ns": {
-            condition: {
-                field: lifecycles[condition][field]
-                for field in (
-                    "checkpoint_ns",
-                    "update_ns",
-                    "restart_ns",
-                    "total_ns",
-                )
+            boot_name: {
+                condition: {
+                    field: timings[boot_name][condition][field]
+                    for field in (
+                        "checkpoint_ns",
+                        "update_ns",
+                        "restart_ns",
+                        "total_ns",
+                    )
+                }
+                for condition in CONDITIONS
             }
-            for condition in CONDITIONS
+            for boot_name in boot_names
         },
         "mechanism": {
-            "pathvirt": "patched DMTCP PathTranslator",
+            "pathvirt": "DMTCP PathTranslator with disclosed scan fix",
             "namei_ext": "bounded existing-directory selection",
             "withdrawn": "causal control",
-            "runtime_identity": runtime_identity,
-            "same_logical_path": applications["pathvirt"]["pre"][
-                "logical_path"
-            ] == applications["pathvirt"]["post"]["logical_path"]
-            and applications["namei_ext"]["pre"]["logical_path"]
-            == applications["namei_ext"]["post"]["logical_path"],
+            "runtime_identity_by_boot": runtime_identities,
+            "same_logical_path": all(
+                applications[boot_name][condition]["pre"]["logical_path"]
+                == applications[boot_name][condition]["post"][
+                    "logical_path"
+                ]
+                for boot_name in boot_names
+                for condition in CONDITIONS
+            ),
         },
         "verdict": {
-            "tested_hypothesis": "not_tested",
-            "evidence_role": "dependency_preflight",
-            "next_gate": "independent result review before formal matrix",
+            "tested_hypothesis": "supported" if formal else "not_tested",
+            "evidence_role": (
+                "formal_rq1_evidence" if formal else "dependency_preflight"
+            ),
+            "next_gate": (
+                "integrate W5 into the seven-case RQ1 evaluation"
+                if formal else
+                "independent result review before formal three-boot run"
+            ),
         },
     }
 
@@ -446,37 +527,39 @@ def write_outputs(summary, output):
     with (output / "summary.csv").open(
             "w", encoding="utf-8", newline="") as destination:
         writer = csv.writer(destination)
-        writer.writerow(
-            (
-                "condition",
-                "checkpoint_ns",
-                "update_ns",
-                "restart_ns",
-                "total_ns",
-            )
-        )
-        for condition in CONDITIONS:
-            timing = summary["timing_ns"][condition]
-            writer.writerow(
-                (
+        writer.writerow((
+            "boot", "condition", "checkpoint_ns", "update_ns",
+            "restart_ns", "total_ns",
+        ))
+        for boot_name, boot_timings in summary["timing_ns"].items():
+            for condition in CONDITIONS:
+                timing = boot_timings[condition]
+                writer.writerow((
+                    boot_name,
                     condition,
                     timing["checkpoint_ns"],
                     timing["update_ns"],
                     timing["restart_ns"],
                     timing["total_ns"],
-                )
-            )
+                ))
+    formal = summary["verdict"]["evidence_role"] == "formal_rq1_evidence"
     report = [
+        "# Checkpoint/Restore RQ1" if formal else
         "# Checkpoint/Restore Preflight",
         "",
-        "All three conditions passed their predeclared correctness oracle.",
-        "Patched DMTCP PathTranslator and namei_ext both changed the same",
+        f"All three conditions passed in {summary['correctness']['boot_count']} "
+        "modified-kernel boot(s).",
+        "DMTCP PathTranslator and namei_ext both changed the same",
         "remembered pathname from generation A to generation B after a real",
         "DMTCP restart. Withdrawing the namei_ext mapping failed closed as",
-        "expected. Lower objects were unchanged, and BPF and FUSE inventories",
-        "were clean after the run.",
+        "expected. The lower objects were unchanged, and no BPF program",
+        "remained attached after a boot.",
         "",
-        "This is dependency-preflight evidence, not a formal paper result.",
+        (
+            "This is formal W5 RQ1 evidence."
+            if formal else
+            "This is dependency-preflight evidence, not a formal paper result."
+        ),
         "Durations are diagnostic and do not support a performance claim.",
         "",
     ]

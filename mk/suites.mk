@@ -38,6 +38,7 @@ NAMEI_EXT_FORMAL_CASE_STUDY_ENTRYPOINTS := \
 	kvm-agent-workspace-rq3 \
 	kvm-application-file-sharing-source-oracle-rq1 \
 	kvm-build-action-sandboxing-rq1 \
+	kvm-checkpoint-restore-rq1 \
 	kvm-toolchain-environment \
 	kvm-kubernetes-configmap-publication-rq1 \
 	experiment-spindle-staging \

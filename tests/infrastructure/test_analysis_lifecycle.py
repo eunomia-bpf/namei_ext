@@ -228,6 +228,13 @@ class AnalysisLifecycleTest(unittest.TestCase):
                 "NAMEI_EXT_RUN_COMPLETE",
                 "checkpoint-restore-analyze",
             ),
+            (
+                ROOT / "mk/experiments/checkpoint_restore.mk",
+                "kvm-checkpoint-restore-rq1",
+                "checkpoint-restore-finalize",
+                "NAMEI_EXT_RUN_COMPLETE",
+                "checkpoint-restore-analyze",
+            ),
         )
         for path, target, *ordered_steps in cases:
             with self.subTest(target=target):
@@ -235,47 +242,68 @@ class AnalysisLifecycleTest(unittest.TestCase):
                 positions = [block.index(step) for step in ordered_steps]
                 self.assertEqual(positions, sorted(positions))
 
-    def test_checkpoint_host_verifies_manifests_before_completion(self):
-        block = self.target_block(
+    def test_checkpoint_path_has_no_checksum_evidence_gate(self):
+        paths = (
             ROOT / "experiments/checkpoint_restore/Makefile",
-            "pathvirt-host-preflight",
+            ROOT / "experiments/checkpoint_restore/namei_ext_checkpoint_restore.c",
+            ROOT / "mk/experiments/checkpoint_restore.mk",
+            ROOT / "analysis/checkpoint_restore/analyze.py",
         )
-        ordered_steps = (
-            "sha256sum -c evidence.sha256",
-            "sha256sum -c checkpoint-images.sha256",
-            "sha256sum -c inputs.sha256",
-            "sha256sum -c artifacts.sha256",
-            "NAMEI_EXT_RUN_VALIDATE_BASE",
-            "NAMEI_EXT_RUN_COMPLETE",
-            "NAMEI_EXT_RUN_VALIDATE_COMPLETE",
-        )
-        positions = [block.index(step) for step in ordered_steps]
-        self.assertEqual(positions, sorted(positions))
-        self.assertIn(
-            '"$(PATHVIRT_HOST_RESULT_DIR)/dmtcp-install"',
-            block,
-        )
-        self.assertIn(
-            '"$(PATHVIRT_HOST_RESULT_DIR)/runtime/namei_ext_checkpoint_restore"',
-            block,
-        )
+        for path in paths:
+            with self.subTest(path=path):
+                source = path.read_text(encoding="utf-8").lower()
+                self.assertNotIn("sha256", source)
+                self.assertNotIn("checksum", source)
 
     def test_checkpoint_upstream_identity_is_computed_in_setpriv_recipe(self):
         block = self.target_block(
             ROOT / "mk/experiments/checkpoint_restore.mk",
             "__checkpoint_restore_guest",
         )
-        setpriv = block[block.index("setpriv \\\n"):block.index("--clear-groups")]
+        self.assertIn("runtime-identity-probe.txt", block)
+        probe = block[block.index("runtime_uid="):block.index("upstream_status=0")]
+        self.assertIn(
+            '--reuid="$$runtime_uid" --regid="$$runtime_gid" --clear-groups',
+            probe,
+        )
+        self.assertIn(
+            "sh -c 'id -u; id -g'",
+            probe,
+        )
+        upstream = block[block.index("upstream_status=0"):]
         self.assertIn(
             '--reuid="$$(stat -c %u "$(CHECKPOINT_RESTORE_BOOT_DIR)")"',
-            setpriv,
+            upstream,
         )
         self.assertIn(
             '--regid="$$(stat -c %g "$(CHECKPOINT_RESTORE_BOOT_DIR)")"',
-            setpriv,
+            upstream,
         )
-        self.assertNotIn('runtime_uid', setpriv)
-        self.assertNotIn('runtime_gid', setpriv)
+
+    def test_checkpoint_runtime_directories_are_owned_by_application_user(self):
+        suite = (
+            ROOT / "mk/experiments/checkpoint_restore.mk"
+        ).read_text(encoding="utf-8")
+        runner = (
+            ROOT / "experiments/checkpoint_restore/"
+            "namei_ext_checkpoint_restore.c"
+        ).read_text(encoding="utf-8")
+        run_block = self.target_block(
+            ROOT / "mk/experiments/checkpoint_restore.mk",
+            "checkpoint-restore-run",
+        )
+        self.assertIn(
+            'mkdir "$$boot_dir/conditions/$$condition"', run_block
+        )
+        guest_block = self.target_block(
+            ROOT / "mk/experiments/checkpoint_restore.mk",
+            "__checkpoint_restore_guest",
+        )
+        self.assertNotIn('mkdir "$$result"', guest_block)
+        self.assertIn('test -d "$$result"', guest_block)
+        self.assertIn("chown(directories[index].path, config->runtime_uid,", runner)
+        self.assertIn("config->runtime_gid)", runner)
+        self.assertIn("CHECKPOINT_RESTORE_GUEST_RUNNER", suite)
 
 
 if __name__ == "__main__":

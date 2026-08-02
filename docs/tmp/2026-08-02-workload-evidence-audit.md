@@ -83,7 +83,7 @@ be summed into one synthetic score.
 
 | Required workload | Work completed | Why it is not current evidence |
 | --- | --- | --- |
-| Checkpoint/Restore and Migration | DMTCP path-virtualization source behavior and oracle identified | Three source preflights failed; no valid `namei_ext` KVM result |
+| Checkpoint/Restore and Migration | Pinned DMTCP build, official `pathvirt`, and the source-derived A-to-B checkpoint/restart oracle now pass on the host; attempt-4 one-boot preflight and three-boot formal paths are implemented | The three old KVM roots failed before the focal lifecycle; the new modified-kernel attempt has not run, so there is still no valid `namei_ext` KVM result |
 | HPC File Staging | Spindle built; source loader slice and 47-object inventory fixed; generic final-file/cross-filesystem selection passed 117/117 | Three Spindle preflights failed before BPF attachment; no Spindle RQ1 result |
 
 These failures do not weaken the five completed workload rows, but they leave
@@ -148,6 +148,8 @@ comparison than completing W5 and W6.
   `results/experiments/build-cache/20260723T-build-cache-release-v1/w4-ccache-bulk-fuse-compile.jsonl`
 - ccache epoch-switch legacy raw rows (no current `summary.json`):
   `results/phase1/20260724T-epoch-switch-release-v2/w4-ccache-bulk-compile-epoch-switch.jsonl`
+- W5 DMTCP source-positive control:
+  `results/workloads/checkpoint-restore-source/20260802T094525Z-df8ae7d4/`
 
 ## Remaining Risks
 

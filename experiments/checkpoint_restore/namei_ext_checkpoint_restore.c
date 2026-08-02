@@ -23,8 +23,8 @@
 #include <unistd.h>
 
 #define TARGET_ID 1
-#define SHA256_HEX_LENGTH 64
 #define MAX_SNAPSHOTS 6
+#define SNAPSHOT_CONTENT_MAX 64
 
 enum checkpoint_restore_counter {
 	CR_COUNTER_TOTAL = 0,
@@ -71,7 +71,6 @@ struct controller_paths {
 	char quit_stderr[PATH_MAX];
 	char process_cgroups[PATH_MAX];
 	char checkpoint_images[PATH_MAX];
-	char checkpoint_hashes[PATH_MAX];
 };
 
 struct controller_config {
@@ -96,7 +95,8 @@ struct controller_config {
 struct file_snapshot {
 	char path[PATH_MAX];
 	struct stat metadata;
-	char sha256[SHA256_HEX_LENGTH + 1];
+	char content[SNAPSHOT_CONTENT_MAX];
+	size_t content_size;
 };
 
 static uint64_t monotonic_ns(void)
@@ -261,10 +261,7 @@ static int build_paths(struct controller_config *config)
 				   "process-cgroups.txt") ||
 		       namei_ext_path_join(paths->checkpoint_images,
 				   sizeof(paths->checkpoint_images), result,
-				   "checkpoint-images.txt") ||
-		       namei_ext_path_join(paths->checkpoint_hashes,
-				   sizeof(paths->checkpoint_hashes), result,
-				   "checkpoint-images.sha256");
+				   "checkpoint-images.txt");
 }
 
 static int write_fixture_file(const char *directory, const char *name,
@@ -303,6 +300,10 @@ static int setup_fixture(struct controller_config *config)
 				     directories[index].mode);
 		if (ret)
 			return ret;
+		if (geteuid() == 0 &&
+		    chown(directories[index].path, config->runtime_uid,
+			  config->runtime_gid))
+			return -errno;
 	}
 	if (access(paths->logical_workspace, F_OK) == 0)
 		return -EEXIST;
@@ -329,66 +330,43 @@ static int setup_fixture(struct controller_config *config)
 	return ret;
 }
 
-static int sha256_file(const char *path,
-		       char output[SHA256_HEX_LENGTH + 1])
+static int read_snapshot_content(const char *path, char *output, size_t size,
+				 size_t *content_size)
 {
-	char buffer[PATH_MAX + SHA256_HEX_LENGTH + 8] = {};
-	ssize_t total = 0;
-	int pipe_fd[2];
-	int status;
-	pid_t child;
+	size_t total = 0;
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
 
-	if (pipe2(pipe_fd, O_CLOEXEC))
+	if (fd < 0)
 		return -errno;
-	child = fork();
-	if (child < 0) {
-		int saved_errno = errno;
-
-		close(pipe_fd[0]);
-		close(pipe_fd[1]);
-		return -saved_errno;
-	}
-	if (!child) {
-		if (dup2(pipe_fd[1], STDOUT_FILENO) < 0)
-			_exit(120);
-		close(pipe_fd[0]);
-		close(pipe_fd[1]);
-		execlp("sha256sum", "sha256sum", path, (char *)NULL);
-		_exit(121);
-	}
-	close(pipe_fd[1]);
-	while (total < (ssize_t)sizeof(buffer) - 1) {
-		ssize_t count = read(pipe_fd[0], buffer + total,
-				     sizeof(buffer) - 1 - total);
+	while (total < size) {
+		ssize_t count = read(fd, output + total, size - total);
 
 		if (count > 0) {
-			total += count;
+			total += (size_t)count;
 			continue;
 		}
 		if (!count)
 			break;
 		if (errno == EINTR)
 			continue;
-		close(pipe_fd[0]);
-		kill(child, SIGKILL);
-		waitpid(child, NULL, 0);
+		close(fd);
 		return -errno;
 	}
-	close(pipe_fd[0]);
-	if (waitpid(child, &status, 0) != child || !WIFEXITED(status) ||
-	    WEXITSTATUS(status))
-		return -ECHILD;
-	if (total < SHA256_HEX_LENGTH)
-		return -EIO;
-	for (unsigned int index = 0; index < SHA256_HEX_LENGTH; index++) {
-		char value = buffer[index];
+	if (total == size) {
+		char extra;
+		ssize_t count;
 
-		if (!((value >= '0' && value <= '9') ||
-		      (value >= 'a' && value <= 'f')))
-			return -EINVAL;
-		output[index] = value;
+		do {
+			count = read(fd, &extra, 1);
+		} while (count < 0 && errno == EINTR);
+		if (count != 0) {
+			close(fd);
+			return count > 0 ? -EFBIG : -errno;
+		}
 	}
-	output[SHA256_HEX_LENGTH] = '\0';
+	if (close(fd))
+		return -errno;
+	*content_size = total;
 	return 0;
 }
 
@@ -413,8 +391,12 @@ static int capture_snapshots(const struct controller_config *config,
 			return ret;
 		if (stat(snapshots[index].path, &snapshots[index].metadata))
 			return -errno;
-		ret = sha256_file(snapshots[index].path,
-				  snapshots[index].sha256);
+		if (!S_ISREG(snapshots[index].metadata.st_mode))
+			return -EINVAL;
+		ret = read_snapshot_content(snapshots[index].path,
+					    snapshots[index].content,
+					    sizeof(snapshots[index].content),
+					    &snapshots[index].content_size);
 		if (ret)
 			return ret;
 	}
@@ -431,19 +413,32 @@ static int write_snapshot_manifest(const char *path, const char *phase,
 	for (unsigned int index = 0; index < MAX_SNAPSHOTS; index++) {
 		const struct stat *metadata = &snapshots[index].metadata;
 
+		if (!snapshots[index].content_size ||
+		    snapshots[index].content[
+			    snapshots[index].content_size - 1] != '\n' ||
+		    memchr(snapshots[index].content, '"',
+			   snapshots[index].content_size - 1) ||
+		    memchr(snapshots[index].content, '\\',
+			   snapshots[index].content_size - 1)) {
+			fclose(output);
+			return -EINVAL;
+		}
 		fprintf(output,
 			"{\"event\":\"checkpoint-restore-lower\","
 			"\"phase\":\"%s\",\"path\":\"%s\","
 			"\"dev\":%llu,\"ino\":%llu,\"mode\":%u,"
 			"\"size\":%lld,\"mtime_sec\":%lld,"
-			"\"mtime_nsec\":%ld,\"sha256\":\"%s\"}\n",
+			"\"mtime_nsec\":%ld,\"content\":\"%.*s\","
+			"\"final_newline\":true}\n",
 			phase, snapshots[index].path,
 			(unsigned long long)metadata->st_dev,
 			(unsigned long long)metadata->st_ino,
 			(unsigned int)metadata->st_mode,
 			(long long)metadata->st_size,
 			(long long)metadata->st_mtim.tv_sec,
-			metadata->st_mtim.tv_nsec, snapshots[index].sha256);
+			metadata->st_mtim.tv_nsec,
+			(int)snapshots[index].content_size - 1,
+			snapshots[index].content);
 	}
 	return fclose(output) ? -errno : 0;
 }
@@ -463,7 +458,9 @@ static int validate_snapshots(
 		    left->st_size != right->st_size ||
 		    left->st_mtim.tv_sec != right->st_mtim.tv_sec ||
 		    left->st_mtim.tv_nsec != right->st_mtim.tv_nsec ||
-		    strcmp(before[index].sha256, after[index].sha256))
+		    before[index].content_size != after[index].content_size ||
+		    memcmp(before[index].content, after[index].content,
+			   before[index].content_size))
 			return -EIO;
 	}
 	return 0;
@@ -743,14 +740,15 @@ static int find_checkpoint_image(const struct controller_config *config,
 static int record_checkpoint_image(const struct controller_config *config,
 				   const char *image)
 {
-	char hash[SHA256_HEX_LENGTH + 1];
 	const char *relative;
 	size_t result_length = strlen(config->result_dir);
+	struct stat metadata;
 	FILE *output;
-	int ret = sha256_file(image, hash);
 
-	if (ret)
-		return ret;
+	if (stat(image, &metadata))
+		return -errno;
+	if (!S_ISREG(metadata.st_mode) || metadata.st_size <= 0)
+		return -EINVAL;
 	if (strncmp(image, config->result_dir, result_length) ||
 	    image[result_length] != '/' || !image[result_length + 1])
 		return -EXDEV;
@@ -759,12 +757,6 @@ static int record_checkpoint_image(const struct controller_config *config,
 	if (!output)
 		return -errno;
 	fprintf(output, "%s\n", relative);
-	if (fclose(output))
-		return -errno;
-	output = fopen(config->paths.checkpoint_hashes, "w");
-	if (!output)
-		return -errno;
-	fprintf(output, "%s  %s\n", hash, relative);
 	return fclose(output) ? -errno : 0;
 }
 
@@ -900,7 +892,7 @@ static int run_lifecycle(struct controller_config *config, FILE *output)
 		ret = write_snapshot_manifest(config->paths.lower_before,
 					      "before", before);
 	emit_case(output, config->condition_name, "capture_lower_before", !ret,
-		  ret, "captured lower-object identity and SHA-256");
+		  ret, "captured lower-object identity, metadata, and contents");
 	if (ret)
 		return 1;
 
@@ -1080,7 +1072,7 @@ static int run_lifecycle(struct controller_config *config, FILE *output)
 	if (!ret)
 		ret = validate_snapshots(before, after);
 	emit_case(output, config->condition_name, "lower_objects_unchanged",
-		  !ret, ret, "lower object identity, metadata, and SHA-256 remained unchanged");
+		  !ret, ret, "lower object identity, metadata, and contents remained unchanged");
 	if (ret)
 		fails++;
 

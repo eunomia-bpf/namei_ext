@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import copy
-import hashlib
 import json
 import tempfile
 import unittest
@@ -18,27 +17,35 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def run_record(self):
+    def run_record(self, formal=False):
         return {
             "schema": "namei_ext.run.v2",
             "run_id": "checkpoint-test",
-            "protocol_schema": "namei_ext.checkpoint_restore.protocol.v1",
+            "protocol_schema": "namei_ext.checkpoint_restore.protocol.v2",
             "suite": "checkpoint-restore",
             "source_system": "dmtcp-pathtranslator",
-            "result_level": "kvm_checkpoint_restore_preflight",
+            "result_level": (
+                "kvm_checkpoint_restore_rq1" if formal else
+                "kvm_checkpoint_restore_preflight"
+            ),
             "observations": "observations.jsonl",
             "policy": "checkpoint_restore_migration.bpf.c",
             "runner": "namei_ext_checkpoint_restore+dmtcp",
             "source": {"commit": "a" * 40, "dirty": False},
             "kernel": {"commit": "b" * 40, "dirty": False},
             "kernel_commit": "b" * 40,
-            "layout": "single-modified-kernel-boot",
+            "layout": (
+                "three-modified-kernel-boots" if formal else
+                "single-modified-kernel-boot"
+            ),
+            "attempt": 4,
             "status": "completed",
             "matrix": {
                 "conditions": list(analyze.CONDITIONS),
+                "repetitions": 3 if formal else 1,
                 "baseline": (
-                    "patched DMTCP PathTranslator with a disclosed "
-                    "one-line restart-environment scan-bound fix"
+                    "DMTCP PathTranslator with a disclosed "
+                    "restart-environment scan-bound fix"
                 ),
                 "control": "withdrawn",
                 "timeout_seconds": 120,
@@ -160,16 +167,16 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
         return [pre, post]
 
     def lower_rows(self, phase):
+        fixtures = (
+            ("a", "state.txt", "generation-a"),
+            ("a", "shared.txt", "shared-common"),
+            ("a", "stale.txt", "stale-only"),
+            ("b", "state.txt", "generation-b"),
+            ("b", "shared.txt", "shared-common"),
+            ("b", "new.txt", "new-only"),
+        )
         rows = []
-        for generation, name in (
-            ("a", "state.txt"),
-            ("a", "shared.txt"),
-            ("a", "stale.txt"),
-            ("b", "state.txt"),
-            ("b", "shared.txt"),
-            ("b", "new.txt"),
-        ):
-            value = f"{generation}/{name}"
+        for index, (generation, name, content) in enumerate(fixtures, 1):
             rows.append({
                 "event": "checkpoint-restore-lower",
                 "phase": phase,
@@ -178,26 +185,22 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                     f"workspace/{name}"
                 ),
                 "dev": 1,
-                "ino": int(hashlib.sha256(value.encode()).hexdigest()[:8], 16),
+                "ino": index,
                 "mode": 33152,
-                "size": len(value),
+                "size": len(content) + 1,
                 "mtime_sec": 1,
                 "mtime_nsec": 2,
-                "sha256": hashlib.sha256(value.encode()).hexdigest(),
+                "content": content,
+                "final_newline": True,
             })
         return rows
 
-    def fixture(self, root):
-        root = Path(root)
-        run = self.run_record()
-        (root / "run.json").write_text(
-            json.dumps(run), encoding="utf-8"
-        )
-        boot = root / "boots/preflight"
+    def add_boot(self, root, boot_name):
+        boot = root / "boots" / boot_name
         boot.mkdir(parents=True)
         (boot / "boot.json").write_text(
             json.dumps({
-                "schema": "namei_ext.checkpoint_restore.boot.v1",
+                "schema": "namei_ext.checkpoint_restore.boot.v2",
                 "status": "completed",
                 "conditions": list(analyze.CONDITIONS),
             }),
@@ -206,6 +209,9 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
         (boot / "runtime-identity.json").write_text(
             json.dumps({"uid": 1000, "gid": 1000}), encoding="utf-8"
         )
+        (boot / "runtime-identity-probe.txt").write_text(
+            "1000\n1000\n", encoding="utf-8"
+        )
         for name in (
             "bpf-programs-before.json",
             "bpf-programs-after.json",
@@ -213,13 +219,6 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             "bpf-cgroup-after.json",
         ):
             (boot / name).write_text("[]\n", encoding="utf-8")
-        for name in (
-            "fuse-mounts-before.txt",
-            "fuse-mounts-after.txt",
-            "fuse-open-fds-before.txt",
-            "fuse-open-fds-after.txt",
-        ):
-            (boot / name).write_bytes(b"")
         (boot / "upstream-autotest.stdout.log").write_text(
             "test groups: pass=1 fail=0 skipped=0 total=1\n",
             encoding="utf-8",
@@ -235,12 +234,10 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                 self.application_rows(condition),
             )
             self.write_jsonl(
-                result / "lower-before.jsonl",
-                self.lower_rows("before"),
+                result / "lower-before.jsonl", self.lower_rows("before")
             )
             self.write_jsonl(
-                result / "lower-after.jsonl",
-                self.lower_rows("after"),
+                result / "lower-after.jsonl", self.lower_rows("after")
             )
             checkpoint = result / "checkpoint/image.dmtcp"
             checkpoint.parent.mkdir()
@@ -248,32 +245,57 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             (result / "checkpoint-images.txt").write_text(
                 "checkpoint/image.dmtcp\n", encoding="utf-8"
             )
-            if condition == "pathvirt":
-                (result / "bpf-programs-after.json").write_text(
-                    "[]\n", encoding="utf-8"
-                )
-                (result / "bpf-cgroup-after.json").write_text(
-                    "[]\n", encoding="utf-8"
-                )
-        self.write_jsonl(root / "observations.jsonl", controller)
+            (result / "bpf-programs-after.json").write_text(
+                "[]\n", encoding="utf-8"
+            )
+            (result / "bpf-cgroup-after.json").write_text(
+                "[]\n", encoding="utf-8"
+            )
+        self.write_jsonl(boot / "observations.jsonl", controller)
+        return controller
+
+    def fixture(self, root, formal=False):
+        root = Path(root)
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "run.json").write_text(
+            json.dumps(self.run_record(formal)), encoding="utf-8"
+        )
+        boot_names = (
+            ["block-01", "block-02", "block-03"]
+            if formal else ["preflight"]
+        )
+        all_rows = []
+        for boot_name in boot_names:
+            all_rows.extend(self.add_boot(root, boot_name))
+        (root / "expected-boots.txt").write_text(
+            "".join(f"{name}\n" for name in boot_names), encoding="utf-8"
+        )
+        self.write_jsonl(root / "observations.jsonl", all_rows)
         return root
 
     def test_complete_preflight_passes(self):
         with tempfile.TemporaryDirectory() as directory:
             summary = analyze.analyze_result(self.fixture(directory))
-        self.assertTrue(summary["correctness"]["all_conditions_passed"])
+        self.assertTrue(summary["correctness"]["all_boots_passed"])
         self.assertEqual(
             summary["verdict"]["evidence_role"], "dependency_preflight"
         )
+
+    def test_complete_formal_three_boot_result_passes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            summary = analyze.analyze_result(
+                self.fixture(directory, formal=True)
+            )
+        self.assertEqual(summary["correctness"]["boot_count"], 3)
+        self.assertEqual(summary["verdict"]["tested_hypothesis"], "supported")
+        self.assertEqual(summary["verdict"]["evidence_role"], "formal_rq1_evidence")
 
     def test_dirty_run_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory)
             run = json.loads((root / "run.json").read_text(encoding="utf-8"))
             run["source"]["dirty"] = True
-            (root / "run.json").write_text(
-                json.dumps(run), encoding="utf-8"
-            )
+            (root / "run.json").write_text(json.dumps(run), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "not clean"):
                 analyze.analyze_result(root)
 
@@ -293,12 +315,11 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
     def test_namei_without_select_increase_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory)
-            path = root / "observations.jsonl"
+            path = root / "boots/preflight/observations.jsonl"
             rows = analyze.load_jsonl(path)
             post = next(
                 row for row in rows
-                if row.get("event") ==
-                "checkpoint-restore-policy-counter"
+                if row.get("event") == "checkpoint-restore-policy-counter"
                 and row.get("condition") == "namei_ext"
                 and row.get("phase") == "post-restart"
             )
@@ -320,33 +341,15 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "fail closed"):
                 analyze.analyze_result(root)
 
-    def test_withdrawn_without_restart_cgroup_is_rejected(self):
+    def test_runtime_identity_probe_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory)
-            path = (
-                root / "boots/preflight/conditions/withdrawn/"
-                "application-observations.jsonl"
-            )
-            rows = analyze.load_jsonl(path)
-            rows[1]["cgroup"] = ""
-            self.write_jsonl(path, rows)
-            with self.assertRaisesRegex(ValueError, "cgroup attribution"):
+            path = root / "boots/preflight/runtime-identity-probe.txt"
+            path.write_text("0\n0\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "identity probe"):
                 analyze.analyze_result(root)
 
-    def test_application_runtime_identity_mismatch_is_rejected(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory)
-            path = (
-                root / "boots/preflight/conditions/namei_ext/"
-                "application-observations.jsonl"
-            )
-            rows = analyze.load_jsonl(path)
-            rows[1]["uid"] = 0
-            self.write_jsonl(path, rows)
-            with self.assertRaisesRegex(ValueError, "runtime identity"):
-                analyze.analyze_result(root)
-
-    def test_changed_lower_object_is_rejected(self):
+    def test_changed_lower_contents_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory)
             path = (
@@ -354,7 +357,7 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
                 "lower-after.jsonl"
             )
             rows = analyze.load_jsonl(path)
-            rows[0]["size"] += 1
+            rows[0]["content"] = "unexpected"
             self.write_jsonl(path, rows)
             with self.assertRaisesRegex(ValueError, "lower object changed"):
                 analyze.analyze_result(root)
@@ -376,6 +379,17 @@ class CheckpointRestoreAnalysisTests(unittest.TestCase):
             path = root / "boots/preflight/bpf-programs-after.json"
             path.write_text('[{"id":1}]\n', encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "nonempty BPF"):
+                analyze.analyze_result(root)
+
+    def test_residual_condition_bpf_program_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory)
+            path = (
+                root / "boots/preflight/conditions/pathvirt/"
+                "bpf-programs-after.json"
+            )
+            path.write_text('[{"id":7}]\n', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "after pathvirt"):
                 analyze.analyze_result(root)
 
 

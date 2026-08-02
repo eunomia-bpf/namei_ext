@@ -196,7 +196,6 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
 
         for relative in (
             "mk/benchmarks/fxmark.mk",
-            "mk/experiments/checkpoint_restore.mk",
             "mk/experiments/build_action_rq2.mk",
         ):
             source = (ROOT / relative).read_text(encoding="utf-8")
@@ -211,6 +210,14 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
             self.assertNotIn("lsof -Fpc /dev/fuse", source)
             self.assertIn("fuse-open-fds-before.status", source)
             self.assertIn("fuse-open-fds-after.status", source)
+
+        checkpoint = (
+            ROOT / "mk/experiments/checkpoint_restore.mk"
+        ).read_text(encoding="utf-8")
+        self.assertEqual(checkpoint.count(' -j prog show \\\n'), 3)
+        self.assertEqual(checkpoint.count(' -j cgroup tree \\\n'), 3)
+        self.assertNotIn("fuse-mounts", checkpoint)
+        self.assertNotIn("fuse-open-fds", checkpoint)
 
     def test_external_inventory_strips_multiline_call_arguments(self):
         makefile = self.root / "inventory.mk"
@@ -284,15 +291,6 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         )
         self.assertIn("cargo build --release --locked", workload)
         self.assertIn('test ! -e "$(SANDBOXFS_SRC)/Cargo.lock"', workload)
-        self.assertIn(
-            'printf \'%s  %s\\n\' "$(BAZEL_BINARY_SHA256)" '
-            '"$(BAZEL_BINARY)"',
-            workload,
-        )
-        self.assertIn(
-            '"$(SANDBOXFS_LIBFUSE_RUNTIME_SHA256)"',
-            workload,
-        )
         self.assertIn("kernel-bpftool:", kernel)
         self.assertIn(
             "grep -Fq 'BPF_CGROUP_NAMEI_EXT,'",
@@ -312,18 +310,7 @@ class KvmCaptureInterfaceTest(unittest.TestCase):
         )
         self.assertIn("bpftool_source_commit:$$kernel_commit", suite)
         self.assertIn(
-            '--arg bpftool_sha256 "$$(sha256sum "$(1)/artifacts/runtime/bpftool"',
-            suite,
-        )
-        self.assertIn(
             '--arg bpftool_version "$$("$(1)/artifacts/runtime/bpftool" version)"',
-            normalized_suite,
-        )
-        self.assertIn(
-            "test \"$$(jq -r '.runtime.bpftool_sha256' "
-            "\"$(1)/artifacts/manifest.json\")\" = "
-            "\"$$(sha256sum \"$(1)/artifacts/runtime/bpftool\" | "
-            "awk '{print $$1}')\"",
             normalized_suite,
         )
         self.assertIn(

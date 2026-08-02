@@ -64,8 +64,9 @@ include $(ROOT_DIR)/mk/experiments/namei_ext_target_lifetime.mk
 	policy-load policy-semantic runner agent-workspace \
 	agent-workspace-source-task application-file-sharing \
 	build-action-sandboxing service-config-rotation checkpoint-restore \
-	checkpoint-restore-pathvirt-host-preflight \
-	kvm-checkpoint-restore-preflight checkpoint-restore-finalize \
+	checkpoint-restore-source-feasibility \
+	kvm-checkpoint-restore-preflight kvm-checkpoint-restore-rq1 \
+	checkpoint-restore-run checkpoint-restore-finalize \
 	checkpoint-restore-analyze checkpoint-restore-analysis-test \
 	kvm-build-action-sandboxing-preflight kvm-build-action-sandboxing-rq1 \
 	build-action-sandboxing-run build-action-sandboxing-finalize \
@@ -211,16 +212,11 @@ build-action-sandboxing:
 service-config-rotation:
 	$(MAKE) -C "$(ROOT_DIR)/experiments/service_config_rotation" ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" all
 
-checkpoint-restore: workload-dmtcp-build
+checkpoint-restore: checkpoint-restore-dmtcp-build
 	$(MAKE) -C "$(ROOT_DIR)/experiments/checkpoint_restore" \
 		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" CACHE_ROOT="$(CACHE_ROOT)" \
-		RESULT_ROOT="$(RESULT_ROOT)" DMTCP_INSTALL="$(DMTCP_INSTALL_ROOT)" all
-
-checkpoint-restore-pathvirt-host-preflight: workload-dmtcp-build checkpoint-restore
-	$(MAKE) -C "$(ROOT_DIR)/experiments/checkpoint_restore" \
-		ROOT_DIR="$(ROOT_DIR)" BUILD_ROOT="$(BUILD_ROOT)" CACHE_ROOT="$(CACHE_ROOT)" \
-		RESULT_ROOT="$(RESULT_ROOT)" RUN_ID="$(RUN_ID)" \
-		DMTCP_INSTALL="$(DMTCP_INSTALL_ROOT)" pathvirt-host-preflight
+		RESULT_ROOT="$(RESULT_ROOT)" \
+		DMTCP_INSTALL="$(CHECKPOINT_RESTORE_DMTCP_INSTALL)" all
 
 help:
 	@printf '%s\n' 'Targets:'
