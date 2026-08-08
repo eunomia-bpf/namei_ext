@@ -198,6 +198,20 @@ kubernetes-configmap-quantitative-host-test: \
 		"$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/observations.jsonl" \
 		"$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample" \
 		16 1 1
+	mountpoint_status=0; \
+		mountpoint -q "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample" || \
+		mountpoint_status=$$?; \
+		test "$$mountpoint_status" -eq 32
+	install -d "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/lost+found"
+	test "$$(find "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/lost+found" -mindepth 1 -print -quit | wc -l)" = 0
+	test "$$(find "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample" -mindepth 1 -maxdepth 1 ! -name lost+found -print -quit | wc -l)" = 0
+	touch "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/lost+found/residual"
+	if test "$$(find "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/lost+found" -mindepth 1 -print -quit | wc -l)" = 0; then exit 1; fi
+	rm "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/lost+found/residual"
+	touch "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/residual"
+	if test "$$(find "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample" -mindepth 1 -maxdepth 1 ! -name lost+found -print -quit | wc -l)" = 0; then exit 1; fi
+	rm "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/residual"
+	rmdir "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample/lost+found"
 	rmdir "$(KUBERNETES_CONFIGMAP_QUANTITATIVE_BUILD)/host-test/sample"
 	PYTHONPATH="$(ROOT_DIR)/analysis/kubernetes_configmap_quantitative" \
 		python3 -c 'import json,sys,validate; rows=[json.loads(line) for line in open(sys.argv[1], encoding="utf-8")]; validate.validate_lifecycle(rows[0]); validate.validate_atomicwriter(rows[0], rows[1:])' \
@@ -414,7 +428,7 @@ kubernetes-configmap-quantitative-finalize:
 		test "$$(cat "$$boot/mechanism.status")" = 0; \
 		jq -e '.status == 0 and .format == "raw" and .requested_size == "1G" and .apparent_bytes == 1073741824' "$$boot/host-block-create.json" >/dev/null; \
 		jq -e '.capture_status == 0 and .remove_status == 0 and .image_absent == true and .cleanup_status == 0' "$$boot/host-block-cleanup.json" >/dev/null; \
-		jq -e '.unmount_status == 0 and .mount_lookup_status == 1 and .mountpoint_status == 1 and .root_remove_status == 0 and .root_absent == true and .cleanup_status == 0' "$$boot/guest-block-cleanup.json" >/dev/null; \
+		jq -e '.unmount_status == 0 and .mount_lookup_status == 1 and .mountpoint_status == 32 and .root_remove_status == 0 and .root_absent == true and .cleanup_status == 0' "$$boot/guest-block-cleanup.json" >/dev/null; \
 		awk '$$2 == "ext4" { found = 1 } END { exit !found }' "$$boot/host-block-backing-filesystem.txt"; \
 		awk '$$3 == "disk" && $$4 == 1073741824 && $$7 == "namei_ext_w4" { found = 1 } END { exit !found }' "$$boot/guest-block-device.txt"; \
 		awk '$$1 ~ /^\/dev\/vd/ && $$2 == "ext4" { options = "," $$3 ","; if (index(options, ",noatime,") && index(options, ",nosuid,") && index(options, ",nodev,")) found = 1 } END { exit !found }' "$$boot/ext4-filesystem.txt"; \
@@ -530,7 +544,7 @@ __kubernetes_configmap_quantitative_guest_inner:
 	root_absent=false; test ! -e "$$sample_root" && root_absent=true; \
 	cleanup_status=0; \
 	if test "$$unmount_status" -ne 0 || test "$$mount_lookup_status" -ne 1 || \
-			test "$$mountpoint_status" -ne 1 || test "$$root_remove_status" -ne 0 || \
+			test "$$mountpoint_status" -ne 32 || test "$$root_remove_status" -ne 0 || \
 			test "$$root_absent" != true; then cleanup_status=1; fi; \
 	jq -n --argjson unmount_status "$$unmount_status" \
 		--argjson mount_lookup_status "$$mount_lookup_status" \
@@ -622,4 +636,6 @@ __kubernetes_configmap_quantitative_guest_mechanism:
 			run_audit "$$scale" "$$pair"; \
 		done; \
 	done; \
-	test "$$(find "$$sample_root" -mindepth 1 -print -quit | wc -l)" = 0
+	test -d "$$sample_root/lost+found"; \
+		test "$$(find "$$sample_root/lost+found" -mindepth 1 -print -quit | wc -l)" = 0; \
+		test "$$(find "$$sample_root" -mindepth 1 -maxdepth 1 ! -name lost+found -print -quit | wc -l)" = 0

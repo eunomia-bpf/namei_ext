@@ -96,3 +96,30 @@ confirmed that create/backing, KVM/guest, and host-cleanup failures all retain
 their raw status before the terminal failed state; the actual ext4 options are
 validated; and the memory-backed loop-image defect is absent. Its verdict is
 **GO** for this commit and **GO** for exactly one corrected KVM preflight.
+
+That preflight exposed two finalizer-oracle errors after all workload rows had
+completed. First, the mechanism required the root of a newly formatted ext4
+filesystem to be empty, although `mkfs.ext4` creates `lost+found`. Second,
+util-linux `mountpoint -q` returns 32, not 1, when an existing path is not a
+mountpoint. The mechanism now requires an empty `lost+found` and no other
+top-level entries. Guest cleanup and finalization require return 32, and the
+host success test protects both predicates. The raw evidence showed all workload
+oracles passing, successful unmount, an absent exact mount in `findmnt`, return
+32 from `mountpoint`, successful mountpoint-directory removal, and an absent
+host image. The failed immutable run and its audit are recorded separately; it
+is not reused as performance evidence.
+
+The audit also identified an avoidable candidate bottleneck within setup: every
+registered target currently forks a process, moves it into the policy cgroup,
+and polls for completion. Aggregate timing proves only that setup dominates;
+the failed run's timing is diagnostic only, but it is enough to reject immediate
+formal execution. Separate setup-phase measurements must first establish the
+cost attribution, after which target-registration batching can be evaluated.
+Both changes must pass functional review before the frozen 20-boot experiment
+begins.
+
+A final independent reread found no remaining commit blocker after the host
+test gained negative cases for a nonempty `lost+found` and an extra top-level
+entry, and after the setup diagnosis was limited to the evidence actually
+measured. Its verdict is **GO** for this forward-fix commit. It did not rerun KVM
+or modify the immutable failed result.
