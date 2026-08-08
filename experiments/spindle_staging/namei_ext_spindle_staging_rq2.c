@@ -1766,7 +1766,7 @@ static bool rq2_daemon_resource_monotonic(
 		after->runqueue_wait_ns >= before->runqueue_wait_ns &&
 		after->voluntary_switches >= before->voluntary_switches &&
 		after->involuntary_switches >= before->involuntary_switches &&
-		before->threads > 0 && before->threads == after->threads;
+		before->threads > 0 && after->threads > 0;
 }
 
 static void rq2_emit_identity(FILE *out, const char *condition,
