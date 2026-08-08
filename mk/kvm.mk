@@ -247,6 +247,8 @@ __phase1_guest_functional:
 	if ! mountpoint -q /sys/kernel/debug; then mount -t debugfs debugfs /sys/kernel/debug; fi
 	if ! mountpoint -q /sys/fs/cgroup; then mount -t cgroup2 cgroup2 /sys/fs/cgroup; fi
 	"$(BUILD_ROOT)/functional/namei_ext_functional" "$(BUILD_ROOT)/bpf/redirect_alias.bpf.o" "$(PHASE1_RESULT_DIR)/functional.jsonl" /sys/fs/cgroup "$(BUILD_ROOT)/bpf/hide_secret.bpf.o" "$(BUILD_ROOT)/bpf/select_portal.bpf.o"
+	jq -s -e -f "$(ROOT_DIR)/tests/functional/validate_target_batch.jq" \
+		"$(PHASE1_RESULT_DIR)/functional.jsonl" >/dev/null
 	dmesg >"$(PHASE1_RESULT_DIR)/dmesg-functional.log"
 	printf '{"event":"functional-done","run_id":"%s"}\n' "$(RUN_ID)" >>"$(PHASE1_RESULT_DIR)/functional.jsonl"
 
