@@ -141,6 +141,8 @@ def fixture(repetitions=3, samples=5, fuse_ratio=2.0):
                     "status": 0,
                     "inode_status": 0,
                     "entry_status": 0,
+                    "epoch_attempted": False,
+                    "epoch_status": 0,
                     "condition": "fuse",
                     "repetition": repetition,
                     "pass": True,
@@ -206,8 +208,33 @@ class AnalyzeTest(unittest.TestCase):
             if row["event"] == "spindle-staging-rq2-fuse-invalidation"
         )
         invalidation["entry_status"] = -errno.ENOENT
+        invalidation["epoch_attempted"] = True
         summary = analyze(observations, run, launches, seed=7)
         self.assertEqual(summary["primary"]["verdict"], "supported")
+
+    def test_absent_entry_requires_epoch_fallback(self):
+        observations, run, launches = fixture()
+        invalidation = next(
+            row
+            for row in observations
+            if row["event"] == "spindle-staging-rq2-fuse-invalidation"
+        )
+        invalidation["entry_status"] = -errno.ENOENT
+        with self.assertRaisesRegex(ValueError, "epoch fallback failed"):
+            analyze(observations, run, launches, seed=7)
+
+    def test_epoch_fallback_error_is_rejected(self):
+        observations, run, launches = fixture()
+        invalidation = next(
+            row
+            for row in observations
+            if row["event"] == "spindle-staging-rq2-fuse-invalidation"
+        )
+        invalidation["entry_status"] = -errno.ENOENT
+        invalidation["epoch_attempted"] = True
+        invalidation["epoch_status"] = -errno.EIO
+        with self.assertRaisesRegex(ValueError, "epoch fallback failed"):
+            analyze(observations, run, launches, seed=7)
 
     def test_absent_entry_requires_withdrawal_lookup_oracle(self):
         observations, run, launches = fixture()
@@ -255,7 +282,7 @@ class AnalyzeTest(unittest.TestCase):
             if row["event"] == "spindle-staging-rq2-fuse-invalidation"
         )
         invalidation["entry_status"] = -errno.EIO
-        with self.assertRaisesRegex(ValueError, "entry status must be 0 or ENOENT"):
+        with self.assertRaisesRegex(ValueError, "invalidation.*failed"):
             analyze(observations, run, launches, seed=7)
 
     def test_inode_invalidation_error_is_rejected(self):
@@ -266,7 +293,7 @@ class AnalyzeTest(unittest.TestCase):
             if row["event"] == "spindle-staging-rq2-fuse-invalidation"
         )
         invalidation["inode_status"] = -errno.EIO
-        with self.assertRaisesRegex(ValueError, "inode invalidation must succeed"):
+        with self.assertRaisesRegex(ValueError, "invalidation.*failed"):
             analyze(observations, run, launches, seed=7)
 
     def test_out_of_range_mechanism_window_is_rejected(self):

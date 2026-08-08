@@ -92,6 +92,8 @@ struct rq2_fuse_control_response {
 	int status;
 	int inode_status;
 	int entry_status;
+	int epoch_attempted;
+	int epoch_status;
 };
 
 struct rq2_fuse_control {
@@ -123,6 +125,17 @@ struct rq2_daemon_resource {
 static bool rq2_fuse_entry_invalidation_ok(int status)
 {
 	return !status || status == -ENOENT;
+}
+
+static bool rq2_fuse_invalidation_ok(
+	const struct rq2_fuse_control_response *response)
+{
+	bool needs_epoch = response->entry_status == -ENOENT;
+
+	return !response->status && !response->inode_status &&
+		rq2_fuse_entry_invalidation_ok(response->entry_status) &&
+		!!response->epoch_attempted == needs_epoch &&
+		!response->epoch_status;
 }
 
 struct rq2_timed_result {
@@ -740,6 +753,11 @@ static int rq2_fuse_invalidate_target(struct rq2_fuse_state *state,
 		state->session, parent_number, name, strlen(name));
 	__sync_fetch_and_add(
 		&state->shared->counters[RQ2_FUSE_INVALIDATE_ENTRY], 1);
+	if (response->entry_status == -ENOENT) {
+		response->epoch_attempted = 1;
+		response->epoch_status =
+			fuse_lowlevel_notify_increment_epoch(state->session);
+	}
 	response->inode_status = fuse_lowlevel_notify_inval_inode(
 		state->session, inode_number, 0, 0);
 	__sync_fetch_and_add(
@@ -748,6 +766,8 @@ static int rq2_fuse_invalidate_target(struct rq2_fuse_state *state,
 	rq2_fuse_unref(state, parent_inode, 1);
 	if (!rq2_fuse_entry_invalidation_ok(response->entry_status))
 		return response->entry_status;
+	if (response->epoch_status)
+		return response->epoch_status;
 	return response->inode_status;
 }
 
@@ -2162,9 +2182,13 @@ static void rq2_emit_invalidation(
 	fprintf(out,
 		"{\"event\":\"spindle-staging-rq2-fuse-invalidation\","
 		"\"phase\":\"%s\",\"status\":%d,"
-		"\"inode_status\":%d,\"entry_status\":%d,\"pass\":%s}\n",
+		"\"inode_status\":%d,\"entry_status\":%d,"
+		"\"epoch_attempted\":%s,\"epoch_status\":%d,"
+		"\"pass\":%s}\n",
 		phase, response->status, response->inode_status,
-		response->entry_status, pass ? "true" : "false");
+		response->entry_status,
+		response->epoch_attempted ? "true" : "false",
+		response->epoch_status, pass ? "true" : "false");
 	fflush(out);
 }
 
@@ -2275,8 +2299,7 @@ static int rq2_run_fuse_condition(
 	if (!ret)
 		ret = rq2_fuse_request(&process, RQ2_FUSE_INVALIDATE, 0,
 				       &response);
-	bool invalidate_zero_pass = !ret && !response.inode_status &&
-		rq2_fuse_entry_invalidation_ok(response.entry_status);
+	bool invalidate_zero_pass = !ret && rq2_fuse_invalidation_ok(&response);
 	rq2_emit_invalidation(out, "mode_zero", &response,
 			      invalidate_zero_pass);
 	if (!ret)
@@ -2290,8 +2313,7 @@ static int rq2_run_fuse_condition(
 		rq2_fuse_request(&process, RQ2_FUSE_INVALIDATE, 0,
 				 &restore_response);
 	bool invalidate_restore_pass = !invalidate_restore_ret &&
-		!restore_response.inode_status &&
-		rq2_fuse_entry_invalidation_ok(restore_response.entry_status);
+		rq2_fuse_invalidation_ok(&restore_response);
 	rq2_emit_invalidation(out, "mode_restore", &restore_response,
 			      invalidate_restore_pass);
 	bool permission_pass = !ret && !restore_ret &&
@@ -2384,8 +2406,8 @@ static int rq2_run_fuse_condition(
 
 	withdrawn_before = process.shared->target_opens[0];
 	ret = rq2_fuse_request(&process, RQ2_FUSE_WITHDRAW, 0, &response);
-	bool withdraw_invalidation_pass = !ret && !response.inode_status &&
-		rq2_fuse_entry_invalidation_ok(response.entry_status);
+	bool withdraw_invalidation_pass = !ret &&
+		rq2_fuse_invalidation_ok(&response);
 	rq2_emit_invalidation(out, "withdraw", &response,
 			      withdraw_invalidation_pass);
 	if (!ret)

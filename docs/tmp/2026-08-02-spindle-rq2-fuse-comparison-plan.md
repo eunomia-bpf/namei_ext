@@ -163,11 +163,14 @@ mandatory RQ1 case studies W1--W7.
   zero from every inode notification. Each entry notification must return zero
   or `-ENOENT`; the kernel reverse-invalidation implementation uses the latter
   when it cannot find a parent or positive parent/name cache entry. This status
-  is accepted as an idempotent notification outcome only when a subsequent
-  non-root `fstatat` of the withdrawn pathname returns `ENOENT`, the withdrawn
-  loader fails with its exact diagnostic, and the backing-object engagement
-  counter does not advance. Any other notification error or stale pathname
-  observation invalidates the run. The namei_ext arm performs the equivalent
+  is not sufficient by itself. When it occurs, the FUSE arm must successfully
+  issue the mainline connection-epoch notification before continuing; the raw
+  result records both the fallback attempt and its status. A subsequent
+  non-root `fstatat` of the withdrawn pathname must return `ENOENT`, the
+  withdrawn loader must fail with its exact diagnostic, and the backing-object
+  engagement counter must not advance. Any other notification error, failed
+  epoch fallback, or stale pathname observation invalidates the run. The
+  namei_ext arm performs the equivalent
   transition by replacing the selected-target rule with an explicit `HIDE`
   rule; deleting the rule would mean `PASS` and expose the lower source file.
   Its lookup-hide counter must advance while the selected-target hit counter

@@ -547,6 +547,7 @@ __spindle_staging_rq2_guest_inner:
 		jq -e 'select(.event == "spindle-staging-rq2-namei-window" and .select_delta == .per_target_sum and .select_delta >= 47 and .pass == true)' "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null ;; \
 	fuse) \
 		jq -e 'select(.event == "spindle-staging-rq2-fuse-config" and .libfuse_version == "3.18.2" and .allow_other == true and .default_permissions == true and .passthrough_negotiated == true and .pass == true)' "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null; \
+		test "$$(jq -s '[.[] | select(.event == "spindle-staging-rq2-fuse-invalidation" and .status == 0 and .inode_status == 0 and (.entry_status == 0 or .entry_status == -2) and .epoch_status == 0 and (.epoch_attempted == (.entry_status == -2)) and .pass == true)] | length' "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl")" = 3; \
 		jq -e 'select(.event == "spindle-staging-rq2-fuse-counter" and .counter == "read_fallback" and .delta == 0 and .pass == true)' "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null; \
 		jq -e 'select(.event == "spindle-staging-rq2-fuse-counter" and .counter == "passthrough_failure" and .delta == 0 and .pass == true)' "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null; \
 		jq -e 'select(.event == "spindle-staging-rq2-fuse-resource" and .cpu_runtime_ns > 0 and .pass == true)' "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null ;; \

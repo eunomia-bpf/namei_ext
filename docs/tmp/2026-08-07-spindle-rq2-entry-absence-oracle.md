@@ -63,6 +63,12 @@ withdrawal engagement row. Both issues were repaired as described above. A
 second and final follow-up review found no remaining scientific or executability
 blocker and returned GO for a fresh paired KVM preflight.
 
+Preflight05 later demonstrated that low-level entry invalidation `-ENOENT` can
+coexist with a stale positive dentry in this FUSE implementation. Current code
+therefore requires a successful mainline FUSE connection-epoch notification
+whenever that status occurs, followed by the same direct `fstatat(ENOENT)` and
+application oracles. The earlier status-plus-behavior rule was not weakened.
+
 ## Remaining KVM Check
 
 Host tests cannot establish whether `fstatat` observes `ENOENT` on the actual

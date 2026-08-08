@@ -205,11 +205,14 @@ def analyze(observations, run, launches, seed):
             or row.get("status") != 0
             or row.get("inode_status") != 0
             or row.get("entry_status") not in (0, -errno.ENOENT)
+            or row.get("epoch_status") != 0
+            or row.get("epoch_attempted")
+            != (row.get("entry_status") == -errno.ENOENT)
             for row in invalidations
         )
     ):
         raise ValueError(
-            "FUSE inode invalidation must succeed and entry status must be 0 or ENOENT"
+            "FUSE invalidation or required ENOENT epoch fallback failed"
         )
 
     lifecycle = {}

@@ -109,3 +109,14 @@ hypothesis. The repair installs the policy's explicit `HIDE` action and requires
 both a positive lookup-hide counter delta and no selected-backing hit. The BPF
 object, runner, analyzer, and direct Make gate compile and pass their host tests
 before another fresh preflight.
+
+## Preflight05 FUSE Repair
+
+Preflight05 passed the repaired namei_ext arm but showed a stale positive FUSE
+dentry after low-level entry invalidation returned `-ENOENT`. The direct
+`fstatat` succeeded without a new backing open, proving that the return cannot
+be treated as an idempotent success in this run. The oracle remains unchanged.
+The FUSE arm now retains the per-entry notification attempt and, only for
+`-ENOENT`, uses libfuse's mainline connection-epoch notification before the
+application probe. Raw output records whether the fallback ran and its status;
+the analyzer and Make gate require a successful fallback in exactly that case.
