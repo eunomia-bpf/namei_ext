@@ -60,3 +60,12 @@ FUSE configuration, metric, repetition count, or comparison budget changes.
 
 After the host gate passes, rerun the complete paired matrix into a fresh
 result root. The formal02 root must not be reused or modified.
+
+## Subsequent Outcome
+
+Formal03 falsified the ordering hypothesis: entry-first still returned
+`-ENOENT`. Independent review then found that accepting that status with only a
+loader failure could miss a stale positive dentry rejected later by FUSE
+`open`. The amended protocol therefore adds a non-root `fstatat` pathname probe
+that must return `ENOENT` before the loader oracle. The strict-zero plan in this
+historical next step is superseded; the formal02 root remains a failed result.

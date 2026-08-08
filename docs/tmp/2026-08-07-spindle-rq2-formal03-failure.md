@@ -27,37 +27,39 @@ oracles, but the pair is incomplete and has no comparative performance result.
 
 ## Primary-Source Correction
 
-The exact-zero entry-notification rule is stricter than libfuse's public
-contract for path invalidation. In pinned libfuse 3.18.2,
-`include/fuse.h:fuse_invalidate_path()` explicitly documents `-ENOENT` as
-meaning that there was no kernel entry to invalidate because it was unseen or
-forgotten, and says this is not an error. The official
-`example/notify_inval_entry.c` likewise treats `-ENOENT` from entry expiry as
-"entry does not exist anymore in the kernel." The kernel implementation in
+The exact-zero entry-notification rule conflates notification status with the
+state-transition oracle. Pinned libfuse 3.18.2 passes a low-level entry
+notification to the kernel and returns its error. The kernel implementation in
 `fs/fuse/dir.c:fuse_reverse_inval_entry()` returns `-ENOENT` when the parent or
-positive parent/name entry is absent.
+positive parent/name entry is absent. This does not by itself prove that all
+pathname observations have transitioned, and libfuse's high-level
+`fuse_invalidate_path()` contract is not applicable to this low-level entry
+operation.
 
-Therefore, requiring every entry notification to return exactly zero does not
-test feature-equivalent behavior. It turns an idempotent "nothing cached"
-outcome into a baseline failure. Correctness should instead require:
+Therefore, exact zero is not the whole feature-equivalence test, but neither is
+`-ENOENT` evidence that the view changed. Correctness must combine bounded
+notification statuses with direct pathname and application behavior:
 
 - the inode notification used for backing-mode changes succeeds;
 - an entry notification returns either zero or `-ENOENT`;
-- after every state change, the application-level permission or withdrawal
-  oracle observes the new state;
+- after every state change, the application-level permission oracle observes
+  `EACCES` and a non-root `fstatat` of a withdrawn pathname observes `ENOENT`;
+- the withdrawn loader fails with its exact diagnostic and does not engage the
+  backing object;
 - any other notification error fails the run.
 
-The application oracle is decisive: if `-ENOENT` masks a stale positive entry,
-the next unprivileged open or withdrawn loader launch will observe the old
-state and fail the condition.
+The path and application oracles are decisive together. The `fstatat` probe
+catches a stale positive dentry even if the FUSE `open` callback would reject a
+later loader request.
 
 ## Plan Amendment Required
 
-Revise the existing comparison plan and analyzer to follow the documented
-libfuse contract, while preserving raw component statuses. This is a baseline
-correctness correction, not a new hypothesis or a weaker workload. The paired
-matrix, common tmpfs lower filesystem, cache settings, passthrough mode,
-correctness probes, samples, repetitions, and primary metric remain unchanged.
+Revise the existing comparison plan and analyzer to follow the observed kernel
+semantics and require a complete behavioral oracle, while preserving raw
+component statuses. This is a baseline correctness correction, not a new
+hypothesis or a weaker workload. The paired matrix, common tmpfs lower
+filesystem, cache settings, passthrough mode, samples, repetitions, and primary
+metric remain unchanged.
 
 The amended plan must receive an independent review before another full run.
 Formal03 must not be reused or modified.

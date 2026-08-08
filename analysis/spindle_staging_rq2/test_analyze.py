@@ -1,3 +1,4 @@
+import errno
 import tempfile
 import unittest
 from pathlib import Path
@@ -50,6 +51,40 @@ def fixture(repetitions=3, samples=5, fuse_ratio=2.0):
                         "event": "spindle-staging-rq2-lifecycle",
                         "phase": "teardown",
                         "duration_ns": 50 + repetition,
+                        "condition": condition,
+                        "repetition": repetition,
+                        "pass": True,
+                    },
+                    {
+                        "event": "spindle-staging-rq2-permission",
+                        "observed_errno": errno.EACCES,
+                        "restore_errno": 0,
+                        "condition": condition,
+                        "repetition": repetition,
+                        "pass": True,
+                    },
+                    {
+                        "event": "spindle-staging-rq2-withdrawal-lookup",
+                        "operation": "fstatat",
+                        "observed_errno": errno.ENOENT,
+                        "expected_errno": errno.ENOENT,
+                        "condition": condition,
+                        "repetition": repetition,
+                        "pass": True,
+                    },
+                    {
+                        "event": "spindle-staging-rq2-withdrawal",
+                        "exit_status": 1,
+                        "runner_errno": 0,
+                        "expected_diagnostic": True,
+                        "condition": condition,
+                        "repetition": repetition,
+                        "pass": True,
+                    },
+                    {
+                        "event": "spindle-staging-rq2-withdrawal-window",
+                        "before": 10,
+                        "after": 10,
                         "condition": condition,
                         "repetition": repetition,
                         "pass": True,
@@ -158,15 +193,63 @@ class AnalyzeTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "guest-local tmpfs"):
             analyze(observations, run, launches, seed=7)
 
-    def test_nonzero_entry_invalidation_is_rejected(self):
+    def test_absent_entry_invalidation_is_accepted(self):
         observations, run, launches = fixture()
         invalidation = next(
             row
             for row in observations
             if row["event"] == "spindle-staging-rq2-fuse-invalidation"
         )
-        invalidation["entry_status"] = -2
-        with self.assertRaisesRegex(ValueError, "invalidation must both succeed"):
+        invalidation["entry_status"] = -errno.ENOENT
+        summary = analyze(observations, run, launches, seed=7)
+        self.assertEqual(summary["primary"]["verdict"], "supported")
+
+    def test_absent_entry_requires_withdrawal_lookup_oracle(self):
+        observations, run, launches = fixture()
+        observations[:] = [
+            row
+            for row in observations
+            if not (
+                row["event"] == "spindle-staging-rq2-withdrawal-lookup"
+                and row["condition"] == "fuse"
+                and row["repetition"] == 1
+            )
+        ]
+        with self.assertRaisesRegex(ValueError, "withdrawn pathname"):
+            analyze(observations, run, launches, seed=7)
+
+    def test_stale_withdrawn_path_is_rejected(self):
+        observations, run, launches = fixture()
+        lookup = next(
+            row
+            for row in observations
+            if row["event"] == "spindle-staging-rq2-withdrawal-lookup"
+            and row["condition"] == "fuse"
+        )
+        lookup["observed_errno"] = 0
+        with self.assertRaisesRegex(ValueError, "withdrawn pathname"):
+            analyze(observations, run, launches, seed=7)
+
+    def test_other_entry_invalidation_error_is_rejected(self):
+        observations, run, launches = fixture()
+        invalidation = next(
+            row
+            for row in observations
+            if row["event"] == "spindle-staging-rq2-fuse-invalidation"
+        )
+        invalidation["entry_status"] = -errno.EIO
+        with self.assertRaisesRegex(ValueError, "entry status must be 0 or ENOENT"):
+            analyze(observations, run, launches, seed=7)
+
+    def test_inode_invalidation_error_is_rejected(self):
+        observations, run, launches = fixture()
+        invalidation = next(
+            row
+            for row in observations
+            if row["event"] == "spindle-staging-rq2-fuse-invalidation"
+        )
+        invalidation["inode_status"] = -errno.EIO
+        with self.assertRaisesRegex(ValueError, "inode invalidation must succeed"):
             analyze(observations, run, launches, seed=7)
 
     def test_out_of_range_mechanism_window_is_rejected(self):

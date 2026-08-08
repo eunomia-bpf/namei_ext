@@ -93,3 +93,14 @@ not valid paper evidence for RQ2. Its scope judgment is adopted here: the root
 supports only the diagnostic observation that a cached FUSE view over this
 uncached-9p KVM layout had lower wall time but higher total CPU and far fewer
 major faults.
+
+## Subsequent Protocol Correction
+
+Formal02 and formal03 showed that pinning and notification order did not make
+entry invalidation return zero. Later kernel-source and independent review
+established that neither exact zero nor `-ENOENT` alone is a correctness oracle.
+The amended protocol admits only zero or `-ENOENT` for the entry component but
+also requires a non-root `fstatat` of the withdrawn pathname to return `ENOENT`,
+the withdrawn loader to fail with its exact diagnostic, and no selected-backing
+engagement. This supersedes item 2 in the historical repair above; formal01
+remains rejected because of its lower-filesystem confound.

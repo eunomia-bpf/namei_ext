@@ -129,6 +129,7 @@ spindle-staging-rq2-host-gate: kernel kernel-provenance kernel-bpftool bpf \
 		workload-spindle-build spindle-staging-rq2-build \
 		spindle-staging-rq2-analysis-test
 	grep -Fx 'Final verdict: **GO**.' "$(SPINDLE_STAGING_RQ2_PLAN_REVIEW)"
+	grep -Fx 'Final amendment verdict: **GO**.' "$(SPINDLE_STAGING_RQ2_PLAN_REVIEW)"
 	test "$$(cat "$(KERNEL_COMMIT_FILE)")" = \
 		"$(SPINDLE_STAGING_RQ2_EXPECTED_KERNEL_COMMIT)"
 	grep -Fx 'CONFIG_FUSE_FS=y' "$(KERNEL_BUILD_DIR)/.config"
@@ -153,6 +154,7 @@ kvm-spindle-staging-rq2-preflight: experiment-source-clean kernel \
 	grep -Fx 'CONFIG_FUSE_FS=y' "$(KERNEL_BUILD_DIR)/.config"
 	grep -Fx 'CONFIG_FUSE_PASSTHROUGH=y' "$(KERNEL_BUILD_DIR)/.config"
 	grep -Fx 'Final verdict: **GO**.' "$(SPINDLE_STAGING_RQ2_PLAN_REVIEW)"
+	grep -Fx 'Final amendment verdict: **GO**.' "$(SPINDLE_STAGING_RQ2_PLAN_REVIEW)"
 	$(call SPINDLE_STAGING_RQ2_START,$(SPINDLE_STAGING_RQ2_PREFLIGHT_RESULT_DIR),1,1,5,make kvm-spindle-staging-rq2-preflight RUN_ID=$(RUN_ID))
 	if ! $(MAKE) -C "$(ROOT_DIR)" spindle-staging-rq2-run-matrix \
 		RUN_ID="$(RUN_ID)" \
@@ -531,6 +533,12 @@ __spindle_staging_rq2_guest_inner:
 	done
 	test "$$(jq -s '[.[] | select(.event == "spindle-staging-rq2-identity" and .bytes_equal == true and .pass == true)] | length' "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl")" = 47
 	jq -e 'select(.event == "spindle-staging-rq2-withdrawal" and .expected_diagnostic == true and .pass == true)' \
+		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null
+	jq -e 'select(.event == "spindle-staging-rq2-permission" and .observed_errno == 13 and .restore_errno == 0 and .pass == true)' \
+		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null
+	jq -e 'select(.event == "spindle-staging-rq2-withdrawal-lookup" and .operation == "fstatat" and .observed_errno == 2 and .expected_errno == 2 and .pass == true)' \
+		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null
+	jq -e 'select(.event == "spindle-staging-rq2-withdrawal-window" and .before == .after and .pass == true)' \
 		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null
 	jq -e 'select(.event == "spindle-staging-rq2-summary" and .focal_objects == 47 and .failures == 0 and .pass == true)' \
 		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null

@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import errno
 import json
 import math
 import random
@@ -93,6 +94,86 @@ def analyze(observations, run, launches, seed):
     ):
         raise ValueError("every condition must use the guest-local tmpfs runtime")
 
+    permissions = [
+        row
+        for row in observations
+        if row.get("event") == "spindle-staging-rq2-permission"
+    ]
+    permission_keys = {
+        (row.get("repetition"), row.get("condition")) for row in permissions
+    }
+    if (
+        len(permissions) != expected_launches
+        or permission_keys != expected_condition_keys
+        or any(
+            row.get("observed_errno") != errno.EACCES
+            or row.get("restore_errno") != 0
+            for row in permissions
+        )
+    ):
+        raise ValueError("every condition must pass the EACCES permission oracle")
+
+    withdrawal_lookups = [
+        row
+        for row in observations
+        if row.get("event") == "spindle-staging-rq2-withdrawal-lookup"
+    ]
+    withdrawal_lookup_keys = {
+        (row.get("repetition"), row.get("condition"))
+        for row in withdrawal_lookups
+    }
+    if (
+        len(withdrawal_lookups) != expected_launches
+        or withdrawal_lookup_keys != expected_condition_keys
+        or any(
+            row.get("operation") != "fstatat"
+            or row.get("observed_errno") != errno.ENOENT
+            or row.get("expected_errno") != errno.ENOENT
+            for row in withdrawal_lookups
+        )
+    ):
+        raise ValueError("every withdrawn pathname must fail fstatat with ENOENT")
+
+    withdrawals = [
+        row
+        for row in observations
+        if row.get("event") == "spindle-staging-rq2-withdrawal"
+    ]
+    withdrawal_keys = {
+        (row.get("repetition"), row.get("condition")) for row in withdrawals
+    }
+    if (
+        len(withdrawals) != expected_launches
+        or withdrawal_keys != expected_condition_keys
+        or any(
+            row.get("exit_status") == 0
+            or row.get("runner_errno") != 0
+            or row.get("expected_diagnostic") is not True
+            for row in withdrawals
+        )
+    ):
+        raise ValueError("every condition must pass the withdrawn-loader oracle")
+
+    withdrawal_windows = [
+        row
+        for row in observations
+        if row.get("event") == "spindle-staging-rq2-withdrawal-window"
+    ]
+    withdrawal_window_keys = {
+        (row.get("repetition"), row.get("condition"))
+        for row in withdrawal_windows
+    }
+    if (
+        len(withdrawal_windows) != expected_launches
+        or withdrawal_window_keys != expected_condition_keys
+        or any(
+            not isinstance(row.get("before"), int)
+            or row.get("after") != row.get("before")
+            for row in withdrawal_windows
+        )
+    ):
+        raise ValueError("withdrawal must not engage the selected backing object")
+
     invalidations = [
         row
         for row in observations
@@ -113,11 +194,13 @@ def analyze(observations, run, launches, seed):
             row.get("condition") != "fuse"
             or row.get("status") != 0
             or row.get("inode_status") != 0
-            or row.get("entry_status") != 0
+            or row.get("entry_status") not in (0, -errno.ENOENT)
             for row in invalidations
         )
     ):
-        raise ValueError("FUSE inode and entry invalidation must both succeed")
+        raise ValueError(
+            "FUSE inode invalidation must succeed and entry status must be 0 or ENOENT"
+        )
 
     lifecycle = {}
     for row in observations:

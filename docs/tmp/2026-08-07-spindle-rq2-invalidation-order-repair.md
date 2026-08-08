@@ -54,3 +54,12 @@ Run the unchanged complete paired matrix in a fresh result root. The first FUSE
 boot is the real test of the ordering hypothesis. If either notification still
 returns nonzero, retain that root as a failure and inspect the exact FUSE
 parent/name cache state instead of relaxing the gate.
+
+## KVM Outcome
+
+Formal03 falsified the ordering hypothesis: entry-first still returned
+`-ENOENT`, while the following inode notification returned zero. The root was
+retained and the matrix stopped. Subsequent primary-source inspection showed
+that notification status alone cannot establish the pathname state. The
+experiment plan now admits an absent entry only when a direct non-root pathname
+probe and the application-level state-transition oracle both pass.

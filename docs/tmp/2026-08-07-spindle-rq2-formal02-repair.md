@@ -87,3 +87,15 @@ follow-up.
 Host validation cannot prove the modified-kernel mount and notification path.
 The next step is a fresh full formal matrix. Any failure in its first affected
 boot must terminate the run; the failed root must not be repaired or reused.
+
+## Subsequent Correction
+
+Formal02 and formal03 both stopped because entry notification returned
+`-ENOENT`; changing notification order did not alter it. Inspection of pinned
+kernel and libfuse paths then showed that `-ENOENT` can mean that no parent or
+positive parent/name kernel entry was found. The amended protocol preserves
+that status, accepts only zero or `-ENOENT` for entry invalidation, still
+requires inode invalidation to return zero, and requires a non-root `fstatat`
+`ENOENT` result plus the independent loader oracle to reject stale behavior.
+The original exact-zero claim in this historical repair is superseded by that
+amendment.

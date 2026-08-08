@@ -120,6 +120,11 @@ struct rq2_daemon_resource {
 	uint64_t threads;
 };
 
+static bool rq2_fuse_entry_invalidation_ok(int status)
+{
+	return !status || status == -ENOENT;
+}
+
 struct rq2_timed_result {
 	struct process_result process;
 	struct rusage usage;
@@ -129,6 +134,16 @@ struct rq2_identity_wire {
 	struct stat st;
 	int error;
 	int bytes_equal;
+};
+
+struct rq2_errno_wire {
+	int setup_error;
+	int operation_errno;
+};
+
+enum rq2_path_probe_operation {
+	RQ2_PATH_PROBE_OPEN,
+	RQ2_PATH_PROBE_STAT,
 };
 
 static void rq2_fuse_count(struct rq2_fuse_state *state, unsigned int key)
@@ -731,7 +746,7 @@ static int rq2_fuse_invalidate_target(struct rq2_fuse_state *state,
 		&state->shared->counters[RQ2_FUSE_INVALIDATE_INODE], 1);
 	rq2_fuse_unref(state, inode, 1);
 	rq2_fuse_unref(state, parent_inode, 1);
-	if (response->entry_status)
+	if (!rq2_fuse_entry_invalidation_ok(response->entry_status))
 		return response->entry_status;
 	return response->inode_status;
 }
@@ -1720,10 +1735,13 @@ child_done:
 	return 0;
 }
 
-static int rq2_permission_probe(const char *cgroup_path,
+static int rq2_path_errno_probe(const char *cgroup_path,
 				const struct run_environment *environment,
-				const char *logical_path, int *observed_errno)
+				const char *logical_path,
+				enum rq2_path_probe_operation operation,
+				int *observed_errno)
 {
+	struct rq2_errno_wire wire = {};
 	int pipe_fd[2];
 	int status = 0;
 	pid_t pid;
@@ -1739,36 +1757,60 @@ static int rq2_permission_probe(const char *cgroup_path,
 		return ret;
 	}
 	if (!pid) {
-		int error = 0;
-		int fd;
-
 		close(pipe_fd[0]);
 		if (cgroup_path && namei_ext_move_self_to_cgroup(cgroup_path))
-			error = errno ? errno : EIO;
+			wire.setup_error = errno ? errno : EIO;
 		else if (drop_privileges(environment->uid, environment->gid))
-			error = errno ? errno : EIO;
-		else {
-			fd = open(logical_path, O_RDONLY | O_CLOEXEC);
-			if (fd >= 0) {
+			wire.setup_error = errno ? errno : EIO;
+		else if (operation == RQ2_PATH_PROBE_OPEN) {
+			int fd = open(logical_path, O_RDONLY | O_CLOEXEC);
+
+			if (fd >= 0)
 				close(fd);
-				error = 0;
-			} else {
-				error = errno;
-			}
+			else
+				wire.operation_errno = errno;
+		} else {
+			struct stat st;
+
+			if (fstatat(AT_FDCWD, logical_path, &st,
+				    AT_SYMLINK_NOFOLLOW))
+				wire.operation_errno = errno;
 		}
-		if (write_all(pipe_fd[1], &error, sizeof(error)))
+		if (write_all(pipe_fd[1], &wire, sizeof(wire)))
 			_exit(126);
 		close(pipe_fd[1]);
 		_exit(0);
 	}
 	close(pipe_fd[1]);
-	ret = read_all(pipe_fd[0], observed_errno,
-		       sizeof(*observed_errno));
+	ret = read_all(pipe_fd[0], &wire, sizeof(wire));
 	close(pipe_fd[0]);
 	if (waitpid(pid, &status, 0) != pid || !WIFEXITED(status) ||
 	    WEXITSTATUS(status))
 		return -ECHILD;
-	return ret;
+	if (ret)
+		return ret;
+	if (wire.setup_error)
+		return -wire.setup_error;
+	*observed_errno = wire.operation_errno;
+	return 0;
+}
+
+static int rq2_withdrawal_lookup_probe(
+	FILE *out, const char *condition, const char *cgroup_path,
+	const struct run_environment *environment, const char *logical_path)
+{
+	int observed_errno = 0;
+	int ret = rq2_path_errno_probe(cgroup_path, environment, logical_path,
+				       RQ2_PATH_PROBE_STAT, &observed_errno);
+	bool pass = !ret && observed_errno == ENOENT;
+
+	fprintf(out,
+		"{\"event\":\"spindle-staging-rq2-withdrawal-lookup\","
+		"\"condition\":\"%s\",\"operation\":\"fstatat\","
+		"\"observed_errno\":%d,\"expected_errno\":%d,\"pass\":%s}\n",
+		condition, observed_errno, ENOENT, pass ? "true" : "false");
+	fflush(out);
+	return pass ? 0 : -EINVAL;
 }
 
 static bool rq2_daemon_resource_monotonic(
@@ -1954,9 +1996,10 @@ static int rq2_run_namei_condition(
 
 	ret = chmod(mappings[0].cache, 0000) ? -errno : 0;
 	if (!ret)
-		ret = rq2_permission_probe(cgroup_path, environment,
-					   mappings[0].source,
-					   &observed_errno);
+		ret = rq2_path_errno_probe(cgroup_path, environment,
+					    mappings[0].source,
+					    RQ2_PATH_PROBE_OPEN,
+					    &observed_errno);
 	int restore_ret = chmod(mappings[0].cache, original_mode) ? -errno : 0;
 	bool permission_pass = !ret && !restore_ret && observed_errno == EACCES;
 
@@ -2044,6 +2087,9 @@ static int rq2_run_namei_condition(
 		ret = namei_ext_component_map_delete(
 			&policy, "spindle_staging_rules", cgroup_id,
 			mappings[0].source_parent, mappings[0].spec->name);
+	if (!ret)
+		ret = rq2_withdrawal_lookup_probe(out, "namei_ext", cgroup_path,
+						 environment, mappings[0].source);
 	if (!ret)
 		ret = rq2_run_withdrawn(out, "namei_ext", test_dir,
 					 cgroup_path, environment, loader_argv,
@@ -2211,13 +2257,14 @@ static int rq2_run_fuse_condition(
 		ret = rq2_fuse_request(&process, RQ2_FUSE_INVALIDATE, 0,
 				       &response);
 	bool invalidate_zero_pass = !ret && !response.inode_status &&
-		!response.entry_status;
+		rq2_fuse_entry_invalidation_ok(response.entry_status);
 	rq2_emit_invalidation(out, "mode_zero", &response,
 			      invalidate_zero_pass);
 	if (!ret)
-		ret = rq2_permission_probe(cgroup_path, environment,
-					   mappings[0].source,
-					   &observed_errno);
+		ret = rq2_path_errno_probe(cgroup_path, environment,
+					     mappings[0].source,
+					     RQ2_PATH_PROBE_OPEN,
+					     &observed_errno);
 	int restore_ret = chmod(mappings[0].cache, original_mode) ? -errno : 0;
 	struct rq2_fuse_control_response restore_response = {};
 	int invalidate_restore_ret = restore_ret ? restore_ret :
@@ -2225,7 +2272,7 @@ static int rq2_run_fuse_condition(
 				 &restore_response);
 	bool invalidate_restore_pass = !invalidate_restore_ret &&
 		!restore_response.inode_status &&
-		!restore_response.entry_status;
+		rq2_fuse_entry_invalidation_ok(restore_response.entry_status);
 	rq2_emit_invalidation(out, "mode_restore", &restore_response,
 			      invalidate_restore_pass);
 	bool permission_pass = !ret && !restore_ret &&
@@ -2319,9 +2366,12 @@ static int rq2_run_fuse_condition(
 	withdrawn_before = process.shared->target_opens[0];
 	ret = rq2_fuse_request(&process, RQ2_FUSE_WITHDRAW, 0, &response);
 	bool withdraw_invalidation_pass = !ret && !response.inode_status &&
-		!response.entry_status;
+		rq2_fuse_entry_invalidation_ok(response.entry_status);
 	rq2_emit_invalidation(out, "withdraw", &response,
 			      withdraw_invalidation_pass);
+	if (!ret)
+		ret = rq2_withdrawal_lookup_probe(out, "fuse", cgroup_path,
+						 environment, mappings[0].source);
 	if (!ret)
 		ret = rq2_run_withdrawn(out, "fuse", test_dir, cgroup_path,
 					 environment, loader_argv, loader_env,
