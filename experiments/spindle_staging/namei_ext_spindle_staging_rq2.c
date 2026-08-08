@@ -721,19 +721,19 @@ static int rq2_fuse_invalidate_target(struct rq2_fuse_state *state,
 		(fuse_ino_t)(uintptr_t)parent_inode;
 	pthread_mutex_unlock(&state->mutex);
 
-	response->inode_status = fuse_lowlevel_notify_inval_inode(
-		state->session, inode_number, 0, 0);
-	__sync_fetch_and_add(
-		&state->shared->counters[RQ2_FUSE_INVALIDATE_INODE], 1);
 	response->entry_status = fuse_lowlevel_notify_inval_entry(
 		state->session, parent_number, name, strlen(name));
 	__sync_fetch_and_add(
 		&state->shared->counters[RQ2_FUSE_INVALIDATE_ENTRY], 1);
+	response->inode_status = fuse_lowlevel_notify_inval_inode(
+		state->session, inode_number, 0, 0);
+	__sync_fetch_and_add(
+		&state->shared->counters[RQ2_FUSE_INVALIDATE_INODE], 1);
 	rq2_fuse_unref(state, inode, 1);
 	rq2_fuse_unref(state, parent_inode, 1);
-	if (response->inode_status)
-		return response->inode_status;
-	return response->entry_status;
+	if (response->entry_status)
+		return response->entry_status;
+	return response->inode_status;
 }
 
 static int rq2_fuse_publish_withdrawal(struct rq2_fuse_state *state,

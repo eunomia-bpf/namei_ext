@@ -44,18 +44,19 @@ into a passing result.
 
 The parent held an `O_PATH` descriptor for the logical object while the daemon
 issued notifications, but the daemon sent the inode notification before the
-entry notification. The successful inode invalidation can remove the cached
-alias that the immediately following entry invalidation needs to find. The
-descriptor pins the inode but does not preserve that parent/name alias after
-the first notification.
+entry notification. The raw result establishes that this order returned zero
+for the inode notification and `-ENOENT` for the immediately following entry
+notification; it does not establish which internal lookup in
+`fuse_reverse_inval_entry()` returned `-ENOENT`. The narrow next test is whether
+invalidating the positive parent/name entry first, while the descriptor still
+pins the selected inode, lets both notifications complete.
 
 ## Next Repair
 
 Keep the `O_PATH` pin and all strict zero-status gates, but issue the entry
-notification before the inode notification. The entry notification can first
-remove the parent/name cache entry; the open descriptor then keeps the inode
-alive for the inode notification. No workload, oracle, FUSE configuration,
-metric, repetition count, or comparison budget changes.
+notification before the inode notification. This tests the ordering hypothesis
+without weakening the baseline or accepting an error. No workload, oracle,
+FUSE configuration, metric, repetition count, or comparison budget changes.
 
 After the host gate passes, rerun the complete paired matrix into a fresh
 result root. The formal02 root must not be reused or modified.
