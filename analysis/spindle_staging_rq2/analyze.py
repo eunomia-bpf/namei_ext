@@ -169,10 +169,20 @@ def analyze(observations, run, launches, seed):
         or any(
             not isinstance(row.get("before"), int)
             or row.get("after") != row.get("before")
+            or (
+                row.get("condition") == "namei_ext"
+                and (
+                    not isinstance(row.get("hide_before"), int)
+                    or not isinstance(row.get("hide_after"), int)
+                    or row["hide_after"] <= row["hide_before"]
+                )
+            )
             for row in withdrawal_windows
         )
     ):
-        raise ValueError("withdrawal must not engage the selected backing object")
+        raise ValueError(
+            "withdrawal must hide the name without engaging the selected backing object"
+        )
 
     invalidations = [
         row

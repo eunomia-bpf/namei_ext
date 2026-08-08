@@ -538,7 +538,7 @@ __spindle_staging_rq2_guest_inner:
 		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null
 	jq -e 'select(.event == "spindle-staging-rq2-withdrawal-lookup" and .operation == "fstatat" and .observed_errno == 2 and .expected_errno == 2 and .pass == true)' \
 		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null
-	jq -e 'select(.event == "spindle-staging-rq2-withdrawal-window" and .before == .after and .pass == true)' \
+	jq -e 'select(.event == "spindle-staging-rq2-withdrawal-window" and .before == .after and ((.condition != "namei_ext") or (.hide_after > .hide_before)) and .pass == true)' \
 		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null
 	jq -e 'select(.event == "spindle-staging-rq2-summary" and .focal_objects == 47 and .failures == 0 and .pass == true)' \
 		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/observations.jsonl" >/dev/null

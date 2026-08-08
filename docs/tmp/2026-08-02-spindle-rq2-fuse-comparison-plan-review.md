@@ -98,3 +98,14 @@ The reviewer rechecked the separated setup/operation error transport, the
 direct withdrawn-path oracle, analyzer completeness, raw Make gates, and
 notification error handling. No scientific or executability blocker remains
 for committing the amendment and running a fresh paired KVM preflight.
+
+## Preflight04 Execution Repair
+
+Preflight04 showed that the namei_ext arm deleted its selected-target rule to
+implement withdrawal. A missing rule means `PASS`, so the still-existing lower
+source file became visible. This contradicted the already-approved withdrawal
+oracle and was an implementation defect, not a change to the comparison or
+hypothesis. The repair installs the policy's explicit `HIDE` action and requires
+both a positive lookup-hide counter delta and no selected-backing hit. The BPF
+object, runner, analyzer, and direct Make gate compile and pass their host tests
+before another fresh preflight.

@@ -1954,6 +1954,8 @@ static int rq2_run_namei_condition(
 	uint64_t hits_after[FOCAL_OBJECTS] = {};
 	uint64_t withdrawn_before = 0;
 	uint64_t withdrawn_after = 0;
+	uint64_t hide_before = 0;
+	uint64_t hide_after = 0;
 	bool canary_mounted = false;
 	bool cgroup_created = false;
 	bool targets_registered = false;
@@ -2084,9 +2086,13 @@ static int rq2_run_namei_condition(
 	ret = collect_counter(&policy, "spindle_staging_rule_hits",
 			      mappings[0].target_id, &withdrawn_before);
 	if (!ret)
-		ret = namei_ext_component_map_delete(
+		ret = collect_counter(&policy, "spindle_staging_counters",
+				      SPINDLE_COUNTER_HIDE_LOOKUP, &hide_before);
+	if (!ret)
+		ret = namei_ext_component_map_update(
 			&policy, "spindle_staging_rules", cgroup_id,
-			mappings[0].source_parent, mappings[0].spec->name);
+			mappings[0].source_parent, mappings[0].spec->name,
+			SPINDLE_STAGING_HIDE_VALUE);
 	if (!ret)
 		ret = rq2_withdrawal_lookup_probe(out, "namei_ext", cgroup_path,
 						 environment, mappings[0].source);
@@ -2094,17 +2100,30 @@ static int rq2_run_namei_condition(
 		ret = rq2_run_withdrawn(out, "namei_ext", test_dir,
 					 cgroup_path, environment, loader_argv,
 					 loader_env, result_dir, &withdrawn_result);
-	if (!ret)
-		ret = collect_counter(&policy, "spindle_staging_rule_hits",
-				      mappings[0].target_id, &withdrawn_after);
-	bool withdrawal_pass = !ret && withdrawn_after == withdrawn_before;
+	int withdrawal_oracle_ret = ret;
+	int counter_ret = collect_counter(&policy, "spindle_staging_rule_hits",
+					  mappings[0].target_id,
+					  &withdrawn_after);
+
+	if (!counter_ret)
+		counter_ret = collect_counter(&policy, "spindle_staging_counters",
+					      SPINDLE_COUNTER_HIDE_LOOKUP,
+					      &hide_after);
+	if (!withdrawal_oracle_ret && counter_ret)
+		withdrawal_oracle_ret = counter_ret;
+	ret = withdrawal_oracle_ret;
+	bool withdrawal_pass = !ret && withdrawn_after == withdrawn_before &&
+		hide_after > hide_before;
 
 	fprintf(out,
 		"{\"event\":\"spindle-staging-rq2-withdrawal-window\","
 		"\"condition\":\"namei_ext\",\"before\":%llu,"
-		"\"after\":%llu,\"pass\":%s}\n",
+		"\"after\":%llu,\"hide_before\":%llu,"
+		"\"hide_after\":%llu,\"pass\":%s}\n",
 		(unsigned long long)withdrawn_before,
 		(unsigned long long)withdrawn_after,
+		(unsigned long long)hide_before,
+		(unsigned long long)hide_after,
 		withdrawal_pass ? "true" : "false");
 	fflush(out);
 	failures += !withdrawal_pass;

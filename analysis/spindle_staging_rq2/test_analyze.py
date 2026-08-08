@@ -85,6 +85,11 @@ def fixture(repetitions=3, samples=5, fuse_ratio=2.0):
                         "event": "spindle-staging-rq2-withdrawal-window",
                         "before": 10,
                         "after": 10,
+                        **(
+                            {"hide_before": 0, "hide_after": 2}
+                            if condition == "namei_ext"
+                            else {}
+                        ),
                         "condition": condition,
                         "repetition": repetition,
                         "pass": True,
@@ -228,6 +233,18 @@ class AnalyzeTest(unittest.TestCase):
         )
         lookup["observed_errno"] = 0
         with self.assertRaisesRegex(ValueError, "withdrawn pathname"):
+            analyze(observations, run, launches, seed=7)
+
+    def test_namei_withdrawal_requires_hide_engagement(self):
+        observations, run, launches = fixture()
+        window = next(
+            row
+            for row in observations
+            if row["event"] == "spindle-staging-rq2-withdrawal-window"
+            and row["condition"] == "namei_ext"
+        )
+        window["hide_after"] = window["hide_before"]
+        with self.assertRaisesRegex(ValueError, "must hide the name"):
             analyze(observations, run, launches, seed=7)
 
     def test_other_entry_invalidation_error_is_rejected(self):

@@ -167,7 +167,11 @@ mandatory RQ1 case studies W1--W7.
   non-root `fstatat` of the withdrawn pathname returns `ENOENT`, the withdrawn
   loader fails with its exact diagnostic, and the backing-object engagement
   counter does not advance. Any other notification error or stale pathname
-  observation invalidates the run.
+  observation invalidates the run. The namei_ext arm performs the equivalent
+  transition by replacing the selected-target rule with an explicit `HIDE`
+  rule; deleting the rule would mean `PASS` and expose the lower source file.
+  Its lookup-hide counter must advance while the selected-target hit counter
+  remains unchanged.
 - Repetitions, seeds, and uncertainty: formal run uses 20 fresh modified-kernel
   KVM boots arranged as ten condition pairs, with three warmups and 50 measured
   loader launches in each boot. Odd pairs launch namei_ext then FUSE; even
