@@ -41,7 +41,9 @@ credit.
 The statically linked RQ2 runner compiles with `-Werror`. Fifteen analyzer tests
 pass, including rejection of a missing fallback, a failed fallback, and a
 stale withdrawn pathname. `make spindle-staging-rq2-host-gate` passes. One final
-fresh paired KVM preflight remains required before the formal matrix.
+fresh paired KVM preflight remained required before the formal matrix.
+Preflight06 subsequently passed all three epoch fallbacks and the following
+application-level pathname oracles.
 
 ## Scope
 

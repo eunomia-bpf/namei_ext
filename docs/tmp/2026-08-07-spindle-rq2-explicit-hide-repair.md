@@ -37,7 +37,9 @@ The modified BPF policy compiles with clang. The statically linked RQ2 runner
 compiles with `-Werror`. Thirteen analyzer tests pass, including a regression
 that rejects a namei_ext withdrawal with no hide-counter activity. `make
 spindle-staging-rq2-host-gate` passes. A fresh paired modified-kernel KVM
-preflight remains required.
+preflight remained required. Preflight06 subsequently passed the direct
+`fstatat(ENOENT)`, exact loader failure, unchanged selected-target hits, and
+positive hide-counter delta in the real attach path.
 
 ## Scope
 
