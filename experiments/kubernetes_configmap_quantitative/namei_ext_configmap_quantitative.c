@@ -62,6 +62,13 @@ struct phase_times {
 	uint64_t rollback_consumer_ns;
 };
 
+struct setup_phase_times {
+	uint64_t object_preparation_ns;
+	uint64_t target_registration_ns;
+	uint64_t map_population_ns;
+	uint64_t consumer_cgroup_move_ns;
+};
+
 struct consumer_process {
 	pid_t pid;
 	FILE *input;
@@ -87,6 +94,7 @@ struct sample {
 	char cgroup[PATH_MAX];
 	struct entry entries[MAX_WIDTH];
 	struct phase_times phases;
+	struct setup_phase_times setup_phases;
 	char acknowledgements[4][ACK_SIZE];
 	unsigned int state_count;
 	unsigned int acknowledgement_count;
@@ -101,6 +109,7 @@ struct sample {
 	unsigned int observed_lower_files;
 	uint64_t observed_lower_bytes;
 	unsigned int logical_files;
+	unsigned int registered_targets;
 	unsigned int managed_identity_checks;
 	unsigned int managed_hidden_checks;
 	unsigned int lower_preservation_checks;
@@ -360,31 +369,54 @@ static int setup_files(struct sample *sample)
 
 static int register_targets(struct sample *sample)
 {
-	char path[PATH_MAX];
+	struct namei_ext_target_registration *targets;
+	char (*paths)[PATH_MAX];
+	size_t target_count = 0;
+	size_t target_capacity = 2 * sample->width;
 	unsigned int index;
+	int ret = 0;
+
+	targets = calloc(target_capacity, sizeof(*targets));
+	paths = calloc(target_capacity, sizeof(*paths));
+	if (!targets || !paths) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	for (index = 0; index < sample->width; index++) {
 		struct entry *entry = &sample->entries[index];
-		int ret;
 
 		if (entry->v0_present) {
-			if (join(path, sizeof(path), sample->v0, entry->relative))
-				return -ENAMETOOLONG;
-			ret = namei_ext_register_target(sample->cgroup, path,
-						 entry->v0_target);
+			ret = join(paths[target_count], sizeof(paths[target_count]),
+				   sample->v0, entry->relative);
 			if (ret)
-				return ret;
+				goto out;
+			targets[target_count].path = paths[target_count];
+			targets[target_count].target_id = entry->v0_target;
+			target_count++;
 		}
 		if (entry->v1_present) {
-			if (join(path, sizeof(path), sample->v1, entry->relative))
-				return -ENAMETOOLONG;
-			ret = namei_ext_register_target(sample->cgroup, path,
-						 entry->v1_target);
+			ret = join(paths[target_count], sizeof(paths[target_count]),
+				   sample->v1, entry->relative);
 			if (ret)
-				return ret;
+				goto out;
+			targets[target_count].path = paths[target_count];
+			targets[target_count].target_id = entry->v1_target;
+			target_count++;
 		}
 	}
-	return 0;
+	if (target_count != 2U * (sample->width - 1U)) {
+		ret = -EINVAL;
+		goto out;
+	}
+	ret = namei_ext_register_target_batch(sample->cgroup, targets,
+					      target_count);
+	if (!ret)
+		sample->registered_targets = target_count;
+out:
+	free(paths);
+	free(targets);
+	return ret;
 }
 
 static int configure_maps(struct sample *sample,
@@ -1140,7 +1172,10 @@ static int emit_observation(const struct sample *sample, int error,
 		"\"update_publish_ns\":%llu,\"update_consumer_ns\":%llu,"
 		"\"no_op_publish_ns\":%llu,\"no_op_consumer_ns\":%llu,"
 		"\"rollback_publish_ns\":%llu,"
-		"\"rollback_consumer_ns\":%llu},\"consumer\":[",
+		"\"rollback_consumer_ns\":%llu},"
+		"\"setup_phases\":{\"object_preparation_ns\":%llu,"
+		"\"target_registration_ns\":%llu,\"map_population_ns\":%llu,"
+		"\"consumer_cgroup_move_ns\":%llu},\"consumer\":[",
 		sample->boot, sample->pair, sample->order, sample->width,
 		sample->width - 1, (unsigned long long)sample->active_total_ns,
 		(unsigned long long)sample->wall_span_ns,
@@ -1155,7 +1190,11 @@ static int emit_observation(const struct sample *sample, int error,
 		(unsigned long long)sample->phases.no_op_publish_ns,
 		(unsigned long long)sample->phases.no_op_consumer_ns,
 		(unsigned long long)sample->phases.rollback_publish_ns,
-		(unsigned long long)sample->phases.rollback_consumer_ns);
+		(unsigned long long)sample->phases.rollback_consumer_ns,
+		(unsigned long long)sample->setup_phases.object_preparation_ns,
+		(unsigned long long)sample->setup_phases.target_registration_ns,
+		(unsigned long long)sample->setup_phases.map_population_ns,
+		(unsigned long long)sample->setup_phases.consumer_cgroup_move_ns);
 	for (index = 0; index < sample->acknowledgement_count; index++)
 		fprintf(output, "%s%s", index ? "," : "",
 			sample->acknowledgements[index]);
@@ -1164,7 +1203,7 @@ static int emit_observation(const struct sample *sample, int error,
 		"\"lower_files\":%u,\"lower_bytes\":%llu,"
 		"\"observed_lower_files\":%u,"
 		"\"observed_lower_bytes\":%llu,"
-		"\"logical_files\":%u,"
+		"\"logical_files\":%u,\"registered_targets\":%u,"
 		"\"managed_identity_checks\":%u,"
 		"\"managed_hidden_checks\":%u,"
 		"\"lower_preservation_checks\":%u,"
@@ -1196,7 +1235,8 @@ static int emit_observation(const struct sample *sample, int error,
 		(unsigned long long)sample->lower_bytes,
 		sample->observed_lower_files,
 		(unsigned long long)sample->observed_lower_bytes,
-		sample->logical_files, sample->managed_identity_checks,
+		sample->logical_files, sample->registered_targets,
+		sample->managed_identity_checks,
 		sample->managed_hidden_checks,
 		sample->lower_preservation_checks, sample->unmanaged_checks,
 		sample->rollback_original_v0 ? "true" : "false",
@@ -1241,6 +1281,8 @@ static int run_sample(struct sample *sample)
 	uint64_t attach_start;
 	uint64_t attach_end;
 	uint64_t setup_start;
+	uint64_t setup_boundary;
+	uint64_t setup_now;
 	uint64_t wall_start;
 	uint64_t wall_end;
 	uint64_t cgroup_id = 0;
@@ -1287,22 +1329,41 @@ static int run_sample(struct sample *sample)
 	ret = setup_files(sample);
 	if (!ret)
 		ret = namei_ext_cgroup_id(sample->cgroup, &cgroup_id);
+	if (!ret)
+		ret = monotonic_ns(&setup_boundary);
+	if (!ret)
+		sample->setup_phases.object_preparation_ns =
+			setup_boundary - setup_start;
 	if (!ret) {
 		targets_registered = true;
 		ret = register_targets(sample);
+	}
+	if (!ret)
+		ret = monotonic_ns(&setup_now);
+	if (!ret) {
+		sample->setup_phases.target_registration_ns =
+			setup_now - setup_boundary;
+		setup_boundary = setup_now;
 	}
 	if (!ret) {
 		maps_configured = true;
 		ret = configure_maps(sample, &policy, cgroup_id);
 	}
 	if (!ret)
-		ret = move_pid_to_cgroup(sample->cgroup, consumer.pid);
+		ret = monotonic_ns(&setup_now);
 	if (!ret) {
-		uint64_t now;
-
-		ret = monotonic_ns(&now);
-		if (!ret)
-			sample->phases.setup_ns = now - setup_start;
+		sample->setup_phases.map_population_ns =
+			setup_now - setup_boundary;
+		setup_boundary = setup_now;
+	}
+	if (!ret)
+		ret = move_pid_to_cgroup(sample->cgroup, consumer.pid);
+	if (!ret)
+		ret = monotonic_ns(&setup_now);
+	if (!ret) {
+		sample->setup_phases.consumer_cgroup_move_ns =
+			setup_now - setup_boundary;
+		sample->phases.setup_ns = setup_now - setup_start;
 	}
 	if (!ret)
 		ret = timed_generation(&policy, cgroup_id, 0,

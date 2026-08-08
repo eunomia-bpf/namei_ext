@@ -95,6 +95,13 @@ def lifecycle(mechanism, order):
                           for data, _ in payload.values())
         row.update({
             "attach_ns": 10, "lower_files": 2 * (WIDTH - 1),
+            "setup_phases": {
+                "object_preparation_ns": 5,
+                "target_registration_ns": 5,
+                "map_population_ns": 5,
+                "consumer_cgroup_move_ns": 5,
+            },
+            "registered_targets": 2 * (WIDTH - 1),
             "lower_bytes": lower_bytes,
             "observed_lower_files": 2 * (WIDTH - 1),
             "observed_lower_bytes": lower_bytes, "logical_files": WIDTH,
@@ -261,6 +268,17 @@ def fixture():
                 "-m", "0", "-E", "lazy_itable_init=0,lazy_journal_init=0"],
             "mount_options": ["noatime", "nosuid", "nodev"],
         },
+        "setup_measurement": {
+            "primary_metric": "wall_span_ns",
+            "setup_aggregate": "setup_ns",
+            "proposed_components": [
+                "object_preparation_ns", "target_registration_ns",
+                "map_population_ns", "consumer_cgroup_move_ns",
+            ],
+            "component_sum": "exact",
+            "registered_targets": "2*(width-1)",
+            "registration_control": "single-child-repeated-control-write",
+        },
     }
     return run, [source, proposed, *identity_rows(), *lower_rows(), directory,
                  audit_row()]
@@ -293,6 +311,26 @@ class ValidateTest(unittest.TestCase):
         broken = copy.deepcopy(rows)
         broken[0]["active_total_ns"] += 1
         with self.assertRaisesRegex(ValueError, "timing fields"):
+            validate.validate(run, broken)
+
+    def test_rejects_setup_decomposition_mismatch(self):
+        run, rows = fixture()
+        broken = copy.deepcopy(rows)
+        namei = next(row for row in broken
+                     if row["event"] == validate.LIFECYCLE and
+                     row["mechanism"] == "namei_ext")
+        namei["setup_phases"]["target_registration_ns"] += 1
+        with self.assertRaisesRegex(ValueError, "setup decomposition"):
+            validate.validate(run, broken)
+
+    def test_rejects_registered_target_count_mismatch(self):
+        run, rows = fixture()
+        broken = copy.deepcopy(rows)
+        namei = next(row for row in broken
+                     if row["event"] == validate.LIFECYCLE and
+                     row["mechanism"] == "namei_ext")
+        namei["registered_targets"] -= 1
+        with self.assertRaisesRegex(ValueError, "setup decomposition"):
             validate.validate(run, broken)
 
     def test_rejects_out_of_matrix_coordinate(self):
@@ -337,6 +375,12 @@ class ValidateTest(unittest.TestCase):
         run, rows = fixture()
         run["filesystem"]["type"] = "9p"
         with self.assertRaisesRegex(ValueError, "filesystem protocol"):
+            validate.validate(run, rows)
+
+    def test_rejects_unfrozen_setup_measurement(self):
+        run, rows = fixture()
+        run["setup_measurement"]["component_sum"] = "approximate"
+        with self.assertRaisesRegex(ValueError, "setup measurement protocol"):
             validate.validate(run, rows)
 
 

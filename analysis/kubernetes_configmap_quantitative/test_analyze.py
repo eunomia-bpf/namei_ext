@@ -35,6 +35,13 @@ def lifecycle(boot, width, pair, mechanism, order, elapsed):
     if mechanism == "namei_ext":
         row.update({
             "attach_ns": 5,
+            "setup_phases": {
+                "object_preparation_ns": 5,
+                "target_registration_ns": 5,
+                "map_population_ns": 5,
+                "consumer_cgroup_move_ns": 5,
+            },
+            "registered_targets": 2 * (width - 1),
             "lower_files": 2 * (width - 1),
             "lower_bytes": 100,
             "logical_files": width,
@@ -121,6 +128,10 @@ class AnalyzeTest(unittest.TestCase):
         self.assertAlmostEqual(scale["publication_ratio"], 0.25)
         self.assertEqual(scale["timing_median_ns"]["namei_ext"]["attach_ns"], 5)
         self.assertEqual(
+            scale["timing_median_ns"]["namei_ext"]["target_registration_ns"],
+            5)
+        self.assertEqual(scale["registered_targets"], 30)
+        self.assertEqual(
             scale["materialization_median"][
                 "atomicwriter_newly_materialized_files"], 45)
         self.assertEqual(
@@ -140,6 +151,17 @@ class AnalyzeTest(unittest.TestCase):
         run = {"matrix": {"boots": 1, "pairs_per_scale_per_boot": 2,
                            "scales": [16]}}
         with self.assertRaises(ValueError):
+            analyze.summarize(rows, run)
+
+    def test_rejects_nonadditive_namei_setup(self):
+        rows = [
+            lifecycle(1, 16, 1, "atomicwriter", 1, 100),
+            lifecycle(1, 16, 1, "namei_ext", 2, 90),
+        ]
+        rows[1]["setup_phases"]["map_population_ns"] += 1
+        run = {"matrix": {"boots": 1, "pairs_per_scale_per_boot": 1,
+                           "scales": [16]}}
+        with self.assertRaisesRegex(ValueError, "setup decomposition"):
             analyze.summarize(rows, run)
 
     def test_writes_analysis_artifacts(self):
@@ -165,8 +187,14 @@ class AnalyzeTest(unittest.TestCase):
             self.assertTrue((root / "analysis" / "materialization.csv").is_file())
             materialization = (root / "analysis" / "materialization.csv").read_text(
                 encoding="utf-8")
+            decomposition = (root / "analysis" / "decomposition.csv").read_text(
+                encoding="utf-8")
+            report = (root / "analysis" / "report.md").read_text(
+                encoding="utf-8")
             self.assertIn("atomicwriter_live_files_no_op", materialization)
             self.assertIn("namei_ext_visible_files_rollback", materialization)
+            self.assertIn("target_registration_ns", decomposition)
+            self.assertIn("namei_ext Setup Attribution", report)
 
 
 if __name__ == "__main__":

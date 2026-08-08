@@ -15,6 +15,10 @@ STATES = ("initial", "update", "no-op", "rollback")
 REPLAY_STATES = (
     "initial-replay", "update-replay", "no-op-replay", "rollback-replay"
 )
+SETUP_PHASES = {
+    "object_preparation_ns", "target_registration_ns", "map_population_ns",
+    "consumer_cgroup_move_ns",
+}
 
 
 def load_json(path):
@@ -383,6 +387,17 @@ def validate_lifecycle(row):
             row.get("consumer_only_ns", 0) > 0 and
             row.get("runtime_uid", 0) > 0 and row.get("runtime_gid", 0) > 0,
             "lifecycle dimensions or timing fields differ")
+    if row.get("mechanism") == "namei_ext":
+        setup = row.get("setup_phases", {})
+        require(set(setup) == SETUP_PHASES and
+                all(value > 0 for value in setup.values()) and
+                sum(setup.values()) == phases["setup_ns"] and
+                row.get("registered_targets") == 2 * (width - 1),
+                "namei_ext setup decomposition differs")
+    else:
+        require("setup_phases" not in row and
+                "registered_targets" not in row,
+                "source row unexpectedly contains namei_ext setup evidence")
     validate_consumer(row)
 
 
@@ -404,6 +419,17 @@ def validate(run, rows):
             "-m", "0", "-E", "lazy_itable_init=0,lazy_journal_init=0"],
         "mount_options": ["noatime", "nosuid", "nodev"],
     }, "filesystem protocol differs")
+    require(run.get("setup_measurement") == {
+        "primary_metric": "wall_span_ns",
+        "setup_aggregate": "setup_ns",
+        "proposed_components": [
+            "object_preparation_ns", "target_registration_ns",
+            "map_population_ns", "consumer_cgroup_move_ns",
+        ],
+        "component_sum": "exact",
+        "registered_targets": "2*(width-1)",
+        "registration_control": "single-child-repeated-control-write",
+    }, "setup measurement protocol differs")
     allowed = {
         LIFECYCLE, IDENTITY, LOWER, UNMANAGED_DIRECTORY,
         MATERIALIZATION_AUDIT,

@@ -25,6 +25,12 @@ PHASES = (
     "rollback_publish_ns",
     "rollback_consumer_ns",
 )
+SETUP_PHASES = (
+    "object_preparation_ns",
+    "target_registration_ns",
+    "map_population_ns",
+    "consumer_cgroup_move_ns",
+)
 BASE_TIMINGS = (
     "wall_span_ns",
     "active_total_ns",
@@ -81,6 +87,12 @@ def timing_snapshot(row):
         raise ValueError("lifecycle phase timing set differs")
     values.update({name: phases[name] for name in PHASES})
     if row["mechanism"] == "namei_ext":
+        setup = row.get("setup_phases", {})
+        if (set(setup) != set(SETUP_PHASES) or
+                sum(setup.values()) != phases["setup_ns"] or
+                row.get("registered_targets") != 2 * (row["width"] - 1)):
+            raise ValueError("namei_ext setup decomposition differs")
+        values.update({name: setup[name] for name in SETUP_PHASES})
         values["attach_ns"] = row["attach_ns"]
     if any(value <= 0 for value in values.values()):
         raise ValueError("non-positive lifecycle timing present")
@@ -254,6 +266,7 @@ def summarize(rows, run, audits=None):
         entry = {
             "width": width,
             "boots": len(boot_rows),
+            "registered_targets": 2 * (width - 1),
             "ratio": math.exp(center),
             "publication_ratio": math.exp(statistics.median(publication_logs)),
             "atomicwriter_median_ns": timing_median["atomicwriter"][PRIMARY_METRIC],
@@ -333,7 +346,10 @@ def write_csv_artifacts(analysis, summary):
             writer.writerow({name: entry[name] for name in fields})
     with (analysis / "decomposition.csv").open(
             "w", encoding="utf-8", newline="") as output:
-        fields = ["width", "mechanism", *BASE_TIMINGS, *PHASES, "attach_ns"]
+        fields = [
+            "width", "mechanism", *BASE_TIMINGS, *PHASES, *SETUP_PHASES,
+            "attach_ns", "registered_targets",
+        ]
         writer = csv.DictWriter(output, fieldnames=fields)
         writer.writeheader()
         for entry in summary["scales"]:
@@ -342,7 +358,10 @@ def write_csv_artifacts(analysis, summary):
                 writer.writerow({
                     "width": entry["width"],
                     "mechanism": mechanism,
-                    **{name: timings.get(name, "") for name in fields[2:]},
+                    **{name: timings.get(name, "") for name in fields[2:-1]},
+                    "registered_targets": (
+                        entry["registered_targets"]
+                        if mechanism == "namei_ext" else ""),
                 })
     with (analysis / "materialization.csv").open(
             "w", encoding="utf-8", newline="") as output:
@@ -413,6 +432,23 @@ def write_report(path, summary):
             f"{namei['consumer_only_ns'] / 1_000_000:.3f} | "
             f"{namei['attach_ns'] / 1_000_000:.3f} | "
             f"{entry['publication_ratio']:.6f} |")
+    lines.extend([
+        "",
+        "## namei_ext Setup Attribution",
+        "",
+        "| Width | Object preparation (ms) | Target registration (ms) | "
+        "Map population (ms) | Consumer cgroup move (ms) | Registered targets |",
+        "| ---: | ---: | ---: | ---: | ---: | ---: |",
+    ])
+    for entry in summary["scales"]:
+        namei = entry["timing_median_ns"]["namei_ext"]
+        lines.append(
+            f"| {entry['width']} | "
+            f"{namei['object_preparation_ns'] / 1_000_000:.3f} | "
+            f"{namei['target_registration_ns'] / 1_000_000:.3f} | "
+            f"{namei['map_population_ns'] / 1_000_000:.3f} | "
+            f"{namei['consumer_cgroup_move_ns'] / 1_000_000:.3f} | "
+            f"{entry['registered_targets']} |")
     if all("materialization_median" in entry for entry in summary["scales"]):
         lines.extend([
             "",
