@@ -723,6 +723,8 @@ static int rq2_fuse_invalidate_target(struct rq2_fuse_state *state,
 	rq2_fuse_unref(state, parent_inode, 1);
 	if (response->inode_status)
 		return response->inode_status;
+	if (response->entry_status == -ENOENT)
+		return 0;
 	return response->entry_status;
 }
 
@@ -2117,7 +2119,7 @@ static int rq2_run_fuse_condition(
 		ret = rq2_fuse_request(&process, RQ2_FUSE_INVALIDATE, 0,
 				       &response);
 	bool invalidate_zero_pass = !ret && !response.inode_status &&
-		!response.entry_status;
+		(!response.entry_status || response.entry_status == -ENOENT);
 	rq2_emit_invalidation(out, "mode_zero", &response,
 			      invalidate_zero_pass);
 	if (!ret)
@@ -2130,7 +2132,9 @@ static int rq2_run_fuse_condition(
 		rq2_fuse_request(&process, RQ2_FUSE_INVALIDATE, 0,
 				 &restore_response);
 	bool invalidate_restore_pass = !invalidate_restore_ret &&
-		!restore_response.inode_status && !restore_response.entry_status;
+		!restore_response.inode_status &&
+		(!restore_response.entry_status ||
+		 restore_response.entry_status == -ENOENT);
 	rq2_emit_invalidation(out, "mode_restore", &restore_response,
 			      invalidate_restore_pass);
 	bool permission_pass = !ret && !restore_ret &&
