@@ -74,18 +74,24 @@ they are not paper performance evidence.
 
 The sample parent used by both mechanisms was below the host-shared result
 root. The approximately one-to-three-second lifecycle times for 16 tiny files
-show that 9p dominates the observation. Counterbalancing does not make that
-substrate representative of a local filesystem, and the favorable ratio must
-not enter `docs/evaluation.md`, a figure, the paper, or a proposal.
+are materially affected by this 9p substrate, but this run cannot quantify how
+much of either mechanism's time 9p contributes. Counterbalancing does not make
+that substrate representative of a local filesystem, and the favorable ratio
+must not enter `docs/evaluation.md`, a figure, the paper, or a proposal.
 
 ## Required Fix Before Formal Run
 
-The next harness revision must mount one fresh guest-local tmpfs per boot and
-place both mechanisms' sample parents there. It must record the mounted
-filesystem identity, keep result serialization outside the primary timer,
-unmount and remove the local root as a hard cleanup gate, and retain the same
-AB/BA matrix and correctness oracle. The analyzer must also expose the frozen
-phase, attach, and materialization metrics rather than only the primary ratio.
+The next harness revision must attach one fresh host-ext4-backed raw virtio
+block device per boot, format and mount ext4 in the guest, and place both
+mechanisms' sample parents there. Ordinary ConfigMap volume uses a non-memory
+`EmptyDir`; using tmpfs or a memory-backed loop image would instead match
+projected volume and change the source workload. The harness must record and
+validate host backing, guest block, ext4 mount, `blkid`, and `statfs` identity;
+keep result serialization outside the primary timer; separately gate guest
+unmount/mountpoint cleanup and host image removal; and retain the same AB/BA
+matrix and correctness oracle. The analyzer must also expose the frozen phase,
+attach, per-state live-object, and materialization metrics rather than only the
+primary ratio.
 
 After host tests and independent code review, one final KVM preflight may test
 that corrected protocol in a new immutable result root. The 20-boot formal run

@@ -40,9 +40,9 @@ source-relative RQ1 extension, not the paper's FUSE comparison.
   performance claim.
 - `mk/experiments/kubernetes_configmap_quantitative.mk` owns build, source,
   host tests, immutable result creation, guest execution, final validation,
-  and analysis. The preflight is one boot with two 16-entry pairs in AB/BA
-  order. The frozen formal matrix is 20 boots, five pairs per scale, and widths
-  4, 16, 64, and 256.
+  and analysis. The corrected preflight is one boot with two pairs at widths 16
+  and 256 in AB/BA order. The frozen formal matrix is 20 boots, five pairs per
+  scale, and widths 4, 16, 64, and 256.
 
 ## Timing Boundary
 
@@ -86,7 +86,7 @@ The following Make-owned gates pass:
 - `make kubernetes-configmap-quantitative-host-failure-test` verifies that a
   consumer failure produces a failed structured lifecycle and still cleans the
   sample root.
-- `make kubernetes-configmap-quantitative-analysis-test` passes 11 tests,
+- `make kubernetes-configmap-quantitative-analysis-test` passes 15 tests,
   including rejection of altered consumer bytes and lower-file timestamps and
   a regression test that distinguishes the begin-to-end wall span from the
   active-phase sum.
@@ -116,7 +116,21 @@ evidence. Immutable execution, finalization, and analysis markers prevent a
 failed or interrupted result root from being reused. An independent reread
 returned **GO** for exactly one modified-kernel KVM preflight.
 
-No KVM result exists yet for this harness. The next gate is one real modified-
-kernel preflight. Its result root will be frozen regardless of success. A
-separate claim-to-code-to-raw-result review must return GO before the 20-boot
-formal target can run or any performance statement can enter the paper.
+At implementation admission, no KVM result existed for this harness. The first
+real modified-kernel result and its later review are recorded separately below.
+
+## Post-Preflight Protocol Correction
+
+The completed correctness preflight exposed that sample parents were below the
+host-shared result directory. The measured file operations therefore used 9p,
+making the timing sanity values ineligible for the paper. The source path was
+rechecked before choosing a replacement: ordinary ConfigMap volume uses a
+non-memory `EmptyDir`, whereas projected volume requests memory-backed storage.
+The corrected implementation creates a fresh raw image on the host's ext4
+filesystem for every boot, attaches it directly as a `cache=none` virtio block
+device, and has the guest format and mount ext4. It records host backing, guest
+device, `findmnt`, `blkid`, and `statfs` identity, runs both mechanisms below
+that common mount, and separately gates guest unmount/mountpoint cleanup and
+host image removal. Result serialization remains outside the primary timer.
+The next immutable preflight must validate this correction before the formal
+matrix is admitted.

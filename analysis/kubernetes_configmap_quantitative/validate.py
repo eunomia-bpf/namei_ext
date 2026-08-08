@@ -142,14 +142,27 @@ def validate_consumer(row):
     require(consumer[1].get("app_dev") == consumer[2].get("app_dev") and
             consumer[1].get("app_ino") == consumer[2].get("app_ino"),
             "no-op changed the selected app object")
+    state_files = [
+        {item["path"]: item for item in entry["files"]}
+        for entry in consumer
+    ]
+    for path in v1:
+        update = state_files[1][path]
+        no_op = state_files[2][path]
+        require((update["dev"], update["ino"]) ==
+                (no_op["dev"], no_op["ino"]),
+                f"no-op changed selected object identity for {path}")
     if row["mechanism"] == "atomicwriter":
         require((consumer[3].get("app_dev"), consumer[3].get("app_ino")) !=
                 (consumer[0].get("app_dev"), consumer[0].get("app_ino")),
                 "AtomicWriter rollback did not materialize a new generation")
     else:
-        require((consumer[3].get("app_dev"), consumer[3].get("app_ino")) ==
-                (consumer[0].get("app_dev"), consumer[0].get("app_ino")),
-                "namei_ext rollback did not select the original V0 object")
+        for path in v0:
+            initial = state_files[0][path]
+            rollback = state_files[3][path]
+            require((rollback["dev"], rollback["ino"]) ==
+                    (initial["dev"], initial["ino"]),
+                    f"namei_ext rollback did not select original V0 for {path}")
 
 
 def validate_atomicwriter(row, audit_rows):
@@ -374,6 +387,23 @@ def validate_lifecycle(row):
 
 
 def validate(run, rows):
+    require(run.get("guest_launch") == {
+        "kvm_cpus": 4,
+        "kvm_memory": "8G",
+        "host_cpu_pin": "4-7",
+        "affinity": "qmp-pinned-and-verified",
+    }, "guest launch protocol differs")
+    require(run.get("filesystem") == {
+        "type": "ext4",
+        "layout": "fresh-virtio-block-per-boot",
+        "image_format": "raw",
+        "image_size": "1G",
+        "host_backing_filesystem": "ext4",
+        "qemu_cache": "none",
+        "mkfs_options": [
+            "-m", "0", "-E", "lazy_itable_init=0,lazy_journal_init=0"],
+        "mount_options": ["noatime", "nosuid", "nodev"],
+    }, "filesystem protocol differs")
     allowed = {
         LIFECYCLE, IDENTITY, LOWER, UNMANAGED_DIRECTORY,
         MATERIALIZATION_AUDIT,
@@ -490,6 +520,11 @@ def validate(run, rows):
                 set(proposed.get("counters", {})) == counter_names and
                 all(value > 0 for value in proposed["counters"].values()),
                 f"namei_ext lifecycle evidence differs for {key}")
+        counters = proposed["counters"]
+        require(counters["total"] == counters["lookup"] + counters["readdir"] and
+                counters["total"] == counters["select"] + counters["pass"] +
+                counters["hide"],
+                f"namei_ext policy counter conservation differs for {key}")
         validate_identity(proposed, identities[key])
         validate_lower(proposed, lowers[key])
         validate_namei_target_links(proposed, identities[key], lowers[key])

@@ -19,9 +19,14 @@ def consumer_ack(state, mechanism, root_ino, app_ino, first_app_ino):
     for index, path in enumerate(sorted(union)):
         if path in payload:
             data, mode = payload[path]
-            ino = (100 + generation * 20 + ordered_payload.index(path)
-                   if mechanism == "namei_ext" else
-                   (app_ino if path == "config/app.conf" else 50 + index))
+            if mechanism == "namei_ext":
+                ino = 100 + generation * 20 + ordered_payload.index(path)
+            else:
+                materialization = {
+                    "initial": 0, "update": 1, "no-op": 1, "rollback": 2,
+                }[state]
+                ino = (app_ino if path == "config/app.conf" else
+                       50 + materialization * 20 + index)
             files.append({
                 "path": path, "bytes": data, "error": 0, "mode": mode,
                 "uid": UID, "gid": GID, "dev": 1,
@@ -116,8 +121,10 @@ def lifecycle(mechanism, order):
             "cleanup_cgroup_error": 0,
             "cleanup_logical_lookup_error": 2,
             "cleanup_lower_lookup_error": 2,
-            "counters": {name: 1 for name in
-                         ("total", "lookup", "readdir", "select", "pass", "hide")},
+            "counters": {
+                "total": 6, "lookup": 4, "readdir": 2,
+                "select": 2, "pass": 3, "hide": 1,
+            },
         })
     return row
 
@@ -239,8 +246,22 @@ def fixture():
         "root_entries": root, "config_entries": config, "tls_entries": tls,
         "pass": True,
     }
-    run = {"matrix": {"boots": 1, "pairs_per_scale_per_boot": 1,
-                       "scales": [WIDTH]}}
+    run = {
+        "matrix": {"boots": 1, "pairs_per_scale_per_boot": 1,
+                   "scales": [WIDTH]},
+        "guest_launch": {
+            "kvm_cpus": 4, "kvm_memory": "8G", "host_cpu_pin": "4-7",
+            "affinity": "qmp-pinned-and-verified",
+        },
+        "filesystem": {
+            "type": "ext4", "layout": "fresh-virtio-block-per-boot",
+            "image_format": "raw", "image_size": "1G",
+            "host_backing_filesystem": "ext4", "qemu_cache": "none",
+            "mkfs_options": [
+                "-m", "0", "-E", "lazy_itable_init=0,lazy_journal_init=0"],
+            "mount_options": ["noatime", "nosuid", "nodev"],
+        },
+    }
     return run, [source, proposed, *identity_rows(), *lower_rows(), directory,
                  audit_row()]
 
@@ -291,6 +312,32 @@ class ValidateTest(unittest.TestCase):
         namei["cleanup_view_maps_empty"] = False
         with self.assertRaisesRegex(ValueError, "lifecycle evidence"):
             validate.validate(run, broken)
+
+    def test_rejects_non_app_noop_identity_change(self):
+        run, rows = fixture()
+        broken = copy.deepcopy(rows)
+        source = broken[0]
+        item = next(entry for entry in source["consumer"][2]["files"]
+                    if entry["path"] == "tls/cert.pem")
+        item["ino"] += 1
+        with self.assertRaisesRegex(ValueError, "no-op changed selected object"):
+            validate.validate(run, broken)
+
+    def test_rejects_counter_conservation_mismatch(self):
+        run, rows = fixture()
+        broken = copy.deepcopy(rows)
+        namei = next(row for row in broken
+                     if row["event"] == validate.LIFECYCLE and
+                     row["mechanism"] == "namei_ext")
+        namei["counters"]["total"] += 1
+        with self.assertRaisesRegex(ValueError, "counter conservation"):
+            validate.validate(run, broken)
+
+    def test_rejects_unfrozen_filesystem_protocol(self):
+        run, rows = fixture()
+        run["filesystem"]["type"] = "9p"
+        with self.assertRaisesRegex(ValueError, "filesystem protocol"):
+            validate.validate(run, rows)
 
 
 if __name__ == "__main__":

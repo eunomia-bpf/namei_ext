@@ -169,6 +169,20 @@ performance claim and the `namei_ext` condition.
   separately; validation and teardown remain hard gates. The sum of the nine
   individually timed setup, publication, and consumer phases is retained as a
   decomposition check, not substituted for the begin-to-end primary timer.
+- Filesystem substrate: Each KVM boot receives one fresh 1 GiB raw image stored
+  on the host's ext4 filesystem and attached directly as a virtio block device
+  with QEMU `cache=none`. The guest identifies the device by its fixed serial,
+  formats it as ext4, mounts it, and creates every `AtomicWriter` and
+  `namei_ext` sample parent below that mount. This matches ordinary ConfigMap
+  volume's non-memory `EmptyDir` path rather than changing the source workload
+  to a projected volume, which requests memory-backed storage. After the common
+  mount crossing, all sample-tree operations use ext4 and its block I/O does
+  not use the guest's 9p, overlay, or tmpfs backing. Host backing, guest block
+  identity, `findmnt`, `blkid`, and
+  `statfs` are retained. Guest unmount and mountpoint removal and host image
+  removal are separate hard gates. Raw JSONL and logs are written to the result
+  root only outside the primary timer. Performance conclusions are scoped to
+  this raw-virtio/ext4 setup.
 - Timed consumer sequence: The same persistent consumer executable is used by
   both mechanisms. At every state it enumerates the projected root and nested
   directories, opens, reads, and stats every expected present leaf, checks the
@@ -212,6 +226,11 @@ performance claim and the `namei_ext` condition.
   exponentiates the median and 95% interval. Superiority requires the transformed
   upper 95% limit to be below 1.0. Raw per-phase observations remain available.
   Samples from one boot are not treated as independent boots.
+- Host controls and provenance: Four vCPUs are pinned one-to-one to host CPUs
+  4--7 and independently read back through QMP before each guest workload. The
+  result records host CPU topology, frequency policy, selected CPUs,
+  `vng --version`, and `/proc/stat` and `/proc/interrupts` before and after the
+  multi-boot run. These fields are execution provenance, not checksum gates.
 - Cost estimate when material: 20 formal KVM boots plus one paired preflight.
   Each boot executes 40 lifecycles. The payload limit is 256 because the current
   workload policy maps admit 256 component entries per generation; this limit
@@ -234,7 +253,8 @@ performance claim and the `namei_ext` condition.
   only after a GO result review, by
   `make experiment-kubernetes-configmap-quantitative RUN_ID=<id>`.
 - Real preflight case: One fresh modified-kernel KVM boot executes two paired
-  16-entry lifecycles in AB then BA order. It must reach the real BPF attach,
+  lifecycles at both 16 and 256 entries in counterbalanced order. It must reach
+  the real BPF attach,
   official `AtomicWriter.Write()`, every four-state oracle, timing capture, raw
   result write, cleanup, and host-side analysis path.
 - Full completion rule: All 20 boots and all 800 condition-lifecycle rows
