@@ -733,8 +733,6 @@ static int rq2_fuse_invalidate_target(struct rq2_fuse_state *state,
 	rq2_fuse_unref(state, parent_inode, 1);
 	if (response->inode_status)
 		return response->inode_status;
-	if (response->entry_status == -ENOENT)
-		return 0;
 	return response->entry_status;
 }
 
@@ -1068,9 +1066,24 @@ static int rq2_fuse_request(struct rq2_fuse_process *process, int command,
 		.command = command,
 		.target_index = target_index,
 	};
+	char logical[PATH_MAX];
+	char path[PATH_MAX];
+	int pinned_fd = -1;
 	int ret;
 
 	memset(response, 0, sizeof(*response));
+	if (command == RQ2_FUSE_INVALIDATE || command == RQ2_FUSE_WITHDRAW) {
+		ret = rq2_fuse_logical_for_index(target_index, logical,
+						 sizeof(logical));
+		if (ret)
+			return ret;
+		if (snprintf(path, sizeof(path), "%s%s", process->mountpoint,
+			     logical) >= (int)sizeof(path))
+			return -ENAMETOOLONG;
+		pinned_fd = open(path, O_PATH | O_NOFOLLOW | O_CLOEXEC);
+		if (pinned_fd < 0)
+			return -errno;
+	}
 	ret = rq2_write_full(process->request_fd, &request, sizeof(request));
 	if (!ret)
 		ret = rq2_read_full_timeout(process->response_fd, response,
@@ -1078,6 +1091,8 @@ static int rq2_fuse_request(struct rq2_fuse_process *process, int command,
 					    RQ2_CONTROL_TIMEOUT_MS);
 	if (!ret)
 		ret = response->status;
+	if (pinned_fd >= 0 && close(pinned_fd) && !ret)
+		ret = -errno;
 	return ret;
 }
 
@@ -1872,6 +1887,10 @@ static int rq2_run_withdrawn(FILE *out, const char *condition,
 	return expected ? 0 : -EINVAL;
 }
 
+static void rq2_emit_lifecycle(FILE *out, const char *condition,
+			       const char *phase, uint64_t duration_ns,
+			       bool pass);
+
 static int rq2_run_namei_condition(
 	FILE *out, const char *policy_path, const char *result_dir,
 	const char *cgroup_root, const char *test_dir,
@@ -1896,7 +1915,10 @@ static int rq2_run_namei_condition(
 	bool canary_mounted = false;
 	bool cgroup_created = false;
 	bool targets_registered = false;
+	uint64_t setup_started = monotonic_ns();
+	uint64_t teardown_started;
 	int failures = 0;
+	int failures_before_teardown;
 	int ret;
 
 	if (snprintf(cgroup_path, sizeof(cgroup_path),
@@ -1920,6 +1942,8 @@ static int rq2_run_namei_condition(
 	}
 	emit_case(out, "rq2_namei_configure", !ret, ret ? -ret : 0,
 		  "47 targets and exact component rules attached");
+	rq2_emit_lifecycle(out, "namei_ext", "setup",
+			   monotonic_ns() - setup_started, !ret);
 	if (ret) {
 		failures++;
 		goto cleanup;
@@ -2040,6 +2064,9 @@ static int rq2_run_namei_condition(
 	failures += !withdrawal_pass;
 
 cleanup:
+	teardown_started = monotonic_ns();
+	failures_before_teardown = failures;
+
 	if (policy.attached) {
 		if (namei_ext_policy_parent_clear(cgroup_path))
 			failures++;
@@ -2054,6 +2081,9 @@ cleanup:
 		failures++;
 	if (canary_path[0] && unlink(canary_path) && errno != ENOENT)
 		failures++;
+	rq2_emit_lifecycle(out, "namei_ext", "teardown",
+			   monotonic_ns() - teardown_started,
+			   failures == failures_before_teardown);
 	emit_case(out, "rq2_namei_condition", failures == 0, failures,
 		  failures ? "namei_ext condition failed" :
 			     "namei_ext condition passed");
@@ -2070,6 +2100,19 @@ static void rq2_emit_invalidation(
 		"\"inode_status\":%d,\"entry_status\":%d,\"pass\":%s}\n",
 		phase, response->status, response->inode_status,
 		response->entry_status, pass ? "true" : "false");
+	fflush(out);
+}
+
+static void rq2_emit_lifecycle(FILE *out, const char *condition,
+			       const char *phase, uint64_t duration_ns,
+			       bool pass)
+{
+	fprintf(out,
+		"{\"event\":\"spindle-staging-rq2-lifecycle\","
+		"\"condition\":\"%s\",\"phase\":\"%s\","
+		"\"duration_ns\":%llu,\"pass\":%s}\n",
+		condition, phase, (unsigned long long)duration_ns,
+		pass ? "true" : "false");
 	fflush(out);
 }
 
@@ -2106,7 +2149,10 @@ static int rq2_run_fuse_condition(
 	uint64_t withdrawn_after = 0;
 	bool started = false;
 	bool cgroup_created = false;
+	uint64_t setup_started = monotonic_ns();
+	uint64_t teardown_started;
 	int failures = 0;
+	int failures_before_teardown;
 	int ret;
 
 	if (snprintf(cgroup_path, sizeof(cgroup_path),
@@ -2144,6 +2190,8 @@ static int rq2_run_fuse_condition(
 		RQ2_FUSE_THREADS, RQ2_FUSE_TIMEOUT, RQ2_FUSE_TIMEOUT,
 		negotiated ? "true" : "false", negotiated ? "true" : "false");
 	fflush(out);
+	rq2_emit_lifecycle(out, "fuse", "setup",
+			   monotonic_ns() - setup_started, negotiated);
 	if (!negotiated) {
 		failures++;
 		goto cleanup;
@@ -2163,7 +2211,7 @@ static int rq2_run_fuse_condition(
 		ret = rq2_fuse_request(&process, RQ2_FUSE_INVALIDATE, 0,
 				       &response);
 	bool invalidate_zero_pass = !ret && !response.inode_status &&
-		(!response.entry_status || response.entry_status == -ENOENT);
+		!response.entry_status;
 	rq2_emit_invalidation(out, "mode_zero", &response,
 			      invalidate_zero_pass);
 	if (!ret)
@@ -2177,8 +2225,7 @@ static int rq2_run_fuse_condition(
 				 &restore_response);
 	bool invalidate_restore_pass = !invalidate_restore_ret &&
 		!restore_response.inode_status &&
-		(!restore_response.entry_status ||
-		 restore_response.entry_status == -ENOENT);
+		!restore_response.entry_status;
 	rq2_emit_invalidation(out, "mode_restore", &restore_response,
 			      invalidate_restore_pass);
 	bool permission_pass = !ret && !restore_ret &&
@@ -2272,7 +2319,7 @@ static int rq2_run_fuse_condition(
 	withdrawn_before = process.shared->target_opens[0];
 	ret = rq2_fuse_request(&process, RQ2_FUSE_WITHDRAW, 0, &response);
 	bool withdraw_invalidation_pass = !ret && !response.inode_status &&
-		(!response.entry_status || response.entry_status == -ENOENT);
+		!response.entry_status;
 	rq2_emit_invalidation(out, "withdraw", &response,
 			      withdraw_invalidation_pass);
 	if (!ret)
@@ -2294,6 +2341,9 @@ static int rq2_run_fuse_condition(
 	failures += !withdrawal_pass;
 
 cleanup:
+	teardown_started = monotonic_ns();
+	failures_before_teardown = failures;
+
 	if (started) {
 		ret = rq2_stop_fuse(&process);
 		emit_case(out, "rq2_fuse_stop", !ret, ret ? -ret : 0,
@@ -2308,6 +2358,9 @@ cleanup:
 	}
 	if (cgroup_created && rmdir(cgroup_path) && errno != ENOENT)
 		failures++;
+	rq2_emit_lifecycle(out, "fuse", "teardown",
+			   monotonic_ns() - teardown_started,
+			   failures == failures_before_teardown);
 	emit_case(out, "rq2_fuse_condition", failures == 0, failures,
 		  failures ? "FUSE condition failed" : "FUSE condition passed");
 	return failures ? -EINVAL : 0;

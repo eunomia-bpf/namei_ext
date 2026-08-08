@@ -4,7 +4,7 @@ SPINDLE_STAGING_RQ2_BOOT_FILES := \
 	boot.json raw-runner.jsonl observations.jsonl stdout.log stderr.log \
 	kernel.config kernel-commit.txt kernel-release.txt uname.txt \
 	proc-version.txt kernel-cmdline.txt dmesg.log \
-	runtime-symlinks.txt runtime-mount-before.status \
+	runtime-symlinks.txt runtime-lower-fstype.txt runtime-mount-before.status \
 	runtime-mount-after.status guest-prepare.status guest-inner.status \
 	guest-cleanup.status guest-inventory-after.status guest-dmesg.status \
 	bpf-programs-before.json bpf-programs-after.json \
@@ -466,11 +466,21 @@ __spindle_staging_rq2_guest_inner:
 	printf '%s\n' "$$runtime_mount_status" \
 		>"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/runtime-mount-before.status"; \
 	test "$$runtime_mount_status" -ne 0
-	mount --bind "$(SPINDLE_STAGING_RQ2_GUEST_RUNTIME_ABS)" \
+	mount -t tmpfs -o size=512m,mode=0755 tmpfs \
 		"$(SPINDLE_STAGING_RQ2_GUEST_COMPILED_ABS)"
 	mountpoint -q "$(SPINDLE_STAGING_RQ2_GUEST_COMPILED_ABS)"
+	cp -a "$(SPINDLE_STAGING_RQ2_GUEST_RUNTIME_ABS)/." \
+		"$(SPINDLE_STAGING_RQ2_GUEST_COMPILED_ABS)/"
+	(cd "$(SPINDLE_STAGING_RQ2_GUEST_COMPILED_ABS)" && \
+		find build prefix -type l -printf '%p\t%l\n' | LC_ALL=C sort) | \
+		cmp - "$(SPINDLE_STAGING_RQ2_BOOT_DIR)/runtime-symlinks.txt"
 	test -x "$(SPINDLE_STAGING_RQ2_GUEST_SPINDLE_ABS)"
 	test -x "$(SPINDLE_STAGING_RQ2_GUEST_TEST_DIR_ABS)/test_driver"
+	findmnt -n -o FSTYPE -T \
+		"$(SPINDLE_STAGING_RQ2_GUEST_TEST_DIR_ABS)/test_driver" \
+		>"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/runtime-lower-fstype.txt"
+	grep -Fx 'tmpfs' \
+		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/runtime-lower-fstype.txt"
 	$(call NAMEI_EXT_GUEST_CAPTURE_EXTERNAL_INVENTORY,\
 		$(SPINDLE_STAGING_RQ2_BOOT_DIR),\
 		$(SPINDLE_STAGING_RQ2_GUEST_BPFTOOL),before)
@@ -482,6 +492,11 @@ __spindle_staging_rq2_guest_inner:
 	: >"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/stdout.log"
 	: >"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/stderr.log"
 	: >"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/raw-runner.jsonl"
+	runtime_fstype=$$(cat \
+		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/runtime-lower-fstype.txt"); \
+	jq -cn --arg runtime_fstype "$$runtime_fstype" \
+		'{event:"spindle-staging-rq2-lower-filesystem",runtime_fstype:$$runtime_fstype,pass:true}' \
+		>"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/raw-runner.jsonl"
 	"$(SPINDLE_STAGING_RQ2_GUEST_RUNNER)" "$(CONDITION)" \
 		"$(SPINDLE_STAGING_RQ2_GUEST_POLICY)" \
 		"$(SPINDLE_STAGING_RQ2_BOOT_DIR)/raw-runner.jsonl" \
