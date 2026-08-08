@@ -70,9 +70,8 @@ continuation that resets the old attempt count.
 Before a new real run, the runner must preserve the exact stage whose return
 value controls failure. For an action failure it must also preserve whether
 action A or B exited and the child's exit code or terminating signal. A generic
-`run`-stage `EIO` is insufficient. This is a diagnostic repair only: it does
-not change the workload, baseline, oracle, metric, scales, repetitions, or
-interpretation.
+`run`-stage `EIO` is insufficient. This diagnostic repair does not change the
+workload, baseline, metric, scales, repetitions, or interpretation.
 
 The main sandboxfs condition must use the upstream default 60-second metadata
 TTL. Unique sandbox IDs prevent cross-sample reuse. A successful destroy
@@ -135,7 +134,7 @@ experiment is W4. A passing preflight authorizes the unchanged formal matrix.
 
 - Workload: two concurrent Bazel genrules. Each enumerates its action view,
   rejects undeclared names, reads all declared files in lexical order, and
-  emits the expected aggregate output.
+  emits the complete ordered contents as its aggregate output.
 - Scales: 64, 512, and 2,048 declared files plus the same number of physically
   existing undeclared files per action. The 2,048-file cell is primary.
 - Primary metric: paired ratio of sandboxfs to `namei_ext` time from barrier
@@ -143,8 +142,9 @@ experiment is W4. A passing preflight authorizes the unchanged formal matrix.
 - Secondary metrics: action time at 64 and 512 inputs, view setup time, and
   lifecycle time. Daemon resource metrics are usable only if process/thread
   identity is stable across snapshots.
-- Correctness: both actions overlap and execute; output hashes match; declared
-  files are visible; undeclared and post-setup files are hidden from lookup and
+- Correctness: both actions overlap and execute; the complete ordered output
+  bytes match the independently generated expected transcript; declared files
+  are visible; undeclared and post-setup files are hidden from lookup and
   readdir; lower files are unchanged; each mechanism is engaged; every
   sandboxfs create/destroy request receives a matching successful
   acknowledgement; final teardown and dmesg checks pass.
@@ -186,9 +186,10 @@ experiment is W4. A passing preflight authorizes the unchanged formal matrix.
   analyzer and infrastructure tests, and an independent claim-to-code review
   of the three repaired historical defects and the new failure provenance.
 - Project constraint: the rerun must not execute or regenerate checksum
-  manifests or checksum gates. Source commits, software versions, runtime
-  identities, raw observations, and semantic oracles provide the experiment
-  evidence.
+  manifests or checksum gates. The action oracle therefore compares complete
+  ordered output bytes rather than a digest. Source commits, software versions,
+  runtime identities, raw observations, and semantic oracles provide the
+  experiment evidence.
 - Remaining risk: official sandboxfs has never completed one real arm in this
   harness. That exact uncertainty is why the single paired preflight remains a
   dependency rather than paper evidence.
