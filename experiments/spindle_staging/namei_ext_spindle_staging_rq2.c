@@ -260,7 +260,9 @@ static int rq2_fuse_do_lookup(fuse_req_t req, fuse_ino_t parent,
 	target_index = rq2_fuse_mapping_index(logical);
 	if (target_index < -1)
 		return -target_index;
-	if (target_index >= 0 && state->shared->withdrawn[target_index])
+	if (target_index >= 0 &&
+	    __atomic_load_n(&state->shared->withdrawn[target_index],
+			    __ATOMIC_ACQUIRE))
 		return ENOENT;
 	if (target_index >= 0)
 		newfd = open(state->mappings[target_index].cache,
@@ -425,6 +427,14 @@ static void rq2_fuse_open(fuse_req_t req, fuse_ino_t ino,
 		return;
 	}
 	pthread_mutex_lock(&inode->mutex);
+	if (inode->target_index >= 0 &&
+	    __atomic_load_n(&state->shared->withdrawn[inode->target_index],
+			    __ATOMIC_ACQUIRE)) {
+		pthread_mutex_unlock(&inode->mutex);
+		close(fd);
+		fuse_reply_err(req, ENOENT);
+		return;
+	}
 	backing_id = inode->backing_id;
 	if (!backing_id) {
 		backing_id = fuse_passthrough_open(req, fd);
@@ -443,7 +453,6 @@ static void rq2_fuse_open(fuse_req_t req, fuse_ino_t ino,
 	fi->fh = (uint64_t)fd;
 	fi->backing_id = backing_id;
 	fi->keep_cache = 0;
-	pthread_mutex_unlock(&inode->mutex);
 	__sync_fetch_and_add(
 		&state->shared->counters[RQ2_FUSE_PASSTHROUGH_OPEN], 1);
 	if (inode->target_index >= 0) {
@@ -453,6 +462,7 @@ static void rq2_fuse_open(fuse_req_t req, fuse_ino_t ino,
 			&state->shared->target_passthrough[inode->target_index], 1);
 	}
 	fuse_reply_open(req, fi);
+	pthread_mutex_unlock(&inode->mutex);
 }
 
 static void rq2_fuse_read(fuse_req_t req, fuse_ino_t ino, size_t size,
@@ -728,6 +738,39 @@ static int rq2_fuse_invalidate_target(struct rq2_fuse_state *state,
 	return response->entry_status;
 }
 
+static int rq2_fuse_publish_withdrawal(struct rq2_fuse_state *state,
+					int target_index)
+{
+	struct rq2_fuse_inode *inode = NULL;
+	int error;
+
+	pthread_mutex_lock(&state->mutex);
+	for (struct rq2_fuse_inode *candidate = state->root.next;
+	     candidate != &state->root; candidate = candidate->next) {
+		if (candidate->target_index != target_index)
+			continue;
+		candidate->refcount++;
+		inode = candidate;
+		break;
+	}
+	pthread_mutex_unlock(&state->mutex);
+
+	if (inode) {
+		error = pthread_mutex_lock(&inode->mutex);
+		if (error) {
+			rq2_fuse_unref(state, inode, 1);
+			return -error;
+		}
+	}
+	__atomic_store_n(&state->shared->withdrawn[target_index], 1,
+			 __ATOMIC_RELEASE);
+	if (!inode)
+		return 0;
+	error = pthread_mutex_unlock(&inode->mutex);
+	rq2_fuse_unref(state, inode, 1);
+	return error ? -error : 0;
+}
+
 static int rq2_write_full(int fd, const void *buffer, size_t size)
 {
 	const char *cursor = buffer;
@@ -898,12 +941,13 @@ static void *rq2_fuse_control_loop(void *argument)
 			response.status = -EINVAL;
 		} else {
 			if (request.command == RQ2_FUSE_WITHDRAW) {
-				control->state->shared->withdrawn[
-					request.target_index] = 1;
-				__sync_synchronize();
+				response.status = rq2_fuse_publish_withdrawal(
+					control->state, request.target_index);
 			}
-			response.status = rq2_fuse_invalidate_target(
-				control->state, request.target_index, &response);
+			if (!response.status)
+				response.status = rq2_fuse_invalidate_target(
+					control->state, request.target_index,
+					&response);
 		}
 		ret = rq2_write_full(control->response_fd, &response,
 				     sizeof(response));
@@ -2228,7 +2272,7 @@ static int rq2_run_fuse_condition(
 	withdrawn_before = process.shared->target_opens[0];
 	ret = rq2_fuse_request(&process, RQ2_FUSE_WITHDRAW, 0, &response);
 	bool withdraw_invalidation_pass = !ret && !response.inode_status &&
-		!response.entry_status;
+		(!response.entry_status || response.entry_status == -ENOENT);
 	rq2_emit_invalidation(out, "withdraw", &response,
 			      withdraw_invalidation_pass);
 	if (!ret)
