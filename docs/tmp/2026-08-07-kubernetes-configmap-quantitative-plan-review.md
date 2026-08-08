@@ -61,3 +61,27 @@ remains.
 Implementation remains subject to a separate claim-to-code-to-raw-evidence
 review before the real preflight. A mechanically completed Make target will not
 be treated as a scientifically successful result without that review.
+
+## Implementation Admission Review
+
+The first implementation admission review returned **NO-GO**. It found that
+full consumer JSON serialization remained inside the measured interval, source
+materialization audits could run before later timed conditions, phase sums and
+the exact Cartesian matrix were not independently validated, cleanup and old-FD
+evidence were summarized rather than preserved, source metadata named the wrong
+adapter, failed result roots could be re-entered, and CPU-time comparisons were
+not equivalent between the two mechanisms.
+
+The implementation removed CPU-time comparisons, changed timed consumer output
+to a bounded acknowledgement, deferred full evidence export until after the
+rollback timer, separated source audits from every timed condition, validated
+the exact boot/pair/scale/order matrix and every phase sum, preserved exact
+cleanup and descriptor observations, corrected source metadata, and added
+immutable execution/finalization/analysis markers.
+
+A second review identified two remaining blockers: source audit work still
+preceded the next timed condition, and the analyzer still used the active-phase
+sum rather than the frozen begin-to-end wall span. The guest now completes the
+entire timed matrix before any source audit, and `wall_span_ns` is the analyzer's
+primary metric with a dedicated regression test. The independent final reread
+returned **GO** for exactly one modified-kernel KVM preflight.

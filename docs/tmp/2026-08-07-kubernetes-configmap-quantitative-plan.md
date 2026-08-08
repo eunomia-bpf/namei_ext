@@ -32,7 +32,7 @@ comparison against a stackable filesystem.
   rollback, lookup, or filesystem-object cost. The reviewer can reasonably
   dismiss it as a functional demonstration with no practical advantage.
 - Independent evidence added beyond existing runs and published results: The
-  existing W4 result contains no durations, CPU times, scaling points, or
+  existing W4 result contains no durations, scaling points, or
   cumulative object/materialization observations. Kubernetes publishes the
   `AtomicWriter` algorithm and tests, but does not publish a matched benchmark
   for this four-state lifecycle.
@@ -88,7 +88,7 @@ comparison against a stackable filesystem.
   lower-object preservation, policy counters, and cleanup gates.
 - Necessary deviations or custom glue: Extend the existing official-source
   adapter and `namei_ext` runner with generated flat ConfigMap entries,
-  monotonic phase timing, task CPU timing, and raw object/materialization
+  monotonic phase timing and raw object/materialization
   counts. One common persistent consumer executable performs the timed
   application operations in both conditions. No part of `AtomicWriter` is
   copied or reimplemented.
@@ -152,8 +152,8 @@ performance claim and the `namei_ext` condition.
   paths change: 100%, 25%, 6.25%, and 1.5625%. `N=4` is the canonical completed
   W4 payload; `N=256` is a disclosed scaling endpoint imposed by the existing
   policy-map capacity, not a claim that 256 files is the median ConfigMap.
-- Primary metric: Per-boot median ratio of complete acknowledged lifecycle time,
-  `namei_ext / AtomicWriter`, at 256 entries. The lifecycle begins with an
+- Primary metric: Per-boot median ratio of complete acknowledged lifecycle
+  wall time (`wall_span_ns`), `namei_ext / AtomicWriter`, at 256 entries. The lifecycle begins with an
   existing fresh per-sample parent under which the condition target root,
   logical/lower roots, and per-volume cgroup do not yet exist and before any
   condition-specific filesystem or BPF-map mutation. It ends after the common
@@ -166,27 +166,34 @@ performance claim and the `namei_ext` condition.
   after each selection. It excludes common in-memory payload construction,
   process startup, one-time program load/attach, raw-result encoding, exhaustive
   post-state validation, and teardown. Program load/attach is reported
-  separately; validation and teardown remain hard gates.
+  separately; validation and teardown remain hard gates. The sum of the nine
+  individually timed setup, publication, and consumer phases is retained as a
+  decomposition check, not substituted for the begin-to-end primary timer.
 - Timed consumer sequence: The same persistent consumer executable is used by
   both mechanisms. At every state it enumerates the projected root and nested
   directories, opens, reads, and stats every expected present leaf, checks the
   one absent union leaf, and performs `openat()` through the directory descriptor
   retained from initial publication. It retains `config/app.conf` from V0 and
   verifies that descriptor after later states. The timer covers these operations
-  and their semantic comparisons but not JSON output or tree inventories. The
-  consumer emits raw operation counts so both conditions must execute the same
+  and their semantic comparisons plus a bounded three-field acknowledgement,
+  but not the full O(N) evidence serialization or tree inventories. The
+  consumer sends that acknowledgement immediately after each state and
+  emits the full per-file JSON evidence only after the rollback timer has
+  stopped. Raw operation counts require both conditions to execute the same
   sequence before their timing rows are admitted.
 - Secondary metrics: Complete-lifecycle ratio at 4, 16, and 64 entries;
-  wall-clock and task CPU time for per-volume setup, initial state, update,
-  no-op, rollback, and fixed application observations; publication-only
+  wall-clock time for per-volume setup, initial state, update, no-op, rollback,
+  and fixed application observations; publication-only
   lifecycle sum (four `AtomicWriter.Write()` calls versus four generation-map
   updates); one-time BPF load/attach cost; directly observed regular files and
   bytes in every newly published AtomicWriter timestamp tree; directly observed
   V0/V1 lower files and bytes prepared by `namei_ext`; and live logical-root
-  object inventory after each state. Each AtomicWriter state inventory is
-  captured after its `Write()` and before the next call can remove that timestamp
-  tree, then excluded from timing. The no-op must retain the same `..data` target
-  and contribute no newly materialized timestamp tree. Cumulative symlink-create
+  object inventory after each state. AtomicWriter materialization inventories
+  are captured in separate, fresh, untimed audit lifecycles only after the
+  entire boot's AB/BA timing matrix has finished, so their writes and directory
+  walks cannot alter any timed condition. Each audit inventory is captured after its `Write()` and before the
+  next audit call can remove that timestamp tree. The no-op must retain the same
+  `..data` target and contribute no newly materialized timestamp tree. Cumulative symlink-create
   counts are not claimed without a successful untimed mutation trace.
 - Correctness check or ground truth: Every measured lifecycle must pass the
   completed W4 exact-byte, mode, visible-name, non-root read, direct-lower
