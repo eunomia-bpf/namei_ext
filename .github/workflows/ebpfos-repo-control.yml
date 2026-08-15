@@ -1,7 +1,5 @@
 name: ebpfos-repo-control
 on:
-  push:
-    branches: [agent/ebpfos-ops]
   workflow_dispatch:
 
 permissions:
