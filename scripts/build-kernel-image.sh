@@ -8,7 +8,9 @@ OUT=${KERNEL_OUT:-"$ROOT/.build/kernel-x86_64"}
 for tool in make gcc flex bison bc pahole; do
 	command -v "$tool" >/dev/null || { echo "missing $tool" >&2; exit 2; }
 done
-"$ROOT/scripts/integrate-kernel.sh" "$KERNEL"
+if [ ! -f "$KERNEL/.ebpfos-integrated" ]; then
+	"$ROOT/scripts/integrate-kernel.sh" "$KERNEL"
+fi
 mkdir -p "$OUT"
 make -C "$KERNEL" O="$OUT" x86_64_defconfig
 "$KERNEL/scripts/kconfig/merge_config.sh" -m -O "$OUT" "$OUT/.config" "$ROOT/configs/ebpfos.config"
