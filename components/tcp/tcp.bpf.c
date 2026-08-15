@@ -8,6 +8,21 @@ char LICENSE[] SEC("license") = "GPL";
 extern __u32 tcp_slow_start(struct tcp_sock *tp, __u32 acked) __ksym;
 extern void tcp_cong_avoid_ai(struct tcp_sock *tp, __u32 w, __u32 acked) __ksym;
 
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 2);
+	__type(key, __u32);
+	__type(value, __u64);
+} tcp_hits SEC(".maps");
+
+static __always_inline void hit(__u32 key)
+{
+	__u64 *value = bpf_map_lookup_elem(&tcp_hits, &key);
+
+	if (value)
+		__sync_fetch_and_add(value, 1);
+}
+
 static __always_inline struct tcp_sock *tcp_sk_from_sock(struct sock *sk)
 {
 	return (struct tcp_sock *)sk;
@@ -18,6 +33,7 @@ void BPF_PROG(ebpfos_tcp_init, struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk_from_sock(sk);
 
+	hit(0);
 	if (tp->snd_cwnd < 2)
 		tp->snd_cwnd = 2;
 }
@@ -27,6 +43,7 @@ void BPF_PROG(ebpfos_tcp_cong_avoid, struct sock *sk, __u32 ack, __u32 acked)
 {
 	struct tcp_sock *tp = tcp_sk_from_sock(sk);
 
+	hit(1);
 	if (tp->snd_cwnd < tp->snd_ssthresh)
 		acked = tcp_slow_start(tp, acked);
 	if (acked)
