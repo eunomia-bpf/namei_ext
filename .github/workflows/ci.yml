@@ -26,10 +26,10 @@ jobs:
           mkdir kernel
           tar -xf /tmp/linux.tar.xz --strip-components=1 -C kernel
       - name: Build modified Linux 7.1.8
-        run: JOBS=2 ./scripts/build-kernel-image.sh kernel 2
+        run: JOBS=4 ./scripts/build-kernel-image.sh kernel 4
       - name: Build Linux 7.1.8 bpftool
         run: |
-          make -C kernel/tools/bpf/bpftool -j2
+          make -C kernel/tools/bpf/bpftool -j4
           kernel/tools/bpf/bpftool/bpftool version
       - name: Build native BPF, sched_ext, and BPF LSM objects
         env:
