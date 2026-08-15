@@ -1,0 +1,49 @@
+name: ebpfos-typed-ops
+on:
+  push:
+    branches: [agent/ebpfos-ops]
+  workflow_dispatch:
+
+jobs:
+  typed-ops:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev libcap-dev zlib1g-dev dwarves pahole clang llvm wget
+          printf 'int x;' | clang -target bpf -x c -c -o /tmp/bpf-target.o -
+      - name: Fetch Linux 7.1.8
+        run: |
+          rm -rf kernel
+          wget -q https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.1.8.tar.xz -O /tmp/linux.tar.xz
+          mkdir kernel
+          tar -xf /tmp/linux.tar.xz --strip-components=1 -C kernel
+      - name: Compile typed struct_ops kernel implementation
+        run: |
+          ./scripts/integrate-kernel.sh kernel
+          mkdir -p .build/ops-kernel
+          make -C kernel O="$PWD/.build/ops-kernel" x86_64_defconfig
+          kernel/scripts/kconfig/merge_config.sh -m -O "$PWD/.build/ops-kernel" "$PWD/.build/ops-kernel/.config" "$PWD/configs/ebpfos.config"
+          make -C kernel O="$PWD/.build/ops-kernel" olddefconfig
+          make -C kernel O="$PWD/.build/ops-kernel" -j4 kernel/ebpfos/core.o kernel/ebpfos/ops.o
+      - name: Build target vmlinux BTF
+        run: make -C kernel O="$PWD/.build/ops-kernel" -j4 vmlinux
+      - name: Build matching bpftool and typed eBPF component
+        run: |
+          make -C kernel/tools/bpf/bpftool -j4
+          mkdir -p .build/typed-bpf
+          kernel/tools/bpf/bpftool/bpftool btf dump file .build/ops-kernel/vmlinux format c > .build/typed-bpf/vmlinux.h
+          clang -target bpf -O2 -g -D__TARGET_ARCH_x86 \
+            -I.build/typed-bpf \
+            -Ikernel/tools/lib \
+            -Ikernel/tools/testing/selftests/bpf/tools/include \
+            -Ikernel/tools/testing/selftests/bpf \
+            -c components/subsystems/subsystems.bpf.c \
+            -o .build/typed-bpf/subsystems.bpf.o
+          llvm-objdump -h .build/typed-bpf/subsystems.bpf.o
+          test -s .build/typed-bpf/subsystems.bpf.o
