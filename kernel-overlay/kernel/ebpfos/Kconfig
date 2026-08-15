@@ -19,6 +19,10 @@ config EBPFOS_BLOCK_HOOK
 	bool "eBPFOS block submission component boundary"
 	depends on EBPFOS && BLOCK
 	default y
+config EBPFOS_NET_HOOK
+	bool "eBPFOS network RX/TX component boundary"
+	depends on EBPFOS && NET
+	default y
 config EBPFOS_DRIVER_HOOK
 	bool "eBPFOS driver probe component boundary"
 	depends on EBPFOS
