@@ -33,17 +33,14 @@ jobs:
           make -C kernel O="$PWD/.build/ops-kernel" -j4 kernel/ebpfos/core.o kernel/ebpfos/ops.o
       - name: Build target vmlinux BTF
         run: make -C kernel O="$PWD/.build/ops-kernel" -j4 vmlinux
-      - name: Build matching bpftool and typed eBPF component
+      - name: Build matching bpftool and typed eBPF components
         run: |
           make -C kernel/tools/bpf/bpftool -j4
           mkdir -p .build/typed-bpf
           kernel/tools/bpf/bpftool/bpftool btf dump file .build/ops-kernel/vmlinux format c > .build/typed-bpf/vmlinux.h
-          clang -target bpf -O2 -g -D__TARGET_ARCH_x86 \
-            -I.build/typed-bpf \
-            -Ikernel/tools/lib \
-            -Ikernel/tools/testing/selftests/bpf/tools/include \
-            -Ikernel/tools/testing/selftests/bpf \
-            -c components/subsystems/subsystems.bpf.c \
-            -o .build/typed-bpf/subsystems.bpf.o
-          llvm-objdump -h .build/typed-bpf/subsystems.bpf.o
+          COMMON='-target bpf -O2 -g -D__TARGET_ARCH_x86 -I.build/typed-bpf -Ikernel/tools/lib -Ikernel/tools/testing/selftests/bpf/tools/include -Ikernel/tools/testing/selftests/bpf'
+          clang $COMMON -c components/subsystems/subsystems.bpf.c -o .build/typed-bpf/subsystems.bpf.o
+          clang $COMMON -c components/tcp/tcp.bpf.c -o .build/typed-bpf/tcp.bpf.o
+          llvm-objdump -h .build/typed-bpf/subsystems.bpf.o .build/typed-bpf/tcp.bpf.o
           test -s .build/typed-bpf/subsystems.bpf.o
+          test -s .build/typed-bpf/tcp.bpf.o
