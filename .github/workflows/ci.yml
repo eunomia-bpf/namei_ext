@@ -25,6 +25,17 @@ jobs:
           wget -q https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.1.8.tar.xz -O /tmp/linux.tar.xz
           mkdir kernel
           tar -xf /tmp/linux.tar.xz --strip-components=1 -C kernel
+      - name: Compile every touched Linux object first
+        run: |
+          ./scripts/integrate-kernel.sh kernel
+          mkdir -p .build/kernel-x86_64
+          make -C kernel O="$PWD/.build/kernel-x86_64" x86_64_defconfig
+          kernel/scripts/kconfig/merge_config.sh -m -O "$PWD/.build/kernel-x86_64" "$PWD/.build/kernel-x86_64/.config" "$PWD/configs/ebpfos.config"
+          make -C kernel O="$PWD/.build/kernel-x86_64" olddefconfig
+          make -C kernel O="$PWD/.build/kernel-x86_64" -j4 \
+            kernel/ebpfos/core.o \
+            arch/x86/entry/syscall_64.o \
+            fs/namei.o fs/readdir.o mm/vmscan.o block/blk-mq.o drivers/base/dd.o
       - name: Build modified Linux 7.1.8
         run: JOBS=4 ./scripts/build-kernel-image.sh kernel 4
       - name: Build Linux 7.1.8 bpftool
