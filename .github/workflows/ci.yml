@@ -15,7 +15,7 @@ jobs:
       - name: Install QEMU, kernel, and BPF toolchains
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev zlib1g-dev dwarves pahole clang llvm bpftool qemu-system-x86 qemu-utils cpio rsync jq python3 wget
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev zlib1g-dev dwarves pahole clang llvm linux-tools-common qemu-system-x86 qemu-utils cpio rsync jq python3 wget
           clang --version
           bpftool version
           qemu-system-x86_64 --version
