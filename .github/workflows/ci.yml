@@ -15,10 +15,8 @@ jobs:
       - name: Install QEMU, kernel, and BPF toolchains
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev zlib1g-dev dwarves pahole clang llvm linux-tools-common qemu-system-x86 qemu-utils cpio rsync jq python3 wget
-          sudo apt-get install -y "linux-tools-$(uname -r)" || sudo apt-get install -y linux-tools-azure
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev libcap-dev zlib1g-dev dwarves pahole clang llvm qemu-system-x86 qemu-utils cpio rsync jq python3 wget
           clang --version
-          bpftool version
           qemu-system-x86_64 --version
           printf 'int x;' | clang -target bpf -x c -c -o /tmp/bpf-target.o -
       - name: Fetch exact Linux 7.1.8 release
@@ -29,7 +27,14 @@ jobs:
           tar -xf /tmp/linux.tar.xz --strip-components=1 -C kernel
       - name: Build modified Linux 7.1.8
         run: JOBS=2 ./scripts/build-kernel-image.sh kernel 2
+      - name: Build Linux 7.1.8 bpftool
+        run: |
+          make -C kernel/tools/bpf/bpftool -j2
+          kernel/tools/bpf/bpftool/bpftool version
       - name: Build native BPF, sched_ext, and BPF LSM objects
+        env:
+          BPFTOOL: ${{ github.workspace }}/kernel/tools/bpf/bpftool/bpftool
+          VMLINUX: ${{ github.workspace }}/.build/kernel-x86_64/vmlinux
         run: |
           ./scripts/build-native-bpf.sh kernel .build/bpf-native
           llvm-objdump -h .build/bpf-native/*.bpf.o | tee .build/native-bpf-sections.log
