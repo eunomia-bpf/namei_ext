@@ -4,6 +4,10 @@ on:
     branches: [agent/ebpfos-ops]
   workflow_dispatch:
 
+concurrency:
+  group: ebpfos-typed-ops-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   typed-ops:
     runs-on: ubuntu-24.04
@@ -33,7 +37,7 @@ jobs:
           make -C kernel O="$PWD/.build/ops-kernel" -j4 \
             kernel/ebpfos/core.o kernel/ebpfos/ops.o kernel/ebpfos/dispatch.o \
             arch/x86/entry/syscall_64.o fs/namei.o fs/readdir.o \
-            mm/vmscan.o block/blk-mq.o drivers/base/dd.o
+            mm/vmscan.o block/blk-mq.o drivers/base/dd.o net/core/dev.o
       - name: Build target vmlinux BTF
         run: make -C kernel O="$PWD/.build/ops-kernel" -j4 vmlinux
       - name: Build matching bpftool and typed eBPF components
