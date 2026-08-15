@@ -1,6 +1,0 @@
-.build/
-.cache/
-.agentfs/
-results/
-__pycache__/
-*.py[cod]

@@ -1,0 +1,54 @@
+name: ebpfos-qemu
+on:
+  push:
+    branches: [agent/ebpfos-qemu]
+  workflow_dispatch:
+
+jobs:
+  qemu-native-bpf:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Install QEMU, kernel, and BPF toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev zlib1g-dev dwarves pahole clang llvm bpftool qemu-system-x86 qemu-utils cpio rsync jq python3 wget
+          clang --version
+          bpftool version
+          qemu-system-x86_64 --version
+          printf 'int x;' | clang -target bpf -x c -c -o /tmp/bpf-target.o -
+      - name: Fetch exact Linux 7.1.8 release
+        run: |
+          rm -rf kernel
+          wget -q https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.1.8.tar.xz -O /tmp/linux.tar.xz
+          mkdir kernel
+          tar -xf /tmp/linux.tar.xz --strip-components=1 -C kernel
+      - name: Build modified Linux 7.1.8
+        run: JOBS=2 ./scripts/build-kernel-image.sh kernel 2
+      - name: Build native BPF, sched_ext, and BPF LSM objects
+        run: |
+          ./scripts/build-native-bpf.sh kernel .build/bpf-native
+          llvm-objdump -h .build/bpf-native/*.bpf.o | tee .build/native-bpf-sections.log
+          test -s .build/bpf-native/sched_ext.bpf.o
+          test -s .build/bpf-native/lsm.bpf.o
+      - name: Build guest and boot real QEMU TCG
+        run: |
+          ./scripts/build-initramfs.sh .build/initramfs.cpio.gz
+          RUN_ID=github-qemu RESULTS="$PWD/results" ./scripts/run-qemu.sh kernel .build/initramfs.cpio.gz tcg
+          grep -q EBPFOS_SYSCALL_REPLACE_PASS results/github-qemu/stdout.log
+          grep -q EBPFOS_VFS_REPLACE_PASS results/github-qemu/stdout.log
+          grep -q EBPFOS_NATIVE_BPF_GRAPH_PASS results/github-qemu/stdout.log
+          grep -q EBPFOS_TEST_PASS results/github-qemu/stdout.log
+      - name: Archive raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ebpfos-qemu-native-bpf
+          path: |
+            results/github-qemu
+            .build/native-bpf-sections.log
+            .build/kernel-x86_64/.config
+            .build/bpf-native/*.bpf.o
