@@ -38,4 +38,8 @@ u32 ebpfos_net_tx(u64 skb, u32 len, u32 protocol, u32 ifindex);
 u32 ebpfos_driver_probe(u64 dev, u64 drv, u64 bus, u64 owner);
 u32 ebpfos_driver_unbind(u64 dev, u64 drv);
 
+/* Dispatch a source boundary through typed struct_ops if one is live. */
+u32 ebpfos_component_run_hook(enum ebpfos_hook_id hook,
+			      const u64 *args, u32 nr_args);
+
 #endif
