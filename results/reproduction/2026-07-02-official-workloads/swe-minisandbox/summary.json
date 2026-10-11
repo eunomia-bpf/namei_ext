@@ -1,0 +1,65 @@
+{
+  "source": "SWE-MiniSandbox",
+  "official_repository": "https://github.com/lblankl/SWE-MiniSandbox",
+  "local_checkout": ".cache/source-inspection/swe-minisandbox",
+  "commit": "381ada53ab35dadb342add33ff006f3157c22fb7",
+  "checkout_dirty_before_run": true,
+  "result_root": "results/reproduction/2026-07-02-official-workloads/swe-minisandbox",
+  "environment": {
+    "host_kernel": "Linux lab 6.15.11-061511-generic x86_64",
+    "system_python": "Python 3.12.3",
+    "uv": "uv 0.8.22",
+    "venv_python": "3.13.7",
+    "pytest": "9.1.1",
+    "pydantic": "2.13.4",
+    "requests": "2.34.2"
+  },
+  "raw_logs": [
+    "source-inspection.log",
+    "uv-venv.log",
+    "uv-pip-install.log",
+    "python-package-versions.log",
+    "pytest-collect.log",
+    "pytest-tmpfs-isolation.log",
+    "startup-command-smoke.log"
+  ],
+  "reproduced": {
+    "tmpfs_isolation_pytest": {
+      "command": "python -m pytest tests/test_tmpfs_tmp_isolation.py -q -s",
+      "collected": 4,
+      "passed": 4,
+      "failed": 0,
+      "status": "pass",
+      "covered_oracles": [
+        "startup_old does not bind-mount host /tmp",
+        "startup_old mounts private tmpfs on sandbox /tmp",
+        "tmpfs mount is generated before chroot",
+        "concurrent sandbox namespaces do not share /tmp contents"
+      ]
+    },
+    "startup_command_smoke": {
+      "command": "instantiate SandboxDeployment via object.__new__ and inspect startup_old command",
+      "has_private_tmpfs": true,
+      "binds_host_tmp": false,
+      "status": "pass"
+    }
+  },
+  "not_reproduced": {
+    "full_swe_agent_skyrl_r2e_pipeline": {
+      "status": "not_run",
+      "reason": "the repository vendors multiple modified upstream systems; this pass targeted the core MiniSandbox sandboxdev/tmpfs workload rather than LLM/RL training or full SWE-agent rollout"
+    },
+    "full_dataset_generation_or_training": {
+      "status": "not_run",
+      "reason": "requires broader SWE-bench/SWE-smith/SkyRL/R2E pipeline and is not needed to prove the core sandbox setup workload shape"
+    }
+  },
+  "workload_shapes_for_namei_ext": [
+    "per-sandbox root directory setup",
+    "mount namespace plus chroot startup command generation",
+    "private /tmp tmpfs per sandbox rather than shared host /tmp",
+    "concurrent sandbox isolation oracle for many-agent workspace setup"
+  ],
+  "use_decision": "Use SWE-MiniSandbox as a many-agent sandbox setup and private-workspace-isolation workload seed; do not claim full modified SWE-agent/SkyRL/R2E pipeline reproduction from this test subset.",
+  "pass": true
+}

@@ -1,0 +1,12 @@
+{
+  "repo": "https://github.com/YoloFS/filesystem",
+  "head": "684829ec5e8193e8560b52573b2575a347906d0e",
+  "vm_start_exit": "1",
+  "test_e2e_vm_exit": "1",
+  "vm_stop_exit": "0",
+  "failure_lines": [
+    "Traceback (most recent call last):",
+    "    raise CalledProcessError(retcode, process.args,",
+    "subprocess.CalledProcessError: Command '['qemu-system-x86_64', '-machine', 'q35,accel=kvm', '-cpu', 'host', '-m', '4G', '-smp', '4', '-drive', 'file=/home/yunwei37/workspace/namei_ext/.cache/source-inspection/yolofs-filesystem/vm/disk.qcow2,format=qcow2,if=virtio', '-drive', 'file=/home/yunwei37/workspace/namei_ext/.cache/source-inspection/yolofs-filesystem/vm/seed.iso,format=raw,if=virtio', '-net', 'nic,model=virtio', '-net', 'user,hostfwd=tcp:127.0.0.1:2222-:22', '-virtfs', 'local,path=/home/yunwei37/workspace/namei_ext/.cache/source-inspection/yolofs-filesystem,mount_tag=hostcwd,security_model=none', '-display', 'none', '-serial', 'file:/home/yunwei37/workspace/namei_ext/.cache/source-inspection/yolofs-filesystem/vm/vm.log', '-monitor', 'none', '-daemonize', '-pidfile', '/home/yunwei37/workspace/namei_ext/.cache/source-inspection/yolofs-filesystem/vm/vm.pid']' returned non-zero exit status 1."
+  ]
+}

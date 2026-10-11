@@ -1,0 +1,26 @@
+{
+  "schema": "namei_ext.workload_source.v1",
+  "project": "prometheus",
+  "workload_ids": [
+    "w4-buildkit-prometheus-go-cache"
+  ],
+  "version": "v2.55.1",
+  "commit": "6d7569113f1ca814f1e149f74176656540043b8d",
+  "url": "https://github.com/prometheus/prometheus/archive/refs/tags/v2.55.1.tar.gz",
+  "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/prometheus-v2.55.1.tar.gz",
+  "expected_archive_sha256": "f48251f5c89eea6d3b43814499d558bacc4829265419ee69be49c5af98f79573",
+  "archive_sha256": "f48251f5c89eea6d3b43814499d558bacc4829265419ee69be49c5af98f79573",
+  "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/prometheus-2.55.1",
+  "license": {
+    "path": "LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "evidence": {
+    "go_mod_sha256": "9f4ce6feb314691b5570d0ce21dbbf91e40c47f82dd5e965c091e184ab0ad3d4",
+    "go_sum_sha256": "0686d2e7b0db939fb52c606ba56c87e2918ec229883e580a4bd866529f6ef4d3",
+    "cache_mount_paths": [
+      "/go/pkg/mod",
+      "/root/.cache/go-build"
+    ]
+  }
+}

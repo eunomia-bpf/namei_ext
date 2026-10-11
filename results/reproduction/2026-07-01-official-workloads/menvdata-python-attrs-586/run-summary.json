@@ -1,0 +1,28 @@
+{
+  "hf_file": "/home/yunwei37/.cache/huggingface/hub/datasets--ernie-research--MEnvData-SWE/snapshots/edfaa7bf15ada849c3bd63f55a5e3ab9e85359c2/swe-images.jsonl",
+  "row_count": 3005,
+  "language_counts": {
+    "Rust": 769,
+    "JavaScript": 578,
+    "Go": 502,
+    "Python": 477,
+    "Ruby": 283,
+    "PHP": 159,
+    "TypeScript": 157,
+    "Java": 33,
+    "C++": 31,
+    "C": 16
+  },
+  "selected_instance": "python-attrs__attrs-586",
+  "selected_image": "swe-images-python:python-attrs-attrs-pr-586",
+  "selected_repo": "python-attrs/attrs",
+  "selected_language": "Python",
+  "eval_script_len": 1871,
+  "test_patch_len": 737,
+  "patch_len": 822,
+  "docker_image": "mcatwj/swe-images-python:python-attrs-attrs-pr-586",
+  "docker_run_exit_logged": "0",
+  "omnigril_exit_code": "0",
+  "completion_marker": true,
+  "pytest_summary": "21 passed, 1 warning in 0.08s"
+}

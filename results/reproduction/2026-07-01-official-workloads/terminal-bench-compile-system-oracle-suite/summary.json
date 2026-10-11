@@ -1,0 +1,56 @@
+{
+  "source": "Terminal-Bench",
+  "suite": "compile-system-oracle-suite",
+  "date": "2026-07-01",
+  "official_unmodified": true,
+  "dataset_path": "original-tasks",
+  "run_id": "2026-07-01__terminal-bench-compile-system-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-compile-system-oracle-suite",
+  "raw_log": "results/reproduction/2026-07-01-official-workloads/terminal-bench-compile-system-oracle-suite/tb-run.log",
+  "raw_results": "results/reproduction/2026-07-01-official-workloads/terminal-bench-compile-system-oracle-suite/2026-07-01__terminal-bench-compile-system-oracle-suite/results.json",
+  "raw_metadata": "results/reproduction/2026-07-01-official-workloads/terminal-bench-compile-system-oracle-suite/2026-07-01__terminal-bench-compile-system-oracle-suite/run_metadata.json",
+  "n_tasks": 4,
+  "n_resolved": 4,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "parser_checks_passed": 8,
+  "parser_checks_failed": 0,
+  "resolved_tasks": [
+    "modernize-fortran-build",
+    "polyglot-c-py",
+    "sqlite-with-gcov",
+    "build-tcc-qemu"
+  ],
+  "unresolved_tasks": [],
+  "task_results": [
+    {
+      "task_id": "modernize-fortran-build",
+      "is_resolved": true,
+      "parser_checks_passed": 3,
+      "parser_checks_failed": 0,
+      "workload_shape": "Fortran Makefile migration to gfortran, build, executable, and output-file oracle"
+    },
+    {
+      "task_id": "polyglot-c-py",
+      "is_resolved": true,
+      "parser_checks_passed": 1,
+      "parser_checks_failed": 0,
+      "workload_shape": "single-file Python/C polyglot generation and Fibonacci execution oracle"
+    },
+    {
+      "task_id": "sqlite-with-gcov",
+      "is_resolved": true,
+      "parser_checks_passed": 3,
+      "parser_checks_failed": 0,
+      "workload_shape": "vendored SQLite build with gcov instrumentation and PATH oracle"
+    },
+    {
+      "task_id": "build-tcc-qemu",
+      "is_resolved": true,
+      "parser_checks_passed": 1,
+      "parser_checks_failed": 0,
+      "workload_shape": "TCC build, ISO materialization, QEMU boot attachment, and in-guest compiler execution oracle"
+    }
+  ],
+  "interpretation": "Selected official Terminal-Bench compile/system tasks reproduced cleanly through the upstream harness and oracle agent. These workloads extend build/environment coverage with compiler migration, polyglot source generation, instrumented database build, and QEMU-attached compiler artifact materialization."
+}

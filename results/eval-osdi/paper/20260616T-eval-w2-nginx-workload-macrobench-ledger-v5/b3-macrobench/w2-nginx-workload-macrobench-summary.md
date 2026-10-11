@@ -1,0 +1,32 @@
+# W2 nginx workload macrobench ledger
+
+- Run ID: 20260616T-eval-w2-nginx-workload-macrobench-ledger-v5
+- Policy run: 20260615T-w2-nginx-c2-macrobench-release-sample-v1
+- Baseline run: 20260616T-w2-nginx-baseline-macrobench-release-sample-v4
+- Raw JSONL: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w2-nginx-workload-macrobench-ledger-v5/b3-macrobench/w2-nginx-workload-macrobench.jsonl
+- Input sha256: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w2-nginx-workload-macrobench-ledger-v5/b3-macrobench/w2-nginx-workload-macrobench-inputs.sha256
+- policy_release_input_pass=true
+- baseline_release_input_pass=true
+- copy_symlink_baselines_pass=true
+- bind_baseline_pass=true
+- projected_volume_baseline_pass=true
+- fuse_baseline_pass=true
+- all_feature_baselines_pass=true
+- full_feature_equivalent_baseline_pass=true
+- storage_footprint_pass=true
+- setup_latency_threshold_pass=true
+- update_latency_threshold_pass=true
+- update_materialization_threshold_pass=true
+- threshold_pass=true
+- w2_c2_slice_supported=true
+- c2_supported=false
+- release_gate_pass=false
+- policy_setup_ns_avg=7500337.5
+- best_baseline_setup_ns_avg=9959036.45
+- policy_update_ns_avg=13914.8
+- best_baseline_update_ns_avg=14044.7
+- policy_setup_objects_avg=17
+- min_baseline_setup_objects_avg=19
+- policy_setup_bytes_avg=5931
+- min_baseline_setup_bytes_avg=5931
+- missing_evidence=W1/W3/W4 workload setup/storage/update macrobench

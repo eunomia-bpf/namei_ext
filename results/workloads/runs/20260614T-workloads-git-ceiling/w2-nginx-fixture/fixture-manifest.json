@@ -1,0 +1,114 @@
+{
+  "schema": "namei_ext.fixture_witness_manifest.v1",
+  "run_id": "20260614T-workloads-git-ceiling",
+  "workload_id": "w2-nginx-fixture",
+  "policy_family": "sandbox_fixture_view.bpf.c",
+  "status": "fixture_witness",
+  "result_level": "host_fixture_witness_manifest",
+  "run_environment": "host",
+  "policy_executed": false,
+  "kvm_validated": false,
+  "output_hash_oracle": false,
+  "release_gate_eligible": false,
+  "source_provenance": {
+    "schema": "namei_ext.workload_source.v1",
+    "project": "nginx",
+    "workload_ids": [
+      "w1-nginx-build",
+      "w2-nginx-fixture",
+      "w3-nginx-podman-criu",
+      "w4-ccache-redis-nginx"
+    ],
+    "version": "1.26.3",
+    "url": "https://nginx.org/download/nginx-1.26.3.tar.gz",
+    "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/nginx-1.26.3.tar.gz",
+    "expected_archive_sha256": "69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa",
+    "archive_sha256": "69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa",
+    "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/nginx-1.26.3",
+    "license": {
+      "path": "LICENSE",
+      "sha256": "f19c4caea60247490199c5a6d0134281e3fb20b3d7577e6873c628597f5381d9"
+    },
+    "evidence": {
+      "configure_sha256": "df485655b589ead56ed03f38792445c060bdf3cb4026486b434a2a912cbb65e5",
+      "sample_config_sha256": "95363d79620c1b3eb6951711b6630a411f147bc9197bc91442c0605cf6688e46"
+    }
+  },
+  "real_source_inputs": {
+    "upstream_sample_config": "/home/yunwei37/workspace/namei_ext/.build/workloads/nginx-1.26.3/conf/nginx.conf",
+    "upstream_sample_config_sha256": "95363d79620c1b3eb6951711b6630a411f147bc9197bc91442c0605cf6688e46"
+  },
+  "generator": {
+    "make_target": "workload-nginx-fixture-manifest"
+  },
+  "candidate_entries": [
+    {
+      "branch": "config",
+      "parent_relative": "conf",
+      "visible_component": "nginx.conf",
+      "shadow_backing_component": "nginx.test.conf",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/workload/w2-nginx-fixture/nginx.test.conf",
+      "original_backing_sha256": "2d37a18dbf88e9e6d14f59efbbda76f003304d79b6ef944c372b0aa1be442532",
+      "source": "workload/w2-nginx-fixture nginx test config derived from nginx docs and pinned upstream source provenance",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "certificate",
+      "parent_relative": "conf",
+      "visible_component": "server.crt",
+      "shadow_backing_component": "server.fake.crt",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w2-nginx-fixture/server.fake.crt",
+      "original_backing_sha256": "679440add19e3fddb7717651772259bf67f25df7d92dbfee9bbe2ee9dc845a0e",
+      "source": "make-owned fake certificate fixture",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "endpoint",
+      "parent_relative": "conf",
+      "visible_component": "upstream.sock",
+      "shadow_backing_component": "upstream.local",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w2-nginx-fixture/upstream.local",
+      "original_backing_sha256": "d3b36896c2c2f936de7f35bdf7cd296177f984f612919ecabef6220120e2cbd2",
+      "source": "make-owned local endpoint fixture",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "poison",
+      "parent_relative": "conf",
+      "visible_component": "prod.token",
+      "shadow_backing_component": "poison.secret",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w2-nginx-fixture/poison.secret",
+      "original_backing_sha256": "842352db5251a6351c761392cf0cf90be351b33594dabb52345644ed1dbd387c",
+      "source": "make-owned poison sentinel",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    }
+  ],
+  "semantic_witness": {
+    "branch_coverage": {
+      "config": true,
+      "certificate": true,
+      "endpoint": true,
+      "poison": true,
+      "secret": false,
+      "pass_through": false
+    },
+    "missing_branches": [
+      "secret",
+      "pass_through"
+    ],
+    "missing_branch_reason": "nginx fixture witness does not cover PostgreSQL secret or generic pass-through"
+  },
+  "c1_c8_gate": "not_validated_until_kvm_policy_oracle_service_health_oracle_and_table_counterfactual_pass"
+}

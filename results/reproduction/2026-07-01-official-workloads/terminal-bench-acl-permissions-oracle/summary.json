@@ -1,0 +1,74 @@
+{
+  "date": "2026-07-01",
+  "source": "Terminal-Bench",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "task_id": "acl-permissions-inheritance",
+  "task_path": ".cache/source-inspection/terminal-bench/original-tasks/acl-permissions-inheritance",
+  "run_id": "2026-07-01__terminal-bench-acl-permissions-oracle",
+  "command_shape": "uv run tb run --dataset-path original-tasks --task-id acl-permissions-inheritance --agent oracle --n-concurrent 1 --n-attempts 1 --no-upload-results --cleanup",
+  "agent": "oracle",
+  "dataset_path": ".cache/source-inspection/terminal-bench/original-tasks",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-acl-permissions-oracle",
+  "reproduced_cleanly": true,
+  "accuracy": 1.0,
+  "n_resolved": 1,
+  "n_unresolved": 0,
+  "resolved_ids": [
+    "acl-permissions-inheritance"
+  ],
+  "task_workload_shape": {
+    "category": "system-administration",
+    "tags": [
+      "system",
+      "file-system",
+      "permissions",
+      "access-control",
+      "acl",
+      "posix-acl",
+      "linux",
+      "users-and-groups",
+      "inheritance",
+      "setgid",
+      "security"
+    ],
+    "filesystem_objects": [
+      "/srv/shared",
+      "research group ownership",
+      "alice and bob users",
+      "mallory outside user",
+      "current POSIX ACLs",
+      "default inheritable POSIX ACLs",
+      "subdirectory and file creation during tests"
+    ]
+  },
+  "parser_results": {
+    "test_directory_exists_and_basic_permissions": "passed",
+    "test_current_acl_settings": "passed",
+    "test_default_acl_inheritance": "passed",
+    "test_alice_can_create_and_bob_can_access": "passed",
+    "test_bob_can_create_and_alice_can_access": "passed",
+    "test_subdirectory_inheritance": "passed",
+    "test_outside_users_denied_access": "passed",
+    "test_file_permissions_inheritance": "passed",
+    "test_execute_permissions_on_scripts": "passed"
+  },
+  "timing": {
+    "trial_started_at": "2026-07-01T08:22:50.369060+00:00",
+    "trial_ended_at": "2026-07-01T08:23:28.779419+00:00",
+    "agent_started_at": "2026-07-01T08:23:06.723367+00:00",
+    "agent_ended_at": "2026-07-01T08:23:06.829375+00:00",
+    "test_started_at": "2026-07-01T08:23:10.102342+00:00",
+    "test_ended_at": "2026-07-01T08:23:17.546519+00:00"
+  },
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-acl-permissions-oracle/run_metadata.json",
+    "2026-07-01__terminal-bench-acl-permissions-oracle/results.json",
+    "2026-07-01__terminal-bench-acl-permissions-oracle/run.log",
+    "2026-07-01__terminal-bench-acl-permissions-oracle/acl-permissions-inheritance/acl-permissions-inheritance.1-of-1.2026-07-01__terminal-bench-acl-permissions-oracle/results.json",
+    "2026-07-01__terminal-bench-acl-permissions-oracle/acl-permissions-inheritance/acl-permissions-inheritance.1-of-1.2026-07-01__terminal-bench-acl-permissions-oracle/sessions/agent.log",
+    "2026-07-01__terminal-bench-acl-permissions-oracle/acl-permissions-inheritance/acl-permissions-inheritance.1-of-1.2026-07-01__terminal-bench-acl-permissions-oracle/sessions/tests.log"
+  ],
+  "interpretation": "This is a clean reproduction of one real Terminal-Bench official task with the built-in oracle agent. It strengthens Terminal-Bench from harness/unit-test evidence to an executable filesystem-permission workload seed, but it does not represent full terminal-bench-core reproduction."
+}

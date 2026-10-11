@@ -1,0 +1,177 @@
+{
+  "source": {
+    "name": "SWE-Factory / SWE-Factory-Gym",
+    "repository": "https://github.com/DeepSoftwareAnalytics/swe-factory",
+    "local_checkout": ".cache/source-inspection/swe-factory",
+    "commit": "760b1758c04ba61885972fe8f635c9db3b2c3232",
+    "dataset": "SWE-Factory/SWE-Factory-Gym",
+    "local_dataset_file": ".cache/source-inspection/hf-datasets/SWE-Factory__SWE-Factory-Gym/SWE-Factory-Gym.json",
+    "dataset_rows": 430
+  },
+  "selection_policy": "three additional small released Gym rows across Python and JavaScript repositories after the earlier pallets/click single-row replay",
+  "raw_result_root": "results/reproduction/2026-07-02-official-workloads/swe-factory-gym-multirepo",
+  "command": ".cache/venvs/swe-factory-eval/bin/python run_evaluation.py --dataset_name <result-root>/dataset.json --predictions_path <result-root>/predictions.json --max_workers 1 --run_id namei_ext_gym_multirepo --output_path <result-root>/run_instances --timeout 1800 --rm_image true --reports_dir <result-root>/reports",
+  "interruption_recovery": {
+    "initial_eval_log": "eval.log",
+    "initial_run_boundary": "interrupted after progress reached 1/3; python-attrs__attrs-556 had a complete report, mochajs__mocha-1965 had partial build/run logs, iamkun__dayjs-337 had not started",
+    "continuation_eval_log": "eval-continuation.log",
+    "continuation_status": 0
+  },
+  "top_level_report": {
+    "total_instances": 3,
+    "submitted_instances": 3,
+    "completed_instances": 3,
+    "resolved_instances": 3,
+    "unresolved_instances": 0,
+    "empty_patch_instances": 0,
+    "error_instances": 0,
+    "unstopped_instances": 0,
+    "completed_ids": [
+      "iamkun__dayjs-337_version-1.7",
+      "mochajs__mocha-1965_version-2.3",
+      "python-attrs__attrs-556_version-19.1"
+    ],
+    "incomplete_ids": [],
+    "empty_patch_ids": [],
+    "submitted_ids": [
+      "iamkun__dayjs-337",
+      "mochajs__mocha-1965",
+      "python-attrs__attrs-556"
+    ],
+    "resolved_ids": [
+      "iamkun__dayjs-337_version-1.7",
+      "mochajs__mocha-1965_version-2.3",
+      "python-attrs__attrs-556_version-19.1"
+    ],
+    "unresolved_ids": [],
+    "error_ids": [],
+    "unstopped_containers": [],
+    "unremoved_images": []
+  },
+  "rows": [
+    {
+      "instance_id": "python-attrs__attrs-556",
+      "repo": "python-attrs/attrs",
+      "version": "19.1",
+      "base_commit": "4a1b3a1436c375c72f80866c6ca145ff0e69086f",
+      "dockerfile_len": 977,
+      "eval_script_len": 1222,
+      "patch_len": 664,
+      "test_patch_len": 627,
+      "patch_successfully_applied": true,
+      "resolved": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "test_summary_snippets": [
+        "20 passed in 0.04s ==============================",
+        "OMNIGRIL_EXIT_CODE=0"
+      ],
+      "logs": [
+        "run_instances/namei_ext_gym_multirepo/gold/python-attrs__attrs-556/Dockerfile",
+        "run_instances/namei_ext_gym_multirepo/gold/python-attrs__attrs-556/build_image.log",
+        "run_instances/namei_ext_gym_multirepo/gold/python-attrs__attrs-556/eval.sh",
+        "run_instances/namei_ext_gym_multirepo/gold/python-attrs__attrs-556/patch.diff",
+        "run_instances/namei_ext_gym_multirepo/gold/python-attrs__attrs-556/run_instance_after_apply.log",
+        "run_instances/namei_ext_gym_multirepo/gold/python-attrs__attrs-556/test_output_after_apply.txt",
+        "run_instances/namei_ext_gym_multirepo/gold/python-attrs__attrs-556/report.json"
+      ],
+      "post_oracle_cleanup_warning": null
+    },
+    {
+      "instance_id": "mochajs__mocha-1965",
+      "repo": "mochajs/mocha",
+      "version": "2.3",
+      "base_commit": "3af1b8a54d7c17fceccf10f4fe02fd03000841c5",
+      "dockerfile_len": 907,
+      "eval_script_len": 1104,
+      "patch_len": 715,
+      "test_patch_len": 699,
+      "patch_successfully_applied": true,
+      "resolved": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "test_summary_snippets": [
+        "OMNIGRIL_EXIT_CODE=0"
+      ],
+      "logs": [
+        "run_instances/namei_ext_gym_multirepo/gold/mochajs__mocha-1965/Dockerfile",
+        "run_instances/namei_ext_gym_multirepo/gold/mochajs__mocha-1965/build_image.log",
+        "run_instances/namei_ext_gym_multirepo/gold/mochajs__mocha-1965/eval.sh",
+        "run_instances/namei_ext_gym_multirepo/gold/mochajs__mocha-1965/patch.diff",
+        "run_instances/namei_ext_gym_multirepo/gold/mochajs__mocha-1965/run_instance_after_apply.log",
+        "run_instances/namei_ext_gym_multirepo/gold/mochajs__mocha-1965/test_output_after_apply.txt",
+        "run_instances/namei_ext_gym_multirepo/gold/mochajs__mocha-1965/report.json"
+      ],
+      "post_oracle_cleanup_warning": null
+    },
+    {
+      "instance_id": "iamkun__dayjs-337",
+      "repo": "iamkun/dayjs",
+      "version": "1.7",
+      "base_commit": "36c4e94f014a78c186b354f003c048fdb5562464",
+      "dockerfile_len": 1145,
+      "eval_script_len": 1044,
+      "patch_len": 246,
+      "test_patch_len": 495,
+      "patch_successfully_applied": true,
+      "resolved": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "test_summary_snippets": [
+        "1 passed, 1 total",
+        "2 passed, 2 total",
+        "OMNIGRIL_EXIT_CODE=0"
+      ],
+      "logs": [
+        "run_instances/namei_ext_gym_multirepo/gold/iamkun__dayjs-337/Dockerfile",
+        "run_instances/namei_ext_gym_multirepo/gold/iamkun__dayjs-337/build_image.log",
+        "run_instances/namei_ext_gym_multirepo/gold/iamkun__dayjs-337/eval.sh",
+        "run_instances/namei_ext_gym_multirepo/gold/iamkun__dayjs-337/patch.diff",
+        "run_instances/namei_ext_gym_multirepo/gold/iamkun__dayjs-337/run_instance_after_apply.log",
+        "run_instances/namei_ext_gym_multirepo/gold/iamkun__dayjs-337/test_output_after_apply.txt",
+        "run_instances/namei_ext_gym_multirepo/gold/iamkun__dayjs-337/report.json"
+      ],
+      "post_oracle_cleanup_warning": "After OMNIGRIL_EXIT_CODE=0, eval output includes a git checkout pathspec warning for test/constructor.test.js; the upstream evaluator still reports patch_successfully_applied=true and resolved=true."
+    }
+  ],
+  "logs": [
+    "source-inspection.log",
+    "run-manifest.tsv",
+    "dataset.json",
+    "predictions.json",
+    "eval.log",
+    "eval-continuation.log",
+    "eval-continuation.status",
+    "reports/gold.namei_ext_gym_multirepo.json"
+  ],
+  "cleanup": {
+    "rm_image": true,
+    "top_level_unstopped_containers": [],
+    "top_level_unremoved_images": []
+  },
+  "boundaries": [
+    "This is selected SWE-Factory-Gym row replay, not full 430-row Gym reproduction.",
+    "This is evaluator replay over released Dockerfile/eval artifacts, not a reproduction of the LLM-driven SWE-Builder generation pipeline.",
+    "The first evaluator attempt was interrupted after one completed row; the continuation used the same output root and produced the final top-level 3/3 resolved report.",
+    "The iamkun/dayjs row includes a post-oracle git checkout pathspec warning after OMNIGRIL_EXIT_CODE=0; this is preserved as an artifact caveat while the upstream evaluator reports the row resolved."
+  ],
+  "use_in_namei_ext": "Use these rows as additional W4 environment/cache workload seeds with released Dockerfiles, eval scripts, gold patches, build logs, test outputs, and resolved/not-resolved oracles.",
+  "aggregate_result": {
+    "selected_rows": 3,
+    "completed_instances": 3,
+    "resolved_instances": 3,
+    "unresolved_instances": 0,
+    "error_instances": 0,
+    "repos_replayed": [
+      "iamkun/dayjs",
+      "mochajs/mocha",
+      "python-attrs/attrs"
+    ]
+  }
+}

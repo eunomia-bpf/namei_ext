@@ -1,0 +1,21 @@
+{
+  "schema": "namei_ext.workload_source.v1",
+  "project": "postgresql",
+  "workload_ids": [
+    "w2-postgres-secret-fixture"
+  ],
+  "version": "16.6",
+  "url": "https://ftp.postgresql.org/pub/source/v16.6/postgresql-16.6.tar.gz",
+  "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/postgresql-16.6.tar.gz",
+  "expected_archive_sha256": "520d173632e93507f26eb66713d953b687cfba5e72c467d3adbc8ec4dbb8148f",
+  "archive_sha256": "520d173632e93507f26eb66713d953b687cfba5e72c467d3adbc8ec4dbb8148f",
+  "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/postgresql-16.6",
+  "license": {
+    "path": "COPYRIGHT",
+    "sha256": "9bf20ee493926a7e17a74bc7f05089fbc014269667b1540bc35a6b194a40c9de"
+  },
+  "evidence": {
+    "configure_sha256": "71962376d95a1f3f3f70d0f53e25c8c78a107c298670c3af30cd58c65bf80dca",
+    "sample_config_sha256": "263421e9f1d37ce2be6cc86efd404764c23d85d85c3312e86e660b26d83a0ea6"
+  }
+}

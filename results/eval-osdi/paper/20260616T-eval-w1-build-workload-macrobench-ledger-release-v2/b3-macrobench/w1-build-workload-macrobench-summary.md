@@ -1,0 +1,34 @@
+# W1 build workload macrobench ledger
+
+- Run ID: 20260616T-eval-w1-build-workload-macrobench-ledger-release-v2
+- Policy run: 20260616T-w1-build-macrobench-release-sample-v1
+- Baseline run: 20260616T-w1-build-baseline-release-sample-v2
+- Raw JSONL: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w1-build-workload-macrobench-ledger-release-v2/b3-macrobench/w1-build-workload-macrobench.jsonl
+- Input sha256: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w1-build-workload-macrobench-ledger-release-v2/b3-macrobench/w1-build-workload-macrobench-inputs.sha256
+- policy_release_input_pass=true
+- baseline_release_input_pass=true
+- copy_tree_baseline_pass=true
+- symlink_forest_baseline_pass=true
+- bind_mount_baseline_pass=true
+- projected_volume_baseline_pass=true
+- fuse_baseline_pass=true
+- implemented_feature_baselines_pass=true
+- full_feature_equivalent_baseline_pass=true
+- storage_footprint_pass=false
+- setup_latency_threshold_pass=false
+- update_latency_threshold_pass=false
+- update_materialization_threshold_pass=false
+- threshold_pass=false
+- w1_c2_slice_supported=false
+- c2_supported=false
+- release_gate_pass=false
+- policy_setup_ns_avg=66090011.6
+- best_baseline_setup_ns_avg=17324797.3
+- policy_update_ns_avg=52416038.25
+- best_baseline_update_ns_avg=37528990.95
+- policy_setup_objects_avg=14
+- min_baseline_setup_objects_avg=6
+- policy_setup_bytes_avg=457356
+- min_baseline_setup_bytes_avg=69298
+- missing_inputs=W3/W4 workload setup/storage/update macrobench
+- failed_gates=W1 storage footprint gate failed, W1 setup latency threshold failed, W1 update latency threshold failed, W1 update materialization threshold failed

@@ -1,0 +1,92 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-package-data-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-package-data-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id pypi-server",
+    "--task-id home-server-https",
+    "--task-id postgres-csv-clean",
+    "--task-id multi-source-data-merger",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 4,
+  "n_resolved": 3,
+  "n_unresolved": 1,
+  "accuracy": 0.75,
+  "reproduced_cleanly": false,
+  "tasks": [
+    {
+      "task_id": "multi-source-data-merger",
+      "workload_role": "multi-source JSON/CSV/Parquet ingestion, schema mapping, priority merge, conflict report oracle, Parquet output materialization",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_output_files_exist": "passed",
+        "test_merged_data_exact_values": "passed",
+        "test_conflict_report_values": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:56:23.973182+00:00",
+      "trial_ended_at": "2026-07-01T20:57:15.917089+00:00"
+    },
+    {
+      "task_id": "home-server-https",
+      "workload_role": "HTTPS home-server setup, DNS resolution, self-signed certificate materialization, Nginx TLS config, localhost HTTPS content oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_html_page_exists": "passed",
+        "test_ssl_certificates_exist": "passed",
+        "test_nginx_config_has_ssl": "passed",
+        "test_nginx_is_running": "passed",
+        "test_port_443_is_listening": "passed",
+        "test_dns_resolution": "passed",
+        "test_https_connection": "passed",
+        "test_https_content": "passed",
+        "test_ssl_certificate_validity": "passed",
+        "test_mock_api_accessible": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:57:15.918817+00:00",
+      "trial_ended_at": "2026-07-01T20:59:33.037787+00:00"
+    },
+    {
+      "task_id": "postgres-csv-clean",
+      "workload_role": "PostgreSQL CSV import, in-database cleaning, pg_stat_statements evidence, CSV export oracle",
+      "is_resolved": null,
+      "failure_mode": "unknown_agent_error",
+      "parser_results": null,
+      "failure_stage": "docker compose up before agent/test execution",
+      "diagnostic": "Postgres sidecar exited before becoming healthy; diagnostic logs show: ls: cannot open directory '/docker-entrypoint-initdb.d/': Permission denied",
+      "trial_started_at": null,
+      "trial_ended_at": null
+    },
+    {
+      "task_id": "pypi-server",
+      "workload_role": "local PyPI server setup, Python package build/upload, pip install via local index, package API oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_api": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:01:51.746583+00:00",
+      "trial_ended_at": "2026-07-01T21:03:36.242330+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "postgres-csv-clean-compose-diagnostic.log",
+    "2026-07-01__terminal-bench-package-data-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-package-data-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-package-data-oracle-suite/run.log",
+    "per-task commands.txt and results.json for completed tasks"
+  ],
+  "interpretation": "Three additional official Terminal-Bench package/service/data tasks reproduced through the upstream Docker harness and oracle agent. A fourth task, postgres-csv-clean, failed before agent/test execution because the Postgres sidecar could not read /docker-entrypoint-initdb.d. Together with earlier Terminal-Bench runs, selected official-task coverage is now 16 resolved tasks plus one preserved setup-level negative task. This remains selected official-task reproduction, not full Terminal-Bench-Core reproduction."
+}

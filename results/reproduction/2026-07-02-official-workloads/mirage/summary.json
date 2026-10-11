@@ -1,0 +1,123 @@
+{
+  "system": "Mirage",
+  "source": {
+    "repository": "https://github.com/strukto-ai/mirage",
+    "checkout": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/mirage",
+    "commit": "627016bce3fb95fccb016098373859729a4f9fb5"
+  },
+  "environment": {
+    "host_python": "Python 3.12.3",
+    "uv": "uv 0.8.22",
+    "node": "v22.22.0",
+    "pnpm": "10.20.0",
+    "redis_server": "Redis server v=7.0.15",
+    "redis_port": 6381,
+    "uv_project_environment": "/home/yunwei37/workspace/namei_ext/.cache/venvs/mirage-python"
+  },
+  "commands": [
+    {
+      "name": "python dependencies",
+      "working_directory": ".cache/source-inspection/mirage/python",
+      "command": "UV_CACHE_DIR=/home/yunwei37/workspace/namei_ext/.cache/uv-cache UV_PROJECT_ENVIRONMENT=/home/yunwei37/workspace/namei_ext/.cache/venvs/mirage-python uv sync --all-extras --no-extra camel && uv pip install .",
+      "log": "uv-sync.log",
+      "exit_status": 0
+    },
+    {
+      "name": "focused pytest collection",
+      "working_directory": ".cache/source-inspection/mirage/python",
+      "command": "REDIS_URL=redis://127.0.0.1:6381/0 uv run pytest tests/conformance/test_conformance.py tests/core/ram tests/core/disk tests/core/redis tests/cache tests/workspace/test_cross_mount_recursive.py tests/workspace/test_cache_mount.py tests/workspace/test_cache_invalidation.py tests/workspace/test_snapshot.py tests/workspace/test_snapshot_drift.py --collect-only -q",
+      "log": "pytest-focused-collect.log",
+      "exit_status": 0,
+      "collected_tests": 468
+    },
+    {
+      "name": "focused pytest execution",
+      "working_directory": ".cache/source-inspection/mirage/python",
+      "command": "REDIS_URL=redis://127.0.0.1:6381/0 uv run pytest tests/conformance/test_conformance.py tests/core/ram tests/core/disk tests/core/redis tests/cache tests/workspace/test_cross_mount_recursive.py tests/workspace/test_cache_mount.py tests/workspace/test_cache_invalidation.py tests/workspace/test_snapshot.py tests/workspace/test_snapshot_drift.py -q",
+      "log": "pytest-focused.log",
+      "exit_status": 0,
+      "passed_tests": 468,
+      "failed_tests": 0
+    },
+    {
+      "name": "integration truth-diff suite",
+      "working_directory": ".cache/source-inspection/mirage",
+      "command": "Run upstream Python integration scripts and diff outputs against integ/truth*.txt where provided.",
+      "log": "integ-summary.log",
+      "exit_status": 0,
+      "cases": [
+        "ram",
+        "disk",
+        "redis",
+        "safeguard",
+        "history",
+        "s3",
+        "s3_cases",
+        "onedrive",
+        "onedrive_cases",
+        "lancedb",
+        "find_arg_errors",
+        "cross_commands",
+        "root"
+      ],
+      "passed_cases": 13,
+      "failed_cases": 0
+    },
+    {
+      "name": "python examples truth-check suite",
+      "working_directory": ".cache/source-inspection/mirage",
+      "command": "Run Python examples from Mirage CI and check output with integ/check_lines.sh.",
+      "log": "examples-summary.log",
+      "exit_status": 0,
+      "cases": [
+        "ram",
+        "ram_vfs",
+        "ram_python",
+        "disk",
+        "disk_vfs",
+        "custom_command",
+        "redis",
+        "redis_index",
+        "redis_cache",
+        "redis_vfs",
+        "version_branching"
+      ],
+      "passed_cases": 11,
+      "failed_cases": 0
+    }
+  ],
+  "aggregate": {
+    "focused_pytest_collected": 468,
+    "focused_pytest_passed": 468,
+    "focused_pytest_failed": 0,
+    "integration_cases_passed": 13,
+    "integration_cases_failed": 0,
+    "example_cases_passed": 11,
+    "example_cases_failed": 0
+  },
+  "workload_shapes_reproduced": [
+    "shared command conformance over RAM, Disk, and Redis backends with exact stdout/stderr/exit-code oracles",
+    "RAM, Disk, and Redis backend create/read/write/readdir/stat/find/glob/du/file-operation tests",
+    "Redis-backed index and file cache tests",
+    "workspace cache invalidation and cache mount tests",
+    "workspace snapshot and snapshot drift tests",
+    "cross-mount command behavior across RAM, Redis, S3/moto, OneDrive fake Graph, LanceDB, and virtual-root mounts",
+    "Python examples for RAM/Disk/Redis VFS, Redis index/cache/VFS, custom commands, and version branching"
+  ],
+  "boundaries": [
+    "This is not a full Mirage CI reproduction: TypeScript parity, FUSE mount integration, MongoDB/Postgres/Chroma/Qdrant service tests, Camel tests, and live SaaS/API backends were not run in this pass.",
+    "The reproduced workloads are source-backed agent VFS behavior and command-oracle seeds for namei_ext workload design; they do not prove Mirage performance or full provider coverage.",
+    "No claim is made that these workloads require namei_ext or eBPF policy logic."
+  ],
+  "raw_artifacts": [
+    "source-inspection.log",
+    "uv-sync.log",
+    "redis-start.log",
+    "pytest-focused-collect.log",
+    "pytest-focused.log",
+    "integ-summary.log",
+    "examples-summary.log",
+    "redis-stop.log"
+  ],
+  "verdict": "Mirage provides a strong reproducible agent-VFS workload seed for multi-backend namespaces, command conformance, cache behavior, snapshots, cross-mount operations, and version branching. Use it as a source workload/oracle and possible FUSE/VFS-family baseline seed, not as a proof of interface necessity."
+}

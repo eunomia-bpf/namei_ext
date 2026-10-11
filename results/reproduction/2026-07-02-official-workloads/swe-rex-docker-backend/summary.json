@@ -1,0 +1,76 @@
+{
+  "date": "2026-07-02",
+  "source": {
+    "name": "SWE-ReX",
+    "repository": "https://github.com/SWE-agent/SWE-ReX",
+    "local_checkout": ".cache/source-inspection/swe-rex",
+    "commit": "5c995c365dfb1fd5bc56fda688be5d8538f9931f"
+  },
+  "result_root": "results/reproduction/2026-07-02-official-workloads/swe-rex-docker-backend",
+  "environment": {
+    "docker_client": "29.1.3",
+    "docker_server": "29.1.3",
+    "docker_api": "1.52",
+    "host_kernel": "6.15.11-061511-generic",
+    "python": "Python 3.12.3",
+    "venv": ".cache/venvs/swe-rex"
+  },
+  "commands": [
+    {
+      "name": "upstream docker setup script probe",
+      "status": 1,
+      "log": "docker-script-probe.log",
+      "observed": "Running tests/setup_test_docker.sh from the repository root fails because the script refers to swe_rex_test.Dockerfile without the tests/ prefix"
+    },
+    {
+      "name": "equivalent docker image build with explicit Dockerfile path",
+      "status": 0,
+      "log": "docker-build-swe-rex-test.log",
+      "image": "swe-rex-test:latest",
+      "image_id": "sha256:23d77d3419a58e14d9b7efba1313a249bf5496fc3128e4fd91942731f8db972c",
+      "image_size_bytes": 179475593
+    },
+    {
+      "name": "pytest collect docker deployment tests",
+      "status": 0,
+      "log": "pytest-docker-collect.log",
+      "collected_tests": 6
+    },
+    {
+      "name": "pytest docker deployment tests",
+      "status": 0,
+      "log": "pytest-docker.log",
+      "passed": 6,
+      "failed": 0,
+      "duration_seconds": 15.52
+    }
+  ],
+  "tests_collected": [
+    "tests/test_docker_deployment.py::test_docker_deployment",
+    "tests/test_docker_deployment.py::test_docker_deployment_with_python_standalone",
+    "tests/test_docker_deployment.py::test_docker_deployment_config_platform",
+    "tests/test_docker_deployment.py::test_docker_deployment_config_container_runtime",
+    "tests/test_docker_deployment.py::test_podman_deployment",
+    "tests/test_docker_deployment.py::test_podman_deployment_config"
+  ],
+  "workload_shapes_reproduced": [
+    "Docker deployment lifecycle using swe-rex-test:latest",
+    "Docker deployment with python_standalone_dir over ubuntu:latest",
+    "container runtime config parsing for Docker and Podman",
+    "DockerDeployment.from_config for Podman runtime settings",
+    "container-backed remote runtime liveness checks and stop cleanup"
+  ],
+  "caveats": {
+    "script_path": "The upstream helper script was not directly usable from the repository root; the Dockerfile path was made explicit for the equivalent image build.",
+    "podman_runtime": "The podman deployment test only validates configuration/runtime selection and does not start a Podman container.",
+    "cloud_backends": "Modal, Fargate, and Daytona tests remain unreproduced.",
+    "image_left_available": "The swe-rex-test:latest image remains in the local Docker image cache; no running or exited containers from swe-rex-test:latest or ubuntu:latest remained after the test."
+  },
+  "reuse_verdict": "SWE-ReX now has source-backed local, remote, and Docker deployment evidence. Use it as an agent runtime/workspace workload seed for file transfer, command/session behavior, and container-backed deployment lifecycle. Do not claim cloud backend coverage or full SWE-agent benchmark solving from this run.",
+  "raw_artifacts": [
+    "docker-script-probe.log",
+    "docker-build-swe-rex-test.log",
+    "pytest-docker-collect.log",
+    "pytest-docker.log"
+  ]
+}

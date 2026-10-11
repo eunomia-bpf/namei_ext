@@ -1,0 +1,1 @@
+{"splits":[{"dataset":"nvidia/Open-SWE-Traces","config":"openhands","split":"minimax_m25"},{"dataset":"nvidia/Open-SWE-Traces","config":"openhands","split":"qwen35_122b"},{"dataset":"nvidia/Open-SWE-Traces","config":"sweagent","split":"minimax_m25"},{"dataset":"nvidia/Open-SWE-Traces","config":"sweagent","split":"qwen35_122b"}],"pending":[],"failed":[]}

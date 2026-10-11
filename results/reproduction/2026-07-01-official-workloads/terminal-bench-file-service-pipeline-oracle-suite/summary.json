@@ -1,0 +1,142 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-file-service-pipeline-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-file-service-pipeline-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id fix-git",
+    "--task-id large-scale-text-editing",
+    "--task-id new-encrypt-command",
+    "--task-id processing-pipeline",
+    "--task-id jupyter-notebook-server",
+    "--task-id kv-store-grpc",
+    "--task-id pcap-to-netflow",
+    "--task-id shell-deobfuscation",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 8,
+  "n_resolved": 7,
+  "n_unresolved": 1,
+  "accuracy": 0.875,
+  "reproduced_cleanly": false,
+  "tasks": [
+    {
+      "task_id": "large-scale-text-editing",
+      "workload_role": "million-row CSV transformation using constrained Vim macros with byte-for-byte output oracle and macro-efficiency checks",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 5,
+      "parser_failed": 0,
+      "parser_total": 5,
+      "trial_started_at": "2026-07-01T21:48:25.511476+00:00",
+      "trial_ended_at": "2026-07-01T21:49:43.449252+00:00"
+    },
+    {
+      "task_id": "processing-pipeline",
+      "workload_role": "multi-script shell pipeline repair with script permissions, line endings, shebang, output directory, execution, and output-file oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 9,
+      "parser_failed": 0,
+      "parser_total": 9,
+      "trial_started_at": "2026-07-01T21:49:43.451057+00:00",
+      "trial_ended_at": "2026-07-01T21:50:17.319235+00:00"
+    },
+    {
+      "task_id": "jupyter-notebook-server",
+      "workload_role": "HTTPS Jupyter service setup with password authentication, config-file, background-server, and notebook-content oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 4,
+      "parser_failed": 0,
+      "parser_total": 4,
+      "trial_started_at": "2026-07-01T21:50:17.320774+00:00",
+      "trial_ended_at": "2026-07-01T21:51:48.020261+00:00"
+    },
+    {
+      "task_id": "fix-git",
+      "workload_role": "lost-change Git recovery and merge-back workflow with file-content oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 2,
+      "parser_failed": 0,
+      "parser_total": 2,
+      "trial_started_at": "2026-07-01T21:51:48.021765+00:00",
+      "trial_ended_at": "2026-07-01T21:52:17.851437+00:00"
+    },
+    {
+      "task_id": "new-encrypt-command",
+      "workload_role": "batch file encryption into a separate output directory using a locally installed encryption command",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 1,
+      "parser_failed": 0,
+      "parser_total": 1,
+      "trial_started_at": "2026-07-01T21:52:17.852771+00:00",
+      "trial_ended_at": "2026-07-01T21:52:48.057209+00:00"
+    },
+    {
+      "task_id": "kv-store-grpc",
+      "workload_role": "Python gRPC key-value service with proto definition, code generation, server process, handshake, and RPC functionality oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 7,
+      "parser_failed": 0,
+      "parser_total": 7,
+      "trial_started_at": "2026-07-01T21:52:48.059391+00:00",
+      "trial_ended_at": "2026-07-01T21:53:13.476360+00:00"
+    },
+    {
+      "task_id": "pcap-to-netflow",
+      "workload_role": "PCAP-to-NetFlow-v5 binary export with generated-file count and sampled flow-field oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 4,
+      "parser_failed": 0,
+      "parser_total": 4,
+      "trial_started_at": "2026-07-01T21:53:13.477805+00:00",
+      "trial_ended_at": "2026-07-01T21:53:45.849222+00:00"
+    },
+    {
+      "task_id": "shell-deobfuscation",
+      "workload_role": "deobfuscate a suspicious shell script without executing it, create an exact clean script, and remove executable bits",
+      "is_resolved": false,
+      "failure_mode": "unset",
+      "parser_passed": 0,
+      "parser_failed": 3,
+      "parser_total": 3,
+      "boundary": "The unmodified official task failed before producing workload output because /oracle/solution.sh was unreadable to the container's agent user; post-agent output shows 'bash: /oracle/solution.sh: Permission denied'. A separate permission-adapted replay of this same task resolved 3/3 parser checks.",
+      "trial_started_at": "2026-07-01T21:53:45.850800+00:00",
+      "trial_ended_at": "2026-07-01T21:54:47.911195+00:00"
+    }
+  ],
+  "adapted_replays": [
+    {
+      "task_id": "shell-deobfuscation",
+      "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-shell-deobfuscation-permission-adapted-oracle",
+      "adaptation": "copied the official task into an isolated .cache dataset and changed task-file permissions to be readable/executable as appropriate; source code and tests were not semantically edited",
+      "n_resolved": 1,
+      "n_unresolved": 0,
+      "accuracy": 1.0,
+      "parser_passed": 3,
+      "parser_failed": 0,
+      "interpretation": "The workload oracle is reproducible after correcting the upstream artifact permission boundary, but this is not an unmodified official-task clean reproduction."
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-file-service-pipeline-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-file-service-pipeline-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-file-service-pipeline-oracle-suite/run.log",
+    "per-task commands.txt, panes, sessions, and results.json"
+  ],
+  "interpretation": "Seven additional unmodified official Terminal-Bench file/service/pipeline tasks reproduced through the upstream Docker harness and oracle agent. One official task, shell-deobfuscation, is preserved as an upstream artifact permission boundary; a permission-adapted replay shows the workload oracle itself can pass. Together with earlier Terminal-Bench runs, selected unmodified official-task coverage is now 38 resolved tasks plus four unresolved or setup/content/artifact-boundary tasks. Do not describe this as full Terminal-Bench-Core reproduction."
+}

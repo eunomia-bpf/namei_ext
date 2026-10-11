@@ -1,0 +1,72 @@
+{
+  "source": "Terminal-Bench",
+  "suite": "data-file-debug-oracle-suite",
+  "date": "2026-07-01",
+  "official_unmodified": true,
+  "dataset_path": "original-tasks",
+  "run_id": "2026-07-01__terminal-bench-data-file-debug-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-data-file-debug-oracle-suite",
+  "raw_log": "results/reproduction/2026-07-01-official-workloads/terminal-bench-data-file-debug-oracle-suite/tb-run.log",
+  "raw_results": "results/reproduction/2026-07-01-official-workloads/terminal-bench-data-file-debug-oracle-suite/2026-07-01__terminal-bench-data-file-debug-oracle-suite/results.json",
+  "raw_metadata": "results/reproduction/2026-07-01-official-workloads/terminal-bench-data-file-debug-oracle-suite/2026-07-01__terminal-bench-data-file-debug-oracle-suite/run_metadata.json",
+  "n_tasks": 6,
+  "n_resolved": 6,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "parser_checks_passed": 13,
+  "parser_checks_failed": 0,
+  "resolved_tasks": [
+    "bank-trans-filter",
+    "cpp-compatibility",
+    "recover-accuracy-log",
+    "regex-log",
+    "organization-json-generator",
+    "modernize-scientific-stack"
+  ],
+  "unresolved_tasks": [],
+  "task_results": [
+    {
+      "task_id": "bank-trans-filter",
+      "is_resolved": true,
+      "parser_checks_passed": 1,
+      "parser_checks_failed": 0,
+      "workload_shape": "CSV transaction filtering with fuzzy company/account matching and sorted JSON output oracle"
+    },
+    {
+      "task_id": "cpp-compatibility",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_shape": "Header-only C++ compatibility repair with file-existence and compile oracles"
+    },
+    {
+      "task_id": "recover-accuracy-log",
+      "is_resolved": true,
+      "parser_checks_passed": 3,
+      "parser_checks_failed": 0,
+      "workload_shape": "Multi-run generator/judge JSONL log recovery, error filtering, accuracy computation, and golden-output oracle"
+    },
+    {
+      "task_id": "regex-log",
+      "is_resolved": true,
+      "parser_checks_passed": 1,
+      "parser_checks_failed": 0,
+      "workload_shape": "Regex synthesis for IPv4-filtered date extraction from log lines"
+    },
+    {
+      "task_id": "organization-json-generator",
+      "is_resolved": true,
+      "parser_checks_passed": 4,
+      "parser_checks_failed": 0,
+      "workload_shape": "Multi-CSV organization graph materialization with schema, relationship-integrity, and statistics oracles"
+    },
+    {
+      "task_id": "modernize-scientific-stack",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_shape": "Python 2 scientific script migration to Python 3 with dependency-file and execution oracles"
+    }
+  ],
+  "interpretation": "Selected official Terminal-Bench data/file/debug tasks reproduced cleanly through the upstream harness and oracle agent. These workloads extend file-materialization and environment/debug coverage with log recovery, regex/log analysis, CSV/JSON transformation, C++ compatibility repair, and legacy scientific-stack migration."
+}

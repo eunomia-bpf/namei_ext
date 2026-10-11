@@ -1,0 +1,46 @@
+{
+  "repo": "https://github.com/YoloFS/filesystem",
+  "head": "684829ec5e8193e8560b52573b2575a347906d0e",
+  "vm_start_exit": "0",
+  "probe_exits": [
+    [
+      "1",
+      "255"
+    ],
+    [
+      "2",
+      "255"
+    ],
+    [
+      "3",
+      "255"
+    ],
+    [
+      "4",
+      "255"
+    ],
+    [
+      "5",
+      "255"
+    ],
+    [
+      "6",
+      "255"
+    ]
+  ],
+  "guest_deps_exit": "255",
+  "vm_stop_exit": "0",
+  "failure_lines": [
+    "Connection closed by 127.0.0.1 port 2222",
+    "kex_exchange_identification: read: Connection reset by peer",
+    "Connection reset by 127.0.0.1 port 2222",
+    "kex_exchange_identification: read: Connection reset by peer",
+    "Connection reset by 127.0.0.1 port 2222",
+    "kex_exchange_identification: read: Connection reset by peer",
+    "Connection reset by 127.0.0.1 port 2222",
+    "kex_exchange_identification: read: Connection reset by peer",
+    "Connection reset by 127.0.0.1 port 2222",
+    "kex_exchange_identification: read: Connection reset by peer",
+    "Connection reset by 127.0.0.1 port 2222"
+  ]
+}

@@ -1,0 +1,229 @@
+{
+  "schema": "namei_ext.trace_witness_manifest.v1",
+  "run_id": "20260614T-workloads-git-ceiling",
+  "workload_id": "w1-nginx-build",
+  "policy_family": "build_graph_view.bpf.c",
+  "status": "trace_witness",
+  "result_level": "host_trace_witness_manifest",
+  "run_environment": "host",
+  "policy_executed": false,
+  "kvm_validated": false,
+  "output_hash_oracle": false,
+  "release_gate_eligible": false,
+  "policy_execution_basis": "host_trace_only",
+  "source_manifest": {
+    "schema": "namei_ext.real_workload_manifest.v1",
+    "run_id": "20260614T-workloads-git-ceiling",
+    "workload_id": "w1-nginx-build",
+    "policy_family": "build_graph_view.bpf.c",
+    "status": "source-build-trace",
+    "result_level": "host_source_build_trace",
+    "run_environment": "host",
+    "policy_executed": false,
+    "kvm_validated": false,
+    "output_hash_oracle": false,
+    "provenance": {
+      "schema": "namei_ext.workload_source.v1",
+      "project": "nginx",
+      "workload_ids": [
+        "w1-nginx-build",
+        "w2-nginx-fixture",
+        "w3-nginx-podman-criu",
+        "w4-ccache-redis-nginx"
+      ],
+      "version": "1.26.3",
+      "url": "https://nginx.org/download/nginx-1.26.3.tar.gz",
+      "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/nginx-1.26.3.tar.gz",
+      "expected_archive_sha256": "69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa",
+      "archive_sha256": "69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa",
+      "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/nginx-1.26.3",
+      "license": {
+        "path": "LICENSE",
+        "sha256": "f19c4caea60247490199c5a6d0134281e3fb20b3d7577e6873c628597f5381d9"
+      },
+      "evidence": {
+        "configure_sha256": "df485655b589ead56ed03f38792445c060bdf3cb4026486b434a2a912cbb65e5",
+        "sample_config_sha256": "95363d79620c1b3eb6951711b6630a411f147bc9197bc91442c0605cf6688e46"
+      }
+    },
+    "build": {
+      "schema": "namei_ext.real_workload_build.v1",
+      "run_id": "20260614T-workloads-git-ceiling",
+      "workload_id": "w1-nginx-build",
+      "policy_family": "build_graph_view.bpf.c",
+      "result_level": "host_source_build_trace",
+      "run_environment": "host",
+      "policy_executed": false,
+      "kvm_validated": false,
+      "output_hash_oracle": false,
+      "project": "nginx",
+      "version": "1.26.3",
+      "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/src",
+      "command": [
+        "./configure",
+        "make"
+      ],
+      "configure_flags": [
+        "--without-http_rewrite_module",
+        "--without-http_gzip_module"
+      ],
+      "make_variables": {
+        "JOBS": "24"
+      },
+      "toolchain": {
+        "cc_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+      },
+      "duration_ns": 2957897559,
+      "artifacts": {
+        "configure_log": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/configure.log",
+        "configure_log_sha256": "e3ef8d2aec60560738094d94287de80d420b47201f81789ab32ef1fa83fc5365",
+        "build_log": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/build.log",
+        "build_log_sha256": "e20f1d93e24b80d18db11bc7abfb6a870fbad36c6148ae2d4fea801e7e84de30",
+        "binary": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/src/objs/nginx",
+        "binary_sha256": "9c587881ce738a3b2a8f251b7c493dca03ea0cc2d18548154a9fb81b89aa7cc1"
+      }
+    },
+    "trace": {
+      "schema": "namei_ext.real_workload_trace.v1",
+      "run_id": "20260614T-workloads-git-ceiling",
+      "workload_id": "w1-nginx-build",
+      "policy_family": "build_graph_view.bpf.c",
+      "result_level": "host_source_build_trace",
+      "run_environment": "host",
+      "policy_executed": false,
+      "kvm_validated": false,
+      "output_hash_oracle": false,
+      "project": "nginx",
+      "version": "1.26.3",
+      "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build-trace/src",
+      "command": [
+        "strace",
+        "./configure",
+        "make"
+      ],
+      "configure_flags": [
+        "--without-http_rewrite_module",
+        "--without-http_gzip_module"
+      ],
+      "make_variables": {
+        "JOBS": "24"
+      },
+      "toolchain": {
+        "strace_version": "strace -- version 6.8"
+      },
+      "duration_ns": 12067116783,
+      "file_op_lines": 1796791,
+      "artifacts": {
+        "strace": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/strace.log",
+        "strace_sha256": "299d47e7fa1ce16056cfc17a89a0bed2e92d7600652dfaa5527ed90c31e43b4e",
+        "configure_log": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/trace-configure.log",
+        "configure_log_sha256": "7b95977a9f7c64087322eb57ee1e75948fea19b5733017ae8ee85be74076c867",
+        "build_log": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/trace-build.log",
+        "build_log_sha256": "66ba03a2029469f98e1c8d2cbd9d998621a125993674a0687aac7b8a124308c5",
+        "binary": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build-trace/src/objs/nginx",
+        "binary_sha256": "53d4b102c2c20d1505243d0c5993517a58d8ddcc1e4cff012ac4c6cfdf4afc6c"
+      }
+    },
+    "c1_c8_gate": "not_validated_until_kvm_policy_oracle_and_table_counterfactual_pass"
+  },
+  "generator": {
+    "make_target": "workload-nginx-build-alias-manifest",
+    "input_trace": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/strace.log",
+    "input_trace_sha256": "299d47e7fa1ce16056cfc17a89a0bed2e92d7600652dfaa5527ed90c31e43b4e",
+    "input_manifest": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build/manifest.json",
+    "input_manifest_sha256": "f50054de8d32596479f5aeb3a00db4f6d37fd4d1a9359bf919bf91024f974267"
+  },
+  "candidate_entries": [
+    {
+      "branch": "generated_output",
+      "parent_relative": "objs",
+      "visible_component": "ngx_auto_config.h",
+      "shadow_backing_component": ".namei_ext.generated.ngx_auto_config.h",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build-trace/src/objs/ngx_auto_config.h",
+      "original_backing_sha256": "f63a1208c01d2254b0efc44023335cd44b7566a4f76c93422651331d3aa05d61",
+      "trace_hits": 225,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "generated_output",
+      "parent_relative": "objs",
+      "visible_component": "ngx_auto_headers.h",
+      "shadow_backing_component": ".namei_ext.generated.ngx_auto_headers.h",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build-trace/src/objs/ngx_auto_headers.h",
+      "original_backing_sha256": "268bec1c0f60e89f0a39eada525ca92cb87fe883c9b70921a061f07e06c1a479",
+      "trace_hits": 129,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "declared_source_fallback",
+      "parent_relative": "src/core",
+      "visible_component": "nginx.c",
+      "shadow_backing_component": ".namei_ext.source.nginx.c",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-nginx-build-trace/src/src/core/nginx.c",
+      "original_backing_sha256": "c1a2139c1a392f44f8d3745d5fdad77c42a2b4f3d82c1960584948351b05e61c",
+      "trace_hits": 7,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "toolchain_selection",
+      "parent_absolute": "/usr/bin",
+      "visible_component": "cc",
+      "shadow_backing_component": "gcc",
+      "original_backing_path": "/usr/bin/gcc",
+      "original_backing_sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+      "observed_frontend_path": "/usr/bin/cc",
+      "observed_frontend_sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+      "trace_hits": 2113,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "external_dependency",
+      "parent_absolute": "/usr/include",
+      "visible_component": "stdio.h",
+      "shadow_backing_component": ".namei_ext.external.stdio.h",
+      "original_backing_path": "/usr/include/stdio.h",
+      "original_backing_sha256": "b4f6709d12c8493e2a42f740845abe2994deb27fc78fb85fcaa6e27228a87d62",
+      "trace_hits": 3164,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    }
+  ],
+  "semantic_witness": {
+    "branch_coverage": {
+      "generated_output": true,
+      "declared_source_fallback": true,
+      "toolchain_selection": true,
+      "external_dependency": true,
+      "undeclared_dependency_poison": false,
+      "negative_fallback": false
+    },
+    "missing_branches": [
+      "undeclared_dependency_poison",
+      "negative_fallback"
+    ],
+    "missing_branch_reason": "clean host configure/build trace does not exercise poison or negative probes; those require KVM policy oracle tests"
+  },
+  "hit_rate": {
+    "candidate_witness_hit_rate": 0.0031378162513058003,
+    "numerator_candidate_trace_hits": 5638,
+    "denominator_file_op_lines": 1796791,
+    "basis": "host trace candidate entry hits over all strace %file operations; policy_executed is false",
+    "release_gate_eligible": false
+  },
+  "materialization_status": "shadow backing files not created by this target",
+  "c1_c8_gate": "not_validated_until_kvm_policy_oracle_materializer_loader_and_table_counterfactual_pass"
+}

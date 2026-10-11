@@ -1,0 +1,85 @@
+{
+  "schema": "namei_ext.fixture_witness_manifest.v1",
+  "run_id": "20260614T-workloads-git-ceiling",
+  "workload_id": "w2-postgres-secret-fixture",
+  "policy_family": "sandbox_fixture_view.bpf.c",
+  "status": "fixture_witness",
+  "result_level": "host_fixture_witness_manifest",
+  "run_environment": "host",
+  "policy_executed": false,
+  "kvm_validated": false,
+  "output_hash_oracle": false,
+  "release_gate_eligible": false,
+  "source_provenance": {
+    "schema": "namei_ext.workload_source.v1",
+    "project": "postgresql",
+    "workload_ids": [
+      "w2-postgres-secret-fixture"
+    ],
+    "version": "16.6",
+    "url": "https://ftp.postgresql.org/pub/source/v16.6/postgresql-16.6.tar.gz",
+    "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/postgresql-16.6.tar.gz",
+    "expected_archive_sha256": "520d173632e93507f26eb66713d953b687cfba5e72c467d3adbc8ec4dbb8148f",
+    "archive_sha256": "520d173632e93507f26eb66713d953b687cfba5e72c467d3adbc8ec4dbb8148f",
+    "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/postgresql-16.6",
+    "license": {
+      "path": "COPYRIGHT",
+      "sha256": "9bf20ee493926a7e17a74bc7f05089fbc014269667b1540bc35a6b194a40c9de"
+    },
+    "evidence": {
+      "configure_sha256": "71962376d95a1f3f3f70d0f53e25c8c78a107c298670c3af30cd58c65bf80dca",
+      "sample_config_sha256": "263421e9f1d37ce2be6cc86efd404764c23d85d85c3312e86e660b26d83a0ea6"
+    }
+  },
+  "generator": {
+    "make_target": "workload-postgres-fixture-manifest"
+  },
+  "candidate_entries": [
+    {
+      "branch": "service_config",
+      "parent_relative": "conf",
+      "visible_component": "postgresql.conf",
+      "shadow_backing_component": "postgres.test.conf",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/.build/workloads/postgresql-16.6/src/backend/utils/misc/postgresql.conf.sample",
+      "original_backing_sha256": "263421e9f1d37ce2be6cc86efd404764c23d85d85c3312e86e660b26d83a0ea6",
+      "source": "PostgreSQL upstream sample config",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "secret",
+      "parent_relative": "conf",
+      "visible_component": "db.password",
+      "shadow_backing_component": "db.fake.pass",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w2-postgres-secret-fixture/db.fake.pass",
+      "original_backing_sha256": "4a1ffb26769fc2674d234668334a5c02074bfb38959200c74af61a12b5c6c0b8",
+      "source": "make-owned fake password fixture",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    }
+  ],
+  "semantic_witness": {
+    "branch_coverage": {
+      "service_config": true,
+      "secret": true,
+      "config": false,
+      "certificate": false,
+      "endpoint": false,
+      "poison": false,
+      "pass_through": false
+    },
+    "missing_branches": [
+      "config",
+      "certificate",
+      "endpoint",
+      "poison",
+      "pass_through"
+    ],
+    "missing_branch_reason": "PostgreSQL fixture witness contributes service_config and secret branches; nginx fixture contributes config/certificate/endpoint/poison"
+  },
+  "c1_c8_gate": "not_validated_until_kvm_policy_oracle_service_health_oracle_and_table_counterfactual_pass"
+}

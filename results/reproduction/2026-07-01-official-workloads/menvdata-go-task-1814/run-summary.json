@@ -1,0 +1,36 @@
+{
+  "workload_source": "MEnvData-SWE",
+  "source_dataset": "ernie-research/MEnvData-SWE",
+  "selected_instance": "go-task__task-1814",
+  "selected_repo": "go-task/task",
+  "selected_language": "Go",
+  "selected_image": "swe-images-go:go-task-task-pr-1814",
+  "docker_image": "mcatwj/swe-images-go:go-task-task-pr-1814",
+  "docker_repo_digests": [
+    "mcatwj/swe-images-go@sha256:8609760e2d29f163a6e31d8a0457feefd9adb09573f7a77b051181745fbd78c9"
+  ],
+  "docker_image_id": "sha256:ad14ecfd22a15186f50ddefe110569e50b730176aefad4ae900f5908f35bfd81",
+  "docker_image_size_bytes": 2740717039,
+  "base_commit": "08a2a911804314e1bc24aa05e709701acd8c4f47",
+  "pull_number": 1814,
+  "eval_script_len": 3077,
+  "test_patch_len": 1417,
+  "patch_len": 539,
+  "pull_status_from_log": "0",
+  "docker_run_status_from_log": "0",
+  "omnigril_exit_code": "0",
+  "go_test_package_summary": "0.014s",
+  "passed_named_tests": [
+    "TestExitCodeZero",
+    "TestExitCodeOne"
+  ],
+  "official_eval_row_passed": true,
+  "interpretation": "Official MEnvData-SWE image/eval row passed for a Go task. The image already contains the patched repository state; this is not a standalone fail-to-pass before/after reproduction.",
+  "status_file_note": "docker-pull.status and eval.status were reconstructed from preserved log markers after the wrapper exited before writing them.",
+  "raw_logs": {
+    "instance_json": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-go-task-1814/instance.json",
+    "eval_script": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-go-task-1814/eval.sh",
+    "docker_pull_log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-go-task-1814/docker-pull.log",
+    "eval_log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-go-task-1814/eval.log"
+  }
+}

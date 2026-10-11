@@ -1,0 +1,38 @@
+{
+  "max_workers": 1,
+  "total": 1,
+  "all_ok": true,
+  "items": [
+    {
+      "instance_id": "btcpayserver__btcpayserver-6251",
+      "from_fail_to_pass": [
+        "CanCalculateCryptoDue",
+        "CanCalculateCryptoDue2",
+        "CanCalculateDust",
+        "CanDetectFileType",
+        "CanHandleUriValidation",
+        "CanParseAppTemplate",
+        "CanParseCartItems",
+        "CanParseCurrencyValue",
+        "CanParseDecimals",
+        "CanParseDerivationScheme",
+        "CanParseDerivationSchemes",
+        "CanParseFilter",
+        "CanParseFingerprint",
+        "CanParseInvoiceEntityDerivationStrategies",
+        "CanParseMetadata",
+        "CanParseOldPosAppData",
+        "CanParseOldYmlCorrectly",
+        "CanParsePaymentMethodId",
+        "CanParseRateRules",
+        "CanParseStoreRoleId",
+        "CanParseTorrc"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 1,
+      "log_path": "logs/btcpayserver__btcpayserver-6251_log.txt",
+      "error": ""
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "instance_id": "pallets-eco__flask-wtf-512",
+  "repo": "pallets-eco/flask-wtf",
+  "base_commit": "b86d5c6516344f85f930cdd710b14d54ac88415c",
+  "language": "python",
+  "label": "Easy",
+  "docker_res_type": "manual minimal docker_res generated from public task row",
+  "official_generated_docker_res_available": false,
+  "target_eval_command": "pytest -q tests/test_recaptcha.py",
+  "evaluator_exit_code": 0,
+  "final_report": {
+    "dataset_instances": 1,
+    "provided_instances": 1,
+    "provided_rate": 1.0,
+    "summary": {
+      "total_instances": 1,
+      "failed_before_patch": 1,
+      "passed_after_patch": 0,
+      "details": {
+        "f2p_instance": 0,
+        "p2p_instance": 0,
+        "f2f_instance": 1,
+        "p2f_instance": 0,
+        "resolved": 0,
+        "stable": 0
+      }
+    },
+    "instance_details": [
+      {
+        "instance_id": "pallets-eco__flask-wtf-512",
+        "failed_before_patch": true,
+        "passed_after_patch": false,
+        "bug_fail_rate": 1.0,
+        "fix_pass_rate": 0.0,
+        "resolved": false,
+        "stable": false
+      }
+    ]
+  },
+  "combined_report": {
+    "instance_id": "pallets-eco__flask-wtf-512",
+    "failed_before_patch": true,
+    "passed_after_patch": false,
+    "bug_fail_rate": 1.0,
+    "fix_pass_rate": 0.0,
+    "resolved": false,
+    "stable": false
+  },
+  "evaluator.log_sha256": "2a294737de8d854d169493d27a6a7bca12cb70cd4d27c767f57ee224195b9da8",
+  "evaluator.exitcode_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+  "dataset-pallets-eco-flask-wtf-512.jsonl_sha256": "7216e01d7d067599dd97bee072767be66a618f7c9db5543d2196fed3f8196404",
+  "manual-docker-res-pallets-eco-flask-wtf-512.json_sha256": "6cbaf8df789c48adef60ed73534a25095ff9606ead0f7c5532e2525549a4323f",
+  "selected-instance.json_sha256": "0056214020fa4ba20adda18ba7193d45de982c075a26a3a42d805b925ae3fc64",
+  "run_instance_after_apply_0.log_sha256": "a9d2ea09d5ab640e8be1b084993ecb4fff6b4a31f6b9000181c4a6d160f51213",
+  "run_instance_prev_apply_0.log_sha256": "171132ec6e9fcf7757fd5095474db8d72fa971dfcaa880b6ecdec94934e4448f",
+  "test_output_after_apply_0.txt_sha256": "67afd97583bc2892441705eefc4951e70540c13ba57cc7b2c802441b42bd0b86",
+  "test_output_prev_apply_0.txt_sha256": "67afd97583bc2892441705eefc4951e70540c13ba57cc7b2c802441b42bd0b86",
+  "v2_retry": {
+    "run_id": "manual-python-pallets-eco-flask-wtf-512-v2",
+    "evaluator_exit_code": 0,
+    "docker_res_type": "manual v2: explicit pytest install",
+    "final_report": {
+      "dataset_instances": 1,
+      "provided_instances": 1,
+      "provided_rate": 1.0,
+      "summary": {
+        "total_instances": 1,
+        "failed_before_patch": 1,
+        "passed_after_patch": 0,
+        "details": {
+          "f2p_instance": 0,
+          "p2p_instance": 0,
+          "f2f_instance": 1,
+          "p2f_instance": 0,
+          "resolved": 0,
+          "stable": 0
+        }
+      },
+      "instance_details": [
+        {
+          "instance_id": "pallets-eco__flask-wtf-512",
+          "failed_before_patch": true,
+          "passed_after_patch": false,
+          "bug_fail_rate": 1.0,
+          "fix_pass_rate": 0.0,
+          "resolved": false,
+          "stable": false
+        }
+      ]
+    },
+    "combined_report": {
+      "instance_id": "pallets-eco__flask-wtf-512",
+      "failed_before_patch": true,
+      "passed_after_patch": false,
+      "bug_fail_rate": 1.0,
+      "fix_pass_rate": 0.0,
+      "resolved": false,
+      "stable": false
+    },
+    "evaluator-v2.log_sha256": "55e132829246bb2e767be7e0c5e4ec5869a57d133cba6db921e898100a72fc43",
+    "evaluator-v2.exitcode_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "manual-docker-res-pallets-eco-flask-wtf-512-v2.json_sha256": "39e43da00b602aba60595e844deb5df80bbcf577f9b0c30ddb1a1f0268e0a231",
+    "run_instance_after_apply_0.log_sha256": "944f21c8704450c2e902b5c4a7eac256596f3d1719b1a1ca38fce2108be12e07",
+    "run_instance_prev_apply_0.log_sha256": "d98c568be9883b414244f306fe46295b37e0ac661ba2cd44194b3690a514ce4c",
+    "test_output_after_apply_0.txt_sha256": "5ade323122982e7a7d2e944f9e01df145d39c5c39bd1e79e82b9efa21612080f",
+    "test_output_prev_apply_0.txt_sha256": "72a51602d5057b00a8e03c949483df017c9bddffa90ae79a7527b126e1b36680"
+  },
+  "v3_retry": {
+    "run_id": "manual-python-pallets-eco-flask-wtf-512-v3",
+    "evaluator_exit_code": 0,
+    "docker_res_type": "manual v3: pin Flask 2.1.3, Werkzeug 2.1.0, WTForms 3.0.1, pytest",
+    "final_report": {
+      "dataset_instances": 1,
+      "provided_instances": 1,
+      "provided_rate": 1.0,
+      "summary": {
+        "total_instances": 1,
+        "failed_before_patch": 1,
+        "passed_after_patch": 1,
+        "details": {
+          "f2p_instance": 1,
+          "p2p_instance": 0,
+          "f2f_instance": 0,
+          "p2f_instance": 0,
+          "resolved": 1,
+          "stable": 1
+        }
+      },
+      "instance_details": [
+        {
+          "instance_id": "pallets-eco__flask-wtf-512",
+          "failed_before_patch": true,
+          "passed_after_patch": true,
+          "bug_fail_rate": 1.0,
+          "fix_pass_rate": 1.0,
+          "resolved": true,
+          "stable": true
+        }
+      ]
+    },
+    "combined_report": {
+      "instance_id": "pallets-eco__flask-wtf-512",
+      "failed_before_patch": true,
+      "passed_after_patch": true,
+      "bug_fail_rate": 1.0,
+      "fix_pass_rate": 1.0,
+      "resolved": true,
+      "stable": true
+    },
+    "evaluator-v3.log_sha256": "a677cb230ea5e6316c622e91cc4528a605bb65d136254b4c58f4f33bc67dd848",
+    "evaluator-v3.exitcode_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "manual-docker-res-pallets-eco-flask-wtf-512-v3.json_sha256": "3883f4d14e1e372db6abfb4f3b7f3a96044bd4545230f424c2eec63e442217a1",
+    "run_instance_after_apply_0.log_sha256": "13df4a5eac46f5b25c6a329ba99dd449c7babe2e6e5efa31e21839896d2fd495",
+    "run_instance_prev_apply_0.log_sha256": "119577646b29211b53bdaf80d8de8b13ac66cd57d91ee4e565c8ae66632a2355",
+    "test_output_after_apply_0.txt_sha256": "1d651650c1018f28697f792719744d0ec477becfdf88829d0f84282c7bbc63e6",
+    "test_output_prev_apply_0.txt_sha256": "90507335d2f0cd8e2066ae4c0537e5124e21f7c0350d8910023cbc27194e090b"
+  }
+}

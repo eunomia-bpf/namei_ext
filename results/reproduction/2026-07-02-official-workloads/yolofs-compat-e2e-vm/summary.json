@@ -1,0 +1,103 @@
+{
+  "date": "2026-07-02",
+  "source": "YoloFS filesystem compat branch",
+  "repo": "https://github.com/YoloFS/filesystem",
+  "commit": "f37d17583464e72793c63a31de17ca86e19262fe",
+  "branch": "compat",
+  "local_checkout": ".cache/source-inspection/yolofs-filesystem-compat",
+  "workload": "upstream make test-e2e-vm mounted filesystem integration workload",
+  "reproduced": true,
+  "result_root": "results/reproduction/2026-07-02-official-workloads/yolofs-compat-e2e-vm",
+  "environment_notes": {
+    "qemu": "/usr/bin/qemu-system-x86_64 was placed first in PATH because /usr/local/bin/qemu-system-x86_64 lacks the user network backend",
+    "guest": "Ubuntu 24.04 minimal cloud image, kernel 6.8.0-124-generic",
+    "guest_build_dependencies": "Installed make, gcc, linux-headers-6.8.0-124-generic, and libcap2-bin inside the YoloFS VM",
+    "source_cleanup": "Archived and removed 35 untracked generated kmod artifacts from kmod/ before the final run; otherwise Makefile wildcard kmod/*.c included generated yolofs.mod.c as source"
+  },
+  "commands": [
+    {
+      "name": "initial make test-e2e-vm on compat checkout",
+      "status": 2,
+      "log": "make-test-e2e-vm.log",
+      "observed": "VM booted, SSH and 9p readiness passed, but guest command failed because make was not installed"
+    },
+    {
+      "name": "guest build dependency install",
+      "status": 0,
+      "log": "guest-build-deps.log",
+      "observed": "Installed guest build dependencies for the upstream VM target"
+    },
+    {
+      "name": "make test-e2e-vm after guest deps",
+      "status": 2,
+      "log": "make-test-e2e-vm-after-deps.log",
+      "observed": "kmod build failed because generated kmod/yolofs.mod.c from earlier builds was included by the Makefile wildcard"
+    },
+    {
+      "name": "archive and remove generated kmod artifacts",
+      "status": 0,
+      "log": "kmod-generated-before-cleanup.list",
+      "observed": "Archived 35 untracked generated kmod artifacts to kmod-generated-before-cleanup.tar.gz; after-cleanup list has 0 entries"
+    },
+    {
+      "name": "clean stale build directory",
+      "status": 0,
+      "log": "guest-clean-before-final-e2e.log"
+    },
+    {
+      "name": "final make test-e2e-vm after cleanup",
+      "status": 0,
+      "log": "make-test-e2e-vm-clean-kmod.log",
+      "observed": "Built yolofs.ko inside the VM, installed yolo and yolofs.ko, loaded the kernel module, ran Rust e2e tests, unloaded the module"
+    },
+    {
+      "name": "vm stop",
+      "status": 0,
+      "log": "vm-stop.log"
+    }
+  ],
+  "positive_evidence": {
+    "vm_boot": true,
+    "ssh_ready": true,
+    "virtio_9p_mount_ready": true,
+    "guest_kmod_build": true,
+    "guest_install_user_binary": true,
+    "guest_install_kernel_module": true,
+    "yolo_reload_loads_module": true,
+    "rust_e2e_tests": {
+      "passed": 593,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "duration_seconds": 9.19
+    },
+    "yolo_unload": true,
+    "vm_stopped": true
+  },
+  "workload_shapes_exercised": [
+    "CLI lifecycle: reload, unload, commit, abort, diff, status, snapshot, travel, mount, unmount, watch",
+    "mounted filesystem operations: create, read, write, seek, readdir, rename, mkdir, rmdir, symlink, delete, fallocate, concurrent operations",
+    "internal state semantics: journal format, commit/abort, snapshot, travel, rename resolution, dentry interposition, ownership, consistency",
+    "permission semantics: allow, deny, read-only, ask, hide, live rules, metadata operation gating, open-flag handling, ioctl gating"
+  ],
+  "caveats": {
+    "not_main_branch": "The passing mounted e2e run is on the public compat branch, not the main checkout.",
+    "not_private_benchmarks": "The unavailable umbrella agent/perf evaluation submodules remain unreproduced.",
+    "environment_preparation": "The upstream VM target needed guest build dependencies installed and stale generated kmod artifacts removed from the local source checkout before the final pass.",
+    "clock_skew_warning": "The guest kmod build reported small clock-skew warnings on the 9p share, but the final module build and test run completed with status 0."
+  },
+  "reuse_verdict": "YoloFS should now be treated as public code-backed methodology plus a reproduced compat-branch mounted filesystem e2e workload. Use its staging, snapshot, commit/abort, hidden/permission, and final-tree oracle shapes as source-backed workload evidence. Do not claim original private agent/perf benchmark reproduction or main-branch mounted e2e reproduction from this run.",
+  "raw_logs": [
+    "make-test-e2e-vm.log",
+    "guest-build-deps.log",
+    "make-test-e2e-vm-after-deps.log",
+    "guest-clean-kmod-v1.log",
+    "guest-clean-kmod-v1.status",
+    "kmod-generated-before-cleanup.list",
+    "kmod-generated-before-cleanup.tar.gz",
+    "kmod-generated-after-cleanup.list",
+    "guest-clean-before-final-e2e.log",
+    "make-test-e2e-vm-clean-kmod.log",
+    "vm-stop.log"
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "schema": "namei_ext.checkpoint_witness_manifest.v1",
+  "run_id": "20260614T-workloads-git-ceiling",
+  "workload_id": "w3-nginx-podman-criu",
+  "policy_family": "checkpoint_restore_view.bpf.c",
+  "status": "checkpoint_witness",
+  "result_level": "host_checkpoint_witness_manifest",
+  "run_environment": "host",
+  "policy_executed": false,
+  "kvm_validated": false,
+  "output_hash_oracle": false,
+  "release_gate_eligible": false,
+  "source_provenance": {
+    "schema": "namei_ext.workload_source.v1",
+    "project": "nginx",
+    "workload_ids": [
+      "w1-nginx-build",
+      "w2-nginx-fixture",
+      "w3-nginx-podman-criu",
+      "w4-ccache-redis-nginx"
+    ],
+    "version": "1.26.3",
+    "url": "https://nginx.org/download/nginx-1.26.3.tar.gz",
+    "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/nginx-1.26.3.tar.gz",
+    "expected_archive_sha256": "69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa",
+    "archive_sha256": "69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa",
+    "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/nginx-1.26.3",
+    "license": {
+      "path": "LICENSE",
+      "sha256": "f19c4caea60247490199c5a6d0134281e3fb20b3d7577e6873c628597f5381d9"
+    },
+    "evidence": {
+      "configure_sha256": "df485655b589ead56ed03f38792445c060bdf3cb4026486b434a2a912cbb65e5",
+      "sample_config_sha256": "95363d79620c1b3eb6951711b6630a411f147bc9197bc91442c0605cf6688e46"
+    }
+  },
+  "generator": {
+    "make_target": "workload-nginx-checkpoint-manifest"
+  },
+  "candidate_entries": [
+    {
+      "branch": "config",
+      "parent_relative": "conf",
+      "visible_component": "nginx.conf",
+      "shadow_backing_component": "nginx.ckpt",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/.build/workloads/nginx-1.26.3/conf/nginx.conf",
+      "original_backing_sha256": "95363d79620c1b3eb6951711b6630a411f147bc9197bc91442c0605cf6688e46",
+      "source": "nginx upstream sample config as checkpoint config witness",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "cache",
+      "parent_relative": "cache",
+      "visible_component": "cache.db",
+      "shadow_backing_component": "cache.ckpt",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w3-nginx-podman-criu/cache.ckpt",
+      "original_backing_sha256": "70db79736300ae8835f334563e2251c79cfd2de39e5f99601baa49ea978337f5",
+      "source": "make-owned nginx checkpoint cache fixture",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "runtime_pid",
+      "parent_relative": "runtime",
+      "visible_component": "nginx.pid",
+      "shadow_backing_component": "nginx.pid.new",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w3-nginx-podman-criu/nginx.pid.new",
+      "original_backing_sha256": "48bfd62635933f48b8cf0ecaf45fb1aaa3943a624070a5acaaf6425273f8c5f1",
+      "source": "make-owned restored runtime pid fixture",
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    }
+  ],
+  "semantic_witness": {
+    "branch_coverage": {
+      "config": true,
+      "cache": true,
+      "runtime": true,
+      "state": false,
+      "mixed_epoch": false
+    },
+    "missing_branches": [
+      "state",
+      "mixed_epoch",
+      "post_restore_trace"
+    ],
+    "missing_branch_reason": "nginx checkpoint witness contributes config/cache/runtime; Redis witness contributes state/mixed-epoch"
+  },
+  "c1_c8_gate": "not_validated_until_real_restore_health_trace_epoch_oracle_and_table_counterfactual_pass"
+}

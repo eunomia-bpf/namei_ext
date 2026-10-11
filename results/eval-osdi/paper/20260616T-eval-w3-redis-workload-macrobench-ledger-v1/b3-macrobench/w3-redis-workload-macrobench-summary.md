@@ -1,0 +1,32 @@
+# W3 Redis workload macrobench ledger
+
+- Run ID: 20260616T-eval-w3-redis-workload-macrobench-ledger-v1
+- Policy run: 20260616T-w3-redis-macrobench-release-v1
+- Baseline run: 20260616T-w3-redis-macrobench-release-v1
+- Raw JSONL: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w3-redis-workload-macrobench-ledger-v1/b3-macrobench/w3-redis-workload-macrobench.jsonl
+- Input sha256: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w3-redis-workload-macrobench-ledger-v1/b3-macrobench/w3-redis-workload-macrobench-inputs.sha256
+- policy_release_input_pass=true
+- baseline_release_input_pass=true
+- materialized_baseline_pass=true
+- fuse_baseline_pass=true
+- implemented_external_baselines_pass=true
+- storage_footprint_pass=true
+- setup_latency_threshold_pass=false
+- update_latency_threshold_pass=false
+- update_materialization_threshold_pass=true
+- threshold_pass=false
+- w3_c2_slice_supported=false
+- c2_supported=false
+- release_gate_pass=false
+- policy_setup_ns_avg=22961752
+- best_baseline_setup_ns_avg=6522913.55
+- policy_update_ns_avg=5157854343.45
+- best_baseline_update_ns_avg=5154457275.05
+- policy_setup_objects_avg=0
+- min_baseline_setup_objects_avg=1
+- policy_setup_bytes_avg=0
+- min_baseline_setup_bytes_avg=0
+- policy_update_writes_avg=1
+- min_baseline_update_writes_avg=1
+- missing_evidence=W3 C2 setup/update success thresholds, real Podman/CRIU restore and second W3 checkpoint workload remain C8/C1 blockers
+- failed_gates=W3 setup latency threshold failed against best external baseline, W3 update latency threshold failed against best external baseline

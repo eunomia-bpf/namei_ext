@@ -1,0 +1,13 @@
+{
+  "schema": "namei_ext.semantic_continuation.summary.v2",
+  "profile": "formal",
+  "boots": 3,
+  "direct_cases": 48,
+  "selected_cases": 48,
+  "selected_case_engagements": 48,
+  "selected_operation_engagements": 240,
+  "identity_checks": 6,
+  "residual_checks": 96,
+  "failed_observations": 0,
+  "verdict": "supported-for-frozen-matrix"
+}

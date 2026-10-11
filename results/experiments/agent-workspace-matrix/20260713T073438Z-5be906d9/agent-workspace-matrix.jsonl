@@ -1,0 +1,83 @@
+{"event":"agent-workspace-matrix-start","run_id":"20260713T073438Z-5be906d9","result_level":"kvm_agent_workspace_lifecycle_matrix","policy":"agent_workspace_view.bpf.c"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"setup_dirs","pass":true,"errno":0,"detail":"view, base, and upper directories created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"setup_files","pass":true,"errno":0,"detail":"base and upper workspace files created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_base_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_upper_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_base_deleted_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_base_readdir","pass":true,"errno":0,"detail":"native lower directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"logical_before_attach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"attach_policy","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"view_root_native","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"register_base_target","pass":true,"errno":0,"detail":"target directory registered"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"selected_root_final_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_readdir","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"register_upper_target","pass":true,"errno":0,"detail":"target directory registered"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_selected_root_final_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_readdir_before_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_generated_negative_before_write","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_write","pass":true,"errno":0,"detail":"logical write completed through lower FS"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_generated_visible","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_readdir_after_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_not_materialized","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-manifest","result_level":"kvm_agent_workspace_lifecycle_matrix","manifest":"final_tree_manifest","pass":true,"detail":"logical tree matched expected upper epoch manifest"}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","value":927,"unit":"ns_per_op","pass":true,"detail":"stat latency measured"}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","value":2786,"unit":"ns_per_op","pass":true,"detail":"readdir latency measured"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"total","value":1385,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"lookup","value":806,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"readdir","value":579,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"select_ws_lookup","value":166,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hide_deleted_lookup","value":3,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hide_deleted_readdir","value":53,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"pass","value":1163,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"detach_policy","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"logical_after_detach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"clear_targets_after_detach","pass":true,"errno":0,"detail":"target registry cleared"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"attach_after_clear_for_containment","pass":true,"errno":0,"detail":"policy attached after target clear"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"invalid_unregistered_target_contained","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"detach_after_containment","pass":true,"errno":0,"detail":"policy detached after containment"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"agent_workspace_preflight_summary","pass":true,"errno":0,"detail":"agent workspace preflight passed"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_setup_dirs","pass":true,"errno":0,"detail":"mount, base, and upper directories created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_setup_files","pass":true,"errno":0,"detail":"base and upper workspace files created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_base_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_upper_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_base_deleted_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_base_readdir","pass":true,"errno":0,"detail":"native lower directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_mount_ready","pass":true,"errno":0,"detail":"FUSE policy filesystem mounted"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_selected_root_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_readdir","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_readdir_before_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_generated_negative_before_write","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_write","pass":true,"errno":0,"detail":"logical write completed through FUSE policy FS"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_generated_visible","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_readdir_after_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_not_materialized","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-manifest","result_level":"kvm_agent_workspace_lifecycle_matrix","manifest":"fuse_final_tree_manifest","pass":true,"detail":"logical tree matched expected upper epoch manifest"}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","value":24089,"unit":"ns_per_op","pass":true,"detail":"stat latency measured"}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","value":42230,"unit":"ns_per_op","pass":true,"detail":"readdir latency measured"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_unmount","pass":true,"errno":0,"detail":"FUSE unmounted"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"getattr","value":437,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"readdir","value":53,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"open","value":4,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"create","value":1,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"read","value":4,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"write","value":1,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"readlink","value":2,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hidden_lookup","value":3,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hidden_readdir","value":53,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_agent_workspace_preflight_summary","pass":true,"errno":0,"detail":"FUSE agent workspace preflight passed"}
+{"event":"agent-workspace-boundary","run_id":"20260713T073438Z-5be906d9","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"namei_ext","owns_filesystem_methods":false,"requires_daemon":false,"policy_verified":true,"lower_fs_owns_data_path":true,"detail":"bounded eBPF name-resolution policy; kernel and lower FS own VFS objects and data path"}
+{"event":"agent-workspace-boundary","run_id":"20260713T073438Z-5be906d9","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"feature_equivalent_fuse","owns_filesystem_methods":true,"requires_daemon":true,"policy_verified":false,"lower_fs_owns_data_path":false,"detail":"FUSE policy filesystem implements filesystem operations for the same oracle"}
+{"event":"agent-workspace-boundary","run_id":"20260713T073438Z-5be906d9","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"custom_or_stackable_fs","owns_filesystem_methods":true,"requires_daemon":false,"policy_verified":false,"lower_fs_owns_data_path":false,"detail":"source-backed boundary evidence: custom or stackable FS owns broader filesystem method surface for this policy"}
+{"event":"agent-workspace-matrix-done","run_id":"20260713T073438Z-5be906d9","result_level":"kvm_agent_workspace_lifecycle_matrix"}

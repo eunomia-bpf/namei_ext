@@ -1,0 +1,90 @@
+{
+  "source": "Terminal-Bench",
+  "suite": "forensics-document-oracle-suite",
+  "date": "2026-07-01",
+  "official_unmodified": true,
+  "run_id": "2026-07-01__terminal-bench-forensics-document-oracle-suite",
+  "dataset_path": ".cache/source-inspection/terminal-bench/original-tasks",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-forensics-document-oracle-suite",
+  "raw_results": "results/reproduction/2026-07-01-official-workloads/terminal-bench-forensics-document-oracle-suite/2026-07-01__terminal-bench-forensics-document-oracle-suite/results.json",
+  "raw_metadata": "results/reproduction/2026-07-01-official-workloads/terminal-bench-forensics-document-oracle-suite/2026-07-01__terminal-bench-forensics-document-oracle-suite/run_metadata.json",
+  "raw_log": "results/reproduction/2026-07-01-official-workloads/terminal-bench-forensics-document-oracle-suite/2026-07-01__terminal-bench-forensics-document-oracle-suite/run.log",
+  "agent": "oracle",
+  "n_tasks": 8,
+  "n_resolved": 7,
+  "n_unresolved": 1,
+  "accuracy": 0.875,
+  "parser_checks_passed": 19,
+  "parser_checks_failed": 2,
+  "resolved_tasks": [
+    "reverse-engineering",
+    "financial-document-processor",
+    "crack-7z-hash",
+    "filter-js-from-html",
+    "heterogeneous-dates",
+    "extract-elf",
+    "html-finance-verify"
+  ],
+  "unresolved_tasks": [
+    "password-recovery"
+  ],
+  "task_results": [
+    {
+      "task_id": "reverse-engineering",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_role": "compiled-application reverse engineering and output-file oracle"
+    },
+    {
+      "task_id": "financial-document-processor",
+      "is_resolved": true,
+      "parser_checks_passed": 7,
+      "parser_checks_failed": 0,
+      "workload_role": "mixed JPG/PDF document classification, OCR extraction, file movement, and invoice summary materialization"
+    },
+    {
+      "task_id": "crack-7z-hash",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_role": "encrypted archive password cracking and extracted-secret file oracle"
+    },
+    {
+      "task_id": "filter-js-from-html",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_role": "in-place HTML JavaScript filtering with browser-backed XSS and clean-HTML preservation oracles"
+    },
+    {
+      "task_id": "heterogeneous-dates",
+      "is_resolved": true,
+      "parser_checks_passed": 3,
+      "parser_checks_failed": 0,
+      "workload_role": "two-CSV data processing and numeric output-file oracle"
+    },
+    {
+      "task_id": "password-recovery",
+      "is_resolved": false,
+      "parser_checks_passed": 0,
+      "parser_checks_failed": 2,
+      "workload_role": "deleted-file forensic password recovery",
+      "negative_result": "The upstream oracle-agent run did not create /app/recovered_passwords.txt, so both recovery-file and password-match parser checks failed."
+    },
+    {
+      "task_id": "extract-elf",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_role": "ELF memory-value extraction into JSON with exact-value and coverage oracle"
+    },
+    {
+      "task_id": "html-finance-verify",
+      "is_resolved": true,
+      "parser_checks_passed": 1,
+      "parser_checks_failed": 0,
+      "workload_role": "HTML/MHTML financial report inspection and incorrect-value output oracle"
+    }
+  ]
+}

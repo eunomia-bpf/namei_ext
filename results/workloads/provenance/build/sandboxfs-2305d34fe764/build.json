@@ -1,0 +1,31 @@
+{
+  "schema": "namei_ext.workload_build_provenance.v2",
+  "project": "sandboxfs",
+  "version": "0.2.0",
+  "commit": "2305d34fe764a64cf4783b43315e6eb5322310d6",
+  "source": {
+    "url": "https://codeload.github.com/bazelbuild/sandboxfs/tar.gz/2305d34fe764a64cf4783b43315e6eb5322310d6",
+    "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/sandboxfs-2305d34fe764a64cf4783b43315e6eb5322310d6.tar.gz",
+    "cargo_lock": "/home/yunwei37/workspace/namei_ext/thirdparty/locks/sandboxfs-0.2.0.Cargo.lock"
+  },
+  "build": {
+    "command": [
+      "cargo",
+      "build",
+      "--release",
+      "--locked"
+    ],
+    "toolchain": {
+      "cargo": "cargo 1.90.0 (840b83a10 2025-07-30)",
+      "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+      "libfuse": "2.9.9",
+      "libfuse_runtime": "/lib/x86_64-linux-gnu/libfuse.so.2"
+    },
+    "log": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/sandboxfs-2305d34fe764/build.log",
+    "ldd": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/sandboxfs-2305d34fe764/ldd.txt",
+    "binary": {
+      "path": "/home/yunwei37/workspace/namei_ext/.build/workloads/sandboxfs-2305d34fe764/target/release/sandboxfs",
+      "version": "sandboxfs 0.2.0"
+    }
+  }
+}

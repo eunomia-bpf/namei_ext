@@ -1,0 +1,12 @@
+{"event":"functional-start","run_id":"20260613T154631Z-104213e4"}
+{"event":"case","name":"setup_files","pass":true,"errno":0,"detail":"files created"}
+{"event":"case","name":"attach_policy","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"case","name":"visible_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"visible_open","pass":true,"errno":0,"detail":"open matched"}
+{"event":"case","name":"hidden_stat","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"hidden_open","pass":true,"errno":2,"detail":"open errno matched"}
+{"event":"case","name":"denied_stat","pass":true,"errno":13,"detail":"stat errno matched"}
+{"event":"case","name":"denied_open","pass":true,"errno":13,"detail":"open errno matched"}
+{"event":"case","name":"readdir_view","pass":true,"errno":0,"detail":"visible and denied listed, hidden omitted"}
+{"event":"case","name":"functional_summary","pass":true,"errno":0,"detail":"functional passed"}
+{"event":"functional-done","run_id":"20260613T154631Z-104213e4"}

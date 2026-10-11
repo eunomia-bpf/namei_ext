@@ -1,0 +1,77 @@
+{
+  "source": {
+    "name": "SWE-ReX",
+    "repository": "https://github.com/SWE-agent/SWE-ReX",
+    "local_checkout": ".cache/source-inspection/swe-rex",
+    "commit": "5c995c365dfb1fd5bc56fda688be5d8538f9931f"
+  },
+  "environment": {
+    "host_kernel": "Linux lab 6.15.11-061511-generic x86_64",
+    "system_python": "Python 3.12.3",
+    "uv": "uv 0.8.22",
+    "venv_python": "Python 3.12.3",
+    "package": "swe-rex 1.4.0 editable"
+  },
+  "raw_result_root": "results/reproduction/2026-07-02-official-workloads/swe-rex",
+  "logs": [
+    "source-inspection.log",
+    "collect-local-remote.log",
+    "pytest-local-remote-with-auth-drift.log",
+    "pytest-local-remote-exclude-auth-drift.log",
+    "python-package-versions.log"
+  ],
+  "selected_tests": [
+    "tests/test_runtime.py",
+    "tests/test_local_runtime.py",
+    "tests/test_dummy_deployment.py",
+    "tests/test_local_deployment.py",
+    "tests/test_remote_deployment.py",
+    "tests/test_execution.py",
+    "tests/test_server.py"
+  ],
+  "collection": {
+    "selected_tests_collected": 70
+  },
+  "with_auth_status_drift": {
+    "command": "PYTHONPATH=src .cache/venvs/swe-rex/bin/python -m pytest tests/test_runtime.py tests/test_local_runtime.py tests/test_dummy_deployment.py tests/test_local_deployment.py tests/test_remote_deployment.py tests/test_execution.py tests/test_server.py -q",
+    "exit_code": 1,
+    "passed": 68,
+    "failed": 1,
+    "xfailed": 1,
+    "failure": {
+      "test": "tests/test_server.py::test_unauthenticated_request",
+      "expected_status": 403,
+      "observed_status": 401,
+      "classification": "API auth status-code drift, not a workspace/runtime workload failure"
+    }
+  },
+  "successful_runtime_subset": {
+    "command": "PYTHONPATH=src .cache/venvs/swe-rex/bin/python -m pytest tests/test_runtime.py tests/test_local_runtime.py tests/test_dummy_deployment.py tests/test_local_deployment.py tests/test_remote_deployment.py tests/test_execution.py tests/test_server.py -q -k 'not test_unauthenticated_request'",
+    "exit_code": 0,
+    "passed": 68,
+    "deselected": 1,
+    "xfailed": 1,
+    "failed": 0,
+    "warnings": 34,
+    "duration_seconds": 24.51
+  },
+  "covered_workload_shapes": [
+    "local runtime file upload and readback",
+    "dummy and local deployment lifecycle",
+    "remote deployment lifecycle against an in-process FastAPI server",
+    "remote read/write file behavior",
+    "shell command execution with stdout/stderr and exit-code checks",
+    "session create/close and missing-session errors",
+    "timeouts, interrupt handling, pager interruption, and interactive Python sessions",
+    "multi-session shell isolation",
+    "multi-line command, heredoc, blank-line, and bash syntax handling",
+    "remote upload of files and directories"
+  ],
+  "boundaries": [
+    "Docker deployment tests were not run in this pass.",
+    "Modal, Fargate, and Daytona cloud/backend tests were not run.",
+    "The single unauthenticated-request status-code assertion fails because the current FastAPI/API-key path returns 401 instead of the test's expected 403.",
+    "This is runtime/workspace harness evidence, not full SWE-agent benchmark solve evidence."
+  ],
+  "use_in_namei_ext": "Use as a source-backed runtime harness seed for agent workspace command execution, file transfer, shell sessions, multi-session isolation, timeout/interrupt behavior, and local/remote lifecycle oracles."
+}

@@ -1,0 +1,46 @@
+{
+  "max_workers": 1,
+  "total": 3,
+  "all_ok": true,
+  "items": [
+    {
+      "instance_id": "chrovis__cljam-268",
+      "from_fail_to_pass": [
+        "cljam.io.vcf.writer-test"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 0,
+      "log_path": "logs/chrovis__cljam-268_log.txt",
+      "error": ""
+    },
+    {
+      "instance_id": "yogthos__migratus-223",
+      "from_fail_to_pass": [
+        "migratus.test.database"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 1,
+      "log_path": "logs/yogthos__migratus-223_log.txt",
+      "error": ""
+    },
+    {
+      "instance_id": "pilosus__pip-license-checker-49",
+      "from_fail_to_pass": [
+        "pip-license-checker.core-test",
+        "pip-license-checker.file-test",
+        "pip-license-checker.filters-test",
+        "pip-license-checker.github-test",
+        "pip-license-checker.pypi-test",
+        "pip-license-checker.spec-test",
+        "pip-license-checker.version-test"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 0,
+      "log_path": "logs/pilosus__pip-license-checker-49_log.txt",
+      "error": ""
+    }
+  ]
+}

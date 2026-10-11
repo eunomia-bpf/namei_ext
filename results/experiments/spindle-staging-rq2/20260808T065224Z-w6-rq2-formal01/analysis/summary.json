@@ -1,0 +1,247 @@
+{
+  "boot_rows": [
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 281043754,
+      "median_ns": 245713548.5,
+      "minimum_ns": 232941058,
+      "repetition": 1,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 256451281,
+      "median_ns": 209509191.0,
+      "minimum_ns": 197647099,
+      "repetition": 1,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 540836223,
+      "median_ns": 243434093.5,
+      "minimum_ns": 219220372,
+      "repetition": 2,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 245612687,
+      "median_ns": 208322625.5,
+      "minimum_ns": 188798856,
+      "repetition": 2,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 744013161,
+      "median_ns": 252934808.5,
+      "minimum_ns": 214243368,
+      "repetition": 3,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 349617435,
+      "median_ns": 219734759.5,
+      "minimum_ns": 203612737,
+      "repetition": 3,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 345480767,
+      "median_ns": 246912174.5,
+      "minimum_ns": 233486262,
+      "repetition": 4,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 237893395,
+      "median_ns": 206256443.0,
+      "minimum_ns": 192258675,
+      "repetition": 4,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 395272174,
+      "median_ns": 252707498.0,
+      "minimum_ns": 230434451,
+      "repetition": 5,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 502550929,
+      "median_ns": 222105456.5,
+      "minimum_ns": 195991171,
+      "repetition": 5,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 366843217,
+      "median_ns": 252409953.5,
+      "minimum_ns": 230070749,
+      "repetition": 6,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 406038126,
+      "median_ns": 222833414.5,
+      "minimum_ns": 198165628,
+      "repetition": 6,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 345521607,
+      "median_ns": 249809972.0,
+      "minimum_ns": 222057194,
+      "repetition": 7,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 323509173,
+      "median_ns": 210939891.5,
+      "minimum_ns": 192449646,
+      "repetition": 7,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 253865112,
+      "median_ns": 237360599.5,
+      "minimum_ns": 223747138,
+      "repetition": 8,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 236963887,
+      "median_ns": 208976208.0,
+      "minimum_ns": 186991482,
+      "repetition": 8,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 880584463,
+      "median_ns": 262987275.0,
+      "minimum_ns": 231251073,
+      "repetition": 9,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 278394190,
+      "median_ns": 208198061.5,
+      "minimum_ns": 195698921,
+      "repetition": 9,
+      "samples": 50
+    },
+    {
+      "condition": "namei_ext",
+      "maximum_ns": 272701038,
+      "median_ns": 244653318.5,
+      "minimum_ns": 224960657,
+      "repetition": 10,
+      "samples": 50
+    },
+    {
+      "condition": "fuse",
+      "maximum_ns": 667896961,
+      "median_ns": 224770883.5,
+      "minimum_ns": 202535303,
+      "repetition": 10,
+      "samples": 50
+    }
+  ],
+  "fuse_daemon": {
+    "median_cpu_runtime_ns": 191425353.0,
+    "median_involuntary_context_switches": 0.0,
+    "median_voluntary_context_switches": 16197.0
+  },
+  "measured_samples_per_boot": 50,
+  "pair_rows": [
+    {
+      "fuse_median_ns": 209509191.0,
+      "fuse_over_namei_ext": 0.8526562425189184,
+      "namei_ext_median_ns": 245713548.5,
+      "repetition": 1
+    },
+    {
+      "fuse_median_ns": 208322625.5,
+      "fuse_over_namei_ext": 0.8557660207114745,
+      "namei_ext_median_ns": 243434093.5,
+      "repetition": 2
+    },
+    {
+      "fuse_median_ns": 219734759.5,
+      "fuse_over_namei_ext": 0.86874068778082,
+      "namei_ext_median_ns": 252934808.5,
+      "repetition": 3
+    },
+    {
+      "fuse_median_ns": 206256443.0,
+      "fuse_over_namei_ext": 0.835343349989411,
+      "namei_ext_median_ns": 246912174.5,
+      "repetition": 4
+    },
+    {
+      "fuse_median_ns": 222105456.5,
+      "fuse_over_namei_ext": 0.8789033101819559,
+      "namei_ext_median_ns": 252707498.0,
+      "repetition": 5
+    },
+    {
+      "fuse_median_ns": 222833414.5,
+      "fuse_over_namei_ext": 0.8828234045849543,
+      "namei_ext_median_ns": 252409953.5,
+      "repetition": 6
+    },
+    {
+      "fuse_median_ns": 210939891.5,
+      "fuse_over_namei_ext": 0.8444014056412448,
+      "namei_ext_median_ns": 249809972.0,
+      "repetition": 7
+    },
+    {
+      "fuse_median_ns": 208976208.0,
+      "fuse_over_namei_ext": 0.8804165832080315,
+      "namei_ext_median_ns": 237360599.5,
+      "repetition": 8
+    },
+    {
+      "fuse_median_ns": 208198061.5,
+      "fuse_over_namei_ext": 0.791665914253836,
+      "namei_ext_median_ns": 262987275.0,
+      "repetition": 9
+    },
+    {
+      "fuse_median_ns": 224770883.5,
+      "fuse_over_namei_ext": 0.9187322079998682,
+      "namei_ext_median_ns": 244653318.5,
+      "repetition": 10
+    }
+  ],
+  "primary": {
+    "bootstrap_iterations": 10000,
+    "geometric_mean_ratio": 0.8603332711909921,
+    "metric": "fuse_over_namei_ext_loader_latency",
+    "paired_bootstrap_95_ci": [
+      0.8395546038944562,
+      0.8797919558227896
+    ],
+    "seed": 20260802,
+    "verdict": "contradicted"
+  },
+  "repetitions": 10,
+  "schema": "namei_ext.spindle_staging_rq2.summary.v1",
+  "scope": "One-node Spindle source-derived final-object selection; no claim about Spindle distribution, cache population scalability, or MPI scale.",
+  "unit": "fresh-boot median of measured loader launches"
+}

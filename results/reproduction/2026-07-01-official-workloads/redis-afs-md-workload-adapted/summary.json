@@ -1,0 +1,61 @@
+{
+  "source_commit": "990b8eb7abff1bb51d35abf4ba9829963b679de2",
+  "upstream_unadapted": {
+    "log": "upstream-stale-ws-import.log",
+    "exit": 1,
+    "result": "failed stale ws import CLI"
+  },
+  "adapted_indexed_path": {
+    "log": "adapted-small-run-v2.log",
+    "exit": 1,
+    "result": "vol import reached live workspace init but RedisSearch index path failed"
+  },
+  "adapted_local_no_search": {
+    "small": {
+      "log": "adapted-current-cli-local-no-search-small.log",
+      "exit": 0,
+      "report": "adapted-current-cli-local-no-search-small/report.json",
+      "markdown_files": 200,
+      "grep_validations": [
+        "identical normalized output",
+        "identical normalized output",
+        "identical normalized output"
+      ],
+      "ripgrep_validations": [
+        "identical normalized output",
+        "identical normalized output",
+        "identical normalized output"
+      ],
+      "ops_validations": [
+        "counts match (249)",
+        "counts match (50)",
+        "counts match (33453)",
+        "counts match (12551)",
+        "counts match (7927)"
+      ]
+    },
+    "medium": {
+      "log": "adapted-current-cli-local-no-search-medium.log",
+      "exit": 0,
+      "report": "adapted-current-cli-local-no-search-medium/report.json",
+      "markdown_files": 1000,
+      "grep_validations": [
+        "identical normalized output",
+        "identical normalized output",
+        "identical normalized output"
+      ],
+      "ripgrep_validations": [
+        "identical normalized output",
+        "identical normalized output",
+        "identical normalized output"
+      ],
+      "ops_validations": [
+        "counts match (1049)",
+        "counts match (250)",
+        "counts match (100813)",
+        "counts match (37767)",
+        "counts match (24759)"
+      ]
+    }
+  }
+}

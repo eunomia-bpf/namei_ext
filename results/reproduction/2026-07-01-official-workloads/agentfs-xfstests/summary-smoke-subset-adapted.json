@@ -1,0 +1,42 @@
+{
+  "repo": "https://github.com/tursodatabase/agentfs",
+  "agentfs_head": "0a014ebd4918615baff589ed17486e557e7c6a23",
+  "xfstests_repo": "https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git",
+  "xfstests_head": "ffc8bad17e5b2f56e48dbac43f7c5ae8ac368fe5",
+  "exit": 1,
+  "adapted_mount_helper": true,
+  "tests_with_artifacts": 10,
+  "failed_out_bad": 4,
+  "notrun": 2,
+  "mountfail": 2,
+  "passish": 4,
+  "evidence_files": [
+    "003.out.bad",
+    "004.notrun",
+    "005.out.bad",
+    "007.mountfail",
+    "007.out.bad",
+    "008.notrun",
+    "009.mountfail",
+    "009.out.bad"
+  ],
+  "log_evidence": [
+    "13:generic/001         2s",
+    "14:generic/002         0s",
+    "15:generic/003        - output mismatch (see /home/yunwei37/workspace/namei_ext/.cache/source-inspection/xfstests-dev/results//generic/003.out.bad)",
+    "28:generic/004        [not run] O_TMPFILE is not supported",
+    "29:generic/005        [failed, exit status 1]- output mismatch (see /home/yunwei37/workspace/namei_ext/.cache/source-inspection/xfstests-dev/results//generic/005.out.bad)",
+    "42:generic/006         3s",
+    "43:generic/007        [failed, exit status 1]- output mismatch (see /home/yunwei37/workspace/namei_ext/.cache/source-inspection/xfstests-dev/results//generic/007.out.bad)",
+    "57:generic/008        [not run] xfs_io fzero  failed (old kernel/wrong fs?)",
+    "58:generic/009        [failed, exit status 1]- output mismatch (see /home/yunwei37/workspace/namei_ext/.cache/source-inspection/xfstests-dev/results//generic/009.out.bad)",
+    "72:generic/011         3s",
+    "73:Ran: generic/001 generic/002 generic/003 generic/004 generic/005 generic/006 generic/007 generic/008 generic/009 generic/011",
+    "74:Not run: generic/004 generic/008",
+    "75:Failures: generic/003 generic/005 generic/007 generic/009",
+    "76:Failed 4 of 10 tests",
+    "78:xfstests_status=1"
+  ],
+  "log": "xfstests-smoke-subset-adapted.log",
+  "result_dir": "xfstests-results-smoke-subset-adapted"
+}

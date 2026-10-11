@@ -1,0 +1,38 @@
+{
+  "workload_source": "MEnvData-SWE",
+  "source_dataset": "ernie-research/MEnvData-SWE",
+  "selected_instance": "eyre-rs__color-eyre-114",
+  "selected_repo": "eyre-rs/color-eyre",
+  "selected_language": "Rust",
+  "selected_image": "swe-images-rust:eyre-rs-color-eyre-pr-114",
+  "docker_image": "mcatwj/swe-images-rust:eyre-rs-color-eyre-pr-114",
+  "docker_repo_digests": [
+    "mcatwj/swe-images-rust@sha256:b285cb4df1e04f15416e0c7bc6312234138b9853a075eaddb08eac9474d59b9b"
+  ],
+  "docker_image_id": "sha256:3c22025d1607d42d871c74d39a30eaea226746291c7b3f9b16f1760fb9c8c736",
+  "docker_image_size_bytes": 4469688775,
+  "base_commit": "bbe570561260157272b0daa3434a26b3155cec51",
+  "pull_number": 114,
+  "eval_script_len": 1148,
+  "test_patch_len": 285,
+  "patch_len": 1990,
+  "pull_status": "0",
+  "eval_status": "1",
+  "pull_status_from_log": "0",
+  "docker_run_status_from_log": "1",
+  "omnigril_exit_code": null,
+  "official_eval_row_passed": false,
+  "failure_stage": "test_patch_apply",
+  "failure_summary": "Official eval script failed because tests/install.rs already exists in the image working tree before applying a new-file test patch.",
+  "evidence_lines": [
+    "error: tests/install.rs: already exists in working directory",
+    "docker_run_status=1"
+  ],
+  "interpretation": "Negative official MEnvData-SWE image/eval row reproduction for a Rust task; preserve as artifact caveat rather than adapting the script.",
+  "raw_logs": {
+    "instance_json": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-rust-color-eyre-114/instance.json",
+    "eval_script": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-rust-color-eyre-114/eval.sh",
+    "docker_pull_log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-rust-color-eyre-114/docker-pull.log",
+    "eval_log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/menvdata-rust-color-eyre-114/eval.log"
+  }
+}

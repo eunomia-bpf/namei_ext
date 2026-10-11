@@ -1,0 +1,65 @@
+{
+  "date": "2026-07-02",
+  "dataset": "ernie-research/MEnvData-SWE",
+  "source_repo": "https://github.com/ernie-research/MEnvAgent",
+  "checkout": "d9e63881f7c4a4670bb536c89add24573459bbee",
+  "raw_root": "results/reproduction/2026-07-02-official-workloads/menvdata-swe-second-sample",
+  "total_rows": 5,
+  "passing_rows": 5,
+  "rows": [
+    {
+      "instance_id": "PyCQA__pycodestyle-859",
+      "repo": "PyCQA/pycodestyle",
+      "language": "Python",
+      "image_digest": "mcatwj/swe-images-python@sha256:5e5813ac5bca4e70999c99f748156b4763a5159b24e3135563020ce53af2164a",
+      "eval_status": 0,
+      "omnigril_exit_code": 0,
+      "completion_marker": true,
+      "test_summary": "Test passed."
+    },
+    {
+      "instance_id": "go-yaml__yaml-353",
+      "repo": "go-yaml/yaml",
+      "language": "Go",
+      "image_digest": "mcatwj/swe-images-go@sha256:e8e87355fbd301f8ff111b4a69060b06ad5fdd575f156b7fdc85744dca598e43",
+      "eval_status": 0,
+      "omnigril_exit_code": 0,
+      "completion_marker": false,
+      "test_summary": "go test reports OK: 6 passed; official eval script did not print COMMAND_EXECUTION_COMPLETE"
+    },
+    {
+      "instance_id": "AlaSQL__alasql-970",
+      "repo": "AlaSQL/alasql",
+      "language": "JavaScript",
+      "image_digest": "mcatwj/swe-images-js@sha256:4a23d30e65758121b2dbaae032d6fd984bc88dc497b507b7dc11601782086c2d",
+      "eval_status": 0,
+      "omnigril_exit_code": 0,
+      "completion_marker": true,
+      "test_summary": "Mocha reports 1 passing; test file already existed so git apply emitted an artifact caveat"
+    },
+    {
+      "instance_id": "pest-parser__pest-702",
+      "repo": "pest-parser/pest",
+      "language": "Rust",
+      "image_digest": "mcatwj/swe-images-rust@sha256:67f25c8a9b1559fd4876417360d5213351041588f6265e9d8aad59ccfb4e1bc9",
+      "eval_status": 0,
+      "omnigril_exit_code": 0,
+      "completion_marker": true,
+      "test_summary": "Rust grammar tests report 74 passed, 0 failed; log contains panic/backtrace output from expected parser-error cases"
+    },
+    {
+      "instance_id": "refined-github__refined-github-7041",
+      "repo": "refined-github/refined-github",
+      "language": "TypeScript",
+      "image_digest": "mcatwj/swe-images-typescript@sha256:c9224d269a16b6653da70912a39ad08dcc6a88fb352f8b815371ff4b96ccc40e",
+      "eval_status": 0,
+      "omnigril_exit_code": 0,
+      "completion_marker": true,
+      "test_summary": "Vitest reports 1 test file passed and 1 test passed"
+    }
+  ],
+  "cleanup": {
+    "matching_containers_after_run": 0,
+    "matching_images_after_run": 0
+  }
+}

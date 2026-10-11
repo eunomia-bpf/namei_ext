@@ -1,0 +1,14 @@
+{"event":"build-action-rq2-capacity","condition":"namei_ext","repetition":1,"requested":4096,"inserted":4096,"removed":4096,"remaining":0,"pass":true}
+{"event":"build-action-rq2-sample","condition":"namei_ext","repetition":1,"scale":64,"sample":1,"order_index":1,"setup_ns":21089473,"action_ns":538326752,"lifecycle_ns":6238317449,"sandboxfs_user_ticks":0,"sandboxfs_system_ticks":0,"sandboxfs_voluntary_context_switches":0,"sandboxfs_involuntary_context_switches":0,"sandboxfs_vm_hwm_kb":0,"output_bytes_a":2007,"output_bytes_b":2007,"output_exact":true,"actions":2,"concurrent":true,"unknown_hidden":true,"undeclared_hidden":true,"lower_objects_unchanged":true,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":0,"value":147726,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":1,"value":136645,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":2,"value":11081,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":3,"value":4,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":4,"value":128,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":5,"value":384,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":6,"value":460,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":7,"value":402,"pass":true}
+{"event":"build-action-rq2-policy-counter","condition":"namei_ext","repetition":1,"counter":8,"value":146348,"pass":true}
+{"event":"build-action-rq2-summary","condition":"namei_ext","repetition":1,"scales":1,"samples_per_scale":1,"completed_samples":1,"pass":true}
+{"event":"build-action-rq2-sample","condition":"sandboxfs","repetition":1,"scale":64,"sample":1,"order_index":1,"setup_ns":9252176,"action_ns":555108703,"lifecycle_ns":5543447712,"sandboxfs_user_ticks":0,"sandboxfs_system_ticks":0,"sandboxfs_voluntary_context_switches":899,"sandboxfs_involuntary_context_switches":13,"sandboxfs_vm_hwm_kb":2684,"output_bytes_a":2007,"output_bytes_b":2007,"output_exact":true,"actions":2,"concurrent":true,"unknown_hidden":true,"undeclared_hidden":true,"lower_objects_unchanged":true,"pass":true}
+{"event":"build-action-rq2-summary","condition":"sandboxfs","repetition":1,"scales":1,"samples_per_scale":1,"completed_samples":1,"pass":true}

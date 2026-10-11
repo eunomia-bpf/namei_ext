@@ -1,0 +1,63 @@
+{
+  "source": "Terminal-Bench",
+  "suite": "env-debug-oracle-suite",
+  "date": "2026-07-01",
+  "official_unmodified": true,
+  "dataset_path": "original-tasks",
+  "run_id": "2026-07-01__terminal-bench-env-debug-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-env-debug-oracle-suite",
+  "raw_log": "results/reproduction/2026-07-01-official-workloads/terminal-bench-env-debug-oracle-suite/tb-run.log",
+  "raw_results": "results/reproduction/2026-07-01-official-workloads/terminal-bench-env-debug-oracle-suite/2026-07-01__terminal-bench-env-debug-oracle-suite/results.json",
+  "raw_metadata": "results/reproduction/2026-07-01-official-workloads/terminal-bench-env-debug-oracle-suite/2026-07-01__terminal-bench-env-debug-oracle-suite/run_metadata.json",
+  "n_requested_tasks": 4,
+  "n_tasks": 3,
+  "n_resolved": 2,
+  "n_unresolved": 1,
+  "accuracy": 0.6666666666666666,
+  "parser_checks_passed": 6,
+  "parser_checks_failed": 0,
+  "resolved_tasks": [
+    "conda-env-conflict-resolution",
+    "fix-pandas-version"
+  ],
+  "unresolved_tasks": [
+    "incompatible-python-fasttext"
+  ],
+  "attempted_without_result_tasks": [
+    "amuse-install"
+  ],
+  "task_results": [
+    {
+      "task_id": "conda-env-conflict-resolution",
+      "is_resolved": true,
+      "parser_checks_passed": 3,
+      "parser_checks_failed": 0,
+      "workload_shape": "Conda environment conflict repair, environment.yml update, and import-script oracle"
+    },
+    {
+      "task_id": "incompatible-python-fasttext",
+      "is_resolved": null,
+      "failure_mode": "unknown_agent_error",
+      "parser_checks_passed": 0,
+      "parser_checks_failed": 0,
+      "workload_shape": "Python package/native-extension compatibility repair for fastText",
+      "boundary": "Docker compose build failed before agent/test execution while pip built fasttext==0.9.3 under Python 3.13; g++ hit an internal compiler error compiling src/args.cc."
+    },
+    {
+      "task_id": "fix-pandas-version",
+      "is_resolved": true,
+      "parser_checks_passed": 3,
+      "parser_checks_failed": 0,
+      "workload_shape": "Python data-analysis dependency repair with pandas/pyarrow and data-processing parser oracles"
+    },
+    {
+      "task_id": "amuse-install",
+      "is_resolved": null,
+      "parser_checks_passed": 0,
+      "parser_checks_failed": 0,
+      "workload_shape": "Scientific-computing virtualenv setup and AMUSE example execution",
+      "boundary": "Requested in run_metadata and log artifacts exist, but no per-task results.json or parser summary was produced. The run log reached the oracle solution, and the task container later exited 255, so it is recorded as attempted_without_result rather than counted in accuracy."
+    }
+  ],
+  "interpretation": "Selected official Terminal-Bench environment/debug tasks were attempted through the upstream harness and oracle agent. Two tasks resolved, one failed at Docker build before parser execution, and one requested task was attempted but produced no upstream result summary before the run ended."
+}

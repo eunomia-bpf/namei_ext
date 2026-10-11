@@ -1,0 +1,61 @@
+{
+  "date": "2026-07-01",
+  "source": "IndexFS 0.4",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/indexfs-workload-extension",
+  "role": "related-work and appendix metadata workload shape",
+  "full_indexfs_rpc_server_reproduced": false,
+  "official_tree_test_reproduced": false,
+  "mdtest_posix_shape_reproduced": true,
+  "attempts": {
+    "io_driver_build": {
+      "status": 2,
+      "log": "build-io-driver-subdir.log",
+      "result": "failed on modern C++ compile error in replay_test.cc getline comparison"
+    },
+    "server_build": {
+      "status": 2,
+      "log": "build-indexfs-server-subdir.log",
+      "result": "failed because ipc/libipc_idxfs.la dependency was not built"
+    },
+    "top_level_build": {
+      "status": 2,
+      "log": "build-top-level.log",
+      "result": "failed on thrift API drift: generated/source boost::shared_ptr does not match current thrift std::shared_ptr constructors"
+    },
+    "mdtest_posix_manual_build": {
+      "status": 0,
+      "log": "build-mdtest-posix-manual.log",
+      "result": "passed with warnings"
+    },
+    "mdtest_posix_np2_files": {
+      "status": 0,
+      "log": "mdtest-posix-np2-files.log",
+      "tasks": 2,
+      "files": 128,
+      "phases": [
+        "file creation",
+        "file stat",
+        "file read",
+        "file removal",
+        "tree creation",
+        "tree removal"
+      ],
+      "result": "passed"
+    },
+    "mdtest_posix_np2_dirs": {
+      "status": 0,
+      "log": "mdtest-posix-np2-dirs.log",
+      "tasks": 2,
+      "directories": 64,
+      "phases": [
+        "directory creation",
+        "directory stat",
+        "directory removal",
+        "tree creation",
+        "tree removal"
+      ],
+      "result": "passed"
+    }
+  },
+  "caveat": "The passing mdtest runs use the POSIX variant from IndexFS source, not the IndexFS RPC/server path; use only as workload-shape evidence until the server/client thrift stack is ported."
+}

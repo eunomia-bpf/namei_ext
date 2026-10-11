@@ -1,0 +1,101 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-git-service-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-git-service-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id sanitize-git-repo",
+    "--task-id git-multibranch",
+    "--task-id configure-git-webserver",
+    "--task-id extract-safely",
+    "--task-id openssl-selfsigned-cert",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 5,
+  "n_resolved": 5,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "reproduced_cleanly": true,
+  "tasks": [
+    {
+      "task_id": "configure-git-webserver",
+      "workload_role": "Git bare repository setup, SSH service, post-receive deployment hook, Nginx webroot materialization, HTTP content oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_hello_html_exists": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:45:09.283700+00:00",
+      "trial_ended_at": "2026-07-01T20:46:21.992490+00:00"
+    },
+    {
+      "task_id": "extract-safely",
+      "workload_role": "large archive inspection, safe targeted extraction, sensitive-data non-exposure oracle, solution file materialization",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_system_logs_exists": "passed",
+        "test_no_sensitive_exposure": "passed",
+        "test_solution_found": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:46:21.994096+00:00",
+      "trial_ended_at": "2026-07-01T20:47:47.683210+00:00"
+    },
+    {
+      "task_id": "openssl-selfsigned-cert",
+      "workload_role": "TLS private key/certificate materialization, permission oracle, combined PEM and verification script oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_directory_structure": "passed",
+        "test_key_file": "passed",
+        "test_certificate_file": "passed",
+        "test_combined_pem_file": "passed",
+        "test_verification_file": "passed",
+        "test_python_verification_script": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:47:47.684875+00:00",
+      "trial_ended_at": "2026-07-01T20:48:17.641007+00:00"
+    },
+    {
+      "task_id": "git-multibranch",
+      "workload_role": "Git-over-SSH server, self-signed HTTPS Nginx endpoint, main/dev branch post-receive deployment, branch-specific content oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_multi_branch_https_deploy": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:48:17.642785+00:00",
+      "trial_ended_at": "2026-07-01T20:50:34.534062+00:00"
+    },
+    {
+      "task_id": "sanitize-git-repo",
+      "workload_role": "repository-wide secret scanning and replacement, contaminated-file-only edits, no-other-files-changed oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_removal_of_secret_information": "passed",
+        "test_correct_replacement_of_secret_information": "passed",
+        "test_no_other_files_changed": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:50:34.535717+00:00",
+      "trial_ended_at": "2026-07-01T20:51:22.143578+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-git-service-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-git-service-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-git-service-oracle-suite/run.log",
+    "per-task commands.txt and results.json"
+  ],
+  "interpretation": "Five additional official Terminal-Bench Git/service/security tasks reproduced cleanly through the upstream Docker harness and oracle agent. Together with earlier Terminal-Bench runs, this brings selected official-task coverage to 13 tasks. This remains selected official-task reproduction, not full Terminal-Bench-Core reproduction."
+}

@@ -1,0 +1,28 @@
+{
+  "max_workers": 1,
+  "total": 1,
+  "all_ok": true,
+  "items": [
+    {
+      "instance_id": "pilosus__pip-license-checker-119",
+      "from_fail_to_pass": [
+        "pip-license-checker.core-test",
+        "pip-license-checker.exception-test",
+        "pip-license-checker.external-test",
+        "pip-license-checker.file-test",
+        "pip-license-checker.filters-test",
+        "pip-license-checker.github-test",
+        "pip-license-checker.http-test",
+        "pip-license-checker.license-test",
+        "pip-license-checker.pypi-test",
+        "pip-license-checker.report-test",
+        "pip-license-checker.version-test"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 0,
+      "log_path": "logs/pilosus__pip-license-checker-119_log.txt",
+      "error": ""
+    }
+  ]
+}

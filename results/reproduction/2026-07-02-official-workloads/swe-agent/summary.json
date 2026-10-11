@@ -1,0 +1,62 @@
+{
+  "source": "SWE-agent",
+  "official_repository": "https://github.com/SWE-agent/SWE-agent",
+  "local_checkout": ".cache/source-inspection/swe-agent",
+  "commit": "5f40e63360d654adcd91e30ed11473389bc4909b",
+  "date": "2026-07-02",
+  "host_python": "Python 3.12.3",
+  "uv_python": "CPython 3.13.7",
+  "docker_version": "Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2",
+  "raw_result_root": "results/reproduction/2026-07-02-official-workloads/swe-agent",
+  "collection": {
+    "command": "uv run --extra dev pytest --collect-only -q",
+    "log": "pytest-collect.log",
+    "tests_collected": 125
+  },
+  "runs": [
+    {
+      "name": "pytest_not_slow",
+      "command": "uv run --extra dev pytest -m 'not slow' -q",
+      "log": "pytest-not-slow.log",
+      "exit_code": 0,
+      "passed": 103,
+      "xfailed": 2,
+      "deselected": 20,
+      "warnings": 25,
+      "duration_seconds": 51.06
+    },
+    {
+      "name": "pytest_slow",
+      "command": "uv run --extra dev pytest -m 'slow' -q",
+      "log": "pytest-slow.log",
+      "exit_code": 0,
+      "passed": 19,
+      "xfailed": 1,
+      "deselected": 105,
+      "warnings": 26,
+      "duration_seconds": 311.0
+    }
+  ],
+  "aggregate": {
+    "partitioned_official_test_coverage": true,
+    "tests_collected": 125,
+    "tests_executed_or_expected_xfail": 125,
+    "passed": 122,
+    "xfailed": 3,
+    "failed": 0,
+    "unresolved": 0
+  },
+  "workload_shapes_reproduced": [
+    "DummyRuntime agent loop with predetermined model actions and command observations",
+    "history and trajectory construction during step-by-step agent execution",
+    "tool parsing and command schema generation",
+    "run-replay over an upstream test trajectory using a Docker python:3.11 deployment and cloned swe-agent/test-repo",
+    "run-single instant-empty-submit workflows over local and GitHub repository/problem-statement combinations",
+    "run-batch simple and expert instance handling with output trajectory oracles"
+  ],
+  "boundaries": [
+    "This is not an LLM API solve run; model calls use deterministic test models such as instant_empty_submit or replay.",
+    "The run covers the official pytest workload set in the cloned repository, not a full SWE-bench benchmark submission.",
+    "One generated python3.11 Docker container remained after the slow test partition and was removed; the cleanup evidence is in leftover-container-before-cleanup.log."
+  ]
+}

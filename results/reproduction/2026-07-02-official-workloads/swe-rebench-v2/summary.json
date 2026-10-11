@@ -1,0 +1,76 @@
+{
+  "source": {
+    "name": "SWE-rebench V2",
+    "repository": "https://github.com/SWE-rebench/SWE-rebench-V2",
+    "local_checkout": ".cache/source-inspection/swe-rebench-v2",
+    "commit": "c71902a8cf8d2b725f63d51f199f4d3e56f68d2d"
+  },
+  "environment": {
+    "host_kernel": "Linux lab 6.15.11-061511-generic x86_64",
+    "system_python": "Python 3.12.3",
+    "docker": "Docker version 29.1.3",
+    "venv_python": "Python 3.12.3"
+  },
+  "raw_result_root": "results/reproduction/2026-07-02-official-workloads/swe-rebench-v2",
+  "logs": [
+    "source-inspection.log",
+    "sample-eval.log",
+    "eval-report.json",
+    "logs/unidata__netcdf-c-1925_log.txt"
+  ],
+  "workload": {
+    "source_file": ".cache/source-inspection/swe-rebench-v2/sample.json",
+    "instance_id": "unidata__netcdf-c-1925",
+    "repo": "Unidata/netcdf-c",
+    "base_commit": "ad6bff35c39a0600fb8f2e176be4269e768e4e22",
+    "language": "c",
+    "image": "docker.io/swerebenchv2/unidata-netcdf-c:1925-ad6bff3",
+    "image_id": "sha256:7a9ef595f93471c219640a34c22b3e8a1cc894476c57adefa3a5405e7a49c35e",
+    "image_size_bytes": 2400641851,
+    "test_command": [
+      "make check"
+    ],
+    "log_parser": "parse_log_jq",
+    "fail_to_pass_count": 12,
+    "pass_to_pass_count": 177
+  },
+  "command": "/home/yunwei37/workspace/namei_ext/.cache/venvs/swe-rebench-v2/bin/python /home/yunwei37/workspace/namei_ext/.cache/source-inspection/swe-rebench-v2/scripts/eval.py --json /home/yunwei37/workspace/namei_ext/.cache/source-inspection/swe-rebench-v2/sample.json --max-workers 1 --golden-eval --report-json /home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/swe-rebench-v2/eval-report.json",
+  "result": {
+    "exit_status": 0,
+    "total": 1,
+    "all_ok": true,
+    "passed_match": true,
+    "instance_exit_code": 0,
+    "failed_from_pass_to_pass": [],
+    "error": ""
+  },
+  "from_fail_to_pass": [
+    "do_comps.sh",
+    "format",
+    "run_examples.sh",
+    "run_examples4.sh",
+    "run_filter.sh",
+    "sfc_pres_temp_more",
+    "simple",
+    "t_dap3a",
+    "test_cvt3",
+    "test_vara",
+    "tst_filter.sh",
+    "tst_ncdap3.sh"
+  ],
+  "covered_workload_shapes": [
+    "Docker-backed repository environment reuse",
+    "prebuilt C project image with source tree and dependencies",
+    "gold patch and test patch application",
+    "repo reset before evaluation",
+    "full make-check test command",
+    "fail-to-pass and pass-to-pass oracle parsing from build/test logs"
+  ],
+  "boundaries": [
+    "This run covers the repository README local sample only, not the full SWE-rebench V2 corpus.",
+    "This is an evaluator/workload replay, not environment generation or LLM-based task construction.",
+    "Only the cached prebuilt instance image was used; base-image and instance-image build pipelines were not rerun in this pass.",
+    "The result is useful W4 environment/cache workload evidence, not a claim that SWE-rebench V2 requires namei_ext or eBPF."
+  ],
+  "use_in_namei_ext": "Use as a source-backed W4 environment/cache workload seed with real repository state, Docker image identity, patch/test-patch application, make-check oracle, and fail-to-pass/pass-to-pass result parsing."
+}

@@ -1,0 +1,17 @@
+{"event":"agent-source-task-case","case":"fixture_paths","pass":true,"errno":0,"detail":"physical task roots and logical workspace placeholder exist"}
+{"event":"agent-source-task-state","state":"physical-base","expected":"base","internal_errno":0,"move_errno":0,"chdir_errno":0,"probe_exit":0,"pytest_exit":1,"parser_exit":0,"ready_ns":6773957010,"start_ns":6773957071,"end_ns":9132012657,"pass":true}
+{"event":"agent-source-task-state","state":"physical-completed","expected":"completed","internal_errno":0,"move_errno":0,"chdir_errno":0,"probe_exit":0,"pytest_exit":0,"parser_exit":0,"ready_ns":9132775373,"start_ns":9132775446,"end_ns":17477381443,"pass":true}
+{"event":"agent-source-task-case","case":"configure_policy","pass":true,"errno":0,"detail":"two cgroups and four registered workspace targets configured"}
+{"event":"agent-source-task-visibility","state":"before-assignment","expected_visible":false,"move_errno":0,"stat_errno":2,"opendir_errno":0,"readdir_errno":0,"closedir_errno":0,"listed":false,"pass":true}
+{"event":"agent-source-task-case","case":"assign_concurrent_views","pass":true,"errno":0,"detail":"worker A selects completed and worker B selects base"}
+{"event":"agent-source-task-visibility","state":"assigned-a","expected_visible":true,"move_errno":0,"stat_errno":0,"opendir_errno":0,"readdir_errno":0,"closedir_errno":0,"listed":true,"pass":true}
+{"event":"agent-source-task-visibility","state":"assigned-b","expected_visible":true,"move_errno":0,"stat_errno":0,"opendir_errno":0,"readdir_errno":0,"closedir_errno":0,"listed":true,"pass":true}
+{"event":"agent-source-task-state","state":"concurrent-a-completed","expected":"completed","internal_errno":0,"move_errno":0,"chdir_errno":0,"probe_exit":1,"pytest_exit":0,"parser_exit":0,"ready_ns":17546209443,"start_ns":17546285460,"end_ns":19231906822,"pass":false}
+{"event":"agent-source-task-state","state":"concurrent-b-base","expected":"base","internal_errno":0,"move_errno":0,"chdir_errno":0,"probe_exit":1,"pytest_exit":1,"parser_exit":0,"ready_ns":17546275549,"start_ns":17546286159,"end_ns":19232471507,"pass":false}
+{"event":"agent-source-task-concurrent","participants":2,"release_ns":17546279943,"a_ready_ns":17546209443,"b_ready_ns":17546275549,"a_start_ns":17546285460,"b_start_ns":17546286159,"a_end_ns":19231906822,"b_end_ns":19232471507,"overlap":true,"pass":false}
+{"event":"agent-source-task-case","case":"detach_policy","pass":true,"errno":0,"detail":"policy detached from cgroup/namei_ext"}
+{"event":"agent-source-task-case","case":"clear_targets_a","pass":true,"errno":0,"detail":"worker A targets cleared"}
+{"event":"agent-source-task-case","case":"clear_targets_b","pass":true,"errno":0,"detail":"worker B targets cleared"}
+{"event":"agent-source-task-case","case":"remove_cgroup_a","pass":true,"errno":0,"detail":"worker A cgroup removed"}
+{"event":"agent-source-task-case","case":"remove_cgroup_b","pass":true,"errno":0,"detail":"worker B cgroup removed"}
+{"event":"agent-source-task-summary","source_system":"SWE-Factory-Gym","instance":"pallets__click-2622","pytest_runs":6,"concurrent_pairs":1,"failures":1,"pass":false}

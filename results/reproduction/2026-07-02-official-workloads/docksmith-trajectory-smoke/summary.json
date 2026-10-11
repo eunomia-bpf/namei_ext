@@ -1,0 +1,27 @@
+{
+  "instance_id": "00imvj00__mqttrs-7",
+  "repository": "00imvj00/mqttrs",
+  "commit_sha": "77d51fb5449394e450b3565205d989433511082b",
+  "scope": "trajectory-derived smoke replay; official test patch unavailable in extracted eval script",
+  "docker_build_exit_code": 0,
+  "docker_run_smoke_exit_code": 0,
+  "official_fail_to_pass_oracle_available": false,
+  "eval_script_contains_placeholder_patch": true,
+  "docker_build.log_sha256": "35433a820155e3b953bda1163a8b982ad5fc36df92e6e22e53f1b1103c2a5628",
+  "docker_run_smoke.log_sha256": "a4f8cdf5aafb2a995fac03f290df3add7c3d679bea96ed73dbeb9faf483ab2e1",
+  "extracted.Dockerfile_sha256": "cc6a5e46e91b88fefd3bf6d5d0b2c6843ae98d8b037fe8f3a904efcef1407533",
+  "smoke_eval_no_test_patch.sh_sha256": "54c98164bdf06ba1b5ec342912ea51201c528a4ca40ae66f5a1a8ca3f8183c76",
+  "metadata.json_sha256": "e54a85deeb18d870e7e2a57021addbcebbfffb1fc0277c29e8de79ba3577ce92",
+  "smoke_omnigril_exit_code_values": [
+    "0",
+    "0"
+  ],
+  "smoke_passed": true,
+  "docker_image_id": "sha256:f88ea348fcf84a56430eedd8050fb286bc4f85905a0f4f7257e198302eb2e550",
+  "docker_image_repo_tags": [
+    "namei_ext_docksmith_mqttrs_smoke:20260702"
+  ],
+  "docker_image_removed_after_run": true,
+  "docker_image_inspect.json_sha256": "c885534ea0f572b654aeaf3b08127d973907abe7e80f4773a0d7dc7c0f233694",
+  "docker_rmi.log_sha256": "764c92e043e6e29f9c3391b0630262e5c408cb74f231f06b6bc90183d6c382ce"
+}

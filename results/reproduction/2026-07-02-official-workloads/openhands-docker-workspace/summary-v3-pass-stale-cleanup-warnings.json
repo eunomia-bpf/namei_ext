@@ -1,0 +1,184 @@
+{
+  "attempt_note": "v3 fixes host input mode to 0644; v1/v2 preserved separately",
+  "checkout": "feca62017e2d33519c953b83f3747ded6b96329d",
+  "cmd1": {
+    "command": "pwd && id && cat /workspace/host-preexisting.txt && printf 'container-created\\n' > /workspace/container-created.txt && ls -la /workspace",
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "/workspace\nuid=10001(openhands) gid=10001(openhands) groups=10001(openhands),27(sudo)\nhost-visible-before-start\ntotal 24\ndrwxrwxrwx 4 pn        pn        4096 Jul  2 20:07 .\ndrwxr-xr-x 1 root      root      4096 Jul  2 20:07 ..\ndrwxr-xr-x 2 openhands openhands 4096 Jul  2 20:07 bash_events\n-rw-r--r-- 1 openhands openhands   18 Jul  2 20:07 container-created.txt\ndrwxr-xr-x 2 openhands openhands 4096 Jul  2 20:07 conversations\n-rw-r--r-- 1 pn        pn          26 Jul  2 20:07 host-preexisting.txt\n",
+    "timeout_occurred": false
+  },
+  "cmd2": {
+    "command": "cat /workspace/uploaded-via-api.txt && wc -c /workspace/uploaded-via-api.txt",
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "uploaded-through-api\n21 /workspace/uploaded-via-api.txt\n",
+    "timeout_occurred": false
+  },
+  "cmd3": {
+    "command": "printf resumed-ok",
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "resumed-ok",
+    "timeout_occurred": false
+  },
+  "container_id": "4d7bc61a7ffba08cac1805d515556115a08f4e20616d476a4ae40d18af2803cf",
+  "download": {
+    "destination_path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/openhands-docker-workspace/downloads/container-created.downloaded.txt",
+    "error": null,
+    "file_size": 18,
+    "source_path": "/workspace/container-created.txt",
+    "success": true
+  },
+  "errors": [],
+  "host": "http://127.0.0.1:31436",
+  "host_workspace": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/openhands-docker-workspace/host-workspace",
+  "image": "ghcr.io/openhands/agent-server:latest-python",
+  "image_id": "sha256:1f489728c1a86fecba4b141c8652fdc2c8a88d21aaab528b1e53f7280306b46a",
+  "image_size": 3722305628,
+  "post_cleanup_container_ps": "",
+  "repo_digests": [
+    "ghcr.io/openhands/agent-server@sha256:25bc9f1433a4e5d1739bd782dead90b78ced10fc57066de631896eeddf78d9ec"
+  ],
+  "server_info": {
+    "build_git_ref": "refs/heads/main",
+    "build_git_sha": "31f71fe172f1104b856a2fa4d873b85ed901098a",
+    "docs": "/docs",
+    "idle_time": 0.0,
+    "max_foreground_terminal_timeout_seconds": null,
+    "python_version": "3.13.13 (main, Apr  7 2026, 20:49:46) [Clang 22.1.1 ]",
+    "redoc": "/redoc",
+    "runtime_idle_timeout_seconds": null,
+    "sdk_version": "1.31.0",
+    "title": "OpenHands Agent Server",
+    "tools_version": "1.31.0",
+    "uptime": 0.0,
+    "usable_tools": [
+      "file_editor",
+      "task_tool_set",
+      "task",
+      "task_tracker",
+      "terminal",
+      "workflow_tool_set",
+      "workflow",
+      "browser_tool_set",
+      "edit",
+      "list_directory",
+      "read_file",
+      "write_file",
+      "glob",
+      "grep",
+      "planning_file_editor"
+    ],
+    "version": "1.31.0",
+    "workspace_version": "1.31.0"
+  },
+  "source": "OpenHands software-agent-sdk DockerWorkspace",
+  "status": "pass",
+  "steps": [
+    {
+      "image_id": "sha256:1f489728c1a86fecba4b141c8652fdc2c8a88d21aaab528b1e53f7280306b46a",
+      "image_size": 3722305628,
+      "name": "image_inspect",
+      "ok": true,
+      "repo_digests": [
+        "ghcr.io/openhands/agent-server@sha256:25bc9f1433a4e5d1739bd782dead90b78ced10fc57066de631896eeddf78d9ec"
+      ]
+    },
+    {
+      "alive": true,
+      "container_id": "4d7bc61a7ffba08cac1805d515556115a08f4e20616d476a4ae40d18af2803cf",
+      "host": "http://127.0.0.1:31436",
+      "name": "container_started",
+      "ok": true
+    },
+    {
+      "build_git_sha": "31f71fe172f1104b856a2fa4d873b85ed901098a",
+      "keys": [
+        "build_git_ref",
+        "build_git_sha",
+        "docs",
+        "idle_time",
+        "max_foreground_terminal_timeout_seconds",
+        "python_version",
+        "redoc",
+        "runtime_idle_timeout_seconds",
+        "sdk_version",
+        "title",
+        "tools_version",
+        "uptime",
+        "usable_tools",
+        "version",
+        "workspace_version"
+      ],
+      "name": "server_info",
+      "ok": true,
+      "version": "1.31.0",
+      "workspace_version": "1.31.0"
+    },
+    {
+      "exit_code": 0,
+      "host_created": "container-created\n",
+      "name": "mounted_workspace_command",
+      "ok": true,
+      "stderr": "",
+      "stdout": "/workspace\nuid=10001(openhands) gid=10001(openhands) groups=10001(openhands),27(sudo)\nhost-visible-before-start\ntotal 24\ndrwxrwxrwx 4 pn        pn        4096 Jul  2 20:07 .\ndrwxr-xr-x 1 root      root      4096 Jul  2 20:07 ..\ndrwxr-xr-x 2 openhands openhands 4096 Jul  2 20:07 bash_events\n-rw-r--r-- 1 openhands openhands   18 Jul  2 20:07 container-created.txt\ndrwxr-xr-x 2 openhands openhands 4096 Jul  2 20:07 conversations\n-rw-r--r-- 1 pn        pn          26 Jul  2 20:07 host-preexisting.txt\n"
+    },
+    {
+      "host_uploaded": "uploaded-through-api\n",
+      "name": "file_upload_api",
+      "ok": true,
+      "result": {
+        "destination_path": "/workspace/uploaded-via-api.txt",
+        "error": null,
+        "file_size": null,
+        "source_path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/openhands-docker-workspace/upload-source.txt",
+        "success": true
+      }
+    },
+    {
+      "exit_code": 0,
+      "name": "uploaded_file_visible_to_command",
+      "ok": true,
+      "stderr": "",
+      "stdout": "uploaded-through-api\n21 /workspace/uploaded-via-api.txt\n"
+    },
+    {
+      "downloaded_text": "container-created\n",
+      "name": "file_download_api",
+      "ok": true,
+      "result": {
+        "destination_path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/openhands-docker-workspace/downloads/container-created.downloaded.txt",
+        "error": null,
+        "file_size": 18,
+        "source_path": "/workspace/container-created.txt",
+        "success": true
+      }
+    },
+    {
+      "name": "docker_pause",
+      "ok": true,
+      "paused": "true"
+    },
+    {
+      "exit_code": 0,
+      "name": "docker_resume_and_command",
+      "ok": true,
+      "paused": "false",
+      "stderr": "",
+      "stdout": "resumed-ok"
+    },
+    {
+      "name": "container_cleanup",
+      "ok": true,
+      "ps": ""
+    }
+  ],
+  "upload": {
+    "destination_path": "/workspace/uploaded-via-api.txt",
+    "error": null,
+    "file_size": null,
+    "source_path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/openhands-docker-workspace/upload-source.txt",
+    "success": true
+  }
+}

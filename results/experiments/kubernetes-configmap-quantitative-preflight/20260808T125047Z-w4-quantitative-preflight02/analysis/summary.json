@@ -1,0 +1,21 @@
+{
+  "boots": 1,
+  "event": "kubernetes-configmap-quantitative-analysis",
+  "lifecycle_rows": 4,
+  "pairs_per_scale_per_boot": 2,
+  "primary_metric": "wall_span_ns",
+  "primary_width": 16,
+  "scales": [
+    {
+      "atomicwriter_median_ns": 2970646854.0,
+      "boots": 1,
+      "namei_ext_median_ns": 1531723814.0,
+      "ratio": 0.5086825182042961,
+      "ratio_ci95_lower": null,
+      "ratio_ci95_upper": null,
+      "supports_lower_cost": null,
+      "width": 16
+    }
+  ],
+  "verdict": "preflight-complete"
+}

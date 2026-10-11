@@ -1,0 +1,16 @@
+{"event":"service-config-rotation-start","result_level":"kvm_service_config_rotation","repetition":1,"pass":true}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"runtime_boundary","pass":true,"errno":0,"detail":"guest-local runtime root is owner-controlled and traversable"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"current","pass":true,"errno":0,"detail":"physical generation accepted by nginx -t"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"canary","pass":true,"errno":0,"detail":"physical generation accepted by nginx -t"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"invalid","pass":true,"errno":1,"detail":"invalid physical generation rejected by nginx -t"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"rollback","pass":true,"errno":0,"detail":"physical generation accepted by nginx -t"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"attach_policy","pass":true,"errno":0,"detail":"policy attached through cgroup/namei_ext"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"scope_policy","pass":true,"errno":0,"detail":"policy counters scoped to the service cgroup"}
+{"event":"service-config-rotation-state","result_level":"kvm_service_config_rotation","repetition":1,"state":"current","target_id":1,"logical_sha256":"9e4df724037767c692a984a92b955f48ca0576317d6071a97ec2210d54acfa0b","physical_sha256":"9e4df724037767c692a984a92b955f48ca0576317d6071a97ec2210d54acfa0b","http_body":"","master_pid":195,"worker_before":0,"worker_after":0,"latency_ns":0,"poll_attempts":0,"reload_error_observed":false,"pass":false}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"graceful_shutdown","pass":true,"errno":0,"detail":"nginx master was reaped after SIGQUIT"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"capture_error_log","pass":true,"errno":0,"detail":"non-empty nginx error log captured in result tree"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"remove_runtime","pass":true,"errno":0,"detail":"guest-local nginx runtime tree removed"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"detach_policy","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"clear_targets","pass":true,"errno":0,"detail":"service target registry cleared"}
+{"event":"service-config-rotation-case","result_level":"kvm_service_config_rotation","repetition":1,"case":"remove_cgroup","pass":true,"errno":0,"detail":"service cgroup removed"}
+{"event":"service-config-rotation-summary","result_level":"kvm_service_config_rotation","repetition":1,"source_system":"kubernetes-atomic-writer+nginx","states":4,"master_pid":195,"pass":false,"failures":1}

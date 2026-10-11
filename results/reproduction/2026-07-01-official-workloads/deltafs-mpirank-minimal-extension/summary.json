@@ -1,0 +1,64 @@
+{
+  "date": "2026-07-01",
+  "source": "DeltaFS",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/deltafs-mpirank-minimal-extension",
+  "role": "related-work and appendix HPC metadata workload diagnostic",
+  "reproduced_cleanly": false,
+  "attempts": {
+    "large_dir_np2_minimal": {
+      "status": 124,
+      "pass": false,
+      "log": "large-dir-np2-minimal.log",
+      "scale": {
+        "processes": 2,
+        "dirs": 2,
+        "files": 2
+      },
+      "observed_output": "Prepare completed with 4 successes; run timed out in Bulk creations",
+      "filesystem_after_timeout": {
+        "directories": 3,
+        "files": 0
+      }
+    },
+    "vpic_np2_minimal": {
+      "status": 124,
+      "pass": false,
+      "log": "vpic-np2-minimal.log",
+      "scale": {
+        "processes": 2,
+        "dumps": 1,
+        "x": 1,
+        "y": 1,
+        "z": 1,
+        "ppc": 2
+      },
+      "observed_output": "Prepare completed with 3 successes; run timed out in Dump",
+      "filesystem_after_timeout": {
+        "directories": 2,
+        "files": 0
+      }
+    },
+    "large_dir_np2_strace": {
+      "status": 124,
+      "pass": false,
+      "log": "large-dir-np2-minimal-strace.log",
+      "traces": "large-dir-strace.*",
+      "observed_output": "Prepare completed; strace run timed out in Bulk creations",
+      "filesystem_after_timeout": {
+        "files": 0
+      }
+    },
+    "vpic_np2_strace": {
+      "status": 124,
+      "pass": false,
+      "log": "vpic-np2-minimal-strace.log",
+      "traces": "vpic-strace.*",
+      "observed_output": "Prepare completed; strace run timed out in Dump",
+      "filesystem_after_timeout": {
+        "files": 0
+      }
+    }
+  },
+  "interpretation": "Even at minimum nontrivial 2-rank POSIX scales, the DeltaFS benchmark binaries do not complete on this host. Single-process POSIX generator runs remain the clean reproduced workload evidence; multi-rank POSIX and server/shell paths remain unclosed.",
+  "reuse_decision": "Use DeltaFS as appendix or related-work workload-shape evidence, not as a main workload source."
+}

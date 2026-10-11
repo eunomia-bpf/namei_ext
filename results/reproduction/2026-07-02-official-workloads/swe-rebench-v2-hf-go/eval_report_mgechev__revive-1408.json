@@ -1,0 +1,19 @@
+{
+  "max_workers": 1,
+  "total": 1,
+  "all_ok": true,
+  "items": [
+    {
+      "instance_id": "mgechev__revive-1408",
+      "from_fail_to_pass": [
+        "TestAll",
+        "TestAll/unexported_return.go"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 0,
+      "log_path": "logs/mgechev__revive-1408_log.txt",
+      "error": ""
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "repo": "https://github.com/YoloFS/filesystem",
+  "head": "684829ec5e8193e8560b52573b2575a347906d0e",
+  "vm_start_exit": "0",
+  "test_e2e_vm_exit": "2",
+  "vm_stop_exit": "0",
+  "test_results": [],
+  "failure_lines": [
+    "bash: line 1: make: command not found"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "max_workers": 1,
+  "total": 1,
+  "all_ok": true,
+  "items": [
+    {
+      "instance_id": "nyxx-discord__nyxx-547",
+      "from_fail_to_pass": [
+        "HttpHandler latency & realLatency",
+        "Nyxx.connectRest",
+        "NyxxRest CDN assets",
+        "NyxxRest applications",
+        "NyxxRest channels",
+        "NyxxRest emojis",
+        "NyxxRest gateway",
+        "NyxxRest guilds",
+        "NyxxRest members",
+        "NyxxRest messages",
+        "NyxxRest roles",
+        "NyxxRest scheduledEvents",
+        "NyxxRest users",
+        "NyxxRest voice",
+        "NyxxRest webhooks"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 0,
+      "log_path": "logs/nyxx-discord__nyxx-547_log.txt",
+      "error": ""
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{"event":"table-conformance","name":"source_readable","pass":true,"detail":"table_redirect.bpf.c is readable and non-empty"}
+{"event":"table-conformance","name":"object_exists","pass":true,"detail":"table_redirect.bpf.o exists and is non-empty"}
+{"event":"table-conformance","name":"source_stat","pass":true,"detail":"source stat succeeded"}
+{"event":"table-conformance","name":"object_fresh","pass":true,"detail":"object mtime is not older than source mtime"}
+{"event":"table-conformance","name":"policy_body_parse","pass":true,"detail":"single cgroup/namei_ext policy body parsed"}
+{"event":"table-conformance","name":"single_attach_section","pass":true,"detail":"expected 1 occurrence(s), observed 1"}
+{"event":"table-conformance","name":"hash_map_only","pass":true,"detail":"expected 1 occurrence(s), observed 1"}
+{"event":"table-conformance","name":"single_exact_map_use","pass":true,"detail":"expected 2 occurrence(s), observed 2"}
+{"event":"table-conformance","name":"component_key_map_type","pass":true,"detail":"expected 2 occurrence(s), observed 2"}
+{"event":"table-conformance","name":"redirect_rule_map_type","pass":true,"detail":"expected 2 occurrence(s), observed 2"}
+{"event":"table-conformance","name":"component_key_builder","pass":true,"detail":"expected 1 occurrence(s), observed 1"}
+{"event":"table-conformance","name":"single_exact_lookup","pass":true,"detail":"expected 1 occurrence(s), observed 1"}
+{"event":"table-conformance","name":"pass_redirect_return","pass":true,"detail":"expected 1 occurrence(s), observed 1"}
+{"event":"table-conformance","name":"no_forbidden_source_helpers","pass":true,"detail":"no forbidden token present"}
+{"event":"table-conformance","name":"no_policy_body_resolver_logic","pass":true,"detail":"no forbidden token present"}
+{"event":"table-conformance-summary","pass":true,"failures":0}

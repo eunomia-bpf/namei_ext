@@ -1,0 +1,214 @@
+{
+  "schema": "namei_ext.trace_witness_manifest.v1",
+  "run_id": "20260614T-workloads-git-ceiling",
+  "workload_id": "w1-redis-build",
+  "policy_family": "build_graph_view.bpf.c",
+  "status": "trace_witness",
+  "result_level": "host_trace_witness_manifest",
+  "run_environment": "host",
+  "policy_executed": false,
+  "kvm_validated": false,
+  "output_hash_oracle": false,
+  "release_gate_eligible": false,
+  "policy_execution_basis": "host_trace_only",
+  "source_manifest": {
+    "schema": "namei_ext.real_workload_manifest.v1",
+    "run_id": "20260614T-workloads-git-ceiling",
+    "workload_id": "w1-redis-build",
+    "policy_family": "build_graph_view.bpf.c",
+    "status": "source-build-trace",
+    "result_level": "host_source_build_trace",
+    "run_environment": "host",
+    "policy_executed": false,
+    "kvm_validated": false,
+    "output_hash_oracle": false,
+    "provenance": {
+      "schema": "namei_ext.workload_source.v1",
+      "project": "redis",
+      "workload_ids": [
+        "w1-redis-build",
+        "w3-redis-podman-criu",
+        "w4-ccache-redis-nginx"
+      ],
+      "version": "7.2.14",
+      "commit": "f2262eccb855eadd1afb0c457ea583ef9d5400b5",
+      "url": "https://github.com/redis/redis/archive/refs/tags/7.2.14.tar.gz",
+      "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/redis-7.2.14.tar.gz",
+      "expected_archive_sha256": "704bfac84ab1c0771ddc08c8bea72e2203e3ce64c1fc6750e76b8ce2c00f3145",
+      "archive_sha256": "704bfac84ab1c0771ddc08c8bea72e2203e3ce64c1fc6750e76b8ce2c00f3145",
+      "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/redis-7.2.14",
+      "license": {
+        "path": "COPYING",
+        "sha256": "97f0a15b7bbae580d2609dad2e11f1956ae167be296ab60f4691ab9c30ee9828"
+      },
+      "evidence": {
+        "makefile_sha256": "9349fc753e82733517e6839ac84df07e0f28bf68256119538ba18e1e0781f2ca",
+        "src_makefile_sha256": "64cba1862b07d90d439f111ac18bfb001e8949612e938bdefc23cd57382cc167"
+      }
+    },
+    "build": {
+      "schema": "namei_ext.real_workload_build.v1",
+      "run_id": "20260614T-workloads-git-ceiling",
+      "workload_id": "w1-redis-build",
+      "policy_family": "build_graph_view.bpf.c",
+      "result_level": "host_source_build_trace",
+      "run_environment": "host",
+      "policy_executed": false,
+      "kvm_validated": false,
+      "output_hash_oracle": false,
+      "project": "redis",
+      "version": "7.2.14",
+      "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/src",
+      "command": [
+        "make",
+        "redis-server"
+      ],
+      "make_variables": {
+        "BUILD_TLS": "no",
+        "MALLOC": "libc",
+        "JOBS": "24"
+      },
+      "environment": {
+        "GIT_CEILING_DIRECTORIES": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/src"
+      },
+      "toolchain": {
+        "cc_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+      },
+      "duration_ns": 4246478283,
+      "artifacts": {
+        "log": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/build.log",
+        "log_sha256": "2895bf3f099c04a3b384d508785b312a37f3acccceaf173a2ce08fa6e91107a3",
+        "binary": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/src/src/redis-server",
+        "binary_sha256": "6abd37c6998c5b97e83699d868556fcc0dc7178e12e27070271a72e3380814e0"
+      }
+    },
+    "trace": {
+      "schema": "namei_ext.real_workload_trace.v1",
+      "run_id": "20260614T-workloads-git-ceiling",
+      "workload_id": "w1-redis-build",
+      "policy_family": "build_graph_view.bpf.c",
+      "result_level": "host_source_build_trace",
+      "run_environment": "host",
+      "policy_executed": false,
+      "kvm_validated": false,
+      "output_hash_oracle": false,
+      "project": "redis",
+      "version": "7.2.14",
+      "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build-trace/src",
+      "command": [
+        "strace",
+        "make",
+        "redis-server"
+      ],
+      "make_variables": {
+        "BUILD_TLS": "no",
+        "MALLOC": "libc",
+        "JOBS": "24"
+      },
+      "environment": {
+        "GIT_CEILING_DIRECTORIES": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build-trace/src"
+      },
+      "toolchain": {
+        "strace_version": "strace -- version 6.8"
+      },
+      "duration_ns": 10189946584,
+      "file_op_lines": 1234834,
+      "artifacts": {
+        "strace": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/strace.log",
+        "strace_sha256": "3581e8d6b33c373236e2e695cb9087e01e5f83663939018f6f78e4699ad39968",
+        "build_log": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/trace-build.log",
+        "build_log_sha256": "018c346c8aac5fe5ea284cee5ce02da3ca1b53a7b085ff9610dadc53b4914689",
+        "binary": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build-trace/src/src/redis-server",
+        "binary_sha256": "be72d0e8faebfd63502b65ad26638f31170d570b8c47809f942f5e81421c0be7"
+      }
+    },
+    "c1_c8_gate": "not_validated_until_kvm_policy_oracle_and_table_counterfactual_pass"
+  },
+  "generator": {
+    "make_target": "workload-redis-build-alias-manifest",
+    "input_trace": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/strace.log",
+    "input_trace_sha256": "3581e8d6b33c373236e2e695cb9087e01e5f83663939018f6f78e4699ad39968",
+    "input_manifest": "/home/yunwei37/workspace/namei_ext/results/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build/manifest.json",
+    "input_manifest_sha256": "77a992497a8f790a4b345b65fff01ec4d19d39fe3cebcf9eaca3e7b21bffb164"
+  },
+  "candidate_entries": [
+    {
+      "branch": "generated_output",
+      "parent_relative": "src",
+      "visible_component": "release.h",
+      "shadow_backing_component": ".namei_ext.generated.release.h",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build-trace/src/src/release.h",
+      "original_backing_sha256": "e41f79d63583e2c1895e9959730656b8cff78f27b7a7a73f7daaab2b3a1843b5",
+      "trace_hits": 18,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "declared_source_fallback",
+      "parent_relative": "src",
+      "visible_component": "server.c",
+      "shadow_backing_component": ".namei_ext.source.server.c",
+      "original_backing_path": "/home/yunwei37/workspace/namei_ext/.build/workloads/runs/20260614T-workloads-git-ceiling/w1-redis-build-trace/src/src/server.c",
+      "original_backing_sha256": "33c30ca97306ccf06633302b6547b30b5cecf468cad0fac1da35e1028e5d24be",
+      "trace_hits": 2,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "toolchain_selection",
+      "parent_absolute": "/usr/bin",
+      "visible_component": "cc",
+      "shadow_backing_component": "gcc",
+      "original_backing_path": "/usr/bin/gcc",
+      "original_backing_sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+      "observed_frontend_path": "/usr/bin/cc",
+      "observed_frontend_sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+      "trace_hits": 1534,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    },
+    {
+      "branch": "external_dependency",
+      "parent_absolute": "/usr/include",
+      "visible_component": "stdio.h",
+      "shadow_backing_component": ".namei_ext.external.stdio.h",
+      "original_backing_path": "/usr/include/stdio.h",
+      "original_backing_sha256": "b4f6709d12c8493e2a42f740845abe2994deb27fc78fb85fcaa6e27228a87d62",
+      "trace_hits": 4138,
+      "events": [
+        "lookup",
+        "readdir"
+      ]
+    }
+  ],
+  "semantic_witness": {
+    "branch_coverage": {
+      "generated_output": true,
+      "declared_source_fallback": true,
+      "toolchain_selection": true,
+      "external_dependency": true,
+      "undeclared_dependency_poison": false,
+      "negative_fallback": false
+    },
+    "missing_branches": [
+      "undeclared_dependency_poison",
+      "negative_fallback"
+    ],
+    "missing_branch_reason": "clean host build trace does not exercise poison or negative probes; those require KVM policy oracle tests"
+  },
+  "hit_rate": {
+    "candidate_witness_hit_rate": 0.004609526462666237,
+    "numerator_candidate_trace_hits": 5692,
+    "denominator_file_op_lines": 1234834,
+    "basis": "host trace candidate entry hits over all strace %file operations; policy_executed is false",
+    "release_gate_eligible": false
+  },
+  "materialization_status": "shadow backing files not created by this target",
+  "c1_c8_gate": "not_validated_until_kvm_policy_oracle_materializer_loader_and_table_counterfactual_pass"
+}

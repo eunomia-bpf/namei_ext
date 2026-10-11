@@ -1,0 +1,28 @@
+# W4 ccache workload macrobench ledger
+
+- Run ID: 20260616T-eval-w4-ccache-workload-macrobench-ledger-v1
+- Rule macrobench run: 20260616T-w4-ccache-rule-macrobench-release-v1
+- Raw JSONL: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w4-ccache-workload-macrobench-ledger-v1/b3-macrobench/w4-ccache-workload-macrobench.jsonl
+- Input sha256: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w4-ccache-workload-macrobench-ledger-v1/b3-macrobench/w4-ccache-workload-macrobench-inputs.sha256
+- policy_release_input_pass=true
+- baseline_release_input_pass=true
+- table_baseline_pass=true
+- full_feature_equivalent_baseline_pass=true
+- storage_footprint_pass=true
+- setup_latency_threshold_pass=false
+- update_latency_threshold_pass=false
+- rule_materialization_threshold_pass=true
+- threshold_pass=false
+- w4_c2_slice_supported=false
+- c2_supported=false
+- release_gate_pass=false
+- policy_setup_ns_avg=110545949.3
+- baseline_setup_ns_avg=104058982.65
+- policy_update_ns_avg=6518131.3
+- baseline_update_ns_avg=6308357.65
+- policy_setup_rule_writes_avg=8
+- baseline_setup_rule_writes_avg=8
+- policy_update_rule_writes_avg=2
+- baseline_update_rule_writes_avg=2
+- missing_inputs=W3 workload setup/storage/update macrobench
+- failed_gates=W4 setup latency threshold failed, W4 update latency threshold failed

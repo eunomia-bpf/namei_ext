@@ -1,0 +1,123 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-data-sql-log-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-data-sql-log-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id jq-data-processing",
+    "--task-id pandas-etl",
+    "--task-id pandas-sql-query",
+    "--task-id sqlite-db-truncate",
+    "--task-id log-summary",
+    "--task-id log-summary-date-ranges",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 6,
+  "n_resolved": 6,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "reproduced_cleanly": true,
+  "tasks": [
+    {
+      "task_id": "pandas-etl",
+      "workload_role": "CSV ETL with address parsing, date normalization, derived team-name column, and exact column oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_result_exists": "passed",
+        "test_data_matches": "passed",
+        "test_columns": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:23:48.476375+00:00",
+      "trial_ended_at": "2026-07-01T21:24:14.092577+00:00"
+    },
+    {
+      "task_id": "jq-data-processing",
+      "workload_role": "jq-only JSON transformation with command replay, YAML argument reconstruction, schema, sorting, and input-hash oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_output_file_exists": "passed",
+        "test_output_is_valid_json": "passed",
+        "test_output_uses_correct_schema": "passed",
+        "test_only_active_users_included": "passed",
+        "test_last_login_format": "passed",
+        "test_role_count_correct": "passed",
+        "test_primary_role_correct": "passed",
+        "test_users_are_sorted": "passed",
+        "test_output_is_pretty_formatted": "passed",
+        "test_jq_was_used": "passed",
+        "test_jq_args_yaml_exists": "passed",
+        "test_jq_args_yaml_is_valid": "passed",
+        "test_jq_args_yaml_produces_same_output": "passed",
+        "test_input_file_hash_unchanged": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:24:14.094437+00:00",
+      "trial_ended_at": "2026-07-01T21:24:50.753340+00:00"
+    },
+    {
+      "task_id": "log-summary-date-ranges",
+      "workload_role": "multi-file dated log scan with fixed reference date, time-window aggregation, severity counts, and CSV materialization",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_summary_file_exists": "passed",
+        "test_summary_structure_and_counts": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:24:50.755005+00:00",
+      "trial_ended_at": "2026-07-01T21:25:28.582167+00:00"
+    },
+    {
+      "task_id": "sqlite-db-truncate",
+      "workload_role": "binary-truncated SQLite database recovery with JSON materialization and row-recovery threshold oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_json_data": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:25:28.583845+00:00",
+      "trial_ended_at": "2026-07-01T21:25:59.784047+00:00"
+    },
+    {
+      "task_id": "log-summary",
+      "workload_role": "multi-service log scan with severity count report materialization",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_summary_file_exists": "passed",
+        "test_summary_file_format": "passed",
+        "test_summary_counts_are_correct": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:25:59.785625+00:00",
+      "trial_ended_at": "2026-07-01T21:26:54.059260+00:00"
+    },
+    {
+      "task_id": "pandas-sql-query",
+      "workload_role": "DuckDB/pandas SQL query over generated product/order tables with top-k per-category oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_answer_exists": "passed",
+        "test_results_matches": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:26:54.060338+00:00",
+      "trial_ended_at": "2026-07-01T21:27:37.051721+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-data-sql-log-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-data-sql-log-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-data-sql-log-oracle-suite/run.log",
+    "per-task commands.txt and results.json"
+  ],
+  "interpretation": "Six additional official Terminal-Bench data/SQL/log/database tasks reproduced through the upstream Docker harness and oracle agent. Together with earlier Terminal-Bench runs, selected official-task coverage is now 27 resolved tasks plus one preserved setup-level negative task. This remains selected official-task reproduction, not full Terminal-Bench-Core reproduction."
+}

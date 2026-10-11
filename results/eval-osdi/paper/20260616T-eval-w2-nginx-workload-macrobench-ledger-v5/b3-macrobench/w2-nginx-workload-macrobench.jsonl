@@ -1,0 +1,418 @@
+{
+  "schema": "namei_ext.eval_osdi.w2_nginx_workload_macrobench.v1",
+  "event": "eval-osdi-w2-nginx-workload-macrobench",
+  "run_id": "20260616T-eval-w2-nginx-workload-macrobench-ledger-v5",
+  "workload_id": "w2-nginx-fixture",
+  "row_kind": "proposed_system",
+  "policy_family": "sandbox_fixture_view.bpf.c",
+  "policy_run_id": "20260615T-w2-nginx-c2-macrobench-release-sample-v1",
+  "source_json": "/home/yunwei37/workspace/namei_ext/results/phase1/20260615T-w2-nginx-c2-macrobench-release-sample-v1/w2-nginx-macrobench.jsonl",
+  "samples": 20,
+  "setup_rows": 20,
+  "update_rows": 20,
+  "correctness_rows": 20,
+  "pass": true,
+  "failures": 0,
+  "release_input_pass": true,
+  "setup_ns_avg": 7500337.5,
+  "update_ns_avg": 13914.8,
+  "setup_objects_avg": 17,
+  "setup_bytes_avg": 5931,
+  "update_writes_avg": 3,
+  "materialization_update_writes_avg": 0,
+  "update_bytes_avg": 150.5,
+  "policy_executed": true,
+  "kvm_validated": true
+}
+{
+  "schema": "namei_ext.eval_osdi.w2_nginx_workload_macrobench.v1",
+  "event": "eval-osdi-w2-nginx-workload-macrobench",
+  "run_id": "20260616T-eval-w2-nginx-workload-macrobench-ledger-v5",
+  "workload_id": "w2-nginx-fixture",
+  "row_kind": "feature_baseline",
+  "baseline": "bind_mount",
+  "baseline_run_id": "20260616T-w2-nginx-baseline-macrobench-release-sample-v4",
+  "source_json": "/home/yunwei37/workspace/namei_ext/results/phase1/20260616T-w2-nginx-baseline-macrobench-release-sample-v4/w2-nginx-baseline-macrobench.jsonl",
+  "samples": 20,
+  "setup_rows": 20,
+  "update_rows": 20,
+  "correctness_rows": 20,
+  "setup_ns_min": 9604633,
+  "setup_ns_max": 14268813,
+  "setup_ns_avg": 12083143.7,
+  "update_ns_min": 7863,
+  "update_ns_max": 29888,
+  "update_ns_avg": 16931.8,
+  "setup_objects_avg": 27,
+  "setup_bytes_avg": 5931,
+  "update_writes_avg": 3,
+  "materialization_update_writes_avg": 0,
+  "update_bytes_avg": 150.5,
+  "pass": true,
+  "release_input_pass": true,
+  "policy_executed": false,
+  "kvm_validated": true
+}
+{
+  "schema": "namei_ext.eval_osdi.w2_nginx_workload_macrobench.v1",
+  "event": "eval-osdi-w2-nginx-workload-macrobench",
+  "run_id": "20260616T-eval-w2-nginx-workload-macrobench-ledger-v5",
+  "workload_id": "w2-nginx-fixture",
+  "row_kind": "feature_baseline",
+  "baseline": "copy_tree",
+  "baseline_run_id": "20260616T-w2-nginx-baseline-macrobench-release-sample-v4",
+  "source_json": "/home/yunwei37/workspace/namei_ext/results/phase1/20260616T-w2-nginx-baseline-macrobench-release-sample-v4/w2-nginx-baseline-macrobench.jsonl",
+  "samples": 20,
+  "setup_rows": 20,
+  "update_rows": 20,
+  "correctness_rows": 20,
+  "setup_ns_min": 8903750,
+  "setup_ns_max": 12466254,
+  "setup_ns_avg": 9959036.45,
+  "update_ns_min": 17126,
+  "update_ns_max": 48857,
+  "update_ns_avg": 22818.75,
+  "setup_objects_avg": 22,
+  "setup_bytes_avg": 6315,
+  "update_writes_avg": 6,
+  "materialization_update_writes_avg": 3,
+  "update_bytes_avg": 301,
+  "pass": true,
+  "release_input_pass": true,
+  "policy_executed": false,
+  "kvm_validated": true
+}
+{
+  "schema": "namei_ext.eval_osdi.w2_nginx_workload_macrobench.v1",
+  "event": "eval-osdi-w2-nginx-workload-macrobench",
+  "run_id": "20260616T-eval-w2-nginx-workload-macrobench-ledger-v5",
+  "workload_id": "w2-nginx-fixture",
+  "row_kind": "feature_baseline",
+  "baseline": "fuse_redirect",
+  "baseline_run_id": "20260616T-w2-nginx-baseline-macrobench-release-sample-v4",
+  "source_json": "/home/yunwei37/workspace/namei_ext/results/phase1/20260616T-w2-nginx-baseline-macrobench-release-sample-v4/w2-nginx-baseline-macrobench.jsonl",
+  "samples": 20,
+  "setup_rows": 20,
+  "update_rows": 20,
+  "correctness_rows": 20,
+  "setup_ns_min": 58503327,
+  "setup_ns_max": 64175350,
+  "setup_ns_avg": 60771336.45,
+  "update_ns_min": 11251,
+  "update_ns_max": 44915,
+  "update_ns_avg": 14044.7,
+  "setup_objects_avg": 19,
+  "setup_bytes_avg": 5931,
+  "update_writes_avg": 3,
+  "materialization_update_writes_avg": 0,
+  "update_bytes_avg": 150.5,
+  "pass": true,
+  "release_input_pass": true,
+  "policy_executed": false,
+  "kvm_validated": true
+}
+{
+  "schema": "namei_ext.eval_osdi.w2_nginx_workload_macrobench.v1",
+  "event": "eval-osdi-w2-nginx-workload-macrobench",
+  "run_id": "20260616T-eval-w2-nginx-workload-macrobench-ledger-v5",
+  "workload_id": "w2-nginx-fixture",
+  "row_kind": "feature_baseline",
+  "baseline": "projected_volume",
+  "baseline_run_id": "20260616T-w2-nginx-baseline-macrobench-release-sample-v4",
+  "source_json": "/home/yunwei37/workspace/namei_ext/results/phase1/20260616T-w2-nginx-baseline-macrobench-release-sample-v4/w2-nginx-baseline-macrobench.jsonl",
+  "samples": 20,
+  "setup_rows": 20,
+  "update_rows": 20,
+  "correctness_rows": 20,
+  "setup_ns_min": 6127722,
+  "setup_ns_max": 13523558,
+  "setup_ns_avg": 10907217.05,
+  "update_ns_min": 38165,
+  "update_ns_max": 231180,
+  "update_ns_avg": 63542.7,
+  "setup_objects_avg": 30,
+  "setup_bytes_avg": 6315,
+  "update_writes_avg": 9,
+  "materialization_update_writes_avg": 6,
+  "update_bytes_avg": 581,
+  "pass": true,
+  "release_input_pass": true,
+  "policy_executed": false,
+  "kvm_validated": true
+}
+{
+  "schema": "namei_ext.eval_osdi.w2_nginx_workload_macrobench.v1",
+  "event": "eval-osdi-w2-nginx-workload-macrobench",
+  "run_id": "20260616T-eval-w2-nginx-workload-macrobench-ledger-v5",
+  "workload_id": "w2-nginx-fixture",
+  "row_kind": "feature_baseline",
+  "baseline": "symlink_forest",
+  "baseline_run_id": "20260616T-w2-nginx-baseline-macrobench-release-sample-v4",
+  "source_json": "/home/yunwei37/workspace/namei_ext/results/phase1/20260616T-w2-nginx-baseline-macrobench-release-sample-v4/w2-nginx-baseline-macrobench.jsonl",
+  "samples": 20,
+  "setup_rows": 20,
+  "update_rows": 20,
+  "correctness_rows": 20,
+  "setup_ns_min": 8749331,
+  "setup_ns_max": 13453593,
+  "setup_ns_avg": 10983740.25,
+  "update_ns_min": 10373,
+  "update_ns_max": 30092,
+  "update_ns_avg": 15719.85,
+  "setup_objects_avg": 22,
+  "setup_bytes_avg": 5931,
+  "update_writes_avg": 3,
+  "materialization_update_writes_avg": 0,
+  "update_bytes_avg": 150.5,
+  "pass": true,
+  "release_input_pass": true,
+  "policy_executed": false,
+  "kvm_validated": true
+}
+{
+  "schema": "namei_ext.eval_osdi.w2_nginx_workload_macrobench.v1",
+  "event": "eval-osdi-w2-nginx-workload-macrobench-summary",
+  "run_id": "20260616T-eval-w2-nginx-workload-macrobench-ledger-v5",
+  "workload_id": "w2-nginx-fixture",
+  "result_level": "w2_workload_kvm_macrobench_thresholded_slice",
+  "required_samples": 20,
+  "policy_run_id": "20260615T-w2-nginx-c2-macrobench-release-sample-v1",
+  "baseline_run_id": "20260616T-w2-nginx-baseline-macrobench-release-sample-v4",
+  "policy_release_input_pass": true,
+  "baseline_release_input_pass": true,
+  "copy_symlink_baselines_pass": true,
+  "bind_baseline_pass": true,
+  "projected_volume_baseline_pass": true,
+  "fuse_baseline_pass": true,
+  "copy_symlink_bind_baselines_pass": true,
+  "copy_symlink_bind_projected_baselines_pass": true,
+  "all_feature_baselines_pass": true,
+  "baseline_count_observed": 5,
+  "required_baseline_families": [
+    "copy_tree",
+    "symlink_forest",
+    "bind_mount",
+    "projected_volume",
+    "fuse_redirect"
+  ],
+  "full_feature_equivalent_baseline_pass": true,
+  "storage_footprint_pass": true,
+  "setup_latency_threshold_pass": true,
+  "update_latency_threshold_pass": true,
+  "update_materialization_threshold_pass": true,
+  "threshold_pass": true,
+  "w2_c2_slice_supported": true,
+  "c2_supported": false,
+  "release_gate_pass": false,
+  "policy_setup_ns_avg": 7500337.5,
+  "policy_update_ns_avg": 13914.8,
+  "policy_setup_objects_avg": 17,
+  "policy_setup_bytes_avg": 5931,
+  "policy_update_writes_avg": 3,
+  "policy_materialization_update_writes_avg": 0,
+  "policy_update_bytes_avg": 150.5,
+  "best_baseline_setup_ns_avg": 9959036.45,
+  "best_baseline_update_ns_avg": 14044.7,
+  "min_baseline_setup_objects_avg": 19,
+  "min_baseline_setup_bytes_avg": 5931,
+  "min_baseline_update_writes_avg": 3,
+  "min_baseline_materialization_update_writes_avg": 0,
+  "min_baseline_update_bytes_avg": 150.5,
+  "baseline_stats": [
+    {
+      "baseline": "bind_mount",
+      "setup_ns": {
+        "min": 9604633,
+        "max": 14268813,
+        "avg": 12083143.7
+      },
+      "update_ns": {
+        "min": 7863,
+        "max": 29888,
+        "avg": 16931.8
+      },
+      "setup_objects": {
+        "min": 27,
+        "max": 27,
+        "avg": 27
+      },
+      "setup_bytes": {
+        "min": 5931,
+        "max": 5931,
+        "avg": 5931
+      },
+      "update_writes": {
+        "min": 3,
+        "max": 3,
+        "avg": 3
+      },
+      "materialization_update_writes": {
+        "min": 0,
+        "max": 0,
+        "avg": 0
+      },
+      "update_bytes": {
+        "min": 149,
+        "max": 152,
+        "avg": 150.5
+      }
+    },
+    {
+      "baseline": "copy_tree",
+      "setup_ns": {
+        "min": 8903750,
+        "max": 12466254,
+        "avg": 9959036.45
+      },
+      "update_ns": {
+        "min": 17126,
+        "max": 48857,
+        "avg": 22818.75
+      },
+      "setup_objects": {
+        "min": 22,
+        "max": 22,
+        "avg": 22
+      },
+      "setup_bytes": {
+        "min": 6315,
+        "max": 6315,
+        "avg": 6315
+      },
+      "update_writes": {
+        "min": 6,
+        "max": 6,
+        "avg": 6
+      },
+      "materialization_update_writes": {
+        "min": 3,
+        "max": 3,
+        "avg": 3
+      },
+      "update_bytes": {
+        "min": 298,
+        "max": 304,
+        "avg": 301
+      }
+    },
+    {
+      "baseline": "fuse_redirect",
+      "setup_ns": {
+        "min": 58503327,
+        "max": 64175350,
+        "avg": 60771336.45
+      },
+      "update_ns": {
+        "min": 11251,
+        "max": 44915,
+        "avg": 14044.7
+      },
+      "setup_objects": {
+        "min": 19,
+        "max": 19,
+        "avg": 19
+      },
+      "setup_bytes": {
+        "min": 5931,
+        "max": 5931,
+        "avg": 5931
+      },
+      "update_writes": {
+        "min": 3,
+        "max": 3,
+        "avg": 3
+      },
+      "materialization_update_writes": {
+        "min": 0,
+        "max": 0,
+        "avg": 0
+      },
+      "update_bytes": {
+        "min": 149,
+        "max": 152,
+        "avg": 150.5
+      }
+    },
+    {
+      "baseline": "projected_volume",
+      "setup_ns": {
+        "min": 6127722,
+        "max": 13523558,
+        "avg": 10907217.05
+      },
+      "update_ns": {
+        "min": 38165,
+        "max": 231180,
+        "avg": 63542.7
+      },
+      "setup_objects": {
+        "min": 30,
+        "max": 30,
+        "avg": 30
+      },
+      "setup_bytes": {
+        "min": 6315,
+        "max": 6315,
+        "avg": 6315
+      },
+      "update_writes": {
+        "min": 9,
+        "max": 9,
+        "avg": 9
+      },
+      "materialization_update_writes": {
+        "min": 6,
+        "max": 6,
+        "avg": 6
+      },
+      "update_bytes": {
+        "min": 578,
+        "max": 584,
+        "avg": 581
+      }
+    },
+    {
+      "baseline": "symlink_forest",
+      "setup_ns": {
+        "min": 8749331,
+        "max": 13453593,
+        "avg": 10983740.25
+      },
+      "update_ns": {
+        "min": 10373,
+        "max": 30092,
+        "avg": 15719.85
+      },
+      "setup_objects": {
+        "min": 22,
+        "max": 22,
+        "avg": 22
+      },
+      "setup_bytes": {
+        "min": 5931,
+        "max": 5931,
+        "avg": 5931
+      },
+      "update_writes": {
+        "min": 3,
+        "max": 3,
+        "avg": 3
+      },
+      "materialization_update_writes": {
+        "min": 0,
+        "max": 0,
+        "avg": 0
+      },
+      "update_bytes": {
+        "min": 149,
+        "max": 152,
+        "avg": 150.5
+      }
+    }
+  ],
+  "missing_evidence": [
+    "W1/W3/W4 workload setup/storage/update macrobench"
+  ],
+  "inputs_sha256_file": "/home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w2-nginx-workload-macrobench-ledger-v5/b3-macrobench/w2-nginx-workload-macrobench-inputs.sha256",
+  "detail": "W2 has thresholded KVM proposed-system rows and five feature baseline rows; global C2 remains false until W1/W3/W4 macrobench rows exist."
+}

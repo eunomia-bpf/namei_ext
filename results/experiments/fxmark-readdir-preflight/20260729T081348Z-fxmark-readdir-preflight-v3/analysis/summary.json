@@ -1,0 +1,401 @@
+{
+  "schema": "namei_ext.fxmark_readdir.analysis.v1",
+  "input": "/home/yunwei37/workspace/namei_ext/results/experiments/fxmark-readdir-preflight/20260729T081348Z-fxmark-readdir-preflight-v3/observations.jsonl",
+  "config": {
+    "mode": "preflight",
+    "repetitions": 1,
+    "types": [
+      "MRDL",
+      "MRDM"
+    ],
+    "workers": [
+      1,
+      4
+    ],
+    "duration_seconds": 2
+  },
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 20260728,
+  "verdict": {
+    "primary_metric": "paired per-block SELECT/FUSE entry-throughput ratio",
+    "supported": false,
+    "contradicted": true,
+    "verdict": "contradicted",
+    "cells_with_ci_low_above_one": 3,
+    "cells_with_ci_high_at_or_below_one": 1
+  },
+  "cells": [
+    {
+      "type": "MRDL",
+      "workers": 1,
+      "throughput": {
+        "stock": {
+          "median": 15118249.790501,
+          "ci_low": 15118249.790501,
+          "ci_high": 15118249.790501,
+          "values": [
+            15118249.790501
+          ]
+        },
+        "unattached": {
+          "median": 15112551.824689,
+          "ci_low": 15112551.824689,
+          "ci_high": 15112551.824689,
+          "values": [
+            15112551.824689
+          ]
+        },
+        "pass": {
+          "median": 11657763.711181,
+          "ci_low": 11657763.711181,
+          "ci_high": 11657763.711181,
+          "values": [
+            11657763.711181
+          ]
+        },
+        "select": {
+          "median": 11790275.258348,
+          "ci_low": 11790275.258348,
+          "ci_high": 11790275.258348,
+          "values": [
+            11790275.258348
+          ]
+        },
+        "fuse": {
+          "median": 5476825.003187,
+          "ci_low": 5476825.003187,
+          "ci_high": 5476825.003187,
+          "values": [
+            5476825.003187
+          ]
+        }
+      },
+      "ratios": {
+        "unattached_over_stock": {
+          "median": 0.999623106782137,
+          "ci_low": 0.999623106782137,
+          "ci_high": 0.999623106782137,
+          "values": [
+            0.999623106782137
+          ]
+        },
+        "pass_over_unattached": {
+          "median": 0.7713961114188539,
+          "ci_low": 0.7713961114188539,
+          "ci_high": 0.7713961114188539,
+          "values": [
+            0.7713961114188539
+          ]
+        },
+        "select_over_pass": {
+          "median": 1.011366806743553,
+          "ci_low": 1.011366806743553,
+          "ci_high": 1.011366806743553,
+          "values": [
+            1.011366806743553
+          ]
+        },
+        "select_over_unattached": {
+          "median": 0.7801644219400803,
+          "ci_low": 0.7801644219400803,
+          "ci_high": 0.7801644219400803,
+          "values": [
+            0.7801644219400803
+          ]
+        },
+        "select_over_fuse": {
+          "median": 2.1527573459964784,
+          "ci_low": 2.1527573459964784,
+          "ci_high": 2.1527573459964784,
+          "values": [
+            2.1527573459964784
+          ]
+        }
+      },
+      "fuse_measured_requests": {
+        "opendir": 1337,
+        "readdir": 18715,
+        "releasedir": 1337
+      }
+    },
+    {
+      "type": "MRDL",
+      "workers": 4,
+      "throughput": {
+        "stock": {
+          "median": 57430180.698193,
+          "ci_low": 57430180.698193,
+          "ci_high": 57430180.698193,
+          "values": [
+            57430180.698193
+          ]
+        },
+        "unattached": {
+          "median": 53823507.448741,
+          "ci_low": 53823507.448741,
+          "ci_high": 53823507.448741,
+          "values": [
+            53823507.448741
+          ]
+        },
+        "pass": {
+          "median": 45542680.766027,
+          "ci_low": 45542680.766027,
+          "ci_high": 45542680.766027,
+          "values": [
+            45542680.766027
+          ]
+        },
+        "select": {
+          "median": 45051703.748092,
+          "ci_low": 45051703.748092,
+          "ci_high": 45051703.748092,
+          "values": [
+            45051703.748092
+          ]
+        },
+        "fuse": {
+          "median": 12489931.493461,
+          "ci_low": 12489931.493461,
+          "ci_high": 12489931.493461,
+          "values": [
+            12489931.493461
+          ]
+        }
+      },
+      "ratios": {
+        "unattached_over_stock": {
+          "median": 0.9371989917913408,
+          "ci_low": 0.9371989917913408,
+          "ci_high": 0.9371989917913408,
+          "values": [
+            0.9371989917913408
+          ]
+        },
+        "pass_over_unattached": {
+          "median": 0.8461485125137884,
+          "ci_low": 0.8461485125137884,
+          "ci_high": 0.8461485125137884,
+          "values": [
+            0.8461485125137884
+          ]
+        },
+        "select_over_pass": {
+          "median": 0.9892194089219876,
+          "ci_low": 0.9892194089219876,
+          "ci_high": 0.9892194089219876,
+          "values": [
+            0.9892194089219876
+          ]
+        },
+        "select_over_unattached": {
+          "median": 0.8370265314091088,
+          "ci_low": 0.8370265314091088,
+          "ci_high": 0.8370265314091088,
+          "values": [
+            0.8370265314091088
+          ]
+        },
+        "select_over_fuse": {
+          "median": 3.6070417016841487,
+          "ci_low": 3.6070417016841487,
+          "ci_high": 3.6070417016841487,
+          "values": [
+            3.6070417016841487
+          ]
+        }
+      },
+      "fuse_measured_requests": {
+        "opendir": 3051,
+        "readdir": 42685,
+        "releasedir": 3051
+      }
+    },
+    {
+      "type": "MRDM",
+      "workers": 1,
+      "throughput": {
+        "stock": {
+          "median": 14883284.700292,
+          "ci_low": 14883284.700292,
+          "ci_high": 14883284.700292,
+          "values": [
+            14883284.700292
+          ]
+        },
+        "unattached": {
+          "median": 14891159.98978,
+          "ci_low": 14891159.98978,
+          "ci_high": 14891159.98978,
+          "values": [
+            14891159.98978
+          ]
+        },
+        "pass": {
+          "median": 11628933.855331,
+          "ci_low": 11628933.855331,
+          "ci_high": 11628933.855331,
+          "values": [
+            11628933.855331
+          ]
+        },
+        "select": {
+          "median": 11587611.474331,
+          "ci_low": 11587611.474331,
+          "ci_high": 11587611.474331,
+          "values": [
+            11587611.474331
+          ]
+        },
+        "fuse": {
+          "median": 3970180.162974,
+          "ci_low": 3970180.162974,
+          "ci_high": 3970180.162974,
+          "values": [
+            3970180.162974
+          ]
+        }
+      },
+      "ratios": {
+        "unattached_over_stock": {
+          "median": 1.0005291365210427,
+          "ci_low": 1.0005291365210427,
+          "ci_high": 1.0005291365210427,
+          "values": [
+            1.0005291365210427
+          ]
+        },
+        "pass_over_unattached": {
+          "median": 0.7809286760273942,
+          "ci_low": 0.7809286760273942,
+          "ci_high": 0.7809286760273942,
+          "values": [
+            0.7809286760273942
+          ]
+        },
+        "select_over_pass": {
+          "median": 0.9964465890412597,
+          "ci_low": 0.9964465890412597,
+          "ci_high": 0.9964465890412597,
+          "values": [
+            0.9964465890412597
+          ]
+        },
+        "select_over_unattached": {
+          "median": 0.778153715512004,
+          "ci_low": 0.778153715512004,
+          "ci_high": 0.778153715512004,
+          "values": [
+            0.778153715512004
+          ]
+        },
+        "select_over_fuse": {
+          "median": 2.9186613701809696,
+          "ci_low": 2.9186613701809696,
+          "ci_high": 2.9186613701809696,
+          "values": [
+            2.9186613701809696
+          ]
+        }
+      },
+      "fuse_measured_requests": {
+        "opendir": 970,
+        "readdir": 13568,
+        "releasedir": 970
+      }
+    },
+    {
+      "type": "MRDM",
+      "workers": 4,
+      "throughput": {
+        "stock": {
+          "median": 6983693.376376,
+          "ci_low": 6983693.376376,
+          "ci_high": 6983693.376376,
+          "values": [
+            6983693.376376
+          ]
+        },
+        "unattached": {
+          "median": 7760750.031686,
+          "ci_low": 7760750.031686,
+          "ci_high": 7760750.031686,
+          "values": [
+            7760750.031686
+          ]
+        },
+        "pass": {
+          "median": 5304311.100695,
+          "ci_low": 5304311.100695,
+          "ci_high": 5304311.100695,
+          "values": [
+            5304311.100695
+          ]
+        },
+        "select": {
+          "median": 5172939.646253,
+          "ci_low": 5172939.646253,
+          "ci_high": 5172939.646253,
+          "values": [
+            5172939.646253
+          ]
+        },
+        "fuse": {
+          "median": 5348378.301799,
+          "ci_low": 5348378.301799,
+          "ci_high": 5348378.301799,
+          "values": [
+            5348378.301799
+          ]
+        }
+      },
+      "ratios": {
+        "unattached_over_stock": {
+          "median": 1.1112672927391942,
+          "ci_low": 1.1112672927391942,
+          "ci_high": 1.1112672927391942,
+          "values": [
+            1.1112672927391942
+          ]
+        },
+        "pass_over_unattached": {
+          "median": 0.6834791842332608,
+          "ci_low": 0.6834791842332608,
+          "ci_high": 0.6834791842332608,
+          "values": [
+            0.6834791842332608
+          ]
+        },
+        "select_over_pass": {
+          "median": 0.9752330789148497,
+          "ci_low": 0.9752330789148497,
+          "ci_high": 0.9752330789148497,
+          "values": [
+            0.9752330789148497
+          ]
+        },
+        "select_over_unattached": {
+          "median": 0.6665515092140127,
+          "ci_low": 0.6665515092140127,
+          "ci_high": 0.6665515092140127,
+          "values": [
+            0.6665515092140127
+          ]
+        },
+        "select_over_fuse": {
+          "median": 0.967197784889863,
+          "ci_low": 0.967197784889863,
+          "ci_high": 0.967197784889863,
+          "values": [
+            0.967197784889863
+          ]
+        }
+      },
+      "fuse_measured_requests": {
+        "opendir": 328,
+        "readdir": 16322,
+        "releasedir": 328
+      }
+    }
+  ]
+}

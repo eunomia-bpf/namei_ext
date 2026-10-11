@@ -1,0 +1,55 @@
+# W4 ccache workload macrobench ledger
+
+- Run ID: 20260616T-eval-w4-ccache-workload-macrobench-ledger-v6
+- Rule macrobench run: 20260616T-w4-ccache-rule-macrobench-release-v1
+- Materialized external baseline run: 20260616T-w4-ccache-materialized-baseline-release-v1
+- Bulk policy compile run: 20260616T-w4-ccache-bulk-policy-compile-smoke-v1
+- Bulk policy macrobench run: 20260616T-w4-ccache-bulk-policy-macrobench-release-v1
+- Bulk materialized external baseline run: 20260616T-w4-ccache-bulk-materialized-release-v1
+- Bulk FUSE cache-view baseline run: 20260616T-w4-ccache-bulk-fuse-baseline-release-v1
+- Raw JSONL: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w4-ccache-workload-macrobench-ledger-v6/b3-macrobench/w4-ccache-workload-macrobench.jsonl
+- Input sha256: /home/yunwei37/workspace/namei_ext/results/eval-osdi/paper/20260616T-eval-w4-ccache-workload-macrobench-ledger-v6/b3-macrobench/w4-ccache-workload-macrobench-inputs.sha256
+- policy_release_input_pass=true
+- baseline_release_input_pass=true
+- table_release_input_pass=true
+- table_baseline_pass=true
+- materialized_baseline_pass=true
+- full_feature_equivalent_baseline_pass=true
+- bulk_policy_compile_smoke_pass=true
+- bulk_policy_release_input_pass=true
+- bulk_materialized_baseline_pass=true
+- bulk_fuse_baseline_pass=true
+- bulk_external_baseline_release_input_pass=true
+- bulk_release_comparison_pass=false
+- storage_footprint_pass=false
+- setup_latency_threshold_pass=false
+- update_latency_threshold_pass=false
+- rule_materialization_threshold_pass=false
+- threshold_pass=false
+- w4_c2_slice_supported=false
+- c2_supported=false
+- release_gate_pass=false
+- policy_setup_ns_avg=110545949.3
+- materialized_setup_ns_avg=57954965.5
+- table_setup_ns_avg=104058982.65
+- policy_update_ns_avg=6518131.3
+- materialized_update_ns_avg=3823967.1
+- table_update_ns_avg=6308357.65
+- bulk_policy_attached_compile_jobs=20
+- bulk_policy_redirected_cache_objects=40
+- bulk_policy_attached_cache_path_file_ops=400
+- bulk_policy_attached_policy_cache_object_ops=160
+- bulk_policy_attached_sampled_operation_hit_rate=0.40000000000000002
+- bulk_materialized_setup_ns_avg=484833438.65
+- bulk_materialized_update_ns_avg=3118517.5
+- bulk_fuse_setup_ns_avg=794157385
+- bulk_fuse_update_ns_avg=2279594
+- bulk_fuse_mounts_avg=1
+- bulk_best_external_setup_ns_avg=484833438.65
+- bulk_best_external_update_ns_avg=2279594
+- policy_setup_rule_writes_avg=8
+- baseline_setup_rule_writes_avg=0
+- policy_update_rule_writes_avg=2
+- baseline_update_rule_writes_avg=0
+- missing_inputs=W4 complete compile-through-FUSE or native/cache-remap/BuildKit baseline, W3 workload setup/storage/update macrobench
+- failed_gates=W4 setup latency threshold failed against materialized external baseline, W4 update latency threshold failed against materialized external baseline, W4 rule materialization threshold failed against materialized external baseline, W4 bulk comparison gate failed against FUSE/materialized external baselines or missing compile smoke

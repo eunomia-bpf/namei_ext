@@ -1,0 +1,61 @@
+{
+  "source": "Terminal-Bench",
+  "suite": "service-api-oracle-suite",
+  "date": "2026-07-01",
+  "official_unmodified": true,
+  "dataset_path": "original-tasks",
+  "run_id": "2026-07-01__terminal-bench-service-api-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-service-api-oracle-suite",
+  "raw_log": "results/reproduction/2026-07-01-official-workloads/terminal-bench-service-api-oracle-suite/tb-run.log",
+  "raw_run_log": "results/reproduction/2026-07-01-official-workloads/terminal-bench-service-api-oracle-suite/2026-07-01__terminal-bench-service-api-oracle-suite/run.log",
+  "raw_results": "results/reproduction/2026-07-01-official-workloads/terminal-bench-service-api-oracle-suite/2026-07-01__terminal-bench-service-api-oracle-suite/results.json",
+  "raw_metadata": "results/reproduction/2026-07-01-official-workloads/terminal-bench-service-api-oracle-suite/2026-07-01__terminal-bench-service-api-oracle-suite/run_metadata.json",
+  "n_requested_tasks": 4,
+  "n_tasks": 3,
+  "n_resolved": 3,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "parser_checks_passed": 10,
+  "parser_checks_failed": 0,
+  "resolved_tasks": [
+    "simple-web-scraper",
+    "create-bucket",
+    "simple-sheets-put"
+  ],
+  "unresolved_tasks": [],
+  "attempted_without_result_tasks": [
+    "mlflow-register"
+  ],
+  "task_results": [
+    {
+      "task_id": "simple-web-scraper",
+      "is_resolved": true,
+      "parser_checks_passed": 5,
+      "parser_checks_failed": 0,
+      "workload_shape": "Local web scraping with CSV structure, completeness, accuracy, and report-file oracles"
+    },
+    {
+      "task_id": "create-bucket",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_shape": "LocalStack S3 bucket creation and public ACL state oracle"
+    },
+    {
+      "task_id": "simple-sheets-put",
+      "is_resolved": true,
+      "parser_checks_passed": 3,
+      "parser_checks_failed": 0,
+      "workload_shape": "Spreadsheet API service state with spreadsheet, sheet, and cell-creation oracles"
+    },
+    {
+      "task_id": "mlflow-register",
+      "is_resolved": null,
+      "parser_checks_passed": null,
+      "parser_checks_failed": null,
+      "workload_shape": "MLflow tracking/model-registry service setup and registered-model oracle",
+      "boundary": "Requested and agent-side log shows MLflow server startup plus successful registration of model gpt-5, but the upstream harness did not write a per-task results.json or include the task in the suite results.json. The client container exited with status 255, so this task is tracked as attempted_without_result and is not counted in accuracy."
+    }
+  ],
+  "interpretation": "Selected official Terminal-Bench service/API tasks reproduced three clean results through the upstream harness and oracle agent. These workloads extend local-service/API coverage with web scraping output, S3-compatible bucket state, and spreadsheet service state. The MLflow task produced useful service-registration evidence but no upstream result summary, so it remains a boundary attempt rather than a resolved task."
+}

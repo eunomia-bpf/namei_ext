@@ -1,0 +1,15 @@
+{
+  "schema": "namei_ext.spindle_staging.summary.v1",
+  "boots": 1,
+  "source_passes": 1,
+  "namei_ext_passes": 1,
+  "withdrawn_passes": 1,
+  "mappings": 47,
+  "selections": 47,
+  "selection_hits": 68,
+  "identities": 47,
+  "preserved": 47,
+  "permission_probes": 1,
+  "withdrawal_controls": 1,
+  "verdict": "supported"
+}

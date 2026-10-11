@@ -1,0 +1,91 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-file-security-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-file-security-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id decommissioning-service-with-sensitive-data",
+    "--task-id git-leak-recovery",
+    "--task-id recover-obfuscated-files",
+    "--task-id fix-permissions",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 4,
+  "n_resolved": 4,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "reproduced_cleanly": true,
+  "tasks": [
+    {
+      "task_id": "decommissioning-service-with-sensitive-data",
+      "workload_role": "sensitive directory archive, symmetric encryption, secure deletion, service config/PID cleanup, no-plaintext-oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_original_sensitive_data_is_gone": "passed",
+        "test_config_file_is_gone": "passed",
+        "test_pid_file_is_gone": "passed",
+        "test_encrypted_archive_exists": "passed",
+        "test_intermediate_unencrypted_archive_is_gone": "passed",
+        "test_archive_is_correctly_encrypted_and_contains_data": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:37:18.292501+00:00",
+      "trial_ended_at": "2026-07-01T20:38:33.192964+00:00"
+    },
+    {
+      "task_id": "fix-permissions",
+      "workload_role": "execute-bit repair and command-run success oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_script_permissions": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:38:33.194773+00:00",
+      "trial_ended_at": "2026-07-01T20:39:02.294092+00:00"
+    },
+    {
+      "task_id": "recover-obfuscated-files",
+      "workload_role": "sensitive data directory recovery, base64 filename/content decoding, exact recovered-file set oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_recovered_directory_exists": "passed",
+        "test_all_files_recovered_and_correct_content": "passed",
+        "test_no_extra_files_in_recovered": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:39:02.295585+00:00",
+      "trial_ended_at": "2026-07-01T20:39:29.280335+00:00"
+    },
+    {
+      "task_id": "git-leak-recovery",
+      "workload_role": "git object traversal, secret recovery, unreachable object cleanup, repository content preservation oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_flag_file_exists_and_correct": "passed",
+        "test_no_secrets_in_commits": "passed",
+        "test_good_commits_preserved": "passed",
+        "test_no_secrets_in_unreachable_objects": "passed",
+        "test_repository_contents_checksum": "passed"
+      },
+      "trial_started_at": "2026-07-01T20:39:29.281901+00:00",
+      "trial_ended_at": "2026-07-01T20:40:26.162611+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-file-security-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-file-security-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-file-security-oracle-suite/run.log",
+    "per-task commands.txt and results.json"
+  ],
+  "interpretation": "Four additional official Terminal-Bench file/security tasks reproduced cleanly through the upstream Docker harness and oracle agent. Together with the earlier ACL and filesystem/service suites, Terminal-Bench now contributes eight selected official workload seeds for namei_ext. This is still selected official-task reproduction, not full Terminal-Bench-Core reproduction."
+}

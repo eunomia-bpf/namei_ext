@@ -1,0 +1,94 @@
+{
+  "source": {
+    "repository": "https://github.com/pdlfs/deltafs",
+    "cached_source": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/deltafs",
+    "build_dir": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/deltafs/build-repro-mpicxx-cstdint",
+    "large_dir_binary": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/deltafs/build-repro-mpicxx-cstdint/benchmarks/large_dir",
+    "vpic_io_binary": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/deltafs/build-repro-mpicxx-cstdint/benchmarks/vpic_io"
+  },
+  "result_root": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/deltafs-posix-mpirank-workloads",
+  "direct_posix_workloads": [
+    {
+      "name": "large_dir_direct_fixed_env",
+      "status": 0,
+      "pass": true,
+      "log": "large-dir-direct-fixed-env.log",
+      "workload": "metadata create/stat/delete via large_dir",
+      "scale": {
+        "processes": 1,
+        "dirs": 2,
+        "files": 8
+      },
+      "oracle": "all printed phases report 0 fail"
+    },
+    {
+      "name": "vpic_direct_fixed_env",
+      "status": 0,
+      "pass": true,
+      "log": "vpic-direct-fixed-env.log",
+      "workload": "VPIC one-file-per-particle dump pattern via vpic_io",
+      "scale": {
+        "processes": 1,
+        "dumps": 2,
+        "x": 2,
+        "y": 2,
+        "z": 2,
+        "ppc": 2
+      },
+      "oracle": "all printed phases report 0 fail"
+    }
+  ],
+  "failed_or_blocked_attempts": [
+    {
+      "name": "large_dir_np2_unfixed_mpi_linkage",
+      "status": 127,
+      "log": "large-dir-np2.log",
+      "reason": "mixed MPI libraries: libmpi_cxx from system OpenMPI and libmpi from /usr/local cause undefined symbol ompi_mpi_errors_throw_exceptions"
+    },
+    {
+      "name": "vpic_np2_unfixed_mpi_linkage",
+      "status": 127,
+      "log": "vpic-np2.log",
+      "reason": "same mixed MPI library undefined-symbol failure"
+    },
+    {
+      "name": "large_dir_np2_fixed_env_timeout",
+      "status": 124,
+      "log": "large-dir-np2-fixed-timeout.log",
+      "reason": "with consistent OpenMPI libraries, 2-rank run reaches Bulk creations and times out"
+    },
+    {
+      "name": "vpic_np2_fixed_env_timeout",
+      "status": 124,
+      "log": "vpic-np2-fixed-timeout.log",
+      "reason": "with consistent OpenMPI libraries, 2-rank run reaches Dump and times out"
+    },
+    {
+      "name": "deltafs_server_shell_envdefault",
+      "shell_status": 0,
+      "server_status": 1,
+      "shell_log": "deltafs-shell-np2-envdefault.log",
+      "server_log": "deltafs-server-np2-envdefault.log",
+      "reason": "server starts with DELTAFS_EnvName=default, but shell still receives connection refused"
+    },
+    {
+      "name": "deltafs_server_shell_envdefault_tcp",
+      "shell_status": 0,
+      "server_status": 1,
+      "shell_log": "deltafs-shell-np2-envdefault-tcp.log",
+      "server_log": "deltafs-server-np2-envdefault-tcp.log",
+      "reason": "explicit DELTAFS_RPCProto=tcp and loopback addresses still leave shell on failing UDP connection path"
+    }
+  ],
+  "verdict": {
+    "reproduced_cleanly": [
+      "large_dir direct POSIX",
+      "vpic_io direct POSIX"
+    ],
+    "not_reproduced_cleanly": [
+      "multi-rank POSIX benchmark",
+      "README server/shell local test"
+    ],
+    "reuse_decision": "DeltaFS remains related-work or appendix workload-shape evidence; direct POSIX generators are usable, but multi-rank/server reproduction is not closed on this host."
+  }
+}

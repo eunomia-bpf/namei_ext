@@ -1,0 +1,73 @@
+{
+  "schema": "namei_ext.workload_build_provenance.v1",
+  "project": "dmtcp",
+  "commit": "068559d9b14c5f96a57869753bba7c066cbf9653",
+  "commit_short": "068559d9b14c",
+  "source": {
+    "url": "https://github.com/dmtcp/dmtcp/archive/068559d9b14c5f96a57869753bba7c066cbf9653.tar.gz",
+    "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/dmtcp-068559d9b14c5f96a57869753bba7c066cbf9653.tar.gz",
+    "expected_archive_sha256": "e2f15525073fc631efd994640ef645461f2c910843da60f9e8929d593ed49c7e",
+    "archive_sha256": "e2f15525073fc631efd994640ef645461f2c910843da60f9e8929d593ed49c7e",
+    "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/dmtcp-068559d9b14c/dmtcp-068559d9b14c5f96a57869753bba7c066cbf9653",
+    "license": {
+      "spdx": "LGPL-3.0-or-later",
+      "path": "COPYING",
+      "sha256": "f9de575a82f84070ce62a0bc558d590c14dbdb65d196c81e3a9b683a1794af1d"
+    },
+    "patches": [
+      {
+        "path": "/home/yunwei37/workspace/namei_ext/thirdparty/patches/dmtcp/restart-env-scan-count.patch",
+        "expected_sha256": "7c945ba6f4bfc375b3c83f5714ed9546660a164a4c9e235999f1e9e55ca3c127",
+        "sha256": "7c945ba6f4bfc375b3c83f5714ed9546660a164a4c9e235999f1e9e55ca3c127",
+        "purpose": "fix dmtcp_get_restart_env flattened-environment scan bound"
+      }
+    ],
+    "pinned_files": {
+      "src/dmtcpplugin.cpp": "86ddff5d38fe78c71fd76f36917f96cb1de7b13b01389714f78191fa838c2533",
+      "src/plugin_pathtranslator.cpp": "d03a89f00a121d15505f5ea5623cb2fb4f7a020b3160da48500e1020c638c1d2",
+      "test/pathvirt1.c": "ffce8c1c76864b3a45d234cdbf0ea3bbaa99cf0ec4afbc1df6632e7ac402adda",
+      "test/autotest.py": "be303d3d34c12b2e620a4b302446f630b530516d632ea73aea928bd4fe86d96f"
+    }
+  },
+  "build": {
+    "configure_command": [
+      "./configure",
+      "--prefix=/home/yunwei37/workspace/namei_ext/.build/workloads/dmtcp-068559d9b14c/install"
+    ],
+    "make_jobs": "4",
+    "toolchain": {
+      "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "cxx": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "make": "GNU Make 4.3"
+    },
+    "logs": {
+      "configure": {
+        "path": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/dmtcp-068559d9b14c/configure.log",
+        "sha256": "5f565b4826cf9bb606597849d418f02d3f3a40458fae7ec148fbb6d3e3e5ffd9"
+      },
+      "build": {
+        "path": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/dmtcp-068559d9b14c/build.log",
+        "sha256": "86a1e5dadec1b2dcf8fb96a0c0d04c7245a9f7605ed461011d799156dc6d8cae"
+      },
+      "install": {
+        "path": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/dmtcp-068559d9b14c/install.log",
+        "sha256": "232dc3472fbde416e0c3fabe28c08ba78a91c6096a374983dbf5191348c05fc3"
+      }
+    }
+  },
+  "install": {
+    "root": "/home/yunwei37/workspace/namei_ext/.build/workloads/dmtcp-068559d9b14c/install",
+    "file_count": 23,
+    "manifest": {
+      "path": "/home/yunwei37/workspace/namei_ext/results/workloads/provenance/build/dmtcp-068559d9b14c/install-tree.sha256",
+      "sha256": "73ef79905db3cf87026fe6f6afd412e246046fd09293f7406565d16befbe9ff1"
+    },
+    "artifacts": {
+      "dmtcp_launch": "fe777949e9e2ad6e9b3c70b30dd33c20b3cfae0c7e40ce509b9a77141c3750e7",
+      "dmtcp_coordinator": "90fa2e5e31d41c0083203f06d0761151a06509f2513de167032d2f3152f56bbf",
+      "dmtcp_command": "f89a578463176b47e8347e4749753d26fbc73964b6aa8da6ba25fd6d2cc5fe18",
+      "dmtcp_restart": "143f626e7a557ee8a4d68ebbfa8391adf04b73f0af79a88ddf1b992b5ca5766d",
+      "lib/dmtcp/libdmtcp.so": "f0e4c97ada18181b1d9124eb87215c8466c7394c840e631d4d74a169ca456c8c"
+    }
+  }
+}

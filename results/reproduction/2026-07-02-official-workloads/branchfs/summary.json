@@ -1,0 +1,96 @@
+{
+  "source": {
+    "name": "BranchFS",
+    "repo": "https://github.com/multikernel/branchfs",
+    "commit": "a4b6592d31aacb4d2f94d0c80f43d47d38063fa9",
+    "local_checkout": ".cache/source-inspection/branchfs"
+  },
+  "result_root": "results/reproduction/2026-07-02-official-workloads/branchfs",
+  "host": {
+    "uname": "Linux lab 6.15.11-061511-generic #202508201748 SMP PREEMPT_DYNAMIC Wed Aug 20 20:23:19 UTC 2025 x86_64",
+    "python": "Python 3.12.3",
+    "cargo": "cargo 1.90.0 (840b83a10 2025-07-30)"
+  },
+  "commands": [
+    {
+      "name": "cargo build --release",
+      "status": 0,
+      "log": "cargo-build-release.log"
+    },
+    {
+      "name": "tests/run_all_tests.sh",
+      "status": 0,
+      "log": "run-all-tests.log"
+    },
+    {
+      "name": "python3 bench/branchfs_bench.py --quick",
+      "status": 0,
+      "log": "python-bench-quick.log",
+      "artifact": "bench-results-quick.json"
+    },
+    {
+      "name": "bench/quick_bench.sh",
+      "status": 0,
+      "log": "shell-quick-bench.log"
+    }
+  ],
+  "test_summary": {
+    "upstream_shell_suites": "all passed",
+    "rust_test_ioctl": {
+      "passed": 8,
+      "failed": 0
+    },
+    "rust_test_integration": {
+      "passed": 22,
+      "failed": 0
+    },
+    "overall": "passed"
+  },
+  "workload_shape": [
+    "FUSE mount over base tree",
+    "branch creation",
+    "nested branch inheritance",
+    "@branch virtual paths",
+    "commit leaf branch to parent/base",
+    "abort leaf branch",
+    "rename/delete/tombstone behavior",
+    "symlink behavior",
+    "readdir behavior",
+    "unmount cleanup"
+  ],
+  "quick_benchmark": {
+    "python_rows": 4,
+    "read_throughput_mbps": 4492.575905914009,
+    "write_throughput_mbps": 1414.6567636493603,
+    "nested_read_latency_us": {
+      "depth_1": 70.7432333607964,
+      "depth_4": 178.542600012103
+    },
+    "shell_branch_creation_us": {
+      "files_100": 102370,
+      "files_1000": 112724,
+      "files_10000": 160922
+    },
+    "shell_commit_us": {
+      "kb_1": 3621,
+      "kb_10": 2007,
+      "kb_100": 2845,
+      "kb_1000": 3224
+    },
+    "shell_abort_us": {
+      "kb_1": 2872,
+      "kb_100": 3258,
+      "kb_1000": 2962
+    },
+    "shell_read_1mb_us": 1938,
+    "shell_switch_branch_us": 1809
+  },
+  "reuse_verdict": "Primary source-backed AI agent workspace lifecycle workload seed; use branch/session path-view transitions, @branch namespace, commit/abort, nested branch inheritance, readdir/symlink/rename/tombstone oracles, and FUSE source-system behavior. Do not claim BranchFS requires namei_ext or eBPF.",
+  "raw_logs": [
+    "cargo-build-release.log",
+    "run-all-tests.log",
+    "python-bench-quick.log",
+    "bench-results-quick.json",
+    "shell-quick-bench.log"
+  ]
+}

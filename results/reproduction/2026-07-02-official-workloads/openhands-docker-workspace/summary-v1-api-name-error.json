@@ -1,0 +1,39 @@
+{
+  "checkout": "feca62017e2d33519c953b83f3747ded6b96329d",
+  "container_id": "92cb00ffe513c58cf7457b04b03463773c9330c64c751ce63671ecb64504e5e8",
+  "errors": [
+    {
+      "message": "'DockerWorkspace' object has no attribute 'server_info'",
+      "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 53, in <module>\n  File \"/home/yunwei37/workspace/namei_ext/.cache/venvs/openhands-sdk/lib/python3.13/site-packages/pydantic/main.py\", line 1042, in __getattr__\n    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'DockerWorkspace' object has no attribute 'server_info'. Did you mean: 'get_server_info'?\n",
+      "type": "AttributeError"
+    }
+  ],
+  "host": "http://127.0.0.1:37640",
+  "host_workspace": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/openhands-docker-workspace/host-workspace",
+  "image": "ghcr.io/openhands/agent-server:latest-python",
+  "image_id": "sha256:1f489728c1a86fecba4b141c8652fdc2c8a88d21aaab528b1e53f7280306b46a",
+  "image_size": 3722305628,
+  "repo_digests": [
+    "ghcr.io/openhands/agent-server@sha256:25bc9f1433a4e5d1739bd782dead90b78ced10fc57066de631896eeddf78d9ec"
+  ],
+  "source": "OpenHands software-agent-sdk DockerWorkspace",
+  "status": "error",
+  "steps": [
+    {
+      "image_id": "sha256:1f489728c1a86fecba4b141c8652fdc2c8a88d21aaab528b1e53f7280306b46a",
+      "image_size": 3722305628,
+      "name": "image_inspect",
+      "ok": true,
+      "repo_digests": [
+        "ghcr.io/openhands/agent-server@sha256:25bc9f1433a4e5d1739bd782dead90b78ced10fc57066de631896eeddf78d9ec"
+      ]
+    },
+    {
+      "alive": true,
+      "container_id": "92cb00ffe513c58cf7457b04b03463773c9330c64c751ce63671ecb64504e5e8",
+      "host": "http://127.0.0.1:37640",
+      "name": "container_started",
+      "ok": true
+    }
+  ]
+}

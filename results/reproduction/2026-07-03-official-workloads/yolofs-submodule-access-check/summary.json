@@ -1,0 +1,25 @@
+{
+  "date": "2026-07-03",
+  "source": "YoloFS umbrella .gitmodules and git ls-remote",
+  "result_root": "results/reproduction/2026-07-03-official-workloads/yolofs-submodule-access-check",
+  "checked_repositories": [
+    "https://github.com/YoloFS/agent-eval.git",
+    "https://github.com/YoloFS/perf-eval.git",
+    "https://github.com/YoloFS/agent-results.git",
+    "https://github.com/YoloFS/perf-results.git"
+  ],
+  "public_access": {
+    "agent_eval": false,
+    "perf_eval": false,
+    "agent_results": false,
+    "perf_results": false
+  },
+  "statuses": {
+    "agent_eval": 128,
+    "perf_eval": 128,
+    "agent_results": 128,
+    "perf_results": 128
+  },
+  "stderr_signature": "remote: Repository not found.; fatal: repository ... not found",
+  "conclusion": "The public filesystem repository and compat VM e2e are reproducible, but the original YoloFS agent/perf benchmark and result submodules are not publicly readable from this environment on 2026-07-03."
+}

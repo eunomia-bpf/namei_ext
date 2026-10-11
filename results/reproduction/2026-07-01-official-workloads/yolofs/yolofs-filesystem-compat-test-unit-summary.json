@@ -1,0 +1,14 @@
+{
+  "log": "yolofs-filesystem-compat-test-unit.log",
+  "repo": "https://github.com/YoloFS/filesystem",
+  "branch": "compat",
+  "head": "f37d17583464e72793c63a31de17ca86e19262fe",
+  "exit": "0",
+  "test_results": [
+    "ok. 288 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s"
+  ],
+  "built_module": false,
+  "failure_lines": [
+    "test result: ok. 288 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s"
+  ]
+}

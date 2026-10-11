@@ -1,0 +1,105 @@
+{
+  "source": "AgentCgroup",
+  "official_repository": "https://github.com/eunomia-bpf/agentcgroup",
+  "local_checkout": ".cache/source-inspection/agentcgroup",
+  "commit": "5af9e7b8f37a93513206c331c7ec0ff149e89f27",
+  "checkout_dirty_before_run": true,
+  "result_root": "results/reproduction/2026-07-02-official-workloads/agentcgroup",
+  "environment": {
+    "host_kernel": "Linux lab 6.15.11-061511-generic x86_64",
+    "system_python": "Python 3.12.3",
+    "uv": "uv 0.8.22",
+    "venv_python": "3.13.7",
+    "matplotlib_compat_version": "3.9.4",
+    "numpy_version": "2.5.0",
+    "pandas_version": "3.0.3",
+    "clang": "Ubuntu clang version 18.1.3",
+    "gcc": "gcc 13.3.0",
+    "bpftool": "v7.7.0",
+    "cgroup_v2": true,
+    "cgroup_controllers": "cpuset cpu io memory hugetlb pids rdma misc dmem"
+  },
+  "raw_logs": [
+    "source-inspection.log",
+    "uv-venv.log",
+    "uv-pip-install.log",
+    "uv-pip-install-matplotlib-compat.log",
+    "python-package-versions.log",
+    "python-unit.log",
+    "bash-wrapper.log",
+    "python-integration.log",
+    "characterization-fast.log",
+    "characterization-fast-matplotlib-compat.log",
+    "make-agentcg.log",
+    "make-memcg.log"
+  ],
+  "reproduced": {
+    "python_unit_tests": {
+      "command": "python -m unittest test_agentcgroupd -v",
+      "tests": 43,
+      "passed": 43,
+      "failed": 0,
+      "status": "pass"
+    },
+    "bash_wrapper_tests": {
+      "command": "bash test_bash_wrapper.sh",
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "status": "pass"
+    },
+    "python_integration_tests": {
+      "command": "python test_integration.py -v",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "status": "pass",
+      "oracle": "tmpdir cgroup simulation drives trace-derived memory pressure, activates protection, throttles low cgroups, and restores defaults"
+    },
+    "characterization_fast": {
+      "command": "python analysis/characterization.py --skip-extended --skip-rq",
+      "initial_run_status": "fail",
+      "initial_failure": "latest Matplotlib rejected Axes.boxplot(labels=...), exposing dependency drift from unbounded requirements",
+      "compatibility_rerun_status": "pass",
+      "compatibility_fix": "installed matplotlib<3.10, resolved to matplotlib 3.9.4",
+      "haiku_tasks_loaded": 33,
+      "local_tasks_loaded": 111,
+      "haiku_figure_count_reported": 43,
+      "qwen3_figure_count_reported": 42,
+      "comparison_figure_count_reported": 34
+    },
+    "agentcg_scheduler_process_build": {
+      "command": "make",
+      "components": [
+        "scheduler",
+        "process"
+      ],
+      "status": "pass"
+    }
+  },
+  "negative_or_boundary": {
+    "memcg_build": {
+      "command": "make memcg",
+      "status": "fail",
+      "failure": "memcg_priority.bpf.c cannot instantiate struct memcg_bpf_ops because the running kernel BTF exposes it only as an incomplete type",
+      "claim_boundary": "do not claim full memcg_bpf_ops memory-controller reproduction on this host"
+    },
+    "live_agent_validation": {
+      "status": "not_run",
+      "reason": "requires live Claude Code/API behavior and would not be a deterministic no-credential reproduction"
+    },
+    "real_cgroup_e2e": {
+      "status": "not_run",
+      "reason": "requires root and writes under /sys/fs/cgroup; this run kept to non-root local reproduction plus BPF builds"
+    }
+  },
+  "workload_shapes_for_namei_ext": [
+    "per-tool-call bash wrapper boundaries with JSONL command, duration, memory, hint, exit, and ephemeral cgroup path",
+    "trace-derived pressure timeline over SWE-rebench-style agent tasks",
+    "operation-weighted tool-call/resource phases for agent workspace workload selection",
+    "process/scheduler BPF component build evidence for OS-level agent-resource instrumentation"
+  ],
+  "use_decision": "Use AgentCgroup as a trace and per-tool-call workload source for operation-weighted agent workspace experiments; do not use it as a filesystem baseline or claim full memory-controller reproduction on this host.",
+  "pass": false,
+  "pass_explanation": "local tests, wrapper, integration, characterization, and scheduler/process build passed; overall source reproduction is partial because memcg_bpf_ops build is blocked by host kernel BTF and live/root tests were not run"
+}

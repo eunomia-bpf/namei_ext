@@ -1,0 +1,29 @@
+{
+  "max_workers": 1,
+  "total": 1,
+  "all_ok": true,
+  "items": [
+    {
+      "instance_id": "unidata__netcdf-c-1925",
+      "from_fail_to_pass": [
+        "do_comps.sh",
+        "format",
+        "run_examples.sh",
+        "run_examples4.sh",
+        "run_filter.sh",
+        "sfc_pres_temp_more",
+        "simple",
+        "t_dap3a",
+        "test_cvt3",
+        "test_vara",
+        "tst_filter.sh",
+        "tst_ncdap3.sh"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 0,
+      "log_path": "logs/unidata__netcdf-c-1925_log.txt",
+      "error": ""
+    }
+  ]
+}

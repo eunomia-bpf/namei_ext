@@ -1,0 +1,151 @@
+{
+  "system": "AgentFS",
+  "source": {
+    "repository": "https://github.com/tursodatabase/agentfs",
+    "checkout": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/agentfs",
+    "commit": "0a014ebd4918615baff589ed17486e557e7c6a23"
+  },
+  "environment": {
+    "kernel": "Linux lab 6.15.11-061511-generic x86_64",
+    "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+    "cargo": "cargo 1.90.0 (840b83a10 2025-07-30)",
+    "rust_toolchain_used": "nightly-x86_64-unknown-linux-gnu",
+    "python": "Python 3.12.3",
+    "uv": "uv 0.8.22",
+    "node": "v22.22.0",
+    "npm": "10.9.4",
+    "fusermount": "/usr/bin/fusermount",
+    "fusermount3": "/usr/bin/fusermount3",
+    "default_umask": "0077",
+    "integration_umask": "022"
+  },
+  "commands": [
+    {
+      "name": "CLI Rust cargo test",
+      "working_directory": ".cache/source-inspection/agentfs/cli",
+      "command": "cargo +nightly test --verbose",
+      "log": "cli-cargo-test.log",
+      "exit_status": 0,
+      "passed_tests": 77,
+      "failed_tests": 0,
+      "ignored_doc_tests": 1
+    },
+    {
+      "name": "Rust SDK cargo test",
+      "working_directory": ".cache/source-inspection/agentfs/sdk/rust",
+      "command": "cargo +nightly test --verbose",
+      "log": "rust-sdk-cargo-test.log",
+      "exit_status": 0,
+      "passed_tests": 103,
+      "failed_tests": 0
+    },
+    {
+      "name": "Python SDK pytest",
+      "working_directory": ".cache/source-inspection/agentfs/sdk/python",
+      "command": "UV_CACHE_DIR=/home/yunwei37/workspace/namei_ext/.cache/uv-cache UV_PROJECT_ENVIRONMENT=/home/yunwei37/workspace/namei_ext/.cache/venvs/agentfs-python uv sync && uv run pytest -q",
+      "sync_log": "python-sdk-uv-sync.log",
+      "log": "python-sdk-pytest.log",
+      "exit_status": 0,
+      "passed_tests": 131,
+      "failed_tests": 0
+    },
+    {
+      "name": "TypeScript SDK build and test",
+      "working_directory": ".cache/source-inspection/agentfs/sdk/typescript",
+      "command": "npm ci && npm run build && npm test",
+      "install_log": "typescript-sdk-npm-ci.log",
+      "build_log": "typescript-sdk-build.log",
+      "test_log": "typescript-sdk-test.log",
+      "exit_status": 0,
+      "passed_tests": 234,
+      "skipped_tests": 5,
+      "failed_tests": 0
+    },
+    {
+      "name": "CLI integration all.sh with default umask",
+      "working_directory": ".cache/source-inspection/agentfs/cli",
+      "command": "./tests/all.sh",
+      "log": "cli-integration-all.log",
+      "exit_status": 1,
+      "boundary": "With this shell's default umask 0077, the Linux baseline syscall test fails two permission-mode assertions after 20/22 syscall subtests pass."
+    },
+    {
+      "name": "CLI integration all.sh with CI-like umask",
+      "working_directory": ".cache/source-inspection/agentfs/cli",
+      "command": "umask 022; ./tests/all.sh",
+      "log": "cli-integration-all-umask022.log",
+      "exit_status": 0,
+      "passed_cases": [
+        "init",
+        "Linux syscall baseline",
+        "agentfs run FUSE overlay syscalls",
+        "interactive bash session",
+        "git init and commit in overlay",
+        "FUSE mount read/write/mkdir/symlink",
+        "overlay whiteout persistence",
+        "overlay readdir/unlink for delta files in base directories",
+        "FUSE cache invalidation after mutations",
+        "symlink handling"
+      ],
+      "failed_cases": []
+    },
+    {
+      "name": "TypeScript examples build/typecheck",
+      "working_directory": ".cache/source-inspection/agentfs/examples",
+      "command": "npm ci plus npm run build or npm run typecheck for upstream example packages",
+      "log": "examples-summary.log",
+      "exit_status": 0,
+      "passed_cases": [
+        "mastra research-assistant build",
+        "claude-agent research-assistant build",
+        "openai-agents research-assistant build",
+        "ai-sdk-just-bash typecheck",
+        "cloudflare typecheck"
+      ],
+      "failed_cases": []
+    }
+  ],
+  "aggregate": {
+    "unit_and_sdk_tests_passed": 545,
+    "unit_and_sdk_tests_failed": 0,
+    "typescript_tests_skipped": 5,
+    "cli_integration_cases_passed_after_umask_fix": 10,
+    "cli_integration_cases_failed_after_umask_fix": 0,
+    "examples_passed": 5,
+    "examples_failed": 0
+  },
+  "workload_shapes_reproduced": [
+    "SQLite-backed agent filesystem SDK operations for files/directories, key-value state, and tool-call audit trails across Rust, Python, and TypeScript SDKs",
+    "CLI init and database-backed agent filesystem creation",
+    "FUSE mount read/write/mkdir/symlink behavior",
+    "agentfs run copy-on-write FUSE overlay syscall workload",
+    "interactive bash session whose writes remain out of the host filesystem",
+    "git init/add/commit/log inside the overlay with no host repository materialization",
+    "overlay whiteout persistence across remount",
+    "overlay readdir/unlink behavior for delta files under base directories such as .git",
+    "FUSE cache invalidation for unlink, rmdir, rename, cached-negative file create, and cached-negative directory create",
+    "symlink handling for host-visible and sandbox-created symlinks",
+    "AI framework integration examples for Mastra, Claude Agent SDK, OpenAI Agents, AI SDK plus just-bash, and Cloudflare Workers"
+  ],
+  "boundaries": [
+    "The first unmodified integration run under the repository process umask 0077 failed the Linux baseline syscall permission assertions; rerunning the same upstream integration suite with CI-like umask 022 passed.",
+    "Earlier AgentFS pjdfstest and xfstests records remain separate negative full-filesystem conformance evidence; this record is the positive official SDK/CLI/workspace workload evidence.",
+    "This reproduction does not claim AgentFS requires namei_ext or eBPF policy logic."
+  ],
+  "raw_artifacts": [
+    "source-inspection.log",
+    "cli-cargo-test.log",
+    "rust-sdk-cargo-test.log",
+    "python-sdk-uv-sync.log",
+    "python-sdk-pytest.log",
+    "typescript-sdk-npm-ci.log",
+    "typescript-sdk-build.log",
+    "typescript-sdk-test.log",
+    "cli-integration-all.log",
+    "cli-integration-all-umask022.log",
+    "examples-summary.log",
+    "example-*-npm-ci.log",
+    "example-*-run.log"
+  ],
+  "verdict": "AgentFS provides a strong source-backed agent workspace workload seed: SDK state, filesystem operations, tool-call audit, FUSE mount, copy-on-write sandbox run, overlay whiteout, cache invalidation, git/bash execution, symlink behavior, and AI-framework example integration all reproduce on this host once the CI-like umask is used for permission-sensitive syscall assertions."
+}

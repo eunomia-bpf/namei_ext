@@ -1,0 +1,16 @@
+{
+  "repo": "https://github.com/YoloFS/filesystem",
+  "head": "684829ec5e8193e8560b52573b2575a347906d0e",
+  "exit": "2",
+  "failure_lines": [
+    "make[1]: Entering directory '/usr/src/linux-headers-6.15.11-061511-generic'",
+    "make[2]: Entering directory '/home/yunwei37/workspace/namei_ext/.cache/source-inspection/yolofs-filesystem/build/6.15.11-061511-generic'",
+    "make[4]: *** No rule to make target 'dentry.o', needed by 'yolofs.o'.  Stop.",
+    "make[4]: *** Waiting for unfinished jobs....",
+    "make[3]: *** [/usr/src/linux-headers-6.15.11-061511-generic/Makefile:2010: .] Error 2",
+    "make[2]: *** [/usr/src/linux-headers-6.15.11-061511-generic/Makefile:248: __sub-make] Error 2",
+    "make[2]: Leaving directory '/home/yunwei37/workspace/namei_ext/.cache/source-inspection/yolofs-filesystem/build/6.15.11-061511-generic'",
+    "make[1]: *** [Makefile:248: __sub-make] Error 2",
+    "make[1]: Leaving directory '/usr/src/linux-headers-6.15.11-061511-generic'"
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-filesystem-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-filesystem-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id deterministic-tarball",
+    "--task-id tree-directory-parser",
+    "--task-id nginx-request-logging",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 3,
+  "n_resolved": 3,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "reproduced_cleanly": true,
+  "tasks": [
+    {
+      "task_id": "nginx-request-logging",
+      "workload_role": "service fixture setup, nginx configuration, document root materialization, custom access/error log paths, rate limit configuration, 404 route, localhost health oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_nginx_installed": "passed",
+        "test_nginx_running": "passed",
+        "test_index_page_content": "passed",
+        "test_custom_404_page": "passed",
+        "test_nginx_config_syntax": "passed",
+        "test_nginx_config_settings": "passed",
+        "test_log_file_creation": "passed",
+        "test_log_file_format": "passed"
+      },
+      "trial_started_at": "2026-07-01T08:31:08.203155+00:00",
+      "trial_ended_at": "2026-07-01T08:32:28.772542+00:00"
+    },
+    {
+      "task_id": "deterministic-tarball",
+      "workload_role": "source-tree packaging, exclude rules, sensitive-file permission filtering, symlink preservation, metadata normalization, deterministic archive oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_build_script_exists": "passed",
+        "test_reproducible_builds": "passed",
+        "test_exclusions": "passed",
+        "test_line_endings": "passed",
+        "test_permissions": "passed",
+        "test_metadata": "passed",
+        "test_symlinks": "passed",
+        "test_source_date_epoch": "passed",
+        "test_performance_constraints": "passed",
+        "test_0600_exclusion": "passed",
+        "test_edge_cases": "passed",
+        "test_build_script_creates_archive": "passed"
+      },
+      "trial_started_at": "2026-07-01T08:32:28.777313+00:00",
+      "trial_ended_at": "2026-07-01T08:35:02.711365+00:00"
+    },
+    {
+      "task_id": "tree-directory-parser",
+      "workload_role": "directory reconstruction from tree output, deep directory enumeration, idempotent creation, zero-byte file oracle, directory permission oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_output_files_exist": "passed",
+        "test_tree_map_hash_unchanged": "passed",
+        "test_directory_reconstruction_and_comparison": "passed",
+        "test_files_and_directories_created": "passed",
+        "test_files_are_zero_byte": "passed",
+        "test_directory_permissions": "passed",
+        "test_script_is_reproducible": "passed",
+        "test_tree_command_availability": "passed"
+      },
+      "trial_started_at": "2026-07-01T08:35:02.713473+00:00",
+      "trial_ended_at": "2026-07-01T08:35:53.594745+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-filesystem-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-filesystem-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-filesystem-oracle-suite/run.log",
+    "per-task commands.txt and results.json"
+  ],
+  "interpretation": "Three additional official Terminal-Bench tasks reproduced cleanly through the upstream Docker harness and oracle agent. Together with the earlier ACL task, Terminal-Bench now contributes four source-backed workload seeds for namei_ext: protected path permissions, deterministic source-tree materialization, deep directory reconstruction, and service/logging fixture setup. This is still selected official-task reproduction, not full Terminal-Bench-Core reproduction."
+}

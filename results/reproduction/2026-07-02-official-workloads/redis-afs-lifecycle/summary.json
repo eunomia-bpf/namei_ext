@@ -1,0 +1,123 @@
+{
+  "source": {
+    "name": "Redis Agent Filesystem",
+    "repo": "https://github.com/redis/agent-filesystem.git",
+    "commit": "990b8eb7abff1bb51d35abf4ba9829963b679de2",
+    "local_checkout": ".cache/source-inspection/redis-agent-filesystem-lifecycle-20260702",
+    "checkout_state": "fresh clone; clean after build except compiled binary ignored by git status"
+  },
+  "result_root": "results/reproduction/2026-07-02-official-workloads/redis-afs-lifecycle",
+  "environment": {
+    "go": "go version go1.22.2 linux/amd64",
+    "redis_server": "Redis server v=7.0.15",
+    "ports": [
+      16479,
+      16480,
+      16481,
+      16482
+    ],
+    "host_inotify": {
+      "initial_max_user_watches": 524288,
+      "dominant_existing_watch_holder": "VS Code process PID 108856 had 523947 watch descriptors before the rerun",
+      "raise_command": "sudo -n sysctl -w fs.inotify.max_user_watches=1048576",
+      "raise_status": 0,
+      "post_raise_max_user_watches": 1048576
+    }
+  },
+  "commands": [
+    {
+      "name": "git clone",
+      "status": 0,
+      "log": "git-clone.log"
+    },
+    {
+      "name": "make afs",
+      "status": 0,
+      "log": "make-afs.log"
+    },
+    {
+      "name": "lifecycle-smoke",
+      "status": 0,
+      "log": "lifecycle-smoke.log"
+    },
+    {
+      "name": "lifecycle-smoke-v2",
+      "status": 0,
+      "log": "lifecycle-smoke-v2.log"
+    },
+    {
+      "name": "lifecycle-smoke-v3",
+      "status": 1,
+      "log": "lifecycle-smoke-v3.log"
+    },
+    {
+      "name": "inotify-sysctl-raise",
+      "status": 0,
+      "log": "inotify-sysctl-raise.log"
+    },
+    {
+      "name": "lifecycle-smoke-v4",
+      "status": 0,
+      "log": "lifecycle-smoke-v4.log"
+    }
+  ],
+  "positive_evidence": {
+    "workspace_create": true,
+    "workspace_add_import": true,
+    "workspace_mount": true,
+    "fs_ls": true,
+    "keyword_query": {
+      "v1_status": "ok",
+      "v1_results": 3,
+      "v2_status": "ok",
+      "v2_results": 3,
+      "v4_status": "ok",
+      "v4_results": 3
+    },
+    "checkpoint_create_and_list": true,
+    "workspace_bookmark_create_and_list": true,
+    "volume_fork": true,
+    "workspace_unmount": true,
+    "isolated_redis_shutdown": true
+  },
+  "negative_or_caveat_evidence": {
+    "sync_watcher": "v1/v2 mount logs report afs sync cannot watch mounted directories: no space left on device; host diagnosis found fs.inotify.max_user_watches=524288 and VS Code PID 108856 holding 523947 watches; raising max_user_watches to 1048576 removed the allocation error for v4",
+    "mounted_edit_sync": "even after the v4 rerun without the inotify allocation error, local edits made under the mounted directory were not observed through fs get/find, the fork grep printed no match, and checkpoint diff reported 0 changes",
+    "create_exclusive_attempt": "fs --volume lifecycle-v3-vol create-exclusive failed: Workspace is not supported with fs create-exclusive; use the mounted sync workspace",
+    "v3_cleanup": "Redis was shut down and a best-effort workspace unmount cleanup was recorded"
+  },
+  "workload_shape": [
+    "configure CLI against isolated Redis",
+    "create Agent Workspace manifest",
+    "import local directory into named volume",
+    "mount workspace in sync mode",
+    "query workspace contents",
+    "create/list checkpoints",
+    "create/list workspace bookmark",
+    "fork volume",
+    "unmount workspace"
+  ],
+  "reuse_verdict": "Use Redis AFS as a source-backed agent workspace lifecycle workload seed for create/import/mount/query/checkpoint/bookmark/fork/unmount behavior. Do not claim live mounted edit synchronization on this host: v1/v2 hit host inotify exhaustion, and v4 still did not reflect mounted edits in Redis-backed fs queries after the inotify limit was raised.",
+  "raw_logs": [
+    "git-clone.log",
+    "make-afs.log",
+    "lifecycle-smoke.log",
+    "lifecycle-smoke.status",
+    "lifecycle-smoke-v2.log",
+    "lifecycle-smoke-v2.status",
+    "lifecycle-smoke-v3.log",
+    "lifecycle-smoke-v3.status",
+    "lifecycle-smoke-v4.log",
+    "lifecycle-smoke-v4.status",
+    "inotify-sysctl-raise.log",
+    "inotify-sysctl-raise.status",
+    "query-keyword.json",
+    "query-v2-keyword.json",
+    "query-v4-keyword.json",
+    "redis-server.log",
+    "redis-v2-server.log",
+    "redis-v3-server.log",
+    "redis-v4-server.log",
+    "v3-unmount-cleanup.log"
+  ]
+}

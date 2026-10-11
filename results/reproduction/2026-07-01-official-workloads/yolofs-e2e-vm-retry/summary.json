@@ -1,0 +1,36 @@
+{
+  "date": "2026-07-01",
+  "source": "YoloFS/filesystem",
+  "repo": "https://github.com/YoloFS/filesystem",
+  "main_head": "684829ec5e8193e8560b52573b2575a347906d0e",
+  "compat_head": "f37d17583464e72793c63a31de17ca86e19262fe",
+  "umbrella_head": "d5681e4ec0ba52d5512ae300ed1d76667e4acbce",
+  "workload": "upstream make test-e2e-vm mounted filesystem integration workload",
+  "reproduced_cleanly": false,
+  "attempts": [
+    {
+      "name": "default_path_qemu",
+      "command_shape": "timeout 900 make test-e2e-vm",
+      "status": 2,
+      "log": "yolofs-test-e2e-vm-retry.log",
+      "observed": "vm.py selected qemu-system-x86_64 from PATH; QEMU failed because the binary lacks user networking support",
+      "failure_class": "host_qemu_backend"
+    },
+    {
+      "name": "system_qemu_path",
+      "command_shape": "PATH=/usr/bin:/bin:$PATH timeout 900 make test-e2e-vm",
+      "status": 2,
+      "log": "yolofs-test-e2e-vm-retry-system-qemu.log",
+      "observed": "system QEMU started the Ubuntu 24.04 VM, cloud-init finished, and ssh.socket was listening, but vm.py did not observe SSH plus 9p mount readiness within 120 seconds",
+      "manual_probe": "ssh -F vm/ssh_config vm ... returned connection reset by peer during the wait window",
+      "failure_class": "guest_ssh_or_mount_readiness"
+    }
+  ],
+  "vm_log": "yolofs-vm-system-qemu-boot.log",
+  "cleanup": {
+    "command_shape": "PATH=/usr/bin:/bin:$PATH ./vm.py stop",
+    "log": "yolofs-vm-stop.log",
+    "qemu_process_remaining": false
+  },
+  "interpretation": "The public YoloFS filesystem artifact remains partially reproduced: unit tests and compat kmod build are prior positive evidence, but the mounted VM e2e workload is still not reproduced on this host."
+}

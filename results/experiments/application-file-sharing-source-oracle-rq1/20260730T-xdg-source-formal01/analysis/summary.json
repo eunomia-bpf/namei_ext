@@ -1,0 +1,8 @@
+{
+  "schema": "namei_ext.application_file_sharing_source_oracle_rq1.summary.v1",
+  "boots": 3,
+  "source_states": 15,
+  "namei_ext_states": 15,
+  "source_lower_preservation": 3,
+  "namei_ext_lower_preservation": 3
+}

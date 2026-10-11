@@ -1,0 +1,474 @@
+{
+  "source": {
+    "repository": "https://github.com/redis/agent-filesystem",
+    "commit": "990b8eb7abff1bb51d35abf4ba9829963b679de2",
+    "local_adaptations": [
+      "tests/bench_md_workloads: ws import -> vol import",
+      "tests/bench_md_workloads: grep --workspace -> fs <workspace> grep",
+      "cmd/afs/afs_search_index.go: treat Redis 8 SEARCH_INDEX_NOT_FOUND / Index not found as a missing index",
+      "tests/bench_md_workloads: profile env pass-through attempted for evidence only"
+    ]
+  },
+  "redis_search_probe": {
+    "image": "redis:8",
+    "digest": "redis@sha256:2838d5524559494f6f1cd66e97e76b200d64a633a8614200620755ed395daf32",
+    "status": "status=done;ft_list_status=0;",
+    "log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/redis-afs-md-indexed-search/redis8-search-probe.log",
+    "conclusion": "redis:8 provides Redis 8.8.0 with RediSearch; FT._LIST returned exit 0"
+  },
+  "workload_runs": {
+    "unpatched_redis8_index_init": {
+      "status": "docker_run_status=1;",
+      "log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/redis-afs-md-indexed-search/indexed-small-run.log",
+      "conclusion": "Docker Redis 8 Search server started, but import failed before the compatibility patch because Redis returned SEARCH_INDEX_NOT_FOUND / Index not found and upstream missing-index matching did not recognize it"
+    },
+    "adapted_current_cli_markdown": {
+      "status": "docker_run_status=0;",
+      "log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/redis-afs-md-indexed-search/indexed-small-run-v3-profile.log",
+      "report": {
+        "timestamp_utc": "2026-07-01T05:42:31Z",
+        "platform": "linux/amd64",
+        "go_version": "go1.22.2",
+        "redis_version": "Redis server v=8.8.0",
+        "redis_source": "docker redis:8",
+        "grep_version": "Usage: grep [OPTION]... PATTERNS [FILE]...",
+        "ripgrep_version": "ripgrep 15.1.0 (rev af60c2de9d)",
+        "afs_bin": "/tmp/afs-bench-md-2559758214/afs",
+        "grep_bin": "/usr/bin/grep",
+        "ripgrep_bin": "/home/yunwei37/.nvm/versions/node/v22.22.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path/rg",
+        "redis_addr": "127.0.0.1:39553",
+        "rounds": 1,
+        "warmup": 0,
+        "corpus": {
+          "workspace": "bench-md",
+          "markdown_files": 200,
+          "approx_bytes_per_file": 8192,
+          "total_bytes": 1650093,
+          "total_dirs": 24,
+          "hot_files": [
+            "/team-00/runbooks/runbook-0000.md",
+            "/team-02/meeting-notes/meeting-note-0002.md",
+            "/team-04/runbooks/runbook-0004.md",
+            "/team-06/meeting-notes/meeting-note-0006.md",
+            "/team-08/runbooks/runbook-0008.md",
+            "/team-10/meeting-notes/meeting-note-0010.md",
+            "/team-12/runbooks/runbook-0012.md",
+            "/team-14/meeting-notes/meeting-note-0014.md",
+            "/team-16/runbooks/runbook-0016.md",
+            "/team-18/meeting-notes/meeting-note-0018.md",
+            "/team-20/runbooks/runbook-0020.md",
+            "/team-22/meeting-notes/meeting-note-0022.md",
+            "/team-00/runbooks/runbook-0024.md",
+            "/team-02/meeting-notes/meeting-note-0026.md",
+            "/team-04/runbooks/runbook-0028.md",
+            "/team-06/meeting-notes/meeting-note-0030.md",
+            "/team-08/runbooks/runbook-0032.md",
+            "/team-10/meeting-notes/meeting-note-0034.md",
+            "/team-12/runbooks/runbook-0036.md",
+            "/team-14/meeting-notes/meeting-note-0038.md",
+            "/team-16/runbooks/runbook-0040.md",
+            "/team-18/meeting-notes/meeting-note-0042.md",
+            "/team-20/runbooks/runbook-0044.md",
+            "/team-22/meeting-notes/meeting-note-0046.md",
+            "/team-00/runbooks/runbook-0048.md",
+            "/team-02/meeting-notes/meeting-note-0050.md",
+            "/team-04/runbooks/runbook-0052.md",
+            "/team-06/meeting-notes/meeting-note-0054.md",
+            "/team-08/runbooks/runbook-0056.md",
+            "/team-10/meeting-notes/meeting-note-0058.md",
+            "/team-12/runbooks/runbook-0060.md",
+            "/team-14/meeting-notes/meeting-note-0062.md",
+            "/team-16/runbooks/runbook-0064.md",
+            "/team-18/meeting-notes/meeting-note-0066.md",
+            "/team-20/runbooks/runbook-0068.md",
+            "/team-22/meeting-notes/meeting-note-0070.md",
+            "/team-00/runbooks/runbook-0072.md",
+            "/team-02/meeting-notes/meeting-note-0074.md",
+            "/team-04/runbooks/runbook-0076.md",
+            "/team-06/meeting-notes/meeting-note-0078.md",
+            "/team-08/runbooks/runbook-0080.md",
+            "/team-10/meeting-notes/meeting-note-0082.md",
+            "/team-12/runbooks/runbook-0084.md",
+            "/team-14/meeting-notes/meeting-note-0086.md",
+            "/team-16/runbooks/runbook-0088.md",
+            "/team-18/meeting-notes/meeting-note-0090.md",
+            "/team-20/runbooks/runbook-0092.md",
+            "/team-22/meeting-notes/meeting-note-0094.md",
+            "/team-00/runbooks/runbook-0096.md",
+            "/team-02/meeting-notes/meeting-note-0098.md",
+            "/team-04/runbooks/runbook-0100.md",
+            "/team-06/meeting-notes/meeting-note-0102.md",
+            "/team-08/runbooks/runbook-0104.md",
+            "/team-10/meeting-notes/meeting-note-0106.md",
+            "/team-12/runbooks/runbook-0108.md",
+            "/team-14/meeting-notes/meeting-note-0110.md",
+            "/team-16/runbooks/runbook-0112.md",
+            "/team-18/meeting-notes/meeting-note-0114.md",
+            "/team-20/runbooks/runbook-0116.md",
+            "/team-22/meeting-notes/meeting-note-0118.md",
+            "/team-00/runbooks/runbook-0120.md",
+            "/team-02/meeting-notes/meeting-note-0122.md",
+            "/team-04/runbooks/runbook-0124.md",
+            "/team-06/meeting-notes/meeting-note-0126.md",
+            "/team-08/runbooks/runbook-0128.md",
+            "/team-10/meeting-notes/meeting-note-0130.md",
+            "/team-12/runbooks/runbook-0132.md",
+            "/team-14/meeting-notes/meeting-note-0134.md",
+            "/team-16/runbooks/runbook-0136.md",
+            "/team-18/meeting-notes/meeting-note-0138.md",
+            "/team-20/runbooks/runbook-0140.md",
+            "/team-22/meeting-notes/meeting-note-0142.md",
+            "/team-00/runbooks/runbook-0144.md",
+            "/team-02/meeting-notes/meeting-note-0146.md",
+            "/team-04/runbooks/runbook-0148.md",
+            "/team-06/meeting-notes/meeting-note-0150.md",
+            "/team-08/runbooks/runbook-0152.md",
+            "/team-10/meeting-notes/meeting-note-0154.md",
+            "/team-12/runbooks/runbook-0156.md",
+            "/team-14/meeting-notes/meeting-note-0158.md",
+            "/team-16/runbooks/runbook-0160.md",
+            "/team-18/meeting-notes/meeting-note-0162.md",
+            "/team-20/runbooks/runbook-0164.md",
+            "/team-22/meeting-notes/meeting-note-0166.md",
+            "/team-00/runbooks/runbook-0168.md",
+            "/team-02/meeting-notes/meeting-note-0170.md",
+            "/team-04/runbooks/runbook-0172.md",
+            "/team-06/meeting-notes/meeting-note-0174.md",
+            "/team-08/runbooks/runbook-0176.md",
+            "/team-10/meeting-notes/meeting-note-0178.md",
+            "/team-12/runbooks/runbook-0180.md",
+            "/team-14/meeting-notes/meeting-note-0182.md",
+            "/team-16/runbooks/runbook-0184.md",
+            "/team-18/meeting-notes/meeting-note-0186.md",
+            "/team-20/runbooks/runbook-0188.md",
+            "/team-22/meeting-notes/meeting-note-0190.md"
+          ],
+          "rare_needle": "needle-redis-md-8675309",
+          "common_needle": "incident review action item",
+          "regex_pattern": "^## Escalation$",
+          "find_pattern": "*runbook*.md",
+          "rare_matches": 1,
+          "common_matches": 23,
+          "regex_matches": 2400,
+          "runbook_matches": 50
+        },
+        "grep_results": [
+          {
+            "name": "grep_literal_rare",
+            "local_label": "grep",
+            "redis_label": "afs grep",
+            "local": [
+              {
+                "elapsed_ms": 2.285,
+                "count": 1
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 147.229,
+                "count": 1
+              }
+            ],
+            "local_median_ms": 2.285,
+            "local_min_ms": 2.285,
+            "local_max_ms": 2.285,
+            "redis_median_ms": 147.229,
+            "redis_min_ms": 147.229,
+            "redis_max_ms": 147.229,
+            "local_count_summary": "1",
+            "redis_count_summary": "1",
+            "redis_over_local_ratio": 64.4328227571116,
+            "validation": "identical normalized output"
+          },
+          {
+            "name": "grep_literal_common",
+            "local_label": "grep",
+            "redis_label": "afs grep",
+            "local": [
+              {
+                "elapsed_ms": 2.334,
+                "count": 23
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 166.49,
+                "count": 23
+              }
+            ],
+            "local_median_ms": 2.334,
+            "local_min_ms": 2.334,
+            "local_max_ms": 2.334,
+            "redis_median_ms": 166.49,
+            "redis_min_ms": 166.49,
+            "redis_max_ms": 166.49,
+            "local_count_summary": "23",
+            "redis_count_summary": "23",
+            "redis_over_local_ratio": 71.3324764353042,
+            "validation": "identical normalized output"
+          },
+          {
+            "name": "grep_regex_escalation",
+            "local_label": "grep",
+            "redis_label": "afs grep",
+            "local": [
+              {
+                "elapsed_ms": 2.581,
+                "count": 2400
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 153.211,
+                "count": 2400
+              }
+            ],
+            "local_median_ms": 2.581,
+            "local_min_ms": 2.581,
+            "local_max_ms": 2.581,
+            "redis_median_ms": 153.211,
+            "redis_min_ms": 153.211,
+            "redis_max_ms": 153.211,
+            "local_count_summary": "2400",
+            "redis_count_summary": "2400",
+            "redis_over_local_ratio": 59.36110034870206,
+            "validation": "identical normalized output"
+          }
+        ],
+        "ripgrep_results": [
+          {
+            "name": "rg_literal_rare",
+            "local_label": "ripgrep",
+            "redis_label": "afs grep",
+            "local": [
+              {
+                "elapsed_ms": 5.499,
+                "count": 1
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 154.233,
+                "count": 1
+              }
+            ],
+            "local_median_ms": 5.499,
+            "local_min_ms": 5.499,
+            "local_max_ms": 5.499,
+            "redis_median_ms": 154.233,
+            "redis_min_ms": 154.233,
+            "redis_max_ms": 154.233,
+            "local_count_summary": "1",
+            "redis_count_summary": "1",
+            "redis_over_local_ratio": 28.04746317512275,
+            "validation": "identical normalized output"
+          },
+          {
+            "name": "rg_literal_common",
+            "local_label": "ripgrep",
+            "redis_label": "afs grep",
+            "local": [
+              {
+                "elapsed_ms": 4.685,
+                "count": 23
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 153.442,
+                "count": 23
+              }
+            ],
+            "local_median_ms": 4.685,
+            "local_min_ms": 4.685,
+            "local_max_ms": 4.685,
+            "redis_median_ms": 153.442,
+            "redis_min_ms": 153.442,
+            "redis_max_ms": 153.442,
+            "local_count_summary": "23",
+            "redis_count_summary": "23",
+            "redis_over_local_ratio": 32.75176093916756,
+            "validation": "identical normalized output"
+          },
+          {
+            "name": "rg_regex_escalation",
+            "local_label": "ripgrep",
+            "redis_label": "afs grep",
+            "local": [
+              {
+                "elapsed_ms": 5.645,
+                "count": 2400
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 144.573,
+                "count": 2400
+              }
+            ],
+            "local_median_ms": 5.645,
+            "local_min_ms": 5.645,
+            "local_max_ms": 5.645,
+            "redis_median_ms": 144.573,
+            "redis_min_ms": 144.573,
+            "redis_max_ms": 144.573,
+            "local_count_summary": "2400",
+            "redis_count_summary": "2400",
+            "redis_over_local_ratio": 25.610806023029234,
+            "validation": "identical normalized output"
+          }
+        ],
+        "ops_results": [
+          {
+            "name": "tree_walk",
+            "local_label": "filepath.WalkDir",
+            "redis_label": "client.Tree",
+            "local": [
+              {
+                "elapsed_ms": 0.273,
+                "count": 249
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 4.451,
+                "count": 249
+              }
+            ],
+            "local_median_ms": 0.273,
+            "local_min_ms": 0.273,
+            "local_max_ms": 0.273,
+            "redis_median_ms": 4.451,
+            "redis_min_ms": 4.451,
+            "redis_max_ms": 4.451,
+            "local_count_summary": "249",
+            "redis_count_summary": "249",
+            "redis_over_local_ratio": 16.304029304029303,
+            "validation": "counts match (249)"
+          },
+          {
+            "name": "find_runbook_names",
+            "local_label": "local basename filter",
+            "redis_label": "client.Find",
+            "local": [
+              {
+                "elapsed_ms": 0.268,
+                "count": 50
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 3.973,
+                "count": 50
+              }
+            ],
+            "local_median_ms": 0.268,
+            "local_min_ms": 0.268,
+            "local_max_ms": 0.268,
+            "redis_median_ms": 3.973,
+            "redis_min_ms": 3.973,
+            "redis_max_ms": 3.973,
+            "local_count_summary": "50",
+            "redis_count_summary": "50",
+            "redis_over_local_ratio": 14.82462686567164,
+            "validation": "counts match (50)"
+          },
+          {
+            "name": "read_hot_files",
+            "local_label": "os.ReadFile",
+            "redis_label": "client.Cat",
+            "local": [
+              {
+                "elapsed_ms": 0.489,
+                "count": 792149
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 22.701,
+                "count": 792149
+              }
+            ],
+            "local_median_ms": 0.489,
+            "local_min_ms": 0.489,
+            "local_max_ms": 0.489,
+            "redis_median_ms": 22.701,
+            "redis_min_ms": 22.701,
+            "redis_max_ms": 22.701,
+            "local_count_summary": "792149",
+            "redis_count_summary": "792149",
+            "redis_over_local_ratio": 46.423312883435585,
+            "validation": "counts match (792149)"
+          },
+          {
+            "name": "head_hot_files",
+            "local_label": "local head(40)",
+            "redis_label": "client.Head(40)",
+            "local": [
+              {
+                "elapsed_ms": 0.938,
+                "count": 75834
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 23.852,
+                "count": 75834
+              }
+            ],
+            "local_median_ms": 0.938,
+            "local_min_ms": 0.938,
+            "local_max_ms": 0.938,
+            "redis_median_ms": 23.852,
+            "redis_min_ms": 23.852,
+            "redis_max_ms": 23.852,
+            "local_count_summary": "75834",
+            "redis_count_summary": "75834",
+            "redis_over_local_ratio": 25.42857142857143,
+            "validation": "counts match (75834)"
+          },
+          {
+            "name": "line_window_hot_files",
+            "local_label": "local lines(15..35)",
+            "redis_label": "client.Lines(15..35)",
+            "local": [
+              {
+                "elapsed_ms": 1.182,
+                "count": 49587
+              }
+            ],
+            "redis": [
+              {
+                "elapsed_ms": 26.893,
+                "count": 49587
+              }
+            ],
+            "local_median_ms": 1.182,
+            "local_min_ms": 1.182,
+            "local_max_ms": 1.182,
+            "redis_median_ms": 26.893,
+            "redis_min_ms": 26.893,
+            "redis_max_ms": 26.893,
+            "local_count_summary": "49587",
+            "redis_count_summary": "49587",
+            "redis_over_local_ratio": 22.75211505922166,
+            "validation": "counts match (49587)"
+          }
+        ],
+        "local_root": "/tmp/afs-bench-md-2559758214/corpus",
+        "temp_root": "/tmp/afs-bench-md-2559758214"
+      },
+      "conclusion": "Current CLI markdown grep/ripgrep/file-operation workload passed on docker redis:8 with grep/ripgrep output equivalence and file-operation count oracles"
+    },
+    "indexed_backend_tests": {
+      "status": "go_test_status=0;",
+      "log": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/redis-afs-md-indexed-search/indexed-grep-tests.log",
+      "conclusion": "Targeted cmd/afs grep tests passed, including TestRunIndexedGrepTargetsLoadsExternalAndInlineContent; this is internal helper/test evidence, not the public markdown benchmark path"
+    }
+  },
+  "indexed_path_verdict": {
+    "public_cli_markdown_workload_uses_indexed_grep": false,
+    "reason": "current afs fs <workspace> grep routes to cmdFSGrep in fs_remote_commands.go, which collects control-plane grep targets; the older cmdGrep fast/indexed backend is not the current CLI route used by the adapted benchmark",
+    "usable_paper_claim": "Redis AFS contributes a reproducible current-CLI markdown search/file-operation workload and internal indexed-helper evidence; do not claim the public markdown workload reproduced indexed RedisSearch performance"
+  }
+}

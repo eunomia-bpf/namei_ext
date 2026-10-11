@@ -1,0 +1,10 @@
+{
+  "log": "yolofs-filesystem-compat-kmod-direct-src-build.log",
+  "repo": "https://github.com/YoloFS/filesystem",
+  "branch": "compat",
+  "head": "f37d17583464e72793c63a31de17ca86e19262fe",
+  "exit": "0",
+  "test_results": [],
+  "built_module": true,
+  "failure_lines": []
+}

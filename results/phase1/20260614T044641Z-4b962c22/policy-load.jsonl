@@ -1,0 +1,16 @@
+{"event":"policy-load-start","run_id":"20260614T044641Z-4b962c22"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/build_graph_view.bpf.o","pass":true,"errno":0,"detail":"policy loaded and attached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/build_graph_view.bpf.o","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/cache_locality_view.bpf.o","pass":true,"errno":0,"detail":"policy loaded and attached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/cache_locality_view.bpf.o","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/checkpoint_restore_view.bpf.o","pass":true,"errno":0,"detail":"policy loaded and attached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/checkpoint_restore_view.bpf.o","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/pass_only.bpf.o","pass":true,"errno":0,"detail":"policy loaded and attached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/pass_only.bpf.o","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/redirect_alias.bpf.o","pass":true,"errno":0,"detail":"policy loaded and attached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/redirect_alias.bpf.o","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/sandbox_fixture_view.bpf.o","pass":true,"errno":0,"detail":"policy loaded and attached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/sandbox_fixture_view.bpf.o","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/table_redirect.bpf.o","pass":true,"errno":0,"detail":"policy loaded and attached"}
+{"event":"policy-load","policy":"/home/yunwei37/workspace/namei_ext/.build/bpf/table_redirect.bpf.o","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-load-done","run_id":"20260614T044641Z-4b962c22"}

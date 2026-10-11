@@ -1,0 +1,35 @@
+{
+  "status_code": 200,
+  "headers": {
+    "Date": "Mon, 29 Jun 2026 21:22:50 GMT",
+    "Content-Type": "application/json",
+    "Content-Length": "262",
+    "Connection": "keep-alive",
+    "server": "uvicorn"
+  },
+  "json": {
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        9729
+      ]
+    ],
+    "truncated": false,
+    "row_count": 1,
+    "execution_time_ms": 72.85571499960497,
+    "requested_limit": null,
+    "applied_limit": 10000,
+    "selected_columns": [
+      {
+        "output_name": "n",
+        "expression_sql": "COUNT(1) AS n",
+        "source_columns": []
+      }
+    ],
+    "link_hints": [
+      null
+    ]
+  }
+}

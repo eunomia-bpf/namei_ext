@@ -1,0 +1,100 @@
+{
+  "workload_source": "Multi-Docker-Eval",
+  "source_repo_commit": "3160f50a6d18dcd0c01ec7c4dd221eae6e459c56",
+  "hf_dataset_id": "litble/Multi-Docker-Eval",
+  "hf_dataset_sha": "65b801017452077bfb23ef53f5a4b4668ed05a14",
+  "hf_siblings": [
+    ".gitattributes",
+    "README.md",
+    "data/test-00000-of-00001.parquet"
+  ],
+  "hf_num_examples": 334,
+  "hf_features": [
+    "repo",
+    "pull_number",
+    "instance_id",
+    "issue_numbers",
+    "base_commit",
+    "patch",
+    "test_patch",
+    "problem_statement",
+    "hints_text",
+    "created_at",
+    "language",
+    "label"
+  ],
+  "upstream_docker_res_public_artifact_found": false,
+  "why_full_reproduction_not_closed": "The public dataset/repo expose task fields and evaluator code, but no SWE-Builder/RepoLaunch docker_res output artifact containing per-instance dockerfile/eval_script/setup_scripts.",
+  "probe_type": "synthetic_docker_res_evaluator_probe",
+  "probe_is_official_full_reproduction": false,
+  "probe_instance": "uber-go__atomic-90",
+  "probe_dataset_path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/dataset-uber-go-atomic-90.jsonl",
+  "probe_docker_res_path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/synthetic-docker-res-uber-go-atomic-90.json",
+  "evaluator_status_attempts": {
+    "system_python_missing_hydra": 1,
+    "venv_missing_pythonpath": 1,
+    "venv_with_pythonpath": 0
+  },
+  "evaluator_final_report": {
+    "dataset_instances": 1,
+    "provided_instances": 1,
+    "provided_rate": 1.0,
+    "summary": {
+      "total_instances": 1,
+      "failed_before_patch": 1,
+      "passed_after_patch": 1,
+      "details": {
+        "f2p_instance": 1,
+        "p2p_instance": 0,
+        "f2f_instance": 0,
+        "p2f_instance": 0,
+        "resolved": 1,
+        "stable": 1
+      }
+    },
+    "instance_details": [
+      {
+        "instance_id": "uber-go__atomic-90",
+        "failed_before_patch": true,
+        "passed_after_patch": true,
+        "bug_fail_rate": 1.0,
+        "fix_pass_rate": 1.0,
+        "resolved": true,
+        "stable": true
+      }
+    ]
+  },
+  "combined_report": {
+    "instance_id": "uber-go__atomic-90",
+    "failed_before_patch": true,
+    "passed_after_patch": true,
+    "bug_fail_rate": 1.0,
+    "fix_pass_rate": 1.0,
+    "resolved": true,
+    "stable": true
+  },
+  "image_sizes": {
+    "timestamp": "2026-06-30T22:16:49.571645",
+    "run_id": "synthetic-uber-go-atomic-90",
+    "total_images": 1,
+    "average_size_bytes": 846005251.0,
+    "average_size_mb": 806.813479423523,
+    "average_size_gb": 0.7879037884995341,
+    "images": {
+      "uber-go__atomic-90": {
+        "size_bytes": 846005251,
+        "size_mb": 806.81,
+        "size_gb": 0.788
+      }
+    }
+  },
+  "raw_logs": {
+    "hf_metadata": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/hf-api-dataset-metadata.json",
+    "hf_metadata_summary": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/hf-api-dataset-metadata-summary.json",
+    "source_docker_res_code_search": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/source-docker-res-code-search.log",
+    "evaluator_stdout_stderr": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/evaluator-synthetic-uber-go-atomic-90-pypath.log",
+    "before_patch_test_output": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/evaluator-output/synthetic-uber-go-atomic-90/uber-go__atomic-90/logs/test_output_prev_apply_0.txt",
+    "after_patch_test_output": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/evaluator-output/synthetic-uber-go-atomic-90/uber-go__atomic-90/logs/test_output_after_apply_0.txt",
+    "final_report": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/multi-docker-eval-evaluator-probe/evaluator-output/synthetic-uber-go-atomic-90/final_report.json"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-shell-deobfuscation-permission-adapted-oracle",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-shell-deobfuscation-permission-adapted-oracle",
+  "command_shape": [
+    "copy original-tasks/shell-deobfuscation to an isolated .cache dataset",
+    "chmod -R a+rX copied shell-deobfuscation task files",
+    "uv run tb run",
+    "--dataset-path .cache/source-inspection/terminal-bench-adapted-shell/original-tasks",
+    "--task-id shell-deobfuscation",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 1,
+  "n_resolved": 1,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "reproduced_cleanly": true,
+  "official_unmodified": false,
+  "adaptation": "Only task-file permissions in an isolated copied dataset were changed to make the official oracle and tests readable to the container user; task source semantics were not edited.",
+  "tasks": [
+    {
+      "task_id": "shell-deobfuscation",
+      "workload_role": "deobfuscate a suspicious shell script without executing it, create an exact clean script, and remove executable bits",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 3,
+      "parser_failed": 0,
+      "parser_total": 3,
+      "trial_started_at": "2026-07-01T21:55:57.214634+00:00",
+      "trial_ended_at": "2026-07-01T21:56:24.366367+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-shell-deobfuscation-permission-adapted-oracle/run_metadata.json",
+    "2026-07-01__terminal-bench-shell-deobfuscation-permission-adapted-oracle/results.json",
+    "2026-07-01__terminal-bench-shell-deobfuscation-permission-adapted-oracle/run.log",
+    "per-task commands.txt, panes, sessions, and results.json"
+  ],
+  "interpretation": "This replay proves the shell-deobfuscation workload oracle can pass after correcting the upstream permission packaging boundary. It should not be counted as an unmodified official-task clean reproduction."
+}

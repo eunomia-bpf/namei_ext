@@ -1,0 +1,106 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-data-log-service-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-data-log-service-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id csv-to-parquet",
+    "--task-id jsonl-aggregator",
+    "--task-id analyze-access-logs",
+    "--task-id fibonacci-server",
+    "--task-id db-wal-recovery",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 5,
+  "n_resolved": 5,
+  "n_unresolved": 0,
+  "accuracy": 1.0,
+  "reproduced_cleanly": true,
+  "tasks": [
+    {
+      "task_id": "fibonacci-server",
+      "workload_role": "long-running HTTP service on port 3000, query validation, JSON response oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_server_running": "passed",
+        "test_fibonacci_endpoint_small_numbers": "passed",
+        "test_fibonacci_large_number": "passed",
+        "test_negative_number": "passed",
+        "test_missing_parameter": "passed",
+        "test_non_integer_parameter": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:12:42.421210+00:00",
+      "trial_ended_at": "2026-07-01T21:13:15.011381+00:00"
+    },
+    {
+      "task_id": "csv-to-parquet",
+      "workload_role": "CSV-to-Parquet file conversion with exact dataframe equivalence oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_parquet_exists": "passed",
+        "test_data_matches": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:13:15.012626+00:00",
+      "trial_ended_at": "2026-07-01T21:13:52.348579+00:00"
+    },
+    {
+      "task_id": "db-wal-recovery",
+      "workload_role": "SQLite WAL decryption/recovery, base-plus-WAL merge, recovered JSON materialization",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_recovered_json_exists": "passed",
+        "test_recovered_json_is_valid": "passed",
+        "test_recovered_data_structure": "passed",
+        "test_recovered_data_sorted": "passed",
+        "test_recovered_data_completeness": "passed",
+        "test_no_duplicate_ids": "passed",
+        "test_wal_was_decrypted": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:13:52.349785+00:00",
+      "trial_ended_at": "2026-07-01T21:16:13.883178+00:00"
+    },
+    {
+      "task_id": "analyze-access-logs",
+      "workload_role": "access-log scan, aggregate report materialization, exact count and top-URL oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_report_generation": "passed",
+        "test_top_urls": "passed",
+        "test_report_format": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:16:13.885442+00:00",
+      "trial_ended_at": "2026-07-01T21:16:40.550856+00:00"
+    },
+    {
+      "task_id": "jsonl-aggregator",
+      "workload_role": "multi-file JSONL aggregation, top-k materialized JSON oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_results": {
+        "test_expected_output": "passed"
+      },
+      "trial_started_at": "2026-07-01T21:16:40.552214+00:00",
+      "trial_ended_at": "2026-07-01T21:17:12.158458+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-data-log-service-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-data-log-service-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-data-log-service-oracle-suite/run.log",
+    "per-task commands.txt and results.json"
+  ],
+  "interpretation": "Five additional official Terminal-Bench data/log/service/database tasks reproduced through the upstream Docker harness and oracle agent. Together with earlier Terminal-Bench runs, selected official-task coverage is now 21 resolved tasks plus one preserved setup-level negative task. This remains selected official-task reproduction, not full Terminal-Bench-Core reproduction."
+}

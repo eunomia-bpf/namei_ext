@@ -1,0 +1,433 @@
+{
+  "boot_rows": [
+    {
+      "client_cpu_ns": 1344400000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 107527035,
+      "median_ns": 80687406.5,
+      "minimum_ns": 74380103,
+      "minor_faults": 59518,
+      "p95_ns": 101981104.69999999,
+      "repetition": 1,
+      "samples": 50,
+      "setup_ns": 543743406,
+      "teardown_ns": 31038514
+    },
+    {
+      "client_cpu_ns": 1241774000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 97730221,
+      "median_ns": 82671377.5,
+      "minimum_ns": 77125052,
+      "minor_faults": 59474,
+      "p95_ns": 90436726.55000001,
+      "repetition": 1,
+      "samples": 50,
+      "setup_ns": 4190680,
+      "teardown_ns": 3687667
+    },
+    {
+      "client_cpu_ns": 1450863000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 117990234,
+      "median_ns": 85754176.5,
+      "minimum_ns": 75204007,
+      "minor_faults": 59520,
+      "p95_ns": 109207215.64999999,
+      "repetition": 2,
+      "samples": 50,
+      "setup_ns": 539926134,
+      "teardown_ns": 41475132
+    },
+    {
+      "client_cpu_ns": 1306055000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 128328880,
+      "median_ns": 85516203.0,
+      "minimum_ns": 77472656,
+      "minor_faults": 59440,
+      "p95_ns": 101851040.94999999,
+      "repetition": 2,
+      "samples": 50,
+      "setup_ns": 6797318,
+      "teardown_ns": 4674195
+    },
+    {
+      "client_cpu_ns": 1534845000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 301415974,
+      "median_ns": 85077367.5,
+      "minimum_ns": 72003994,
+      "minor_faults": 59582,
+      "p95_ns": 108352385.4,
+      "repetition": 3,
+      "samples": 50,
+      "setup_ns": 542981544,
+      "teardown_ns": 21800824
+    },
+    {
+      "client_cpu_ns": 1291678000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 183787372,
+      "median_ns": 86694819.5,
+      "minimum_ns": 78668884,
+      "minor_faults": 59528,
+      "p95_ns": 107166295.79999995,
+      "repetition": 3,
+      "samples": 50,
+      "setup_ns": 3829837,
+      "teardown_ns": 4218814
+    },
+    {
+      "client_cpu_ns": 1252058000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 104407222,
+      "median_ns": 77893242.0,
+      "minimum_ns": 72268551,
+      "minor_faults": 59403,
+      "p95_ns": 89165645.25,
+      "repetition": 4,
+      "samples": 50,
+      "setup_ns": 534538706,
+      "teardown_ns": 30964627
+    },
+    {
+      "client_cpu_ns": 1291537000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 272578178,
+      "median_ns": 87047776.5,
+      "minimum_ns": 78521597,
+      "minor_faults": 59572,
+      "p95_ns": 110655938.69999997,
+      "repetition": 4,
+      "samples": 50,
+      "setup_ns": 4332100,
+      "teardown_ns": 7972056
+    },
+    {
+      "client_cpu_ns": 1411905000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 343845466,
+      "median_ns": 90570108.0,
+      "minimum_ns": 73112409,
+      "minor_faults": 59624,
+      "p95_ns": 210408733.1499998,
+      "repetition": 5,
+      "samples": 50,
+      "setup_ns": 923269870,
+      "teardown_ns": 30846840
+    },
+    {
+      "client_cpu_ns": 1553188000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 617230967,
+      "median_ns": 90608297.0,
+      "minimum_ns": 76636885,
+      "minor_faults": 59523,
+      "p95_ns": 156905510.74999997,
+      "repetition": 5,
+      "samples": 50,
+      "setup_ns": 4915526,
+      "teardown_ns": 3322261
+    },
+    {
+      "client_cpu_ns": 1252213000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 106103566,
+      "median_ns": 77250493.0,
+      "minimum_ns": 71879586,
+      "minor_faults": 59529,
+      "p95_ns": 85526279.6,
+      "repetition": 6,
+      "samples": 50,
+      "setup_ns": 530654712,
+      "teardown_ns": 40966318
+    },
+    {
+      "client_cpu_ns": 1253694000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 93583612,
+      "median_ns": 80899374.0,
+      "minimum_ns": 75881581,
+      "minor_faults": 59528,
+      "p95_ns": 87433122.25,
+      "repetition": 6,
+      "samples": 50,
+      "setup_ns": 3917814,
+      "teardown_ns": 3206744
+    },
+    {
+      "client_cpu_ns": 1524790000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 633810892,
+      "median_ns": 102980783.0,
+      "minimum_ns": 72779623,
+      "minor_faults": 59416,
+      "p95_ns": 377002702.64999956,
+      "repetition": 7,
+      "samples": 50,
+      "setup_ns": 558984810,
+      "teardown_ns": 43154548
+    },
+    {
+      "client_cpu_ns": 1299351000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 127178420,
+      "median_ns": 88377785.0,
+      "minimum_ns": 73786984,
+      "minor_faults": 59601,
+      "p95_ns": 106058366.85,
+      "repetition": 7,
+      "samples": 50,
+      "setup_ns": 6029491,
+      "teardown_ns": 4279524
+    },
+    {
+      "client_cpu_ns": 1432287000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 175910506,
+      "median_ns": 86869387.5,
+      "minimum_ns": 74437812,
+      "minor_faults": 59567,
+      "p95_ns": 119934625.29999998,
+      "repetition": 8,
+      "samples": 50,
+      "setup_ns": 531578920,
+      "teardown_ns": 30981683
+    },
+    {
+      "client_cpu_ns": 1310064000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 101726978,
+      "median_ns": 83360054.5,
+      "minimum_ns": 76439438,
+      "minor_faults": 59500,
+      "p95_ns": 97705215.0,
+      "repetition": 8,
+      "samples": 50,
+      "setup_ns": 5662115,
+      "teardown_ns": 4702091
+    },
+    {
+      "client_cpu_ns": 1326475000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 276818992,
+      "median_ns": 80570564.5,
+      "minimum_ns": 71940484,
+      "minor_faults": 59498,
+      "p95_ns": 158955931.84999985,
+      "repetition": 9,
+      "samples": 50,
+      "setup_ns": 531527628,
+      "teardown_ns": 40938816
+    },
+    {
+      "client_cpu_ns": 1317879000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 146484396,
+      "median_ns": 84008641.5,
+      "minimum_ns": 77159247,
+      "minor_faults": 59647,
+      "p95_ns": 108401183.74999999,
+      "repetition": 9,
+      "samples": 50,
+      "setup_ns": 3558595,
+      "teardown_ns": 5567528
+    },
+    {
+      "client_cpu_ns": 1261284000,
+      "condition": "namei_ext",
+      "major_faults": 0,
+      "maximum_ns": 219047350,
+      "median_ns": 78268540.5,
+      "minimum_ns": 71432230,
+      "minor_faults": 59534,
+      "p95_ns": 92227816.9,
+      "repetition": 10,
+      "samples": 50,
+      "setup_ns": 531613088,
+      "teardown_ns": 41184605
+    },
+    {
+      "client_cpu_ns": 1267453000,
+      "condition": "fuse",
+      "major_faults": 0,
+      "maximum_ns": 95171517,
+      "median_ns": 82938406.5,
+      "minimum_ns": 77074187,
+      "minor_faults": 59587,
+      "p95_ns": 89433456.80000001,
+      "repetition": 10,
+      "samples": 50,
+      "setup_ns": 4022496,
+      "teardown_ns": 3768296
+    }
+  ],
+  "conditions": {
+    "fuse": {
+      "mean_client_cpu_ns": 26265346.0,
+      "mean_major_faults": 0.0,
+      "mean_minor_faults": 1190.8,
+      "median_setup_ns": 4261390.0,
+      "median_teardown_ns": 4249169.0,
+      "p50_ns": 84523646.0,
+      "p95_ns": 106150221.74999999,
+      "samples": 500
+    },
+    "namei_ext": {
+      "mean_client_cpu_ns": 27582240.0,
+      "mean_major_faults": 0.0,
+      "mean_minor_faults": 1190.382,
+      "median_setup_ns": 537232420.0,
+      "median_teardown_ns": 35988665.0,
+      "p50_ns": 81658487.0,
+      "p95_ns": 145517796.84999996,
+      "samples": 500
+    }
+  },
+  "fuse_daemon": {
+    "median_cpu_runtime_ns": 114190375.5,
+    "median_involuntary_context_switches": 0.0,
+    "median_voluntary_context_switches": 12496.5
+  },
+  "measured_samples_per_boot": 50,
+  "mechanism_work": {
+    "fuse_callbacks_per_launch": 265.0,
+    "namei_ext_selects_per_launch": 68.0
+  },
+  "pair_rows": [
+    {
+      "fuse_median_ns": 82671377.5,
+      "fuse_over_namei_ext": 1.0245883600187349,
+      "fuse_over_namei_ext_total_cpu": 1.008851797084201,
+      "fuse_total_cpu_ns": 1356300356,
+      "namei_ext_median_ns": 80687406.5,
+      "namei_ext_total_cpu_ns": 1344400000,
+      "repetition": 1
+    },
+    {
+      "fuse_median_ns": 85516203.0,
+      "fuse_over_namei_ext": 0.9972249339949057,
+      "fuse_over_namei_ext_total_cpu": 0.9795525228777631,
+      "fuse_total_cpu_ns": 1421196512,
+      "namei_ext_median_ns": 85754176.5,
+      "namei_ext_total_cpu_ns": 1450863000,
+      "repetition": 2
+    },
+    {
+      "fuse_median_ns": 86694819.5,
+      "fuse_over_namei_ext": 1.0190115426408792,
+      "fuse_over_namei_ext_total_cpu": 0.9157487531314237,
+      "fuse_total_cpu_ns": 1405532395,
+      "namei_ext_median_ns": 85077367.5,
+      "namei_ext_total_cpu_ns": 1534845000,
+      "repetition": 3
+    },
+    {
+      "fuse_median_ns": 87047776.5,
+      "fuse_over_namei_ext": 1.117526684792501,
+      "fuse_over_namei_ext_total_cpu": 1.1209063749442918,
+      "fuse_total_cpu_ns": 1403439794,
+      "namei_ext_median_ns": 77893242.0,
+      "namei_ext_total_cpu_ns": 1252058000,
+      "repetition": 4
+    },
+    {
+      "fuse_median_ns": 90608297.0,
+      "fuse_over_namei_ext": 1.0004216512582718,
+      "fuse_over_namei_ext_total_cpu": 1.1920630771900376,
+      "fuse_total_cpu_ns": 1683079819,
+      "namei_ext_median_ns": 90570108.0,
+      "namei_ext_total_cpu_ns": 1411905000,
+      "repetition": 5
+    },
+    {
+      "fuse_median_ns": 80899374.0,
+      "fuse_over_namei_ext": 1.0472344040574602,
+      "fuse_over_namei_ext_total_cpu": 1.0895445503280992,
+      "fuse_total_cpu_ns": 1364341850,
+      "namei_ext_median_ns": 77250493.0,
+      "namei_ext_total_cpu_ns": 1252213000,
+      "repetition": 6
+    },
+    {
+      "fuse_median_ns": 88377785.0,
+      "fuse_over_namei_ext": 0.858196863777973,
+      "fuse_over_namei_ext_total_cpu": 0.9447217210238787,
+      "fuse_total_cpu_ns": 1440502233,
+      "namei_ext_median_ns": 102980783.0,
+      "namei_ext_total_cpu_ns": 1524790000,
+      "repetition": 7
+    },
+    {
+      "fuse_median_ns": 83360054.5,
+      "fuse_over_namei_ext": 0.9596021901271031,
+      "fuse_over_namei_ext_total_cpu": 0.9936561380505443,
+      "fuse_total_cpu_ns": 1423200769,
+      "namei_ext_median_ns": 86869387.5,
+      "namei_ext_total_cpu_ns": 1432287000,
+      "repetition": 8
+    },
+    {
+      "fuse_median_ns": 84008641.5,
+      "fuse_over_namei_ext": 1.0426716260626423,
+      "fuse_over_namei_ext_total_cpu": 1.0865289311898076,
+      "fuse_total_cpu_ns": 1441253464,
+      "namei_ext_median_ns": 80570564.5,
+      "namei_ext_total_cpu_ns": 1326475000,
+      "repetition": 9
+    },
+    {
+      "fuse_median_ns": 82938406.5,
+      "fuse_over_namei_ext": 1.0596646618190102,
+      "fuse_over_namei_ext_total_cpu": 1.094519411171473,
+      "fuse_total_cpu_ns": 1380499821,
+      "namei_ext_median_ns": 78268540.5,
+      "namei_ext_total_cpu_ns": 1261284000,
+      "repetition": 10
+    }
+  ],
+  "primary": {
+    "bootstrap_iterations": 10000,
+    "geometric_mean_ratio": 1.0104156624986154,
+    "metric": "fuse_over_namei_ext_loader_latency",
+    "paired_bootstrap_95_ci": [
+      0.9668440445913994,
+      1.0491263939117985
+    ],
+    "seed": 20260802,
+    "verdict": "inconclusive"
+  },
+  "repetitions": 10,
+  "schema": "namei_ext.spindle_staging_rq2.summary.v2",
+  "scope": "One-node Spindle source-derived final-object selection; no claim about Spindle distribution, cache population scalability, or MPI scale.",
+  "total_cpu": {
+    "bootstrap_iterations": 10000,
+    "geometric_mean_ratio": 1.0393336266917683,
+    "metric": "fuse_client_plus_daemon_over_namei_ext_client_cpu",
+    "paired_bootstrap_95_ci": [
+      0.9897873493668091,
+      1.0908890328295346
+    ],
+    "seed": 20260803
+  },
+  "unit": "fresh-boot median of measured loader launches"
+}

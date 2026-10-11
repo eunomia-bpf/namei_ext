@@ -1,0 +1,168 @@
+{"event":"functional-start","run_id":"20260808T140941Z-target-batch-functional"}
+{"event":"case","name":"load_good_attach_type","pass":true,"errno":0,"detail":"expected attach type accepted"}
+{"event":"case","name":"load_bad_attach_type","pass":true,"errno":22,"detail":"wrong attach type rejected"}
+{"event":"case","name":"multi_attach_rejected","pass":true,"errno":22,"detail":"attach flag rejected"}
+{"event":"case","name":"override_attach_rejected","pass":true,"errno":22,"detail":"attach flag rejected"}
+{"event":"case","name":"replace_attach_rejected","pass":true,"errno":22,"detail":"attach flag rejected"}
+{"event":"case","name":"link_create_rejected","pass":true,"errno":95,"detail":"cgroup link attach rejected"}
+{"event":"case","name":"setup_files","pass":true,"errno":0,"detail":"native, backing, and secret files created"}
+{"event":"case","name":"select_cross_mount_setup","pass":true,"errno":0,"detail":"devices differ"}
+{"event":"case","name":"alias_before_attach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"backing_before_attach","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"secret_before_attach","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"select_portal_before_attach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_file_before_attach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_exec_before_attach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_pinned_before_attach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"attach_hide_policy","pass":true,"errno":0,"detail":"hide policy attached"}
+{"event":"case","name":"hide_native_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"hide_native_open","pass":true,"errno":0,"detail":"open matched"}
+{"event":"case","name":"hide_secret_stat","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"hide_secret_open","pass":true,"errno":2,"detail":"open errno matched"}
+{"event":"case","name":"hide_secret_access","pass":true,"errno":2,"detail":"access errno matched"}
+{"event":"case","name":"hide_backing_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"hide_readdir_view","pass":true,"errno":0,"detail":"native and backing listed, secret hidden"}
+{"event":"case","name":"scope_inherit_setup","pass":true,"errno":0,"detail":"child entered inherited policy cgroup"}
+{"event":"case","name":"scope_inherit_clear_rejected","pass":true,"errno":2,"detail":"child cannot override ancestor policy scope"}
+{"event":"case","name":"scope_inherit_policy_enforced","pass":true,"errno":2,"detail":"ancestor policy remains effective in child"}
+{"event":"case","name":"scope_exact_root","pass":true,"errno":0,"detail":"policy parent command applied"}
+{"event":"case","name":"scope_exact_root_hidden","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"scope_exact_root_readdir","pass":true,"errno":0,"detail":"directory visibility matched"}
+{"event":"case","name":"scope_exact_other_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"scope_exact_other_readdir","pass":true,"errno":0,"detail":"directory visibility matched"}
+{"event":"case","name":"scope_add_other","pass":true,"errno":0,"detail":"policy parent command applied"}
+{"event":"case","name":"scope_add_other_hidden","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"scope_add_other_readdir","pass":true,"errno":0,"detail":"directory visibility matched"}
+{"event":"case","name":"scope_clear","pass":true,"errno":0,"detail":"policy parent command applied"}
+{"event":"case","name":"scope_empty_root_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"scope_empty_other_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"scope_empty_root_readdir","pass":true,"errno":0,"detail":"directory visibility matched"}
+{"event":"case","name":"scope_global","pass":true,"errno":0,"detail":"policy parent command applied"}
+{"event":"case","name":"scope_global_root_hidden","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"scope_global_other_hidden","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"detach_hide_policy","pass":true,"errno":0,"detail":"hide policy detached"}
+{"event":"case","name":"secret_after_hide_detach","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target_batch_partial_failure","pass":true,"errno":5,"detail":"missing second path rejected after successful prefix"}
+{"event":"case","name":"target-batch-partial-prefix-directory","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-partial-prefix-file","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-partial-prefix-exec","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-partial-prefix-pinned","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-partial-prefix-detach","pass":true,"errno":0,"detail":"select policy detached"}
+{"event":"case","name":"target_batch_partial_clear","pass":true,"errno":0,"detail":"partial registration cleared"}
+{"event":"case","name":"target-batch-partial-clear-directory","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-partial-clear-file","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-partial-clear-exec","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-partial-clear-pinned","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-partial-clear-detach","pass":true,"errno":0,"detail":"select policy detached"}
+{"event":"case","name":"target_batch_multi_success","pass":true,"errno":0,"detail":"multi-target batch registered through one control process"}
+{"event":"case","name":"target-batch-visible-directory","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-visible-file","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-visible-exec","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-visible-pinned","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-visible-detach","pass":true,"errno":0,"detail":"select policy detached"}
+{"event":"case","name":"target_batch_multi_clear","pass":true,"errno":0,"detail":"multi-target batch cleared"}
+{"event":"case","name":"target-batch-cleared-directory","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-cleared-file","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-cleared-exec","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-cleared-pinned","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"target-batch-cleared-detach","pass":true,"errno":0,"detail":"select policy detached"}
+{"event":"case","name":"target_batch_id_reuse","pass":true,"errno":0,"detail":"cleared target IDs reused"}
+{"event":"case","name":"target-batch-reused-visible-directory","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-reused-visible-file","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-reused-visible-exec","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-reused-visible-pinned","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"target-batch-reused-visible-detach","pass":true,"errno":0,"detail":"select policy detached"}
+{"event":"case","name":"target_batch_cleanup_clear","pass":true,"errno":0,"detail":"batch cleanup clear completed"}
+{"event":"case","name":"target_batch_cgroup_leave","pass":true,"errno":0,"detail":"returned to root cgroup"}
+{"event":"case","name":"target_batch_cgroup_remove","pass":true,"errno":0,"detail":"batch test cgroup removed"}
+{"event":"target-registration-diagnostic","pair":1,"order":1,"mechanism":"scalar","targets":64,"elapsed_ns":649985879,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-diagnostic","pair":1,"order":2,"mechanism":"batch","targets":64,"elapsed_ns":10161187,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-pair","pair":1,"first":"scalar","targets":64,"scalar_ns":649985879,"batch_ns":10161187,"batch_over_scalar":0.015632935,"pass":true}
+{"event":"target-registration-diagnostic","pair":2,"order":1,"mechanism":"batch","targets":64,"elapsed_ns":10133220,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-diagnostic","pair":2,"order":2,"mechanism":"scalar","targets":64,"elapsed_ns":656116027,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-pair","pair":2,"first":"batch","targets":64,"scalar_ns":656116027,"batch_ns":10133220,"batch_over_scalar":0.015444250,"pass":true}
+{"event":"target-registration-diagnostic","pair":3,"order":1,"mechanism":"scalar","targets":64,"elapsed_ns":633440495,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-diagnostic","pair":3,"order":2,"mechanism":"batch","targets":64,"elapsed_ns":13760301,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-pair","pair":3,"first":"scalar","targets":64,"scalar_ns":633440495,"batch_ns":13760301,"batch_over_scalar":0.021723115,"pass":true}
+{"event":"target-registration-diagnostic","pair":4,"order":1,"mechanism":"batch","targets":64,"elapsed_ns":10116420,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-diagnostic","pair":4,"order":2,"mechanism":"scalar","targets":64,"elapsed_ns":618764436,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-pair","pair":4,"first":"batch","targets":64,"scalar_ns":618764436,"batch_ns":10116420,"batch_over_scalar":0.016349388,"pass":true}
+{"event":"target-registration-diagnostic","pair":5,"order":1,"mechanism":"scalar","targets":64,"elapsed_ns":648185915,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-diagnostic","pair":5,"order":2,"mechanism":"batch","targets":64,"elapsed_ns":10118310,"register_error":0,"clear_error":0,"cgroup_remove_error":0,"pass":true}
+{"event":"target-registration-pair","pair":5,"first":"scalar","targets":64,"scalar_ns":648185915,"batch_ns":10118310,"batch_over_scalar":0.015610197,"pass":true}
+{"event":"target-registration-diagnostic-summary","pairs":5,"targets":64,"batch_wins":5,"median_batch_over_scalar":0.015632935,"pass":true}
+{"event":"case","name":"select_register_target","pass":true,"errno":0,"detail":"target directory registered"}
+{"event":"case","name":"select_register_symlink_rejected","pass":true,"errno":40,"detail":"symlink target rejected"}
+{"event":"case","name":"select_register_fifo_rejected","pass":true,"errno":95,"detail":"FIFO target rejected"}
+{"event":"case","name":"select_register_file_target","pass":true,"errno":0,"detail":"file target registered"}
+{"event":"case","name":"select_register_exec_target","pass":true,"errno":0,"detail":"exec target registered"}
+{"event":"case","name":"select_register_pinned_target","pass":true,"errno":0,"detail":"pinned target registered"}
+{"event":"case","name":"select_private_parent_setup","pass":true,"errno":0,"detail":"physical target parent made inaccessible"}
+{"event":"case","name":"attach_select_policy","pass":true,"errno":0,"detail":"select policy attached"}
+{"event":"case","name":"select_parent_fd","pass":true,"errno":0,"detail":"logical parent opened"}
+{"event":"case","name":"select_portal_final_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"select_readdir_view","pass":true,"errno":0,"detail":"selected target directory entries visible"}
+{"event":"case","name":"select_portal_payload_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"select_portal_payload_open","pass":true,"errno":0,"detail":"open matched"}
+{"event":"case","name":"select_portal_payload_read","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_portal_final_cached","pass":true,"errno":0,"detail":"openat2 matched"}
+{"event":"case","name":"select_portal_payload_cached","pass":true,"errno":0,"detail":"openat2 matched"}
+{"event":"case","name":"select_file_final_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"select_file_final_open","pass":true,"errno":0,"detail":"open matched"}
+{"event":"case","name":"select_file_final_read","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_file_final_access","pass":true,"errno":0,"detail":"access matched"}
+{"event":"case","name":"select_file_final_open_cached","pass":true,"errno":0,"detail":"openat2 matched"}
+{"event":"case","name":"select_file_final_opath_cached","pass":true,"errno":0,"detail":"openat2 matched"}
+{"event":"case","name":"select_file_no_xdev_rejected","pass":true,"errno":18,"detail":"openat2 errno matched"}
+{"event":"case","name":"select_file_beneath_rejected","pass":true,"errno":18,"detail":"openat2 errno matched"}
+{"event":"case","name":"select_file_in_root_rejected","pass":true,"errno":18,"detail":"openat2 errno matched"}
+{"event":"case","name":"select_file_directory_rejected","pass":true,"errno":20,"detail":"open flags errno matched"}
+{"event":"case","name":"select_file_create_rejected","pass":true,"errno":95,"detail":"open flags errno matched"}
+{"event":"case","name":"select_file_intermediate_rejected","pass":true,"errno":20,"detail":"stat errno matched"}
+{"event":"case","name":"select_file_via_symlink","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_exec_final_access","pass":true,"errno":0,"detail":"access matched"}
+{"event":"case","name":"select_exec_final_exec","pass":true,"errno":0,"detail":"execve succeeded"}
+{"event":"case","name":"select_file_private_parent_capability","pass":true,"errno":0,"detail":"unprivileged open succeeded"}
+{"event":"case","name":"select_file_permission_setup","pass":true,"errno":0,"detail":"target mode set to 000"}
+{"event":"case","name":"select_file_permission_denied","pass":true,"errno":13,"detail":"unprivileged open errno matched"}
+{"event":"case","name":"select_file_permission_restore","pass":true,"errno":0,"detail":"target mode restored"}
+{"event":"case","name":"select_replace_target","pass":true,"errno":0,"detail":"target replaced atomically"}
+{"event":"case","name":"select_replacement_payload_read","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_restore_target","pass":true,"errno":0,"detail":"original target restored"}
+{"event":"case","name":"select_restored_payload_read","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_directory_concurrent_replacement","pass":true,"errno":0,"detail":"each read observed one complete registered target"}
+{"event":"case","name":"select_file_concurrent_replacement","pass":true,"errno":0,"detail":"each read observed one complete registered target"}
+{"event":"case","name":"select_file_restored_read","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_file_directory_replacement_visible","pass":true,"errno":0,"detail":"open flags matched"}
+{"event":"case","name":"select_file_restored_after_directory","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_pinned_before_unlink","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"select_pinned_unlink","pass":true,"errno":0,"detail":"physical pinned target unlinked"}
+{"event":"case","name":"select_pinned_physical_absent","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_pinned_after_unlink","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"detach_select_policy","pass":true,"errno":0,"detail":"select policy detached"}
+{"event":"case","name":"select_portal_after_detach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_file_after_detach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_pinned_after_detach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_clear_targets","pass":true,"errno":0,"detail":"target registry cleared"}
+{"event":"case","name":"attach_select_policy_after_clear","pass":true,"errno":0,"detail":"select policy attached after target clear"}
+{"event":"case","name":"select_unregistered_after_clear","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_file_unregistered_after_clear","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"select_pinned_unregistered_after_clear","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"detach_select_policy_after_clear","pass":true,"errno":0,"detail":"select policy detached after target clear"}
+{"event":"case","name":"attach_policy","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"case","name":"native_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"native_open","pass":true,"errno":0,"detail":"open matched"}
+{"event":"case","name":"native_access","pass":true,"errno":0,"detail":"access matched"}
+{"event":"case","name":"alias_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"alias_open","pass":true,"errno":0,"detail":"open matched"}
+{"event":"case","name":"alias_access","pass":true,"errno":0,"detail":"access matched"}
+{"event":"case","name":"alias_read","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"case","name":"alias_exec","pass":true,"errno":8,"detail":"execve errno matched"}
+{"event":"case","name":"backing_stat","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"readdir_view","pass":true,"errno":0,"detail":"native and alias listed, backing name rewritten"}
+{"event":"case","name":"detach_policy","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"case","name":"alias_after_detach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"case","name":"backing_after_detach","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"case","name":"select_target_unmount","pass":true,"errno":0,"detail":"selected target tmpfs unmounted"}
+{"event":"case","name":"functional_summary","pass":true,"errno":0,"detail":"functional passed"}
+{"event":"functional-done","run_id":"20260808T140941Z-target-batch-functional"}

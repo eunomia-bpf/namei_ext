@@ -1,0 +1,40 @@
+{
+  "schema": "namei_ext.run.v2",
+  "run_id": "20260730T-xdg-source-formal01",
+  "suite": "application-file-sharing-source-oracle-rq1",
+  "source_system": "xdg-document-portal",
+  "result_level": "kvm_application_file_sharing_source_oracle_rq1",
+  "status": "completed",
+  "started_at": "2026-07-30T20:48:15Z",
+  "observations": "observations.jsonl",
+  "source": {
+    "commit": "6836ea6cb8ce2a702aab28bb3753701b24df33e0",
+    "dirty": false
+  },
+  "kernel": {
+    "commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+    "dirty": false
+  },
+  "kernel_commit": "621aff8d1bb52fad718f11fd882c956d6a5686ae",
+  "policy": "application_file_sharing.bpf.c",
+  "runner": "xdg_document_portal_oracle+namei_ext_application_file_sharing",
+  "protocol_schema": "namei_ext.application_file_sharing_source_oracle_rq1.v1",
+  "layout": "fresh-boot-official-source-control-then-namei-ext",
+  "source_system_commit": "11c8a96b147aeae70e3f770313f93b367d53fedd",
+  "matrix": {
+    "mechanisms": [
+      "xdg-document-portal",
+      "namei_ext"
+    ],
+    "states": [
+      "application-a-before-grant",
+      "application-b-without-grant",
+      "application-a-after-grant",
+      "application-b-during-a-grant",
+      "application-a-after-revoke"
+    ],
+    "repetitions": 3,
+    "all_boots_must_pass": true
+  },
+  "completed_at": "2026-07-30T20:48:39Z"
+}

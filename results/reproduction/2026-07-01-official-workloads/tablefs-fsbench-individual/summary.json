@@ -1,0 +1,134 @@
+{
+  "source": {
+    "repository": "https://www.cs.cmu.edu/~kair/code/tablefs-0.3.tar.gz",
+    "cached_source": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/tablefs-0.3/tablefs-0.3",
+    "binary": "/home/yunwei37/workspace/namei_ext/.cache/source-inspection/tablefs-0.3/tablefs-0.3/src/fsbench"
+  },
+  "run": {
+    "result_root": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/tablefs-fsbench-individual",
+    "invocation": "sudo -n timeout 120s fsbench -configfile <conf>",
+    "filesystem": "tablefs_user",
+    "trace_paths": 20,
+    "trace_files": 16,
+    "trace_dirs": 4,
+    "create_numpaths": 16,
+    "query_number": 16,
+    "numthreads": 1,
+    "filesize": 64
+  },
+  "workload_groups": [
+    {
+      "name": "metadatacreate",
+      "benchmarks": "metadatacreate",
+      "exit_status": 0,
+      "pass": true
+    },
+    {
+      "name": "metadatacreatecompact",
+      "benchmarks": "metadatacreatecompact",
+      "exit_status": 139,
+      "pass": false
+    },
+    {
+      "name": "metadataquery",
+      "benchmarks": "metadatacreate,metadataquery",
+      "exit_status": 0,
+      "pass": true
+    },
+    {
+      "name": "onedircreate",
+      "benchmarks": "onedircreate",
+      "exit_status": 0,
+      "pass": true
+    },
+    {
+      "name": "onedirquery",
+      "benchmarks": "onedircreate,onedirquery",
+      "exit_status": 0,
+      "pass": true
+    },
+    {
+      "name": "smallfilecreate",
+      "benchmarks": "smallfilecreate",
+      "exit_status": 139,
+      "pass": false
+    },
+    {
+      "name": "smallfilequery",
+      "benchmarks": "smallfilecreate,smallfilequery",
+      "exit_status": 139,
+      "pass": false
+    },
+    {
+      "name": "scanquery",
+      "benchmarks": "smallfilecreate,scanquery",
+      "exit_status": 139,
+      "pass": false
+    },
+    {
+      "name": "lsstatquery",
+      "benchmarks": "smallfilecreate,lsstatquery",
+      "exit_status": 139,
+      "pass": false
+    },
+    {
+      "name": "scanfilequery",
+      "benchmarks": "smallfilecreate,scanfilequery",
+      "exit_status": 139,
+      "pass": false
+    },
+    {
+      "name": "renamequery",
+      "benchmarks": "metadatacreate,renamequery",
+      "exit_status": 0,
+      "pass": true
+    },
+    {
+      "name": "deletequery",
+      "benchmarks": "metadatacreate,deletequery",
+      "exit_status": 0,
+      "pass": true
+    }
+  ],
+  "passed": [
+    "metadatacreate",
+    "metadataquery",
+    "onedircreate",
+    "onedirquery",
+    "renamequery",
+    "deletequery"
+  ],
+  "failed": [
+    "metadatacreatecompact",
+    "smallfilecreate",
+    "smallfilequery",
+    "scanquery",
+    "lsstatquery",
+    "scanfilequery"
+  ],
+  "pass_count": 6,
+  "fail_count": 6,
+  "verdict": {
+    "reproduced_individual_groups": [
+      "metadatacreate",
+      "metadataquery",
+      "onedircreate",
+      "onedirquery",
+      "renamequery",
+      "deletequery"
+    ],
+    "negative_groups": [
+      "metadatacreatecompact",
+      "smallfilecreate",
+      "smallfilequery",
+      "scanquery",
+      "lsstatquery",
+      "scanfilequery"
+    ],
+    "interpretation": "Splitting TableFS fsbench into independent state roots reproduces the metadata create/query, one-directory create/query, rename, and delete workload groups. Compact and small-file/scan groups still segfault in the ported original TableFS stack on this host."
+  },
+  "gdb": {
+    "smallfilecreate_backtrace": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-01-official-workloads/tablefs-fsbench-individual/smallfilecreate/gdb-backtrace.log",
+    "smallfilecreate_top_frame": "leveldb::DBImpl::Get via tablefs::TableFS::GetAttr -> TableFSWrapper::Mkdir -> SmallFileCreate"
+  }
+}

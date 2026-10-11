@@ -1,0 +1,396 @@
+{"event":"agent-workspace-matrix-start","run_id":"20260714T225035Z-deaf17c0","result_level":"kvm_agent_workspace_lifecycle_matrix","policy":"agent_workspace_view.bpf.c"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"setup_dirs","pass":true,"errno":0,"detail":"view, logical ws placeholder, base, and upper directories created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"setup_source_dirs","pass":true,"errno":0,"detail":"source-like src and .git directories created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"setup_files","pass":true,"errno":0,"detail":"base and upper workspace files created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_base_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_upper_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_base_deleted_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_base_readdir","pass":true,"errno":0,"detail":"native lower directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"nohook_parent_lists_ws","pass":true,"errno":0,"detail":"parent listed logical workspace alias"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"logical_before_attach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"attach_policy","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"view_root_native","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"policy_parent_lists_ws","pass":true,"errno":0,"detail":"parent listed logical workspace alias"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"register_base_target","pass":true,"errno":0,"detail":"target directory registered"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"selected_root_final_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_readdir","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_src_app","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_git_head","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"register_upper_target","pass":true,"errno":0,"detail":"target directory registered"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_selected_root_final_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_readdir_before_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_src_app","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_git_head","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_generated_negative_before_write","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_write","pass":true,"errno":0,"detail":"logical write completed through lower FS"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_generated_visible","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"upper_epoch_readdir_after_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"base_not_materialized","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-manifest","result_level":"kvm_agent_workspace_lifecycle_matrix","manifest":"final_tree_manifest","pass":true,"detail":"logical tree matched expected upper epoch manifest"}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":0,"value":1500,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":1,"value":1220,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":2,"value":1215,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":3,"value":1016,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":4,"value":1038,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":5,"value":1191,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":6,"value":1073,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":7,"value":1391,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":8,"value":1036,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":9,"value":997,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":10,"value":1016,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":11,"value":1115,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":12,"value":1123,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":13,"value":1259,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":14,"value":1271,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":15,"value":1020,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":16,"value":1114,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":17,"value":1025,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":18,"value":1122,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":19,"value":1026,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":20,"value":1037,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":21,"value":1010,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":22,"value":1064,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":23,"value":1053,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":24,"value":3839,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":25,"value":1053,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":26,"value":1061,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":27,"value":1024,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":28,"value":1083,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":29,"value":999,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":30,"value":990,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":31,"value":1059,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":32,"value":1032,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":33,"value":991,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":34,"value":1049,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":35,"value":1070,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":36,"value":1057,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":37,"value":1052,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":38,"value":1006,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":39,"value":989,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":40,"value":1081,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":41,"value":1029,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":42,"value":1068,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":43,"value":990,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":44,"value":1026,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":45,"value":1036,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":46,"value":1025,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":47,"value":982,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":48,"value":1002,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":49,"value":1028,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":50,"value":1014,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":51,"value":988,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":52,"value":1003,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":53,"value":1000,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":54,"value":978,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":55,"value":1036,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":56,"value":1091,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":57,"value":1090,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":58,"value":1028,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":59,"value":1016,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":60,"value":1048,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":61,"value":1009,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":62,"value":1025,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":63,"value":1402,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":64,"value":1179,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":65,"value":1191,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":66,"value":1156,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":67,"value":1016,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":68,"value":1023,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":69,"value":1043,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":70,"value":1025,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":71,"value":998,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":72,"value":984,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":73,"value":1073,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":74,"value":1061,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":75,"value":1202,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":76,"value":1034,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":77,"value":1047,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":78,"value":1002,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":79,"value":1013,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":80,"value":1032,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":81,"value":1103,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":82,"value":1043,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":83,"value":989,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":84,"value":1029,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":85,"value":1023,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":86,"value":1039,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":87,"value":1072,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":88,"value":983,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":89,"value":1001,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":90,"value":1020,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":91,"value":968,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":92,"value":1039,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":93,"value":999,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":94,"value":1126,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":95,"value":1000,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":96,"value":1028,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":97,"value":1051,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":98,"value":987,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","iteration":99,"value":993,"unit":"ns","pass":true}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_stat_main_ns","value":1088,"unit":"ns_per_op","pass":true,"detail":"stat latency measured"}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":0,"value":5284,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":1,"value":3134,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":2,"value":2984,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":3,"value":2923,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":4,"value":3028,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":5,"value":2938,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":6,"value":2909,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":7,"value":2931,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":8,"value":2994,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":9,"value":3005,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":10,"value":2910,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":11,"value":3061,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":12,"value":2901,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":13,"value":2997,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":14,"value":2983,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":15,"value":2955,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":16,"value":2949,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":17,"value":2989,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":18,"value":3002,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":19,"value":3078,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":20,"value":3083,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":21,"value":2935,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":22,"value":2886,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":23,"value":2989,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":24,"value":2957,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":25,"value":2944,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":26,"value":2900,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":27,"value":2930,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":28,"value":2938,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":29,"value":2979,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":30,"value":3048,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":31,"value":3035,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":32,"value":2935,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":33,"value":3346,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":34,"value":3354,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":35,"value":2880,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":36,"value":2938,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":37,"value":2948,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":38,"value":3077,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":39,"value":2953,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":40,"value":2967,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":41,"value":2976,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":42,"value":2933,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":43,"value":2910,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":44,"value":2980,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":45,"value":2967,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":46,"value":2955,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":47,"value":2977,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":48,"value":3036,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","iteration":49,"value":2859,"unit":"ns","pass":true}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"namei_ext_readdir_ws_ns","value":3031,"unit":"ns_per_op","pass":true,"detail":"readdir latency measured"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"total","value":1630,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"lookup","value":833,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"readdir","value":797,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"select_ws_lookup","value":170,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hide_deleted_lookup","value":3,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hide_deleted_readdir","value":53,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-policy-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"pass","value":1404,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"detach_policy","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"logical_after_detach","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"clear_targets_after_detach","pass":true,"errno":0,"detail":"target registry cleared"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"attach_after_clear_for_containment","pass":true,"errno":0,"detail":"policy attached after target clear"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"invalid_unregistered_target_contained","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"detach_after_containment","pass":true,"errno":0,"detail":"policy detached after containment"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"agent_workspace_preflight_summary","pass":true,"errno":0,"detail":"agent workspace preflight passed"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_setup_dirs","pass":true,"errno":0,"detail":"mount, base, and upper directories created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_setup_source_dirs","pass":true,"errno":0,"detail":"source-like src and .git directories created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_setup_files","pass":true,"errno":0,"detail":"base and upper workspace files created"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_base_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_upper_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_base_deleted_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_nohook_base_readdir","pass":true,"errno":0,"detail":"native lower directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_mount_ready","pass":true,"errno":0,"detail":"FUSE policy filesystem mounted"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_parent_lists_ws","pass":true,"errno":0,"detail":"parent listed logical workspace alias"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_selected_root_visible","pass":true,"errno":0,"detail":"stat matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_readdir","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_src_app","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_git_head","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_readdir_before_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_main","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_src_app","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_git_head","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_whiteout","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_symlink","pass":true,"errno":0,"detail":"symlink target matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_generated_negative_before_write","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_write","pass":true,"errno":0,"detail":"logical write completed through FUSE policy FS"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_generated_visible","pass":true,"errno":0,"detail":"read content matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_upper_epoch_readdir_after_write","pass":true,"errno":0,"detail":"workspace directory view matched"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_base_not_materialized","pass":true,"errno":2,"detail":"stat errno matched"}
+{"event":"agent-workspace-manifest","result_level":"kvm_agent_workspace_lifecycle_matrix","manifest":"fuse_final_tree_manifest","pass":true,"detail":"logical tree matched expected upper epoch manifest"}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":0,"value":23445,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":1,"value":23581,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":2,"value":23118,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":3,"value":23227,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":4,"value":22881,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":5,"value":22972,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":6,"value":22201,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":7,"value":23077,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":8,"value":24207,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":9,"value":23756,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":10,"value":23015,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":11,"value":22764,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":12,"value":22949,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":13,"value":22504,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":14,"value":22927,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":15,"value":22820,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":16,"value":22893,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":17,"value":22981,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":18,"value":22807,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":19,"value":22862,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":20,"value":22420,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":21,"value":23777,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":22,"value":23555,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":23,"value":22814,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":24,"value":22927,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":25,"value":22819,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":26,"value":27866,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":27,"value":22169,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":28,"value":23006,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":29,"value":22859,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":30,"value":23196,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":31,"value":22788,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":32,"value":22758,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":33,"value":25405,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":34,"value":24502,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":35,"value":22770,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":36,"value":22829,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":37,"value":23268,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":38,"value":24253,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":39,"value":22934,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":40,"value":23471,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":41,"value":22774,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":42,"value":22961,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":43,"value":22743,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":44,"value":22844,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":45,"value":22771,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":46,"value":22620,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":47,"value":22609,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":48,"value":23586,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":49,"value":22936,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":50,"value":24724,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":51,"value":24732,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":52,"value":22926,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":53,"value":22916,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":54,"value":25540,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":55,"value":23217,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":56,"value":22957,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":57,"value":23100,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":58,"value":22950,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":59,"value":23109,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":60,"value":23995,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":61,"value":23479,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":62,"value":22956,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":63,"value":22941,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":64,"value":23364,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":65,"value":23067,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":66,"value":23002,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":67,"value":22902,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":68,"value":26462,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":69,"value":23125,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":70,"value":22618,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":71,"value":22857,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":72,"value":22711,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":73,"value":23876,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":74,"value":23227,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":75,"value":24282,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":76,"value":22865,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":77,"value":22767,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":78,"value":23150,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":79,"value":22598,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":80,"value":22740,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":81,"value":22665,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":82,"value":25549,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":83,"value":22747,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":84,"value":22683,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":85,"value":22728,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":86,"value":22516,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":87,"value":24195,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":88,"value":23916,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":89,"value":23472,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":90,"value":24297,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":91,"value":23428,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":92,"value":24549,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":93,"value":24080,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":94,"value":24426,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":95,"value":23173,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":96,"value":24267,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":97,"value":22797,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":98,"value":22915,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","iteration":99,"value":22716,"unit":"ns","pass":true}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_stat_main_ns","value":23314,"unit":"ns_per_op","pass":true,"detail":"stat latency measured"}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":0,"value":41701,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":1,"value":40454,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":2,"value":43440,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":3,"value":43409,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":4,"value":41190,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":5,"value":40219,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":6,"value":39801,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":7,"value":40488,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":8,"value":41134,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":9,"value":40203,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":10,"value":40244,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":11,"value":40485,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":12,"value":40123,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":13,"value":42568,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":14,"value":40560,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":15,"value":39981,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":16,"value":41204,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":17,"value":40451,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":18,"value":39636,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":19,"value":39790,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":20,"value":40752,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":21,"value":42486,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":22,"value":42284,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":23,"value":41216,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":24,"value":40060,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":25,"value":46959,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":26,"value":40392,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":27,"value":39906,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":28,"value":39937,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":29,"value":40013,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":30,"value":40047,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":31,"value":39621,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":32,"value":43041,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":33,"value":40511,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":34,"value":39564,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":35,"value":40029,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":36,"value":39610,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":37,"value":39472,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":38,"value":39834,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":39,"value":41547,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":40,"value":40503,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":41,"value":39543,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":42,"value":39583,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":43,"value":42308,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":44,"value":42009,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":45,"value":42461,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":46,"value":40333,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":47,"value":39770,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":48,"value":39930,"unit":"ns","pass":true}
+{"event":"agent-workspace-sample","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","iteration":49,"value":39568,"unit":"ns","pass":true}
+{"event":"agent-workspace-metric","result_level":"kvm_agent_workspace_lifecycle_matrix","metric":"fuse_readdir_ws_ns","value":40807,"unit":"ns_per_op","pass":true,"detail":"readdir latency measured"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_unmount","pass":true,"errno":0,"detail":"FUSE unmounted"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"getattr","value":454,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"readdir","value":54,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"open","value":8,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"create","value":1,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"read","value":8,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"write","value":1,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"readlink","value":2,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hidden_lookup","value":3,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-fuse-counter","result_level":"kvm_agent_workspace_lifecycle_matrix","counter":"hidden_readdir","value":53,"pass":true,"detail":"counter observed"}
+{"event":"agent-workspace-matrix","result_level":"kvm_agent_workspace_lifecycle_matrix","case":"fuse_agent_workspace_preflight_summary","pass":true,"errno":0,"detail":"FUSE agent workspace preflight passed"}
+{"event":"agent-workspace-boundary","run_id":"20260714T225035Z-deaf17c0","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"namei_ext","owns_filesystem_methods":false,"requires_daemon":false,"policy_verified":true,"lower_fs_owns_data_path":true,"detail":"bounded eBPF name-resolution policy; kernel and lower FS own VFS objects and data path"}
+{"event":"agent-workspace-boundary","run_id":"20260714T225035Z-deaf17c0","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"feature_equivalent_fuse","owns_filesystem_methods":true,"requires_daemon":true,"policy_verified":false,"lower_fs_owns_data_path":false,"detail":"FUSE policy filesystem implements filesystem operations for the same oracle"}
+{"event":"agent-workspace-boundary","run_id":"20260714T225035Z-deaf17c0","result_level":"kvm_agent_workspace_boundary_evidence","mechanism":"custom_or_stackable_fs","owns_filesystem_methods":true,"requires_daemon":false,"policy_verified":false,"lower_fs_owns_data_path":false,"detail":"source-backed boundary evidence: custom or stackable FS owns broader filesystem method surface for this policy"}
+{"event":"agent-workspace-matrix-done","run_id":"20260714T225035Z-deaf17c0","result_level":"kvm_agent_workspace_lifecycle_matrix"}

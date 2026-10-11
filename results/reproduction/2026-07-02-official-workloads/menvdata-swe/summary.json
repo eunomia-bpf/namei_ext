@@ -1,0 +1,116 @@
+{
+  "source": {
+    "name": "MEnvAgent / MEnvData-SWE",
+    "repository": "https://github.com/ernie-research/MEnvAgent",
+    "local_checkout": ".cache/source-inspection/menvagent",
+    "commit": "d9e63881f7c4a4670bb536c89add24573459bbee",
+    "dataset": "ernie-research/MEnvData-SWE",
+    "local_dataset_file": ".cache/source-inspection/hf-datasets/ernie-research__MEnvData-SWE/swe-images.jsonl",
+    "row_count": 3005
+  },
+  "environment": {
+    "host_kernel": "Linux lab 6.15.11-061511-generic x86_64",
+    "system_python": "Python 3.12.3",
+    "docker": "Docker version 29.1.3"
+  },
+  "raw_result_root": "results/reproduction/2026-07-02-official-workloads/menvdata-swe",
+  "rows": [
+    {
+      "instance_id": "python-attrs__attrs-586",
+      "repo": "python-attrs/attrs",
+      "language": "Python",
+      "base_commit": "3432df571117386cd7f58db3222ed1dd7fa35d7b",
+      "image": "mcatwj/swe-images-python:python-attrs-attrs-pr-586",
+      "image_id": "sha256:d9dcefe389c6b526b0a8b554a029fa4bd7eeef895c00622743c4efbd105d9d0d",
+      "image_digest": "mcatwj/swe-images-python@sha256:e2ecdf70851ff2b86634db9ab55630e5774583bb075204c42300604bf344799e",
+      "image_size_bytes": 2614701786,
+      "docker_run_status": 0,
+      "official_eval_row_passed": true,
+      "omnigirl_exit_code": 0,
+      "test_summary": "21 passed, 1 warning in 0.08s",
+      "completion_marker": true,
+      "logs": [
+        "python-attrs-586/instance.json",
+        "python-attrs-586/eval.sh",
+        "python-attrs-586/eval.log",
+        "python-attrs-586/eval.status"
+      ]
+    },
+    {
+      "instance_id": "go-task__task-1814",
+      "repo": "go-task/task",
+      "language": "Go",
+      "base_commit": "08a2a911804314e1bc24aa05e709701acd8c4f47",
+      "image": "mcatwj/swe-images-go:go-task-task-pr-1814",
+      "image_id": "sha256:ad14ecfd22a15186f50ddefe110569e50b730176aefad4ae900f5908f35bfd81",
+      "image_digest": "mcatwj/swe-images-go@sha256:8609760e2d29f163a6e31d8a0457feefd9adb09573f7a77b051181745fbd78c9",
+      "image_size_bytes": 2740717039,
+      "docker_run_status": 0,
+      "official_eval_row_passed": true,
+      "omnigirl_exit_code": 0,
+      "passed_named_tests": [
+        "TestExitCodeZero",
+        "TestExitCodeOne"
+      ],
+      "package_summary": "ok github.com/go-task/task/v3 0.014s",
+      "logs": [
+        "go-task-1814/instance.json",
+        "go-task-1814/eval.sh",
+        "go-task-1814/eval.log",
+        "go-task-1814/eval.status"
+      ]
+    },
+    {
+      "instance_id": "eyre-rs__color-eyre-114",
+      "repo": "eyre-rs/color-eyre",
+      "language": "Rust",
+      "base_commit": "bbe570561260157272b0daa3434a26b3155cec51",
+      "image": "mcatwj/swe-images-rust:eyre-rs-color-eyre-pr-114",
+      "image_id": "sha256:3c22025d1607d42d871c74d39a30eaea226746291c7b3f9b16f1760fb9c8c736",
+      "image_digest": "mcatwj/swe-images-rust@sha256:b285cb4df1e04f15416e0c7bc6312234138b9853a075eaddb08eac9474d59b9b",
+      "image_size_bytes": 4469688775,
+      "docker_run_status": 1,
+      "official_eval_row_passed": false,
+      "omnigirl_exit_code": null,
+      "failure_stage": "test_patch_apply",
+      "failure_summary": "The official eval script failed because tests/install.rs already exists in the image working tree before applying a new-file test patch.",
+      "evidence": [
+        "error: tests/install.rs: already exists in working directory",
+        "docker_run_status=1"
+      ],
+      "logs": [
+        "rust-color-eyre-114/instance.json",
+        "rust-color-eyre-114/eval.sh",
+        "rust-color-eyre-114/eval.log",
+        "rust-color-eyre-114/eval.status"
+      ]
+    }
+  ],
+  "aggregate_result": {
+    "selected_rows": 3,
+    "passing_rows": 2,
+    "negative_rows": 1,
+    "languages_replayed": [
+      "Python",
+      "Go",
+      "Rust"
+    ]
+  },
+  "covered_workload_shapes": [
+    "public Docker image/eval rows",
+    "official eval scripts mounted into released images",
+    "repository state reset inside image",
+    "test patch application",
+    "language-specific test execution",
+    "OMNIGRIL_EXIT_CODE and completion-marker oracles",
+    "negative artifact replay when a public row is not cleanly executable"
+  ],
+  "boundaries": [
+    "This reproduces selected MEnvData-SWE image/eval rows, not the full MEnvAgent runtime system.",
+    "The public MEnvAgent repository is treated as source/context; the executable workload evidence comes from released MEnvData-SWE rows.",
+    "Two passing rows and one negative row do not cover all 10 dataset languages.",
+    "The rows validate released image/eval behavior; they are not full before/after fail-to-pass benchmark runs for every dataset item.",
+    "The Rust row is preserved as a negative artifact caveat rather than adapted."
+  ],
+  "use_in_namei_ext": "Use MEnvData-SWE as a W4 environment/cache source with public image identities, eval scripts, language-specific test commands, and per-row oracles. Select any paper workload row only after preserving its own raw image/eval evidence."
+}

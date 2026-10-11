@@ -1,0 +1,72 @@
+{
+  "source": "OpenHands Software Agent SDK",
+  "official_repository": "https://github.com/OpenHands/software-agent-sdk",
+  "local_checkout": ".cache/source-inspection/software-agent-sdk",
+  "commit": "feca62017e2d33519c953b83f3747ded6b96329d",
+  "checkout_dirty_before_run": true,
+  "dirty_state_observed": [
+    "uv.lock modified before this run"
+  ],
+  "result_root": "results/reproduction/2026-07-02-official-workloads/openhands-sdk",
+  "environment": {
+    "host_kernel": "Linux lab 6.15.11-061511-generic x86_64",
+    "system_python": "Python 3.12.3",
+    "uv": "uv 0.8.22",
+    "venv_python": "3.13.7",
+    "pytest": "9.1.1",
+    "openhands_sdk": "1.29.3",
+    "node": "v22.22.0",
+    "npm": "10.9.4",
+    "tmux": "3.4"
+  },
+  "raw_logs": [
+    "source-inspection.log",
+    "pytest-targeted-collect.log",
+    "pytest-targeted.log",
+    "python-package-versions.log"
+  ],
+  "reproduced": {
+    "targeted_workspace_file_terminal_subset": {
+      "command": "uv run --frozen pytest tests/sdk/workspace/remote tests/tools/file_editor/test_workspace_root.py tests/tools/terminal/test_terminal_session.py -q",
+      "collected": 195,
+      "passed": 195,
+      "failed": 0,
+      "duration_seconds": 191.1,
+      "status": "pass",
+      "covered_paths": [
+        "tests/sdk/workspace/remote",
+        "tests/tools/file_editor/test_workspace_root.py",
+        "tests/tools/terminal/test_terminal_session.py"
+      ],
+      "covered_oracles": [
+        "remote workspace command execution and polling",
+        "multiple command isolation",
+        "duplicate output suppression during polling",
+        "remote workspace upload/download/read/write behavior",
+        "file-editor workspace-root path validation",
+        "terminal session behavior over tmux and subprocess backends",
+        "terminal cwd, multiline commands, failed commands, long output, pager behavior, and session cleanup"
+      ]
+    }
+  },
+  "warnings_or_boundaries": {
+    "uv_settings_warning": {
+      "observed": true,
+      "message": "uv warned that pyproject.toml exclude-newer = \"7 days\" failed date parsing during settings discovery",
+      "effect": "pytest still collected and passed all targeted tests"
+    },
+    "full_openhands_platform": {
+      "status": "not_run",
+      "reason": "this run targets local SDK/workspace/tool tests, not full cloud, Docker/Kubernetes workspace, live LLM, browser, or remote agent-server deployment"
+    }
+  },
+  "workload_shapes_for_namei_ext": [
+    "remote workspace command lifecycle",
+    "file upload/download/read/write paths",
+    "file-editor workspace-root path validation",
+    "terminal session cwd, output, timeout, failure, and cleanup behavior",
+    "tmux/subprocess-backed command execution as agent tool-call workload"
+  ],
+  "use_decision": "Use OpenHands SDK as a strong source-backed agent workspace and tool lifecycle workload seed; do not claim full OpenHands Cloud/platform or live LLM reproduction from this targeted subset.",
+  "pass": true
+}

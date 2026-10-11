@@ -1,0 +1,79 @@
+{"event":"policy-semantic-start","run_id":"20260614T045249Z-156c3470"}
+{"event":"policy-semantic","family":"build_graph","branch":"","op":"setup","pass":true,"errno":0,"detail":"fixture directory created"}
+{"event":"policy-semantic","family":"build_graph","branch":"pre_attach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent before attach"}
+{"event":"policy-semantic","family":"build_graph","branch":"","op":"attach","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"policy-semantic","family":"build_graph","branch":"generated","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"build_graph","branch":"generated","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"build_graph","branch":"source_fallback","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"build_graph","branch":"source_fallback","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"build_graph","branch":"toolchain","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"build_graph","branch":"toolchain","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"build_graph","branch":"external_dep","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"build_graph","branch":"external_dep","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"build_graph","branch":"undeclared_poison","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"build_graph","branch":"undeclared_poison","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"build_graph","branch":"negative","op":"lookup","pass":true,"errno":0,"detail":"negative lookup passed through"}
+{"event":"policy-semantic","family":"build_graph","branch":"pass_through","op":"lookup","pass":true,"errno":0,"detail":"native pass-through matched"}
+{"event":"policy-semantic","family":"build_graph","branch":"","op":"detach","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-semantic","family":"build_graph","branch":"post_detach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent after detach"}
+{"event":"policy-semantic","family":"build_graph","branch":"","op":"summary","pass":true,"errno":0,"detail":"family semantic passed"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"","op":"setup","pass":true,"errno":0,"detail":"fixture directory created"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"pre_attach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent before attach"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"","op":"attach","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"config","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"config","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"service_config","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"service_config","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"secret","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"secret","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"certificate","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"certificate","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"endpoint","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"endpoint","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"poison","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"poison","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"negative","op":"lookup","pass":true,"errno":0,"detail":"negative lookup passed through"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"pass_through","op":"lookup","pass":true,"errno":0,"detail":"native pass-through matched"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"","op":"detach","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"post_detach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent after detach"}
+{"event":"policy-semantic","family":"sandbox_fixture","branch":"","op":"summary","pass":true,"errno":0,"detail":"family semantic passed"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"","op":"setup","pass":true,"errno":0,"detail":"fixture directory created"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"pre_attach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent before attach"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"","op":"attach","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"state","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"state","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"state_aof","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"state_aof","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"config","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"config","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"cache","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"cache","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"runtime_socket","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"runtime_socket","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"runtime_pid","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"runtime_pid","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"mixed_epoch","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"mixed_epoch","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"negative","op":"lookup","pass":true,"errno":0,"detail":"negative lookup passed through"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"pass_through","op":"lookup","pass":true,"errno":0,"detail":"native pass-through matched"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"","op":"detach","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"post_detach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent after detach"}
+{"event":"policy-semantic","family":"checkpoint_restore","branch":"","op":"summary","pass":true,"errno":0,"detail":"family semantic passed"}
+{"event":"policy-semantic","family":"cache_locality","branch":"","op":"setup","pass":true,"errno":0,"detail":"fixture directory created"}
+{"event":"policy-semantic","family":"cache_locality","branch":"pre_attach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent before attach"}
+{"event":"policy-semantic","family":"cache_locality","branch":"","op":"attach","pass":true,"errno":0,"detail":"policy attached"}
+{"event":"policy-semantic","family":"cache_locality","branch":"verified_hit","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"cache_locality","branch":"verified_hit","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"cache_locality","branch":"miss_canonical","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"cache_locality","branch":"miss_canonical","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"cache_locality","branch":"stale_canonical","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"cache_locality","branch":"stale_canonical","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"cache_locality","branch":"corrupt_reject","op":"lookup","pass":true,"errno":0,"detail":"redirected read matched"}
+{"event":"policy-semantic","family":"cache_locality","branch":"corrupt_reject","op":"readdir","pass":true,"errno":0,"detail":"alias visible, backing hidden"}
+{"event":"policy-semantic","family":"cache_locality","branch":"negative","op":"lookup","pass":true,"errno":0,"detail":"negative lookup passed through"}
+{"event":"policy-semantic","family":"cache_locality","branch":"pass_through","op":"lookup","pass":true,"errno":0,"detail":"native pass-through matched"}
+{"event":"policy-semantic","family":"cache_locality","branch":"","op":"detach","pass":true,"errno":0,"detail":"policy detached"}
+{"event":"policy-semantic","family":"cache_locality","branch":"post_detach","op":"alias_absent","pass":true,"errno":0,"detail":"alias absent after detach"}
+{"event":"policy-semantic","family":"cache_locality","branch":"","op":"summary","pass":true,"errno":0,"detail":"family semantic passed"}
+{"event":"policy-semantic-summary","pass":true,"families":4,"failures":0}
+{"event":"policy-semantic-done","run_id":"20260614T045249Z-156c3470"}

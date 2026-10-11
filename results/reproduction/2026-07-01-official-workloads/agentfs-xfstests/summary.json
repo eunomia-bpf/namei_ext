@@ -1,0 +1,14 @@
+{
+  "repo": "https://github.com/tursodatabase/agentfs",
+  "agentfs_head": "0a014ebd4918615baff589ed17486e557e7c6a23",
+  "xfstests_repo": "https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git",
+  "xfstests_head": "ffc8bad17e5b2f56e48dbac43f7c5ae8ac368fe5",
+  "exit": 1,
+  "ran": 0,
+  "notrun": 0,
+  "failures": 0,
+  "evidence_lines": [
+    "16:xfstests_status=1"
+  ],
+  "log": "xfstests-quick-generic.log"
+}

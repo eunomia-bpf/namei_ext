@@ -1,0 +1,24 @@
+{
+  "schema": "namei_ext.workload_source.v1",
+  "project": "redis",
+  "workload_ids": [
+    "w1-redis-build",
+    "w3-redis-podman-criu",
+    "w4-ccache-redis-nginx"
+  ],
+  "version": "7.2.14",
+  "commit": "f2262eccb855eadd1afb0c457ea583ef9d5400b5",
+  "url": "https://github.com/redis/redis/archive/refs/tags/7.2.14.tar.gz",
+  "archive": "/home/yunwei37/workspace/namei_ext/.cache/workloads/redis-7.2.14.tar.gz",
+  "expected_archive_sha256": "704bfac84ab1c0771ddc08c8bea72e2203e3ce64c1fc6750e76b8ce2c00f3145",
+  "archive_sha256": "704bfac84ab1c0771ddc08c8bea72e2203e3ce64c1fc6750e76b8ce2c00f3145",
+  "source_dir": "/home/yunwei37/workspace/namei_ext/.build/workloads/redis-7.2.14",
+  "license": {
+    "path": "COPYING",
+    "sha256": "97f0a15b7bbae580d2609dad2e11f1956ae167be296ab60f4691ab9c30ee9828"
+  },
+  "evidence": {
+    "makefile_sha256": "9349fc753e82733517e6839ac84df07e0f28bf68256119538ba18e1e0781f2ca",
+    "src_makefile_sha256": "64cba1862b07d90d439f111ac18bfb001e8949612e938bdefc23cd57382cc167"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "source": "Terminal-Bench original-tasks",
+  "repo": "https://github.com/laude-institute/terminal-bench",
+  "head": "1a6ffa9674b571da0ed040c470cb40c4d85f9b9b",
+  "run_id": "2026-07-01__terminal-bench-security-network-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-security-network-oracle-suite",
+  "command_shape": [
+    "uv run tb run",
+    "--dataset-path original-tasks",
+    "--task-id vulnerable-secret",
+    "--task-id fix-code-vulnerability",
+    "--task-id sql-injection-attack",
+    "--task-id vul-flask",
+    "--task-id broken-networking",
+    "--task-id cron-broken-network",
+    "--agent oracle",
+    "--n-concurrent 1",
+    "--n-attempts 1",
+    "--no-upload-results",
+    "--cleanup"
+  ],
+  "agent": "oracle",
+  "dataset_size": 6,
+  "n_resolved": 4,
+  "n_unresolved": 2,
+  "accuracy": 0.6666666666666666,
+  "reproduced_cleanly": false,
+  "tasks": [
+    {
+      "task_id": "sql-injection-attack",
+      "workload_role": "multi-container SQL-injection exploit against vulnerable API services with user-deletion and API-usage oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 2,
+      "parser_failed": 0,
+      "parser_total": 2,
+      "trial_started_at": "2026-07-01T21:33:32.344776+00:00",
+      "trial_ended_at": "2026-07-01T21:34:58.180398+00:00"
+    },
+    {
+      "task_id": "vul-flask",
+      "workload_role": "vendored Flask security patch with HTTP request oracle for template-injection rejection and version identity",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 3,
+      "parser_failed": 0,
+      "parser_total": 3,
+      "trial_started_at": "2026-07-01T21:34:58.181544+00:00",
+      "trial_ended_at": "2026-07-01T21:35:44.257075+00:00"
+    },
+    {
+      "task_id": "vulnerable-secret",
+      "workload_role": "binary exploit task with exact secret-file materialization oracle",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 3,
+      "parser_failed": 0,
+      "parser_total": 3,
+      "trial_started_at": "2026-07-01T21:35:44.258731+00:00",
+      "trial_ended_at": "2026-07-01T21:36:40.219780+00:00"
+    },
+    {
+      "task_id": "fix-code-vulnerability",
+      "workload_role": "Bottle CRLF/control-character header vulnerability repair with upstream regression tests plus CWE/report oracles",
+      "is_resolved": true,
+      "failure_mode": "unset",
+      "parser_passed": 373,
+      "parser_failed": 0,
+      "parser_total": 373,
+      "trial_started_at": "2026-07-01T21:36:40.221901+00:00",
+      "trial_ended_at": "2026-07-01T21:37:59.876353+00:00"
+    },
+    {
+      "task_id": "cron-broken-network",
+      "workload_role": "system network repair under recurring cron/at/init mutation with curl binary and live example.com content oracles",
+      "is_resolved": false,
+      "failure_mode": "unset",
+      "parser_passed": 2,
+      "parser_failed": 1,
+      "parser_total": 3,
+      "boundary": "The oracle reached pytest and verified curl binary presence/integrity, but the live example.com content check matched only 10 of 46 expected lines, making this task externally network/content dependent in this environment.",
+      "trial_started_at": "2026-07-01T21:37:59.878202+00:00",
+      "trial_ended_at": "2026-07-01T21:40:12.284219+00:00"
+    },
+    {
+      "task_id": "broken-networking",
+      "workload_role": "system network repair with apt, curl, uv, and pytest setup followed by example.com content oracle",
+      "is_resolved": null,
+      "failure_mode": "parse_error",
+      "parser_passed": 0,
+      "parser_failed": 0,
+      "parser_total": 0,
+      "boundary": "The test setup could not connect to archive.ubuntu.com, so curl, uv, and pytest were not installed and the harness could not parse a pytest summary.",
+      "trial_started_at": "2026-07-01T21:40:12.285503+00:00",
+      "trial_ended_at": "2026-07-01T21:40:43.191441+00:00"
+    }
+  ],
+  "raw_outputs": [
+    "tb-run.log",
+    "2026-07-01__terminal-bench-security-network-oracle-suite/run_metadata.json",
+    "2026-07-01__terminal-bench-security-network-oracle-suite/results.json",
+    "2026-07-01__terminal-bench-security-network-oracle-suite/run.log",
+    "per-task commands.txt, panes, sessions, and results.json"
+  ],
+  "interpretation": "Four additional official Terminal-Bench security/code/network tasks reproduced through the upstream Docker harness and oracle agent. Two live-network tasks are preserved as reproduction boundaries because their tests depend on external Ubuntu mirrors or live example.com content. Together with earlier Terminal-Bench runs, selected official-task coverage is now 31 resolved tasks plus three unresolved or setup/content-boundary tasks. This remains selected official-task reproduction, not full Terminal-Bench-Core reproduction."
+}

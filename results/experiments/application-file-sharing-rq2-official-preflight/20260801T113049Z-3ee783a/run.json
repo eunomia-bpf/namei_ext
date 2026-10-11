@@ -1,0 +1,42 @@
+{
+  "schema": "namei_ext.run.v2",
+  "run_id": "20260801T113049Z-3ee783a",
+  "suite": "application-file-sharing-rq2-official",
+  "source_system": "xdg-document-portal",
+  "result_level": "kvm_application_file_sharing_rq2_official",
+  "status": "failed",
+  "started_at": "2026-08-01T11:31:06Z",
+  "observations": "observations.jsonl",
+  "source": {
+    "commit": "3ee783aeeac1912ed950fca7423b11f401b7947e",
+    "dirty": false
+  },
+  "kernel": {
+    "commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+    "dirty": false
+  },
+  "kernel_commit": "b07117a3cb41826a34af5ca61e3e2c81dade793f",
+  "policy": "application_file_sharing.bpf.c+application_file_sharing_fuse_counter.bpf.c",
+  "runner": "xdg_document_portal_oracle+namei_ext_application_file_sharing",
+  "protocol_schema": "namei_ext.application_file_sharing_rq2_official.v1",
+  "layout": "paired-fresh-boots-alternating-arm-order",
+  "source_system_commit": "1d20fadc304f6601452b5db65ed91197dba77041",
+  "matrix": {
+    "mechanisms": [
+      "xdg-document-portal",
+      "namei_ext"
+    ],
+    "pairs": 1,
+    "warmup": 10,
+    "samples": 100,
+    "direct_samples": 100,
+    "order": "alternating",
+    "kvm_cpus": 4,
+    "kvm_memory": "8G",
+    "host_cpu_pin": "4-7",
+    "analysis_seed": 20260801,
+    "bootstrap_repetitions": 10000
+  },
+  "failed_at": "2026-08-01T11:33:15Z",
+  "failure": "analysis-unstable-portal-thread-set"
+}

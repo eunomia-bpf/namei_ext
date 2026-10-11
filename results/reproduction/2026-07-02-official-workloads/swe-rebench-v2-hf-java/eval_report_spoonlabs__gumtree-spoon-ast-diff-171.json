@@ -1,0 +1,19 @@
+{
+  "max_workers": 1,
+  "total": 1,
+  "all_ok": true,
+  "items": [
+    {
+      "instance_id": "spoonlabs__gumtree-spoon-ast-diff-171",
+      "from_fail_to_pass": [
+        "---NO TEST NAME FOUND YET---",
+        "gumtree.spoon.diff.DiffTest"
+      ],
+      "failed_from_pass_to_pass": [],
+      "passed_match": true,
+      "exit_code": 0,
+      "log_path": "logs/spoonlabs__gumtree-spoon-ast-diff-171_log.txt",
+      "error": ""
+    }
+  ]
+}

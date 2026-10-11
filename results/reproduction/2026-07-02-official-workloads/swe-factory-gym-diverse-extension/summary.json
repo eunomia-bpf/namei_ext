@@ -1,0 +1,72 @@
+{
+  "date": "2026-07-02",
+  "source_repo": "https://github.com/DeepSoftwareAnalytics/swe-factory",
+  "checkout": "760b1758c04ba61885972fe8f635c9db3b2c3232",
+  "dataset": "SWE-Factory/SWE-Factory-Gym",
+  "raw_root": "results/reproduction/2026-07-02-official-workloads/swe-factory-gym-diverse-extension",
+  "evaluator_exit_code": 0,
+  "top_level_report": {
+    "total_instances": 3,
+    "submitted_instances": 3,
+    "completed_instances": 3,
+    "resolved_instances": 3,
+    "unresolved_instances": 0,
+    "empty_patch_instances": 0,
+    "error_instances": 0,
+    "unstopped_instances": 0,
+    "completed_ids": [
+      "nodejs__undici-3566_version-6.19",
+      "python-pillow__Pillow-5425_version-8.2",
+      "tailwindlabs__tailwindcss-12404_version-3.3"
+    ],
+    "incomplete_ids": [],
+    "empty_patch_ids": [],
+    "submitted_ids": [
+      "nodejs__undici-3566",
+      "python-pillow__Pillow-5425",
+      "tailwindlabs__tailwindcss-12404"
+    ],
+    "resolved_ids": [
+      "nodejs__undici-3566_version-6.19",
+      "python-pillow__Pillow-5425_version-8.2",
+      "tailwindlabs__tailwindcss-12404_version-3.3"
+    ],
+    "unresolved_ids": [],
+    "error_ids": [],
+    "unstopped_containers": [],
+    "unremoved_images": []
+  },
+  "rows": [
+    {
+      "instance_id": "nodejs__undici-3566",
+      "repo": "nodejs/undici",
+      "version": "6.19",
+      "base_commit": "dca0aa0998cbdef28916b23d6300beb2fd979140",
+      "patch_successfully_applied": true,
+      "resolved": true,
+      "test_summary": "borp websocket test passed; OMNIGRIL_EXIT_CODE=0"
+    },
+    {
+      "instance_id": "tailwindlabs__tailwindcss-12404",
+      "repo": "tailwindlabs/tailwindcss",
+      "version": "3.3",
+      "base_commit": "a5a61580cdb6974207a77680b70ba3906b31515b",
+      "patch_successfully_applied": true,
+      "resolved": true,
+      "test_summary": "Jest reports 1 suite passed, 1 test passed, 1 snapshot passed; OMNIGRIL_EXIT_CODE=0"
+    },
+    {
+      "instance_id": "python-pillow__Pillow-5425",
+      "repo": "python-pillow/Pillow",
+      "version": "8.2",
+      "base_commit": "ab8955b48e84b18c578d165e7d10868794311ce2",
+      "patch_successfully_applied": true,
+      "resolved": true,
+      "test_summary": "pytest reports 18 passed; OMNIGRIL_EXIT_CODE=0"
+    }
+  ],
+  "cleanup": {
+    "matching_containers_after_run": 0,
+    "matching_images_after_run": 0
+  }
+}

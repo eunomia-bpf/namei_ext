@@ -1,0 +1,819 @@
+{
+  "boots": 20,
+  "event": "kubernetes-configmap-quantitative-analysis",
+  "lifecycle_rows": 800,
+  "pairs_per_scale_per_boot": 5,
+  "primary_metric": "wall_span_ns",
+  "primary_width": 256,
+  "scales": [
+    {
+      "atomicwriter_median_ns": 6122360.0,
+      "boots": 20,
+      "materialization_median": {
+        "atomicwriter_live_bytes_initial": 33.0,
+        "atomicwriter_live_bytes_no_op": 31.0,
+        "atomicwriter_live_bytes_rollback": 33.0,
+        "atomicwriter_live_bytes_update": 31.0,
+        "atomicwriter_live_files_initial": 3.0,
+        "atomicwriter_live_files_no_op": 3.0,
+        "atomicwriter_live_files_rollback": 3.0,
+        "atomicwriter_live_files_update": 3.0,
+        "atomicwriter_newly_materialized_bytes": 97.0,
+        "atomicwriter_newly_materialized_files": 9.0,
+        "namei_ext_logical_files": 4.0,
+        "namei_ext_lower_bytes": 64.0,
+        "namei_ext_lower_files": 6.0,
+        "namei_ext_prepared_regular_files": 10.0,
+        "namei_ext_visible_files_initial": 3.0,
+        "namei_ext_visible_files_no_op": 3.0,
+        "namei_ext_visible_files_rollback": 3.0,
+        "namei_ext_visible_files_update": 3.0
+      },
+      "namei_ext_median_ns": 10655113.0,
+      "publication_ratio": 0.000965951920601507,
+      "publication_ratio_ci95_lower": 0.0009194105026352047,
+      "publication_ratio_ci95_upper": 0.0010086611079507433,
+      "ratio": 1.7421445790817913,
+      "ratio_ci95_lower": 1.7246987796887667,
+      "ratio_ci95_upper": 1.7707819835777918,
+      "registered_targets": 6,
+      "supports_lower_cost": false,
+      "supports_lower_publication_cost": true,
+      "timing_ci95_ns": {
+        "atomicwriter": {
+          "active_total_ns": [
+            4769728.0,
+            5016638.0
+          ],
+          "consumer_only_ns": [
+            1986062.0,
+            2122016.5
+          ],
+          "initial_consumer_ns": [
+            1818057.5,
+            1967613.5
+          ],
+          "initial_publish_ns": [
+            1554008.5,
+            1700848.0
+          ],
+          "no_op_consumer_ns": [
+            33330.0,
+            35988.0
+          ],
+          "no_op_publish_ns": [
+            41429.5,
+            43664.5
+          ],
+          "publication_only_ns": [
+            2527515.0,
+            2669147.0
+          ],
+          "rollback_consumer_ns": [
+            36129.0,
+            38495.0
+          ],
+          "rollback_publish_ns": [
+            178077.5,
+            184650.5
+          ],
+          "setup_ns": [
+            168842.0,
+            187453.0
+          ],
+          "update_consumer_ns": [
+            55297.5,
+            58872.5
+          ],
+          "update_publish_ns": [
+            713359.5,
+            749073.0
+          ],
+          "wall_span_ns": [
+            5998106.5,
+            6200104.0
+          ]
+        },
+        "namei_ext": {
+          "active_total_ns": [
+            10638838.5,
+            10662084.5
+          ],
+          "attach_ns": [
+            12614614.0,
+            13054244.0
+          ],
+          "consumer_cgroup_move_ns": [
+            14566.5,
+            15709.5
+          ],
+          "consumer_only_ns": [
+            205711.5,
+            221603.0
+          ],
+          "initial_consumer_ns": [
+            99729.0,
+            103943.0
+          ],
+          "initial_publish_ns": [
+            796.0,
+            886.5
+          ],
+          "map_population_ns": [
+            22958.0,
+            24438.5
+          ],
+          "no_op_consumer_ns": [
+            30602.0,
+            34017.5
+          ],
+          "no_op_publish_ns": [
+            462.0,
+            501.0
+          ],
+          "object_preparation_ns": [
+            222301.5,
+            229523.0
+          ],
+          "publication_only_ns": [
+            2461.5,
+            2641.0
+          ],
+          "rollback_consumer_ns": [
+            28154.5,
+            29618.0
+          ],
+          "rollback_publish_ns": [
+            470.0,
+            499.5
+          ],
+          "setup_ns": [
+            10417175.0,
+            10433779.0
+          ],
+          "target_registration_ns": [
+            10156719.5,
+            10161974.0
+          ],
+          "update_consumer_ns": [
+            40565.5,
+            42716.5
+          ],
+          "update_publish_ns": [
+            696.0,
+            717.5
+          ],
+          "wall_span_ns": [
+            10640127.5,
+            10666142.5
+          ]
+        }
+      },
+      "timing_median_ns": {
+        "atomicwriter": {
+          "active_total_ns": 4833929.0,
+          "consumer_only_ns": 2052492.5,
+          "initial_consumer_ns": 1883619.5,
+          "initial_publish_ns": 1583087.5,
+          "no_op_consumer_ns": 34208.5,
+          "no_op_publish_ns": 42479.5,
+          "publication_only_ns": 2563487.0,
+          "rollback_consumer_ns": 37791.5,
+          "rollback_publish_ns": 180804.0,
+          "setup_ns": 181362.5,
+          "update_consumer_ns": 57735.0,
+          "update_publish_ns": 718462.0,
+          "wall_span_ns": 6122360.0
+        },
+        "namei_ext": {
+          "active_total_ns": 10653722.5,
+          "attach_ns": 12823505.5,
+          "consumer_cgroup_move_ns": 15258.5,
+          "consumer_only_ns": 210654.0,
+          "initial_consumer_ns": 101457.5,
+          "initial_publish_ns": 832.5,
+          "map_population_ns": 23862.5,
+          "no_op_consumer_ns": 32294.5,
+          "no_op_publish_ns": 489.0,
+          "object_preparation_ns": 226441.0,
+          "publication_only_ns": 2508.0,
+          "rollback_consumer_ns": 28606.0,
+          "rollback_publish_ns": 482.5,
+          "setup_ns": 10427867.5,
+          "target_registration_ns": 10158324.5,
+          "update_consumer_ns": 41733.5,
+          "update_publish_ns": 704.0,
+          "wall_span_ns": 10655113.0
+        }
+      },
+      "width": 4
+    },
+    {
+      "atomicwriter_median_ns": 6891217.5,
+      "boots": 20,
+      "materialization_median": {
+        "atomicwriter_live_bytes_initial": 165.0,
+        "atomicwriter_live_bytes_no_op": 163.0,
+        "atomicwriter_live_bytes_rollback": 165.0,
+        "atomicwriter_live_bytes_update": 163.0,
+        "atomicwriter_live_files_initial": 15.0,
+        "atomicwriter_live_files_no_op": 15.0,
+        "atomicwriter_live_files_rollback": 15.0,
+        "atomicwriter_live_files_update": 15.0,
+        "atomicwriter_newly_materialized_bytes": 493.0,
+        "atomicwriter_newly_materialized_files": 45.0,
+        "namei_ext_logical_files": 16.0,
+        "namei_ext_lower_bytes": 328.0,
+        "namei_ext_lower_files": 30.0,
+        "namei_ext_prepared_regular_files": 46.0,
+        "namei_ext_visible_files_initial": 15.0,
+        "namei_ext_visible_files_no_op": 15.0,
+        "namei_ext_visible_files_rollback": 15.0,
+        "namei_ext_visible_files_update": 15.0
+      },
+      "namei_ext_median_ns": 11015426.0,
+      "publication_ratio": 0.0007830878079661143,
+      "publication_ratio_ci95_lower": 0.0007345236853322558,
+      "publication_ratio_ci95_upper": 0.0008251216645070096,
+      "ratio": 1.61434983194734,
+      "ratio_ci95_lower": 1.5645899991031005,
+      "ratio_ci95_upper": 1.6510680951652639,
+      "registered_targets": 30,
+      "supports_lower_cost": false,
+      "supports_lower_publication_cost": true,
+      "timing_ci95_ns": {
+        "atomicwriter": {
+          "active_total_ns": [
+            5475408.0,
+            5843081.0
+          ],
+          "consumer_only_ns": [
+            1819330.0,
+            2097751.5
+          ],
+          "initial_consumer_ns": [
+            1635671.5,
+            1874885.0
+          ],
+          "initial_publish_ns": [
+            1796787.0,
+            1979424.5
+          ],
+          "no_op_consumer_ns": [
+            53417.5,
+            56813.0
+          ],
+          "no_op_publish_ns": [
+            125946.0,
+            127613.0
+          ],
+          "publication_only_ns": [
+            3292169.5,
+            3471132.5
+          ],
+          "rollback_consumer_ns": [
+            57224.5,
+            62146.0
+          ],
+          "rollback_publish_ns": [
+            400965.0,
+            413254.5
+          ],
+          "setup_ns": [
+            168269.5,
+            188817.5
+          ],
+          "update_consumer_ns": [
+            76174.0,
+            80423.0
+          ],
+          "update_publish_ns": [
+            953247.0,
+            992165.0
+          ],
+          "wall_span_ns": [
+            6705037.5,
+            7068733.0
+          ]
+        },
+        "namei_ext": {
+          "active_total_ns": [
+            11008750.0,
+            11036788.5
+          ],
+          "attach_ns": [
+            12779881.0,
+            13382906.5
+          ],
+          "consumer_cgroup_move_ns": [
+            14436.5,
+            15706.5
+          ],
+          "consumer_only_ns": [
+            297728.0,
+            311612.0
+          ],
+          "initial_consumer_ns": [
+            127799.5,
+            134857.5
+          ],
+          "initial_publish_ns": [
+            807.5,
+            886.5
+          ],
+          "map_population_ns": [
+            44749.0,
+            46778.0
+          ],
+          "no_op_consumer_ns": [
+            47905.5,
+            52187.5
+          ],
+          "no_op_publish_ns": [
+            478.5,
+            527.5
+          ],
+          "object_preparation_ns": [
+            441448.0,
+            453374.5
+          ],
+          "publication_only_ns": [
+            2581.0,
+            2731.0
+          ],
+          "rollback_consumer_ns": [
+            47548.5,
+            51555.0
+          ],
+          "rollback_publish_ns": [
+            478.5,
+            505.5
+          ],
+          "setup_ns": [
+            10697709.5,
+            10709175.0
+          ],
+          "target_registration_ns": [
+            10190868.5,
+            10198451.0
+          ],
+          "update_consumer_ns": [
+            64490.0,
+            68119.0
+          ],
+          "update_publish_ns": [
+            737.5,
+            791.5
+          ],
+          "wall_span_ns": [
+            11010105.5,
+            11038239.5
+          ]
+        }
+      },
+      "timing_median_ns": {
+        "atomicwriter": {
+          "active_total_ns": 5657273.5,
+          "consumer_only_ns": 1944598.5,
+          "initial_consumer_ns": 1745658.0,
+          "initial_publish_ns": 1901554.5,
+          "no_op_consumer_ns": 54335.5,
+          "no_op_publish_ns": 127061.0,
+          "publication_only_ns": 3394138.0,
+          "rollback_consumer_ns": 57825.0,
+          "rollback_publish_ns": 405805.5,
+          "setup_ns": 173297.0,
+          "update_consumer_ns": 77929.5,
+          "update_publish_ns": 967314.5,
+          "wall_span_ns": 6891217.5
+        },
+        "namei_ext": {
+          "active_total_ns": 11014105.5,
+          "attach_ns": 13028881.0,
+          "consumer_cgroup_move_ns": 15099.5,
+          "consumer_only_ns": 304219.0,
+          "initial_consumer_ns": 130453.0,
+          "initial_publish_ns": 853.5,
+          "map_population_ns": 45515.0,
+          "no_op_consumer_ns": 50122.5,
+          "no_op_publish_ns": 496.0,
+          "object_preparation_ns": 445266.5,
+          "publication_only_ns": 2659.0,
+          "rollback_consumer_ns": 49618.5,
+          "rollback_publish_ns": 489.0,
+          "setup_ns": 10706186.0,
+          "target_registration_ns": 10194645.0,
+          "update_consumer_ns": 67051.5,
+          "update_publish_ns": 750.5,
+          "wall_span_ns": 11015426.0
+        }
+      },
+      "width": 16
+    },
+    {
+      "atomicwriter_median_ns": 10387474.5,
+      "boots": 20,
+      "materialization_median": {
+        "atomicwriter_live_bytes_initial": 693.0,
+        "atomicwriter_live_bytes_no_op": 691.0,
+        "atomicwriter_live_bytes_rollback": 693.0,
+        "atomicwriter_live_bytes_update": 691.0,
+        "atomicwriter_live_files_initial": 63.0,
+        "atomicwriter_live_files_no_op": 63.0,
+        "atomicwriter_live_files_rollback": 63.0,
+        "atomicwriter_live_files_update": 63.0,
+        "atomicwriter_newly_materialized_bytes": 2077.0,
+        "atomicwriter_newly_materialized_files": 189.0,
+        "namei_ext_logical_files": 64.0,
+        "namei_ext_lower_bytes": 1384.0,
+        "namei_ext_lower_files": 126.0,
+        "namei_ext_prepared_regular_files": 190.0,
+        "namei_ext_visible_files_initial": 63.0,
+        "namei_ext_visible_files_no_op": 63.0,
+        "namei_ext_visible_files_rollback": 63.0,
+        "namei_ext_visible_files_update": 63.0
+      },
+      "namei_ext_median_ns": 12742645.5,
+      "publication_ratio": 0.0004190063886453718,
+      "publication_ratio_ci95_lower": 0.00040583557031840546,
+      "publication_ratio_ci95_upper": 0.00043054741937428794,
+      "ratio": 1.2365748942949042,
+      "ratio_ci95_lower": 1.2202665375438955,
+      "ratio_ci95_upper": 1.269441527334059,
+      "registered_targets": 126,
+      "supports_lower_cost": false,
+      "supports_lower_publication_cost": true,
+      "timing_ci95_ns": {
+        "atomicwriter": {
+          "active_total_ns": [
+            8822389.0,
+            9241914.0
+          ],
+          "consumer_only_ns": [
+            1870621.0,
+            2031160.5
+          ],
+          "initial_consumer_ns": [
+            1256564.5,
+            1360829.0
+          ],
+          "initial_publish_ns": [
+            2740126.0,
+            2923208.0
+          ],
+          "no_op_consumer_ns": [
+            174303.0,
+            180058.5
+          ],
+          "no_op_publish_ns": [
+            441311.5,
+            459934.5
+          ],
+          "publication_only_ns": [
+            6593529.5,
+            6930194.5
+          ],
+          "rollback_consumer_ns": [
+            189096.5,
+            193732.5
+          ],
+          "rollback_publish_ns": [
+            1335267.0,
+            1406377.0
+          ],
+          "setup_ns": [
+            166971.5,
+            187463.0
+          ],
+          "update_consumer_ns": [
+            213161.5,
+            225357.0
+          ],
+          "update_publish_ns": [
+            1923546.5,
+            1990285.0
+          ],
+          "wall_span_ns": [
+            10142393.5,
+            10517199.0
+          ]
+        },
+        "namei_ext": {
+          "active_total_ns": [
+            12722744.5,
+            12770973.5
+          ],
+          "attach_ns": [
+            12723014.5,
+            13503293.0
+          ],
+          "consumer_cgroup_move_ns": [
+            14945.5,
+            16021.5
+          ],
+          "consumer_only_ns": [
+            841741.5,
+            870823.0
+          ],
+          "initial_consumer_ns": [
+            274977.5,
+            284576.5
+          ],
+          "initial_publish_ns": [
+            830.0,
+            964.0
+          ],
+          "map_population_ns": [
+            128859.5,
+            133284.0
+          ],
+          "no_op_consumer_ns": [
+            173103.5,
+            181705.5
+          ],
+          "no_op_publish_ns": [
+            540.0,
+            597.5
+          ],
+          "object_preparation_ns": [
+            1369267.0,
+            1411280.0
+          ],
+          "publication_only_ns": [
+            2791.5,
+            2959.0
+          ],
+          "rollback_consumer_ns": [
+            169047.5,
+            173891.5
+          ],
+          "rollback_publish_ns": [
+            514.5,
+            545.5
+          ],
+          "setup_ns": [
+            11841803.5,
+            11873516.5
+          ],
+          "target_registration_ns": [
+            10307906.5,
+            10322458.5
+          ],
+          "update_consumer_ns": [
+            204435.0,
+            226360.5
+          ],
+          "update_publish_ns": [
+            797.5,
+            847.5
+          ],
+          "wall_span_ns": [
+            12724066.0,
+            12772390.5
+          ]
+        }
+      },
+      "timing_median_ns": {
+        "atomicwriter": {
+          "active_total_ns": 9143884.0,
+          "consumer_only_ns": 1890771.0,
+          "initial_consumer_ns": 1284485.5,
+          "initial_publish_ns": 2798399.0,
+          "no_op_consumer_ns": 176681.5,
+          "no_op_publish_ns": 452281.5,
+          "publication_only_ns": 6774745.5,
+          "rollback_consumer_ns": 191037.5,
+          "rollback_publish_ns": 1369142.5,
+          "setup_ns": 175491.5,
+          "update_consumer_ns": 216784.0,
+          "update_publish_ns": 1944072.5,
+          "wall_span_ns": 10387474.5
+        },
+        "namei_ext": {
+          "active_total_ns": 12739115.5,
+          "attach_ns": 13111986.5,
+          "consumer_cgroup_move_ns": 15584.5,
+          "consumer_only_ns": 856713.0,
+          "initial_consumer_ns": 277036.0,
+          "initial_publish_ns": 888.0,
+          "map_population_ns": 131142.5,
+          "no_op_consumer_ns": 175554.5,
+          "no_op_publish_ns": 576.0,
+          "object_preparation_ns": 1379396.0,
+          "publication_only_ns": 2877.5,
+          "rollback_consumer_ns": 169722.5,
+          "rollback_publish_ns": 525.5,
+          "setup_ns": 11854367.5,
+          "target_registration_ns": 10314375.5,
+          "update_consumer_ns": 215469.0,
+          "update_publish_ns": 826.5,
+          "wall_span_ns": 12742645.5
+        }
+      },
+      "width": 64
+    },
+    {
+      "atomicwriter_median_ns": 33707951.5,
+      "boots": 20,
+      "materialization_median": {
+        "atomicwriter_live_bytes_initial": 2805.0,
+        "atomicwriter_live_bytes_no_op": 2803.0,
+        "atomicwriter_live_bytes_rollback": 2805.0,
+        "atomicwriter_live_bytes_update": 2803.0,
+        "atomicwriter_live_files_initial": 255.0,
+        "atomicwriter_live_files_no_op": 255.0,
+        "atomicwriter_live_files_rollback": 255.0,
+        "atomicwriter_live_files_update": 255.0,
+        "atomicwriter_newly_materialized_bytes": 8413.0,
+        "atomicwriter_newly_materialized_files": 765.0,
+        "namei_ext_logical_files": 256.0,
+        "namei_ext_lower_bytes": 5608.0,
+        "namei_ext_lower_files": 510.0,
+        "namei_ext_prepared_regular_files": 766.0,
+        "namei_ext_visible_files_initial": 255.0,
+        "namei_ext_visible_files_no_op": 255.0,
+        "namei_ext_visible_files_rollback": 255.0,
+        "namei_ext_visible_files_update": 255.0
+      },
+      "namei_ext_median_ns": 23471631.0,
+      "publication_ratio": 0.00015097497468336354,
+      "publication_ratio_ci95_lower": 0.00014403047009258312,
+      "publication_ratio_ci95_upper": 0.00016373832722487312,
+      "ratio": 0.7200478158851389,
+      "ratio_ci95_lower": 0.6800162895730313,
+      "ratio_ci95_upper": 0.730570039392991,
+      "registered_targets": 510,
+      "supports_lower_cost": true,
+      "supports_lower_publication_cost": true,
+      "timing_ci95_ns": {
+        "atomicwriter": {
+          "active_total_ns": [
+            31100688.0,
+            34395998.5
+          ],
+          "consumer_only_ns": [
+            6549309.5,
+            6696058.5
+          ],
+          "initial_consumer_ns": [
+            1776019.0,
+            1836574.0
+          ],
+          "initial_publish_ns": [
+            6846659.0,
+            7092445.0
+          ],
+          "no_op_consumer_ns": [
+            1482199.0,
+            1564369.0
+          ],
+          "no_op_publish_ns": [
+            1620934.0,
+            1733562.0
+          ],
+          "publication_only_ns": [
+            24420560.5,
+            27603607.0
+          ],
+          "rollback_consumer_ns": [
+            1556561.0,
+            1632512.0
+          ],
+          "rollback_publish_ns": [
+            5746692.5,
+            7034990.5
+          ],
+          "setup_ns": [
+            168489.0,
+            189843.5
+          ],
+          "update_consumer_ns": [
+            1571714.0,
+            1662029.0
+          ],
+          "update_publish_ns": [
+            8979536.5,
+            10365987.5
+          ],
+          "wall_span_ns": [
+            32398417.5,
+            35749509.5
+          ]
+        },
+        "namei_ext": {
+          "active_total_ns": [
+            23368460.0,
+            23753999.0
+          ],
+          "attach_ns": [
+            12596919.5,
+            13176800.5
+          ],
+          "consumer_cgroup_move_ns": [
+            16386.5,
+            18065.5
+          ],
+          "consumer_only_ns": [
+            6294664.5,
+            6390970.0
+          ],
+          "initial_consumer_ns": [
+            1645886.0,
+            1725418.5
+          ],
+          "initial_publish_ns": [
+            864.0,
+            991.5
+          ],
+          "map_population_ns": [
+            464738.5,
+            476911.5
+          ],
+          "no_op_consumer_ns": [
+            1450538.5,
+            1508836.5
+          ],
+          "no_op_publish_ns": [
+            876.0,
+            1006.5
+          ],
+          "object_preparation_ns": [
+            5750231.0,
+            5878395.5
+          ],
+          "publication_only_ns": [
+            3901.5,
+            4202.0
+          ],
+          "rollback_consumer_ns": [
+            1482762.0,
+            1518102.0
+          ],
+          "rollback_publish_ns": [
+            788.0,
+            851.5
+          ],
+          "setup_ns": [
+            17043935.0,
+            17231650.5
+          ],
+          "target_registration_ns": [
+            10777603.5,
+            10802301.5
+          ],
+          "update_consumer_ns": [
+            1575047.0,
+            1628555.0
+          ],
+          "update_publish_ns": [
+            1110.5,
+            1272.5
+          ],
+          "wall_span_ns": [
+            23370636.5,
+            23756050.5
+          ]
+        }
+      },
+      "timing_median_ns": {
+        "atomicwriter": {
+          "active_total_ns": 32432315.5,
+          "consumer_only_ns": 6615052.5,
+          "initial_consumer_ns": 1813672.0,
+          "initial_publish_ns": 6999163.5,
+          "no_op_consumer_ns": 1510301.5,
+          "no_op_publish_ns": 1670717.5,
+          "publication_only_ns": 25516514.0,
+          "rollback_consumer_ns": 1598939.0,
+          "rollback_publish_ns": 6467041.5,
+          "setup_ns": 180887.5,
+          "update_consumer_ns": 1589280.5,
+          "update_publish_ns": 9665109.5,
+          "wall_span_ns": 33707951.5
+        },
+        "namei_ext": {
+          "active_total_ns": 23469298.0,
+          "attach_ns": 12936698.5,
+          "consumer_cgroup_move_ns": 17308.5,
+          "consumer_only_ns": 6325316.5,
+          "initial_consumer_ns": 1674261.0,
+          "initial_publish_ns": 930.0,
+          "map_population_ns": 471138.0,
+          "no_op_consumer_ns": 1478348.5,
+          "no_op_publish_ns": 953.0,
+          "object_preparation_ns": 5820218.5,
+          "publication_only_ns": 4060.0,
+          "rollback_consumer_ns": 1497879.0,
+          "rollback_publish_ns": 828.5,
+          "setup_ns": 17140586.0,
+          "target_registration_ns": 10786429.0,
+          "update_consumer_ns": 1600473.5,
+          "update_publish_ns": 1186.5,
+          "wall_span_ns": 23471631.0
+        }
+      },
+      "width": 256
+    }
+  ],
+  "verdict": "supports-lower-cost-at-primary-scale"
+}

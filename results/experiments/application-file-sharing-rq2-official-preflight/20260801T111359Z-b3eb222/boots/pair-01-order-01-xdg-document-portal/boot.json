@@ -1,0 +1,14 @@
+{
+  "schema": "namei_ext.application_file_sharing_rq2_official.boot.v1",
+  "status": "failed",
+  "mechanism": "xdg-document-portal",
+  "pair": 1,
+  "pair_order": 1,
+  "warmup": 10,
+  "samples": 100,
+  "inner_status": 2,
+  "inventory_after_status": 0,
+  "dmesg_status": 0,
+  "clocksource": "tsc",
+  "completed_at": "2026-08-01T11:14:24Z"
+}

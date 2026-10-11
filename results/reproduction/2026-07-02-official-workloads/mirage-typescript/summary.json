@@ -1,0 +1,124 @@
+{
+  "status": "pass",
+  "date": "2026-07-02",
+  "source": "strukto-ai/mirage",
+  "commit": "627016bce3fb95fccb016098373859729a4f9fb5",
+  "environment": {
+    "node": "v22.22.0",
+    "corepack": "0.34.0",
+    "pnpm": "10.32.1",
+    "redis": "Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=e53ff17674aa6190",
+    "redis_url": "redis://127.0.0.1:6382/0",
+    "fuse_device": "/dev/fuse",
+    "fuse_tools": [
+      "fusermount3",
+      "fusermount"
+    ]
+  },
+  "steps": {
+    "install": {
+      "log": "pnpm-install.log"
+    },
+    "build": {
+      "exit": 0,
+      "log": "pnpm-build-rerun.log"
+    },
+    "typescript_tests": {
+      "exit": 0,
+      "log": "pnpm-test.log",
+      "package_summaries": {
+        "core": "409 files passed; 3456 tests passed; 2 todo",
+        "browser": "44 files passed; 165 tests passed",
+        "node": "176 files passed, 2 files skipped; 1553 tests passed, 8 skipped",
+        "server": "20 files passed; 148 tests passed",
+        "agents": "14 files passed; 149 tests passed",
+        "cli": "4 files passed; 51 tests passed"
+      }
+    },
+    "examples": {
+      "exit": 0,
+      "total": 15,
+      "failed": 0,
+      "status_tsv": "examples-status.tsv",
+      "log": "examples.log"
+    },
+    "fuse_integration": {
+      "exit": 0,
+      "raw_log": "integ-fuse.raw.log",
+      "checked_log": "integ-fuse.log",
+      "truth": "integ/truth_fuse.txt",
+      "matched_lines": 9
+    },
+    "python_fs_shim": {
+      "exit": 0,
+      "raw_log": "pyodide-vfs.raw.log",
+      "checked_log": "pyodide-vfs.log",
+      "truth": "integ/truth/typescript/pyodide_vfs.txt",
+      "matched_lines": 4,
+      "node_version_note": "Upstream workflow requests Node 24; local Node 22.22.0 accepted --experimental-wasm-jspi and passed the truth check."
+    }
+  },
+  "boundaries": [
+    "No live SaaS/API credentials or provider backends were exercised beyond mocked/unit provider tests.",
+    "This is TypeScript package/test/example/FUSE evidence, not full Mirage service deployment or all external storage/provider integration.",
+    "Python FS shim passed on Node 22.22.0; upstream CI documents Node 24 for the same flag."
+  ],
+  "raw_log_hashes": [
+    {
+      "sha256": "a75ae6d73c27d00bf8d3a71f6efd7ec2ce988668731d1e52188be7b075aff538",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/corepack-pnpm.log"
+    },
+    {
+      "sha256": "8da56cbce4583a3328354706ca6a8f8ad52d4c0ee1043d180204c04380af5b37",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/env-probe.log"
+    },
+    {
+      "sha256": "ff4fb02671daaabf425340f610ce1ada1202484c02847d194aff9eec5b1a189b",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/examples.log"
+    },
+    {
+      "sha256": "3cc263535593ffe2e262ff59c65bfcb0ae985042053fd4c358eb2b9fc6e645b5",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/integ-fuse.log"
+    },
+    {
+      "sha256": "c5a3051799b92b886ab12a5d3d6ee8a39589e14592b69b691d743ab7285e676f",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/integ-fuse.raw.log"
+    },
+    {
+      "sha256": "b08c9b8b53343da9ca17b79dcd908ed951a9d41afc370f6ae51d6f5ad1d70abd",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/pnpm-build-rerun.log"
+    },
+    {
+      "sha256": "c93d95aad996bbead297fce6a1966a41dd04b27b232ce6d1362c62888fa2387c",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/pnpm-build.log"
+    },
+    {
+      "sha256": "5b47d913e455b2cac4951ae11b0868f2771be8b90dc8ab753e1ceb17fda931a4",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/pnpm-install.log"
+    },
+    {
+      "sha256": "738ae3463b25e96f109bb7dfaf49f749b411b3e452b3bf27931b8db428115570",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/pnpm-test.log"
+    },
+    {
+      "sha256": "bfd437a09e09cdfecc104c2473bfe84f258cc47f924869c206796ca2f5b38440",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/pyodide-vfs.log"
+    },
+    {
+      "sha256": "34e47b7c8f82d7b33931bef49917d166e005e5d18c6983fa73de7e15383bac0e",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/pyodide-vfs.raw.log"
+    },
+    {
+      "sha256": "beedfacddafc99f361f8c1efd2dd729f43420f273b023fbb1a4468c80025eef9",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/redis-6382.log"
+    },
+    {
+      "sha256": "f922005caf02f16028b710e9caa1ab1fe2f9b62efd981064b0266560a3198fd8",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/redis-start.log"
+    },
+    {
+      "sha256": "471a3b374409ad79061f7a09933a269475566a940113f6898fb7a8aaeffa7ccc",
+      "path": "/home/yunwei37/workspace/namei_ext/results/reproduction/2026-07-02-official-workloads/mirage-typescript/examples-status.tsv"
+    }
+  ]
+}

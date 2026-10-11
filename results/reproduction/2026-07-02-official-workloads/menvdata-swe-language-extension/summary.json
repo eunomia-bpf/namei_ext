@@ -1,0 +1,363 @@
+{
+  "aggregate_result": {
+    "languages_attempted": [
+      "C",
+      "C++",
+      "Java",
+      "JavaScript",
+      "PHP",
+      "Ruby",
+      "Rust",
+      "TypeScript"
+    ],
+    "languages_negative": [
+      "C++",
+      "Rust",
+      "TypeScript"
+    ],
+    "languages_passed": [
+      "C",
+      "Java",
+      "JavaScript",
+      "PHP",
+      "Ruby"
+    ],
+    "negative_rows": 3,
+    "passing_rows": 5,
+    "selected_rows": 8
+  },
+  "boundaries": [
+    "This extends selected MEnvData-SWE image/eval row replay; it is not full MEnvAgent runtime reproduction.",
+    "Negative rows preserve public artifact behavior without editing eval scripts or image contents.",
+    "Together with the earlier Python/Go/Rust record, the evidence now attempts all 10 dataset languages and has positive rows for Python, Go, JavaScript, Ruby, PHP, Java, and C.",
+    "TypeScript, C++, and Rust remain negative artifact rows in the attempted examples and need alternate rows if positive coverage is required."
+  ],
+  "cleanup": {
+    "broad_docker_prune_used": false,
+    "new_images_removed_after_each_row": true
+  },
+  "raw_result_root": "results/reproduction/2026-07-02-official-workloads/menvdata-swe-language-extension",
+  "rows": [
+    {
+      "base_commit": "18966945324786d29def134662221a068297161d",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-js:mishoo-uglifyjs-pr-4449",
+      "image_digest": "mcatwj/swe-images-js@sha256:315982c96f0708e7e34426c767e63513cb790374406f88d2519671468bfb2d3f",
+      "image_id": "sha256:80d850c10ba1c686442c726b84cefbc0958cb1e94a957c0b590e3570927df4c5",
+      "image_size_bytes": 3417626984,
+      "instance_id": "mishoo__UglifyJS-4449",
+      "language": "JavaScript",
+      "logs": [
+        "js-uglifyjs-4449/instance.json",
+        "js-uglifyjs-4449/eval.sh",
+        "js-uglifyjs-4449/pull.log",
+        "js-uglifyjs-4449/pull.status",
+        "js-uglifyjs-4449/image.inspect.after.json",
+        "js-uglifyjs-4449/eval.log",
+        "js-uglifyjs-4449/eval.status",
+        "js-uglifyjs-4449/rmi.log",
+        "js-uglifyjs-4449/rmi.status",
+        "js-uglifyjs-4449/lifecycle.log",
+        "js-uglifyjs-4449/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "mishoo/UglifyJS",
+      "rmi_status": 0,
+      "slug": "js-uglifyjs-4449",
+      "target_commands": [
+        "node test/compress.js arrows.js"
+      ],
+      "test_summary_snippets": []
+    },
+    {
+      "base_commit": "22ab436bc214d86d740e78f33ae6834d28ddc152",
+      "completion_marker": false,
+      "docker_run_status": 128,
+      "failure_summary": "fatal: not a git repository (or any of the parent directories): .git",
+      "image": "mcatwj/swe-images-typescript:colinhacks-zod-pr-4568",
+      "image_digest": "mcatwj/swe-images-typescript@sha256:c5bb22d4c901f195e2385d373cdcd631f29e967d3be76b783d5c46d103061e06",
+      "image_id": "sha256:679e7c67b517ccd5a9a0dd2df4f4a246fe898193f6704e0af5c2deaca78f7572",
+      "image_size_bytes": 6323786977,
+      "instance_id": "colinhacks__zod-4568",
+      "language": "TypeScript",
+      "logs": [
+        "ts-zod-4568/instance.json",
+        "ts-zod-4568/eval.sh",
+        "ts-zod-4568/pull.log",
+        "ts-zod-4568/pull.status",
+        "ts-zod-4568/image.inspect.after.json",
+        "ts-zod-4568/eval.log",
+        "ts-zod-4568/eval.status",
+        "ts-zod-4568/rmi.log",
+        "ts-zod-4568/rmi.status",
+        "ts-zod-4568/lifecycle.log",
+        "ts-zod-4568/disk-after.log"
+      ],
+      "official_eval_row_passed": false,
+      "omnigril_exit_codes": [],
+      "pull_status": 0,
+      "repo": "colinhacks/zod",
+      "rmi_status": 0,
+      "slug": "ts-zod-4568",
+      "target_commands": [],
+      "test_summary_snippets": []
+    },
+    {
+      "base_commit": "eacc34f55d32d90777605e535cab82e81087f69e",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-ruby:ruby-i18n-i18n-pr-701",
+      "image_digest": "mcatwj/swe-images-ruby@sha256:9bfdb757c8504c02a6ad2a99f0c1c55869767df1733bd971115a2b94355868c4",
+      "image_id": "sha256:24b9ff94d0e706297f847f33767f9f8735868c3dd3ca247ef2d4a22b51612304",
+      "image_size_bytes": 2176235155,
+      "instance_id": "ruby-i18n__i18n-701",
+      "language": "Ruby",
+      "logs": [
+        "ruby-i18n-701/instance.json",
+        "ruby-i18n-701/eval.sh",
+        "ruby-i18n-701/pull.log",
+        "ruby-i18n-701/pull.status",
+        "ruby-i18n-701/image.inspect.after.json",
+        "ruby-i18n-701/eval.log",
+        "ruby-i18n-701/eval.status",
+        "ruby-i18n-701/rmi.log",
+        "ruby-i18n-701/rmi.status",
+        "ruby-i18n-701/lifecycle.log",
+        "ruby-i18n-701/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "ruby-i18n/i18n",
+      "rmi_status": 0,
+      "slug": "ruby-i18n-701",
+      "target_commands": [
+        "if [ -f Rakefile ] && bundle exec rake -T | grep -q build; then",
+        "bundle exec rake build || echo \"[Build] build failed but continuing\"",
+        "echo \"[Test] Running ONLY patched test file: bundle exec ruby -Ilib:test test/i18n/load_path_test.rb\"",
+        "bundle exec ruby -Ilib:test test/i18n/load_path_test.rb"
+      ],
+      "test_summary_snippets": [
+        "6 runs, 6 assertions, 0 failures, 0 errors, 0 skips"
+      ]
+    },
+    {
+      "base_commit": "e561bd18181b0685430da75cb904f9eb6c87b5e6",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-php:php-cs-fixer-php-cs-fixer-pr-6824",
+      "image_digest": "mcatwj/swe-images-php@sha256:7f30befada9a86f837ad87d62cb281ac5c30a44c64b3368872230a7df6188148",
+      "image_id": "sha256:e52f37e832bbad5525cd7fa35f1de6f6505407cc34c57b891b5f75befc20e32f",
+      "image_size_bytes": 3411989706,
+      "instance_id": "PHP-CS-Fixer__PHP-CS-Fixer-6824",
+      "language": "PHP",
+      "logs": [
+        "php-cs-fixer-6824/instance.json",
+        "php-cs-fixer-6824/eval.sh",
+        "php-cs-fixer-6824/pull.log",
+        "php-cs-fixer-6824/pull.status",
+        "php-cs-fixer-6824/image.inspect.after.json",
+        "php-cs-fixer-6824/eval.log",
+        "php-cs-fixer-6824/eval.status",
+        "php-cs-fixer-6824/rmi.log",
+        "php-cs-fixer-6824/rmi.status",
+        "php-cs-fixer-6824/lifecycle.log",
+        "php-cs-fixer-6824/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "PHP-CS-Fixer/PHP-CS-Fixer",
+      "rmi_status": 0,
+      "slug": "php-cs-fixer-6824",
+      "target_commands": [
+        "vendor/bin/phpunit tests/Fixer/PhpUnit/PhpUnitTestAnnotationFixerTest.php"
+      ],
+      "test_summary_snippets": []
+    },
+    {
+      "base_commit": "f49fddb235450bfdec877a2ac1851210c444fe81",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-java:casbin-jcasbin-pr-431",
+      "image_digest": "mcatwj/swe-images-java@sha256:b3a86f1ac6e99e9b79ac01da43f300bf1610238a4eabb0bd4db60a9541c2c9d0",
+      "image_id": "sha256:536fe4ad7d3c4122cd8f0c46b75e7af05235df833cfabb5c19ffe5a5b9c4f1ea",
+      "image_size_bytes": 3050531967,
+      "instance_id": "casbin__jcasbin-431",
+      "language": "Java",
+      "logs": [
+        "java-jcasbin-431/instance.json",
+        "java-jcasbin-431/eval.sh",
+        "java-jcasbin-431/pull.log",
+        "java-jcasbin-431/pull.status",
+        "java-jcasbin-431/image.inspect.after.json",
+        "java-jcasbin-431/eval.log",
+        "java-jcasbin-431/eval.status",
+        "java-jcasbin-431/rmi.log",
+        "java-jcasbin-431/rmi.status",
+        "java-jcasbin-431/lifecycle.log",
+        "java-jcasbin-431/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "casbin/jcasbin",
+      "rmi_status": 0,
+      "slug": "java-jcasbin-431",
+      "target_commands": [
+        "mvn test -Dtest=UtilTest -DfailIfNoTests=true -DforkCount=1C -DreuseForks=true -Dsurefire.useFile=false -B -e -X"
+      ],
+      "test_summary_snippets": [
+        "Tests run: 7, Failures: 0, Errors: 0, Skipped: 0",
+        "BUILD SUCCESS"
+      ]
+    },
+    {
+      "base_commit": "f9c4dc10d90732cfbe2271dd58b01dd8f4003d15",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-c:libgit2-libgit2-pr-6125",
+      "image_digest": "mcatwj/swe-images-c@sha256:617f49931797b01125a3a549405d922bb495b201c2f605f5534a74e60aec144f",
+      "image_id": "sha256:6e7e554a7f59a613e05eac43d795cdbf74deb1f06a1339d1269d19bb1244eb10",
+      "image_size_bytes": 597197315,
+      "instance_id": "libgit2__libgit2-6125",
+      "language": "C",
+      "logs": [
+        "c-libgit2-6125/instance.json",
+        "c-libgit2-6125/eval.sh",
+        "c-libgit2-6125/pull.log",
+        "c-libgit2-6125/pull.status",
+        "c-libgit2-6125/image.inspect.after.json",
+        "c-libgit2-6125/eval.log",
+        "c-libgit2-6125/eval.status",
+        "c-libgit2-6125/rmi.log",
+        "c-libgit2-6125/rmi.status",
+        "c-libgit2-6125/lifecycle.log",
+        "c-libgit2-6125/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "libgit2/libgit2",
+      "rmi_status": 0,
+      "slug": "c-libgit2-6125",
+      "target_commands": [
+        "./libgit2_tests -scommit::commit -v -v | tee /tmp/test_result.log"
+      ],
+      "test_summary_snippets": [
+        "commit::commit....."
+      ]
+    },
+    {
+      "base_commit": "b4a6da3e634c2327eeeb1287a48bc9b6e1e1858c",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": "0% tests passed, 1 tests failed out of 1",
+      "image": "mcatwj/swe-images-cpp:tencent-rapidjson-pr-2207",
+      "image_digest": "mcatwj/swe-images-cpp@sha256:4d2873309b5f154941a23e061bca2dc7d9495cf921a832a7f1ee0745c27e0e03",
+      "image_id": "sha256:964b4cdb9f70b94a6003c1391183ca4c88532481d37eb721f23b91533fb53abe",
+      "image_size_bytes": 626302123,
+      "instance_id": "Tencent__rapidjson-2207",
+      "language": "C++",
+      "logs": [
+        "cpp-rapidjson-2207/instance.json",
+        "cpp-rapidjson-2207/eval.sh",
+        "cpp-rapidjson-2207/pull.log",
+        "cpp-rapidjson-2207/pull.status",
+        "cpp-rapidjson-2207/image.inspect.after.json",
+        "cpp-rapidjson-2207/eval.log",
+        "cpp-rapidjson-2207/eval.status",
+        "cpp-rapidjson-2207/rmi.log",
+        "cpp-rapidjson-2207/rmi.status",
+        "cpp-rapidjson-2207/lifecycle.log",
+        "cpp-rapidjson-2207/disk-after.log"
+      ],
+      "official_eval_row_passed": false,
+      "omnigril_exit_codes": [
+        8,
+        8
+      ],
+      "pull_status": 0,
+      "repo": "Tencent/rapidjson",
+      "rmi_status": 0,
+      "slug": "cpp-rapidjson-2207",
+      "target_commands": [
+        "ctest --version || true",
+        "ctest -V -j$(nproc) -R \"^unittest$\" --output-on-failure"
+      ],
+      "test_summary_snippets": [
+        "0% tests passed, 1 tests failed out of 1"
+      ]
+    },
+    {
+      "base_commit": "2128f074a9ae747612257f5ac02438d2a8068471",
+      "completion_marker": false,
+      "docker_run_status": 1,
+      "failure_summary": "error: tests/location_disabled.rs: already exists in working directory",
+      "image": "mcatwj/swe-images-rust:eyre-rs-color-eyre-pr-106",
+      "image_digest": "mcatwj/swe-images-rust@sha256:fbc2a292e53f8f42db9cf197895ead6e78d4ae5377a8c39ae5ad495b34427e62",
+      "image_id": "sha256:4592bc91d820093c7b72534ec5c65b6463a289b3225e5e7deb984369c03a7d4a",
+      "image_size_bytes": 4507380062,
+      "instance_id": "eyre-rs__color-eyre-106",
+      "language": "Rust",
+      "logs": [
+        "rust-color-eyre-106/instance.json",
+        "rust-color-eyre-106/eval.sh",
+        "rust-color-eyre-106/pull.log",
+        "rust-color-eyre-106/pull.status",
+        "rust-color-eyre-106/image.inspect.after.json",
+        "rust-color-eyre-106/eval.log",
+        "rust-color-eyre-106/eval.status",
+        "rust-color-eyre-106/rmi.log",
+        "rust-color-eyre-106/rmi.status",
+        "rust-color-eyre-106/lifecycle.log",
+        "rust-color-eyre-106/disk-after.log"
+      ],
+      "official_eval_row_passed": false,
+      "omnigril_exit_codes": [],
+      "pull_status": 0,
+      "repo": "eyre-rs/color-eyre",
+      "rmi_status": 0,
+      "slug": "rust-color-eyre-106",
+      "target_commands": [
+        "cargo test --test location_disabled -- --nocapture --test-threads=1"
+      ],
+      "test_summary_snippets": []
+    }
+  ],
+  "selection_policy": "one lightweight official released image/eval row for each MEnvData-SWE language not already positively covered where feasible; rows are not adapted after extraction",
+  "source": {
+    "commit": "d9e63881f7c4a4670bb536c89add24573459bbee",
+    "dataset": "ernie-research/MEnvData-SWE",
+    "local_checkout": ".cache/source-inspection/menvagent",
+    "local_dataset_file": ".cache/source-inspection/hf-datasets/ernie-research__MEnvData-SWE/swe-images.jsonl",
+    "name": "MEnvAgent / MEnvData-SWE",
+    "repository": "https://github.com/ernie-research/MEnvAgent",
+    "row_count": 3005
+  }
+}

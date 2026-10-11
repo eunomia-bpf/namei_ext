@@ -1,0 +1,20 @@
+{
+  "source_system": "xdg-document-portal",
+  "version": "1.18.4",
+  "commit": "11c8a96b147aeae70e3f770313f93b367d53fedd",
+  "archive_url": "https://codeload.github.com/flatpak/xdg-desktop-portal/tar.gz/11c8a96b147aeae70e3f770313f93b367d53fedd",
+  "builder_image_id": "sha256:a038a64a27603122eff1e2362cc5c77987e64ac5d0d301e252048a07c84ddb2a",
+  "source_files": {
+    "api": "data/org.freedesktop.portal.Documents.xml",
+    "implementation": "document-portal/document-portal.c",
+    "fuse": "document-portal/document-portal-fuse.c",
+    "upstream_test": "tests/test-doc-portal.c"
+  },
+  "upstream_test_gate": {
+    "binary": "tests/test-doc-portal",
+    "subtests": 5,
+    "skips": 0,
+    "failures": 0,
+    "timeouts": 0
+  }
+}

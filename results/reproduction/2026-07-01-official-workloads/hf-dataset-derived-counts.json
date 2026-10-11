@@ -1,0 +1,275 @@
+{
+  "menvdata_swe": {
+    "rows": 3005,
+    "languages": {
+      "C": 16,
+      "Go": 502,
+      "Java": 33,
+      "JavaScript": 578,
+      "PHP": 159,
+      "Python": 477,
+      "Ruby": 283,
+      "Rust": 769,
+      "TypeScript": 157,
+      "C++": 31
+    },
+    "swe_types": {
+      "None": 1856,
+      "yiyan-sweimages-factory": 1149
+    },
+    "sample": [
+      {
+        "instance_id": "systemd__systemd-24645",
+        "repo": "systemd/systemd",
+        "language": "C",
+        "image_name": "swe-images-c:systemd-systemd-pr-24645",
+        "swe_type": null
+      },
+      {
+        "instance_id": "systemd__systemd-31171",
+        "repo": "systemd/systemd",
+        "language": "C",
+        "image_name": "swe-images-c:systemd-systemd-pr-31171",
+        "swe_type": null
+      },
+      {
+        "instance_id": "libgit2__libgit2-6125",
+        "repo": "libgit2/libgit2",
+        "language": "C",
+        "image_name": "swe-images-c:libgit2-libgit2-pr-6125",
+        "swe_type": null
+      },
+      {
+        "instance_id": "libuv__libuv-4040",
+        "repo": "libuv/libuv",
+        "language": "C",
+        "image_name": "swe-images-c:libuv-libuv-pr-4040",
+        "swe_type": null
+      },
+      {
+        "instance_id": "libgit2__libgit2-5360",
+        "repo": "libgit2/libgit2",
+        "language": "C",
+        "image_name": "swe-images-c:libgit2-libgit2-pr-5360",
+        "swe_type": null
+      },
+      {
+        "instance_id": "fluent__fluent-bit-4510",
+        "repo": "fluent/fluent-bit",
+        "language": "C",
+        "image_name": "swe-images-c:fluent-fluent-bit-pr-4510",
+        "swe_type": null
+      },
+      {
+        "instance_id": "cc65__cc65-1842",
+        "repo": "cc65/cc65",
+        "language": "C",
+        "image_name": "swe-images-c:cc65-cc65-pr-1842",
+        "swe_type": null
+      },
+      {
+        "instance_id": "fluent__fluent-bit-5412",
+        "repo": "fluent/fluent-bit",
+        "language": "C",
+        "image_name": "swe-images-c:fluent-fluent-bit-pr-5412",
+        "swe_type": null
+      },
+      {
+        "instance_id": "microsoft__ebpf-for-windows-3793",
+        "repo": "microsoft/ebpf-for-windows",
+        "language": "C",
+        "image_name": "swe-images-c:microsoft-ebpf-for-windows-pr-3793",
+        "swe_type": null
+      },
+      {
+        "instance_id": "systemd__systemd-22972",
+        "repo": "systemd/systemd",
+        "language": "C",
+        "image_name": "swe-images-c:systemd-systemd-pr-22972",
+        "swe_type": null
+      }
+    ]
+  },
+  "menvdata_trajectory": {
+    "rows": 3918,
+    "unique_images": 3000,
+    "message_count_min": 50,
+    "message_count_max": 382,
+    "message_count_avg": 129.01429300663605,
+    "roles_first10_aggregate": {
+      "system": 3918,
+      "user": 3918,
+      "assistant": 11323,
+      "tool": 20021
+    },
+    "tool_names": {
+      "str_replace_editor": 3918,
+      "execute_bash": 3918,
+      "submit": 3918
+    },
+    "sample_images": [
+      "swe-images-c:aws-s2n-tls-pr-2928",
+      "swe-images-c:aws-s2n-tls-pr-4225",
+      "swe-images-c:cc65-cc65-pr-1842",
+      "swe-images-c:fluent-fluent-bit-pr-4510",
+      "swe-images-c:fluent-fluent-bit-pr-4619",
+      "swe-images-c:fluent-fluent-bit-pr-5412",
+      "swe-images-c:fluent-fluent-bit-pr-5511",
+      "swe-images-c:libgit2-libgit2-pr-5360",
+      "swe-images-c:libgit2-libgit2-pr-6125",
+      "swe-images-c:libuv-libuv-pr-4040"
+    ]
+  },
+  "docksmith_training_1_index": {
+    "rows": 4033,
+    "agent_types": {
+      "context_retrieval_agent_1": 1065,
+      "test_analysis_agent_1": 292,
+      "test_analysis_agent_2": 235,
+      "write_dockerfile_agent_1": 298,
+      "write_dockerfile_agent_2": 221,
+      "write_eval_script_agent_1": 298,
+      "write_eval_script_agent_2": 170,
+      "test_analysis_agent_3": 171,
+      "write_dockerfile_agent_3": 132,
+      "test_analysis_agent_4": 119,
+      "test_analysis_agent_5": 73,
+      "test_analysis_agent_6": 44,
+      "write_eval_script_agent_3": 83,
+      "write_eval_script_agent_4": 52,
+      "write_eval_script_agent_5": 29,
+      "context_retrieval_agent_2": 335,
+      "write_dockerfile_agent_4": 70,
+      "context_retrieval_agent_3": 129,
+      "context_retrieval_agent_4": 62,
+      "test_analysis_agent_7": 30,
+      "write_dockerfile_agent_5": 32,
+      "write_dockerfile_agent_6": 21,
+      "context_retrieval_agent_5": 22,
+      "context_retrieval_agent_6": 7,
+      "test_analysis_agent_8": 9,
+      "write_dockerfile_agent_7": 10,
+      "write_dockerfile_agent_8": 6,
+      "write_eval_script_agent_6": 9,
+      "write_eval_script_agent_7": 3,
+      "test_analysis_agent_9": 3,
+      "write_dockerfile_agent_9": 1,
+      "write_eval_script_agent_8": 1,
+      "write_eval_script_agent_9": 1
+    },
+    "sample": [
+      {
+        "index": 0,
+        "sample_id": "00imvj00__mqttrs-7/context_retrieval_agent_1/agent_proxy_0.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "context_retrieval_agent_1",
+        "source_file": "context_retrieval_agent_1/agent_proxy_0.json",
+        "num_assistants": 1
+      },
+      {
+        "index": 1,
+        "sample_id": "00imvj00__mqttrs-7/context_retrieval_agent_1/agent_proxy_1.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "context_retrieval_agent_1",
+        "source_file": "context_retrieval_agent_1/agent_proxy_1.json",
+        "num_assistants": 1
+      },
+      {
+        "index": 2,
+        "sample_id": "00imvj00__mqttrs-7/context_retrieval_agent_1/agent_proxy_2.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "context_retrieval_agent_1",
+        "source_file": "context_retrieval_agent_1/agent_proxy_2.json",
+        "num_assistants": 1
+      },
+      {
+        "index": 3,
+        "sample_id": "00imvj00__mqttrs-7/context_retrieval_agent_1/conversation_2.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "context_retrieval_agent_1",
+        "source_file": "context_retrieval_agent_1/conversation_2.json",
+        "num_assistants": 4
+      },
+      {
+        "index": 4,
+        "sample_id": "00imvj00__mqttrs-7/test_analysis_agent_1/conversation.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "test_analysis_agent_1",
+        "source_file": "test_analysis_agent_1/conversation.json",
+        "num_assistants": 1
+      },
+      {
+        "index": 5,
+        "sample_id": "00imvj00__mqttrs-7/test_analysis_agent_2/conversation.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "test_analysis_agent_2",
+        "source_file": "test_analysis_agent_2/conversation.json",
+        "num_assistants": 1
+      },
+      {
+        "index": 6,
+        "sample_id": "00imvj00__mqttrs-7/write_dockerfile_agent_1/conversation.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "write_dockerfile_agent_1",
+        "source_file": "write_dockerfile_agent_1/conversation.json",
+        "num_assistants": 1
+      },
+      {
+        "index": 7,
+        "sample_id": "00imvj00__mqttrs-7/write_dockerfile_agent_2/conversation.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "write_dockerfile_agent_2",
+        "source_file": "write_dockerfile_agent_2/conversation.json",
+        "num_assistants": 2
+      },
+      {
+        "index": 8,
+        "sample_id": "00imvj00__mqttrs-7/write_eval_script_agent_1/conversation.json",
+        "instance_id": "00imvj00__mqttrs-7",
+        "agent_type": "write_eval_script_agent_1",
+        "source_file": "write_eval_script_agent_1/conversation.json",
+        "num_assistants": 1
+      },
+      {
+        "index": 9,
+        "sample_id": "01org__tbb-1057/context_retrieval_agent_1/agent_proxy_0.json",
+        "instance_id": "01org__tbb-1057",
+        "agent_type": "context_retrieval_agent_1",
+        "source_file": "context_retrieval_agent_1/agent_proxy_0.json",
+        "num_assistants": 1
+      }
+    ]
+  },
+  "multi_docker_eval": {
+    "rows": 334,
+    "columns": [
+      "repo",
+      "pull_number",
+      "instance_id",
+      "issue_numbers",
+      "base_commit",
+      "patch",
+      "test_patch",
+      "problem_statement",
+      "hints_text",
+      "created_at",
+      "language",
+      "label"
+    ],
+    "languages": {
+      "c": 40,
+      "go": 40,
+      "javascript": 40,
+      "ruby": 40,
+      "rust": 40,
+      "python": 39,
+      "java": 35,
+      "cpp": 30,
+      "php": 30
+    },
+    "labels": {
+      "Hard": 267,
+      "Easy": 67
+    }
+  }
+}

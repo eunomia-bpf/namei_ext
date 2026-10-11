@@ -1,0 +1,60 @@
+{
+  "source": "Terminal-Bench",
+  "suite": "build-env-oracle-suite",
+  "date": "2026-07-01",
+  "official_unmodified": true,
+  "dataset_path": "original-tasks",
+  "run_id": "2026-07-01__terminal-bench-build-env-oracle-suite",
+  "result_root": "results/reproduction/2026-07-01-official-workloads/terminal-bench-build-env-oracle-suite",
+  "raw_log": "results/reproduction/2026-07-01-official-workloads/terminal-bench-build-env-oracle-suite/tb-run.log",
+  "raw_results": "results/reproduction/2026-07-01-official-workloads/terminal-bench-build-env-oracle-suite/2026-07-01__terminal-bench-build-env-oracle-suite/results.json",
+  "raw_metadata": "results/reproduction/2026-07-01-official-workloads/terminal-bench-build-env-oracle-suite/2026-07-01__terminal-bench-build-env-oracle-suite/run_metadata.json",
+  "n_tasks": 4,
+  "n_resolved": 3,
+  "n_unresolved": 1,
+  "accuracy": 0.75,
+  "parser_checks_passed": 24,
+  "parser_checks_failed": 1,
+  "resolved_tasks": [
+    "broken-python",
+    "npm-conflict-resolution",
+    "setup-custom-dev-env"
+  ],
+  "unresolved_tasks": [
+    "build-cython-ext"
+  ],
+  "task_results": [
+    {
+      "task_id": "broken-python",
+      "is_resolved": true,
+      "parser_checks_passed": 2,
+      "parser_checks_failed": 0,
+      "workload_shape": "system Python pip repair and package-install oracle"
+    },
+    {
+      "task_id": "npm-conflict-resolution",
+      "is_resolved": true,
+      "parser_checks_passed": 5,
+      "parser_checks_failed": 0,
+      "workload_shape": "Node.js/npm dependency conflict repair and package tree oracle"
+    },
+    {
+      "task_id": "build-cython-ext",
+      "is_resolved": false,
+      "parser_checks_passed": 10,
+      "parser_checks_failed": 1,
+      "failed_checks": [
+        "test_pyknotid_repository_tests"
+      ],
+      "workload_shape": "source clone, NumPy compatibility repair, Cython extension build, import/example oracle, and repository-test oracle"
+    },
+    {
+      "task_id": "setup-custom-dev-env",
+      "is_resolved": true,
+      "parser_checks_passed": 7,
+      "parser_checks_failed": 0,
+      "workload_shape": "shell, oh-my-zsh, plugin, Miniconda, conda environment, zsh/bash activation oracle"
+    }
+  ],
+  "interpretation": "Selected official Terminal-Bench build/environment tasks reproduced through the upstream harness and oracle agent. Three tasks resolved. build-cython-ext is preserved as a workload-level negative because repository tests failed even though NumPy version, repository clone, Cython extension imports, extension checks, and example usage passed."
+}

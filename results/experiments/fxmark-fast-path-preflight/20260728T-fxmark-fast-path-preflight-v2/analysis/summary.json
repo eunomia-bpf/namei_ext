@@ -1,0 +1,64 @@
+{
+  "schema": "namei_ext.fxmark-fast-path.analysis.v1",
+  "input": "/home/yunwei37/workspace/namei_ext/results/experiments/fxmark-fast-path-preflight/20260728T-fxmark-fast-path-preflight-v2/observations.jsonl",
+  "launch_order": "/home/yunwei37/workspace/namei_ext/results/experiments/fxmark-fast-path-preflight/20260728T-fxmark-fast-path-preflight-v2/launch-order.jsonl",
+  "run": "/home/yunwei37/workspace/namei_ext/results/experiments/fxmark-fast-path-preflight/20260728T-fxmark-fast-path-preflight-v2/run.json",
+  "repetitions": 1,
+  "duration_seconds": 2,
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 20260728,
+  "external_bpf_fuse_inventory_gate": true,
+  "thresholds": {
+    "supported_median": 0.98,
+    "supported_ci_low": 0.97,
+    "contradicted_ci_high_below": 0.98
+  },
+  "verdict": "contradicted",
+  "cells": [
+    {
+      "type": "MRPL",
+      "workers": 1,
+      "stock_median_ops_s": 2453431.41299,
+      "unattached_median_ops_s": 2399696.901212,
+      "unattached_over_stock": {
+        "median": 0.9780982213346189,
+        "ci_low": 0.9780982213346189,
+        "ci_high": 0.9780982213346189,
+        "paired_ratios": [
+          0.9780982213346189
+        ]
+      },
+      "verdict": "contradicted"
+    },
+    {
+      "type": "MRPL",
+      "workers": 2,
+      "stock_median_ops_s": 4902758.840344,
+      "unattached_median_ops_s": 4885005.681229,
+      "unattached_over_stock": {
+        "median": 0.996378945060705,
+        "ci_low": 0.996378945060705,
+        "ci_high": 0.996378945060705,
+        "paired_ratios": [
+          0.996378945060705
+        ]
+      },
+      "verdict": "supported"
+    },
+    {
+      "type": "MRPL",
+      "workers": 4,
+      "stock_median_ops_s": 9806095.227143,
+      "unattached_median_ops_s": 9619497.24882,
+      "unattached_over_stock": {
+        "median": 0.9809712251410222,
+        "ci_low": 0.9809712251410222,
+        "ci_high": 0.9809712251410222,
+        "paired_ratios": [
+          0.9809712251410222
+        ]
+      },
+      "verdict": "supported"
+    }
+  ]
+}

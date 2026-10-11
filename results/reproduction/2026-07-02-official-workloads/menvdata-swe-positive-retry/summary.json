@@ -1,0 +1,185 @@
+{
+  "aggregate_result": {
+    "languages_attempted": [
+      "C++",
+      "Rust",
+      "TypeScript"
+    ],
+    "languages_passed": [
+      "C++",
+      "Rust",
+      "TypeScript"
+    ],
+    "negative_rows": 0,
+    "passing_rows": 3,
+    "selected_rows": 3
+  },
+  "boundaries": [
+    "This is selected image/eval row replay, not full MEnvAgent runtime reproduction.",
+    "The run provides positive selected-row coverage for TypeScript, C++, and Rust after earlier negative examples; it does not invalidate the preserved negative rows.",
+    "Full 3005-row benchmark reproduction remains out of scope for this record."
+  ],
+  "cleanup": {
+    "broad_docker_prune_used": false,
+    "new_images_removed_after_each_row": true
+  },
+  "combined_menvdata_language_coverage": {
+    "all_dataset_languages_have_positive_selected_rows": true,
+    "positive_languages_after_this_run": [
+      "C",
+      "C++",
+      "Go",
+      "Java",
+      "JavaScript",
+      "PHP",
+      "Python",
+      "Ruby",
+      "Rust",
+      "TypeScript"
+    ]
+  },
+  "raw_result_root": "results/reproduction/2026-07-02-official-workloads/menvdata-swe-positive-retry",
+  "rows": [
+    {
+      "base_commit": "a6612048e1bf4c6e787b1a10007dd90c5c9f34e7",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-typescript:sindresorhus-type-fest-pr-818",
+      "image_digest": "mcatwj/swe-images-typescript@sha256:ea57edbff856723921c939a42077f47297779f47eab6a1a0147343e98ba26c58",
+      "image_id": "sha256:2efb5a28656756976cb43d182d05262cc21467b95deefce07fe57ca32db7063e",
+      "image_size_bytes": 4566423059,
+      "instance_id": "sindresorhus__type-fest-818",
+      "language": "TypeScript",
+      "logs": [
+        "ts-type-fest-818/instance.json",
+        "ts-type-fest-818/eval.sh",
+        "ts-type-fest-818/pull.log",
+        "ts-type-fest-818/pull.status",
+        "ts-type-fest-818/image.inspect.after.json",
+        "ts-type-fest-818/eval.log",
+        "ts-type-fest-818/eval.status",
+        "ts-type-fest-818/rmi.log",
+        "ts-type-fest-818/rmi.status",
+        "ts-type-fest-818/lifecycle.log",
+        "ts-type-fest-818/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "sindresorhus/type-fest",
+      "rmi_status": 0,
+      "slug": "ts-type-fest-818",
+      "target_commands": [
+        "tsc --version",
+        "NODE_OPTIONS=\"--max-old-space-size=4096\" npx tsd /testbed --files \\"
+      ],
+      "test_summary_snippets": [
+        "OMNIGRIL_EXIT_CODE=0",
+        "COMMAND_EXECUTION_COMPLETE"
+      ]
+    },
+    {
+      "base_commit": "0d4e19133cb6be2239871204cb2436bcd20e7b97",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-cpp:cliutils-cli11-pr-926",
+      "image_digest": "mcatwj/swe-images-cpp@sha256:0208d2a5e4270ec245d59eae87663ef561cf57f70e5d0542596af20c0684aa25",
+      "image_id": "sha256:93c827f282535e2409d77e6ef4ca5997126d2cf65d2eeef8638abe7ae60ac35c",
+      "image_size_bytes": 634264087,
+      "instance_id": "CLIUtils__CLI11-926",
+      "language": "C++",
+      "logs": [
+        "cpp-cli11-926/instance.json",
+        "cpp-cli11-926/eval.sh",
+        "cpp-cli11-926/pull.log",
+        "cpp-cli11-926/pull.status",
+        "cpp-cli11-926/image.inspect.after.json",
+        "cpp-cli11-926/eval.log",
+        "cpp-cli11-926/eval.status",
+        "cpp-cli11-926/rmi.log",
+        "cpp-cli11-926/rmi.status",
+        "cpp-cli11-926/lifecycle.log",
+        "cpp-cli11-926/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "CLIUtils/CLI11",
+      "rmi_status": 0,
+      "slug": "cpp-cli11-926",
+      "target_commands": [
+        "cmake --build build --target HelpTest SubcommandTest -j$(nproc)",
+        "./build/tests/HelpTest",
+        "./build/tests/SubcommandTest"
+      ],
+      "test_summary_snippets": [
+        "All tests passed (305 assertions in 90 test cases)",
+        "All tests passed (485 assertions in 112 test cases)",
+        "OMNIGRIL_EXIT_CODE=0",
+        "COMMAND_EXECUTION_COMPLETE"
+      ]
+    },
+    {
+      "base_commit": "252207b60c15113c2326780fb99de83c059dddb9",
+      "completion_marker": true,
+      "docker_run_status": 0,
+      "failure_summary": null,
+      "image": "mcatwj/swe-images-rust:cobalt-org-liquid-rust-pr-403",
+      "image_digest": "mcatwj/swe-images-rust@sha256:ab94a5dfceec8c028af9ab9da5af414a6ef5c7c688f2c77b86e57e9c0eeb41d2",
+      "image_id": "sha256:8fa6b2c36181695bf331a5378f0123f62c06b766692b0ae119a25b5eb7139f83",
+      "image_size_bytes": 6171459454,
+      "instance_id": "cobalt-org__liquid-rust-403",
+      "language": "Rust",
+      "logs": [
+        "rust-liquid-rust-403/instance.json",
+        "rust-liquid-rust-403/eval.sh",
+        "rust-liquid-rust-403/pull.log",
+        "rust-liquid-rust-403/pull.status",
+        "rust-liquid-rust-403/image.inspect.after.json",
+        "rust-liquid-rust-403/eval.log",
+        "rust-liquid-rust-403/eval.status",
+        "rust-liquid-rust-403/rmi.log",
+        "rust-liquid-rust-403/rmi.status",
+        "rust-liquid-rust-403/lifecycle.log",
+        "rust-liquid-rust-403/disk-after.log"
+      ],
+      "official_eval_row_passed": true,
+      "omnigril_exit_codes": [
+        0,
+        0
+      ],
+      "pull_status": 0,
+      "repo": "cobalt-org/liquid-rust",
+      "rmi_status": 0,
+      "slug": "rust-liquid-rust-403",
+      "target_commands": [
+        "cargo test --test conformance -- --nocapture --test-threads=1"
+      ],
+      "test_summary_snippets": [
+        "test result: ok. 459 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.23s",
+        "OMNIGRIL_EXIT_CODE=0",
+        "COMMAND_EXECUTION_COMPLETE"
+      ]
+    }
+  ],
+  "selection_policy": "alternate official released image/eval rows for TypeScript, C++, and Rust after first attempted rows were negative artifacts",
+  "source": {
+    "commit": "d9e63881f7c4a4670bb536c89add24573459bbee",
+    "dataset": "ernie-research/MEnvData-SWE",
+    "local_checkout": ".cache/source-inspection/menvagent",
+    "local_dataset_file": ".cache/source-inspection/hf-datasets/ernie-research__MEnvData-SWE/swe-images.jsonl",
+    "name": "MEnvAgent / MEnvData-SWE",
+    "repository": "https://github.com/ernie-research/MEnvAgent",
+    "row_count": 3005
+  }
+}

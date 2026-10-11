@@ -1,0 +1,127 @@
+{
+  "source": {
+    "name": "Sandlock",
+    "repo": "https://github.com/multikernel/sandlock",
+    "commit": "e7f2993a2b10eeee8441ea64ac0bbe48589db90f",
+    "local_checkout": ".cache/source-inspection/sandlock"
+  },
+  "result_root": "results/reproduction/2026-07-01-official-workloads/sandlock",
+  "overall_status": "partial_with_preserved_negative_oracles",
+  "commands": [
+    {
+      "name": "cargo build --release",
+      "status": 0,
+      "log": "sandlock-cargo-build-release.log"
+    },
+    {
+      "name": "cargo test --release",
+      "status": 101,
+      "log": "sandlock-cargo-test-release.log"
+    },
+    {
+      "name": "cargo test --release -p sandlock-cli",
+      "status": 0,
+      "log": "sandlock-cli-tests-release.log"
+    },
+    {
+      "name": "cargo test --release -p sandlock-core --test integration -- --test-threads=1",
+      "status": 101,
+      "log": "sandlock-core-integration-release-tee-serial.log"
+    },
+    {
+      "name": "short CARGO_TARGET_DIR named unix subset",
+      "status": 101,
+      "log": "sandlock-core-named-unix-short-target.log"
+    },
+    {
+      "name": "python editable install sandlock[mcp]",
+      "status": 0,
+      "log": "sandlock-python-venv-install.log"
+    },
+    {
+      "name": "python pytest tests -q",
+      "status": 1,
+      "log": "sandlock-python-pytest.log"
+    },
+    {
+      "name": "go test ./... default",
+      "status": 1,
+      "log": "sandlock-go-test.log"
+    },
+    {
+      "name": "go test -tags sandlock_repo ./...",
+      "status": 0,
+      "log": "sandlock-go-test-sandlock-repo.log"
+    },
+    {
+      "name": "manual COW/protected-path smoke",
+      "status": 0,
+      "log": "sandlock-cli-cow-protected-path-smoke.log"
+    }
+  ],
+  "positive_evidence": {
+    "cli_tests": {
+      "unit_passed": 5,
+      "integration_passed": 22,
+      "profile_passed": 6,
+      "failed": 0
+    },
+    "core_integration_serial": {
+      "passed": 271,
+      "failed": 9
+    },
+    "full_cargo_core_integration": {
+      "passed": 270,
+      "failed": 10
+    },
+    "python_tests": {
+      "passed": 354,
+      "failed": 2
+    },
+    "go_in_tree_mode": "passed",
+    "manual_smoke": {
+      "cow_commit_updated_file": true,
+      "cow_commit_created_file": true,
+      "protected_etc_group_denied": true,
+      "exit_status": 0
+    }
+  },
+  "negative_evidence": {
+    "named_unix_short_target": {
+      "passed": 4,
+      "failed": 5,
+      "reason": "deny-path named UNIX socket tests succeeded where EACCES was expected"
+    },
+    "python_resource_controls": [
+      "test_restrict_max_memory baseline did not complete 128 MiB allocation under 256 MiB ceiling on this host",
+      "test_throttle_result_correct returned failure"
+    ],
+    "go_default": "pkg-config could not find sandlock.pc",
+    "full_cargo_test": "core integration named UNIX/socket and one restore/log-path false failure in first full run"
+  },
+  "workload_shape": [
+    "sandlock run lifecycle",
+    "readable/writable path classes",
+    "COW workdir commit",
+    "dry-run/change discard semantics",
+    "protected path denial",
+    "chroot and fs-mount mapping",
+    "checkpoint/fork/reduce subworkloads",
+    "dynamic policy_fn callbacks",
+    "profile-based execution",
+    "Python and Go SDK workload shapes"
+  ],
+  "reuse_verdict": "Primary sandbox/workspace workload seed with caveats. Reuse CLI COW/protected-path/path-class/sandbox lifecycle and selected core/Python/Go SDK oracles; do not claim full Sandlock conformance or resource/network/socket policy coverage on this host.",
+  "raw_logs": [
+    "sandlock-cargo-build-release.log",
+    "sandlock-cargo-test-release.log",
+    "sandlock-cli-tests-release.log",
+    "sandlock-core-integration-release-tee-serial.log",
+    "sandlock-core-named-unix-short-target.log",
+    "sandlock-python-venv-install.log",
+    "sandlock-python-pytest.log",
+    "sandlock-go-test.log",
+    "sandlock-go-test-sandlock-repo.log",
+    "sandlock-cli-cow-protected-path-smoke.log"
+  ]
+}
